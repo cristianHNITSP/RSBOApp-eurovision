@@ -1,0 +1,73 @@
+# version: '3.8'
+# Comandos útiles:
+# - Iniciar todos: docker start $(docker ps -a -q)
+# - Detener todos: docker stop $(docker ps -q)
+# - Reconstruir: docker-compose down && docker-compose up --build
+# - entrar al contenedor para ejecutar seed users: docker exec -it rsboapp-backend sh || docker exec -it rsboapp-backend npm run seed-users
+# - corre el file seed-users: npm run seed-users
+
+# PUERTOS:
+#API (Express): http://localhost:3000
+#Health Check: http://localhost:3000/health
+#Mongo Express (solo desde tu máquina): http://localhost:8081
+
+
+# DESPLIGUE:
+# desarrolo: docker-compose up --build
+# produccion: docker-compose -f docker-compose.prod.yml up --build
+
+# duerme wsl hasta que lo vuelva abrir: wsl --shutdown
+
+# Se reconstruirá la imagen e instalará todas las dependencias nuevas, incluyendo cors.
+# docker-compose build --no-cache
+# docker-compose up
+
+services:
+  backend:
+    build:
+      context: ./backend
+      args:
+        NODE_ENV: development
+    container_name: rsboapp-backend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - mongo
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    restart: always
+    environment:
+      NODE_ENV: development
+      MONGO_URI: "mongodb://root:xqr5Dc93KMa24b@mongo:27017/rsboapp?authSource=admin"
+
+  mongo:
+    image: mongo:6
+    container_name: rsboapp-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: xqr5Dc93KMa24b
+      MONGO_INITDB_DATABASE: rsboapp
+    restart: always
+
+  mongo-express:
+    image: mongo-express
+    container_name: rsboapp-mongo-express
+    ports:
+      - "127.0.0.1:8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongo
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+      ME_CONFIG_MONGODB_ADMINPASSWORD: xqr5Dc93KMa24b
+      ME_CONFIG_BASICAUTH_USERNAME: rsboapp
+      ME_CONFIG_BASICAUTH_PASSWORD: admin1234
+    depends_on:
+      - mongo
+    restart: always
+
+volumes:
+  mongo-data:

@@ -1,0 +1,32 @@
+
+services:
+  backend:
+    build:
+      context: ./backend
+      args:
+        NODE_ENV: production
+    container_name: rsboapp-backend-prod
+    ports:
+      - "3000:3000"
+    depends_on:
+      - mongo
+    environment:
+      NODE_ENV: production
+      MONGO_URI: "mongodb://root:xqr5Dc93KMa24b@mongo:27017/rsboapp?authSource=admin"
+    restart: always
+
+  mongo:
+    image: mongo:6
+    container_name: rsboapp-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: xqr5Dc93KMa24b
+      MONGO_INITDB_DATABASE: rsboapp
+    restart: always
+
+volumes:
+  mongo-data:

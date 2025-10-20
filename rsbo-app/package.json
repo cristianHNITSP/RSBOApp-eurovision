@@ -1,0 +1,30 @@
+{
+  "name": "rsbo-app",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@fortawesome/fontawesome-free": "^6.7.2",
+    "@vueuse/core": "^13.2.0",
+    "@vueuse/motion": "^3.0.3",
+    "ag-grid-community": "^33.3.1",
+    "ag-grid-vue3": "^33.3.1",
+    "axios": "^1.9.0",
+    "buefy": "npm:@ntohq/buefy-next@^0.2.0",
+    "bulma": "^1.0.4",
+    "sortablejs": "^1.15.6",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.3",
+    "sass-embedded": "^1.89.0",
+    "terser": "^5.39.2",
+    "vite": "^6.3.5"
+  }
+}

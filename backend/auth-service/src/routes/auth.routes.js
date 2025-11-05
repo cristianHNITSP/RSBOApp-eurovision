@@ -4,8 +4,29 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const DOMPurify = require('isomorphic-dompurify');
-const authMiddleware = require('../middlewares/auth.middleware')
+const authMiddleware = require('../middlewares/auth.middleware');
 
+/**
+ * @fileoverview Rutas de autenticación
+ * Define los endpoints para login, logout y verificación de sesión. Utiliza
+ * tokens JWT y cookies HttpOnly para gestionar sesiones.
+ *
+ * @module routes/auth
+ */
+
+/**
+ * Endpoint de login
+ * Autentica credenciales y crea una nueva sesión estableciendo una cookie
+ * HttpOnly con el JWT.
+ * 
+ * @route POST /api/access/login
+ * @param {Object} req.body
+ * @param {string} req.body.email - Correo electrónico del usuario
+ * @param {string} req.body.password - Contraseña del usuario
+ * @returns {Object} Información básica del usuario y cookie de sesión
+ * @throws {401} Si las credenciales son inválidas
+ * @throws {500} Si ocurre un error interno
+ */
 router.post('/login', async (req, res) => {
   try {
     console.log('--- Login Debug ---');
@@ -35,7 +56,7 @@ router.post('/login', async (req, res) => {
       { expiresIn: '8h' }
     );
 
-    console.log('Token generado:', token);
+  console.log('Token generado:', token);
 
     // ➕ Agregar token al array
     user.tokens.push({ token });
@@ -58,7 +79,7 @@ router.post('/login', async (req, res) => {
       maxAge: 8 * 60 * 60 * 1000
     });
 
-    console.log('Cookie establecida:', res.getHeader('Set-Cookie'));
+  console.log('Cookie establecida:', res.getHeader('Set-Cookie'));
 
     // ✅ Solo enviar el nombre del usuario
     res.json({
@@ -71,17 +92,25 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// 🔹 Logout (cerrar sesión)
+/**
+ * Endpoint de logout
+ * Termina la sesión actual y elimina el token de autenticación asociado.
+ * 
+ * @route POST /api/access/logout
+ * @middleware authMiddleware - Verifica que el usuario esté autenticado
+ * @returns {Object} Mensaje de éxito
+ * @throws {500} Si ocurre un error interno
+ */
 router.post('/logout', authMiddleware, async (req, res) => {
   try {
-    // Eliminar token actual del array de tokens del usuario
+    // Remove current token from user's tokens array
     const user = await User.findById(req.user.id);
     if (user) {
       user.tokens = user.tokens.filter(t => t.token !== req.cookies.auth_token);
       await user.save();
     }
 
-    // Borrar cookie
+    // Clear authentication cookie
     res.clearCookie('auth_token', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -96,7 +125,14 @@ router.post('/logout', authMiddleware, async (req, res) => {
 });
 
 
-// Endpoint para verificar sesión
+/**
+ * Endpoint de verificación de sesión
+ * Comprueba si la sesión actual es válida y devuelve información del usuario.
+ * 
+ * @route GET /api/access/check-session
+ * @middleware authMiddleware - Verifica que el usuario esté autenticado
+ * @returns {Object} Estado de la sesión e información del usuario
+ */
 router.get('/check-session', authMiddleware, (req, res) => {
   console.log('--- check-session ---');
   console.log('Usuario en req.user:', req.user);

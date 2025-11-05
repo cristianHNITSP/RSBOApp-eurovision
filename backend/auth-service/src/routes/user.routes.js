@@ -1,11 +1,27 @@
+/**
+ * @fileoverview Rutas de gestión de usuarios
+ * Define los endpoints para operaciones CRUD sobre usuarios y gestión de perfil.
+ * Todas las rutas están protegidas por el middleware de autenticación.
+ * 
+ * @module routes/user
+ */
+
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
-const Role = require('../models/Role'); // 🔹 Importar para registrar el modelo
+const Role = require('../models/Role');
 const authMiddleware = require('../middlewares/auth.middleware');
 const DOMPurify = require('isomorphic-dompurify');
 
-// 🔹 Obtener todos los usuarios (protegido)
+/**
+ * Endpoint: obtener todos los usuarios
+ * Recupera la lista completa de usuarios (excluyendo contraseñas)
+ * 
+ * @route GET /api/users
+ * @middleware authMiddleware - Verifica que el usuario esté autenticado
+ * @returns {Array<User>} Lista de usuarios
+ * @throws {500} Si ocurre un error interno
+ */
 router.get('/', authMiddleware, async (req, res) => {
   try {
     const users = await User.find().select('-password'); // no enviar password
@@ -16,7 +32,17 @@ router.get('/', authMiddleware, async (req, res) => {
   }
 });
 
-// 🔹 Obtener mi propio usuario según la sesión (protegido)
+/**
+ * Endpoint: obtener perfil propio
+ * Devuelve el perfil completo del usuario autenticado, incluyendo información
+ * del rol (si está poblado).
+ * 
+ * @route GET /api/users/me
+ * @middleware authMiddleware - Verifica que el usuario esté autenticado
+ * @returns {Object} Perfil del usuario con información del rol
+ * @throws {404} Si el usuario no existe
+ * @throws {500} Si ocurre un error interno
+ */
 router.get('/me', authMiddleware, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).populate('role');
@@ -49,7 +75,20 @@ router.get('/me', authMiddleware, async (req, res) => {
   }
 });
 
-// 🔹 Actualizar usuario por ID (protegido)
+/**
+ * Endpoint: actualizar usuario
+ * Actualiza la información de un usuario por su ID.
+ * 
+ * @route PUT /api/users/:id
+ * @middleware authMiddleware - Verifica que el usuario esté autenticado
+ * @param {string} id - ID del usuario
+ * @param {Object} req.body - Datos para actualizar
+ * @param {string} req.body.name - Nuevo nombre del usuario
+ * @param {string} req.body.email - Nuevo correo electrónico
+ * @returns {Object} Usuario actualizado
+ * @throws {404} Si el usuario no existe
+ * @throws {400} Si la actualización falla
+ */
 router.put('/:id', authMiddleware, async (req, res) => {
   try {
     const name = DOMPurify.sanitize(req.body.name || '');
@@ -70,7 +109,17 @@ router.put('/:id', authMiddleware, async (req, res) => {
   }
 });
 
-// 🔹 Eliminar usuario por ID (protegido)
+/**
+ * Endpoint: eliminar usuario
+ * Elimina permanentemente un usuario del sistema.
+ * 
+ * @route DELETE /api/users/:id
+ * @middleware authMiddleware - Verifica que el usuario esté autenticado
+ * @param {string} id - ID del usuario a eliminar
+ * @returns {Object} Mensaje de éxito
+ * @throws {404} Si el usuario no existe
+ * @throws {400} Si la eliminación falla
+ */
 router.delete('/:id', authMiddleware, async (req, res) => {
   try {
     const user = await User.findByIdAndDelete(req.params.id);

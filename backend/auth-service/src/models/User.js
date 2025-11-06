@@ -39,7 +39,6 @@ const tokenSchema = new mongoose.Schema({
  * @property {Object} profile - Información de perfil del usuario
  * @property {Date} createdAt - Fecha de creación de la cuenta
  * 
- * kali es mierda
  */
 const userSchema = new mongoose.Schema({
   name: {

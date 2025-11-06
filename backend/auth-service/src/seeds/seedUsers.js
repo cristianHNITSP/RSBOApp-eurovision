@@ -3,28 +3,52 @@ const bcrypt = require('bcrypt');
 const User = require('../models/User');
 const Role = require('../models/Role');
 
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://root:xqr5Dc93KMa24b@mongo:27017/rsboapp?authSource=admin';
+const MONGO_URI =
+  process.env.MONGO_URI ||
+  'mongodb://root:xqr5Dc93KMa24b@mongo:27017/rsboapp?authSource=admin';
 
 async function seed() {
   try {
     await mongoose.connect(MONGO_URI, {
       useNewUrlParser: true,
-      useUnifiedTopology: true
+      useUnifiedTopology: true,
     });
     console.log('✅ Conectado a MongoDB');
 
-    // Crear roles con permisos
+    // =========================================
+    // 1️⃣ Crear Roles con permisos (óptica)
+    // =========================================
     const rolesData = [
       {
-        name: 'admin',
-        description: 'Administrador con acceso total',
-        permissions: ['manage_users', 'view_reports', 'edit_settings']
+        name: 'administrador',
+        description: 'Administrador general de la óptica',
+        permissions: [
+          'manage_users',
+          'manage_inventory',
+          'manage_sales',
+          'view_reports',
+          'edit_settings',
+        ],
       },
       {
-        name: 'user',
-        description: 'Usuario estándar con acceso básico',
-        permissions: ['view_profile', 'edit_profile']
-      }
+        name: 'moderador',
+        description: 'Encargado de ventas y atención al cliente',
+        permissions: [
+          'create_order',
+          'update_order_status',
+          'view_inventory',
+          'view_clients',
+        ],
+      },
+      {
+        name: 'laboratorio',
+        description: 'Responsable del taller de lentes y pulido',
+        permissions: [
+          'view_orders',
+          'update_order_progress',
+          'mark_order_completed',
+        ],
+      },
     ];
 
     for (const roleData of rolesData) {
@@ -32,33 +56,75 @@ async function seed() {
       if (!exists) {
         await Role.create(roleData);
         console.log(`✅ Rol "${roleData.name}" creado`);
+      } else {
+        console.log(`ℹ️ Rol "${roleData.name}" ya existe`);
       }
     }
 
-    const adminRole = await Role.findOne({ name: 'admin' });
+    // =========================================
+    // 2️⃣ Crear usuarios iniciales
+    // =========================================
+    const adminRole = await Role.findOne({ name: 'administrador' });
+    const modRole = await Role.findOne({ name: 'moderador' });
+    const labRole = await Role.findOne({ name: 'laboratorio' });
 
-    // Crear usuario admin si no existe
-    const existingUser = await User.findOne({ email: 'admin@example.com' });
-    if (existingUser) {
-      console.log('ℹ️ El usuario admin ya existe.');
-    } else {
+    // ---- Usuario Administrador ----
+    const existingAdmin = await User.findOne({ email: 'admin@optica.com' });
+    if (!existingAdmin) {
       const hashedPassword = await bcrypt.hash('admin1234', 10);
       await User.create({
-        name: 'Admin',
-        email: 'admin@example.com',
+        name: 'Administrador Óptica',
+        email: 'admin@optica.com',
         password: hashedPassword,
         role: adminRole._id,
         isActive: true,
         profile: {
-          avatar: '', // Puedes poner una URL
-          bio: 'Administrador del sistema',
-          phone: '000-000-0000'
+          bio: 'Gestión completa del sistema de la óptica',
+          phone: '000-000-0000',
         },
-        lastLogin: null,
-        tokens: [] // Se pueden llenar cuando inicie sesión
       });
-      console.log('✅ Usuario admin creado correctamente.');
+      console.log('✅ Usuario administrador creado correctamente.');
+    } else {
+      console.log('ℹ️ El usuario administrador ya existe.');
     }
+
+    // ---- Usuario Moderador (Ventas) ----
+    const existingMod = await User.findOne({ email: 'ventas@optica.com' });
+    if (!existingMod) {
+      const hashedPassword = await bcrypt.hash('ventas1234', 10);
+      await User.create({
+        name: 'Encargado de Ventas',
+        email: 'ventas@optica.com',
+        password: hashedPassword,
+        role: modRole._id,
+        isActive: true,
+        profile: {
+          bio: 'Atiende a clientes y gestiona ventas',
+          phone: '111-111-1111',
+        },
+      });
+      console.log('✅ Usuario moderador creado correctamente.');
+    }
+
+    // ---- Usuario Laboratorio ----
+    const existingLab = await User.findOne({ email: 'laboratorio@optica.com' });
+    if (!existingLab) {
+      const hashedPassword = await bcrypt.hash('lab1234', 10);
+      await User.create({
+        name: 'Técnico de Laboratorio',
+        email: 'laboratorio@optica.com',
+        password: hashedPassword,
+        role: labRole._id,
+        isActive: true,
+        profile: {
+          bio: 'Encargado del pulido y montaje de lentes',
+          phone: '222-222-2222',
+        },
+      });
+      console.log('✅ Usuario laboratorio creado correctamente.');
+    }
+
+    console.log('\n🎉 Seed completado con éxito 🎉');
   } catch (err) {
     console.error('❌ Error en el seed:', err);
   } finally {

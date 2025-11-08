@@ -61,7 +61,7 @@
         <!-- Botón de perfil -->
         <div class="column is-narrow has-text-centered-touch">
           <template v-if="!loading">
-            <a href="#/profile" class="button is-light mt-4 mt-0-tablet" title="Perfil">
+            <a href="/layouts/mi.perfil.panel" class="button is-light mt-4 mt-0-tablet" title="Perfil">
               <span class="icon"><i class="fas fa-user"></i></span>
               <span>Administrar perfil</span>
             </a>

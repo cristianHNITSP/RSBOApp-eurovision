@@ -61,11 +61,12 @@
         <!-- Botón de perfil -->
         <div class="column is-narrow has-text-centered-touch">
           <template v-if="!loading">
-            <a href="/layouts/mi.perfil.panel" class="button is-light mt-4 mt-0-tablet" title="Perfil">
-              <span class="icon"><i class="fas fa-user"></i></span>
-              <span>Administrar perfil</span>
-            </a>
+            <b-button type="is-light" class="mt-4 mt-0-tablet" title="Perfil" icon-left="user"
+              @click="$router.push('/layouts/mi.perfil.panel')">
+              Administrar perfil
+            </b-button>
           </template>
+
           <template v-else>
             <b-skeleton :width="140" :height="36" animated style="border-radius: 4px" />
           </template>

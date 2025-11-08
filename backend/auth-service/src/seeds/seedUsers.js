@@ -79,6 +79,7 @@ async function seed() {
         role: adminRole._id,
         isActive: true,
         profile: {
+          avatar: 'https://cdn.jsdelivr.net/gh/alohe/avatars/png/vibrent_6.png',
           bio: 'Gestión completa del sistema de la óptica',
           phone: '000-000-0000',
         },
@@ -99,6 +100,7 @@ async function seed() {
         role: modRole._id,
         isActive: true,
         profile: {
+          avatar: 'https://cdn.jsdelivr.net/gh/alohe/avatars/png/vibrent_1.png',
           bio: 'Atiende a clientes y gestiona ventas',
           phone: '111-111-1111',
         },
@@ -117,6 +119,7 @@ async function seed() {
         role: labRole._id,
         isActive: true,
         profile: {
+          avatar: 'https://cdn.jsdelivr.net/gh/alohe/avatars/png/vibrent_3.png',
           bio: 'Encargado del pulido y montaje de lentes',
           phone: '222-222-2222',
         },

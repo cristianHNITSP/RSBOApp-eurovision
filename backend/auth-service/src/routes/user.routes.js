@@ -68,9 +68,25 @@ router.get('/me', authMiddleware, async (req, res) => {
       createdAt: user.createdAt,
       lastLogin: user.lastLogin
     });
-    
+
   } catch (err) {
     console.error('Error al obtener mi usuario:', err);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+/**
+ * Obtener todos los roles
+ * @route GET /api/roles
+ * @middleware authMiddleware
+ * @returns {Array<Role>}
+ */
+router.get('/roles', authMiddleware, async (req, res) => {
+  try {
+    const roles = await Role.find();
+    res.json(roles);
+  } catch (err) {
+    console.error('Error al obtener roles:', err);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
@@ -93,21 +109,60 @@ router.put('/:id', authMiddleware, async (req, res) => {
   try {
     const name = DOMPurify.sanitize(req.body.name || '');
     const email = DOMPurify.sanitize(req.body.email || '');
+    const phone = DOMPurify.sanitize(req.body.phone || '');
+    const bio = DOMPurify.sanitize(req.body.bio || '');
+    const avatar = DOMPurify.sanitize(req.body.avatar || '');
+    const roleId = req.body.role; // Role enviado desde el frontend
 
-    const user = await User.findByIdAndUpdate(
-      req.params.id,
-      { name, email },
-      { new: true }
-    ).select('-password');
-
+    const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
 
-    res.json(user);
+    // Actualizar role si se envía
+    if (roleId) {
+      const role = await Role.findById(roleId);
+      if (!role) return res.status(400).json({ error: 'Rol inválido' });
+      user.role = role._id;
+    }
+
+    // Actualizar campos de perfil
+    user.name = name;
+    user.email = email;
+    user.profile = user.profile || {};
+    user.profile.phone = phone;
+    user.profile.bio = bio;
+    user.profile.avatar = avatar;
+
+    await user.save();
+
+    // Devolver usuario actualizado con role poblado
+    const updatedUser = await User.findById(user._id).populate('role').select('-password');
+    res.json(updatedUser);
+
   } catch (err) {
     console.error(err);
     res.status(400).json({ error: 'Error al actualizar usuario' });
   }
 });
+
+
+router.put('/:id/password', authMiddleware, async (req, res) => {
+  try {
+    const { password } = req.body;
+    if (!password) return res.status(400).json({ error: 'Contraseña requerida' });
+
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    user.password = password; // Asumiendo que tienes middleware en UserSchema que hace hash antes de guardar
+    await user.save();
+
+    res.json({ message: 'Contraseña actualizada correctamente' });
+  } catch (err) {
+    console.error(err);
+    res.status(400).json({ error: 'Error al actualizar la contraseña' });
+  }
+});
+
 
 /**
  * Endpoint: eliminar usuario

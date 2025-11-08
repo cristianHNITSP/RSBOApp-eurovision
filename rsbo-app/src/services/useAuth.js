@@ -28,7 +28,7 @@ export function useAuth() {
    * Navegar a perfil
    */
   const profile = (router) => {
-    router.push('/profile')
+    router.push('/layouts/mi.perfil.panel')
   }
 
   /**

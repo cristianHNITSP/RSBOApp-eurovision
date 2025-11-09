@@ -27,7 +27,7 @@ const routes = [
             {
         path: 'mi.perfil.panel',
         name: 'Mi perfil',
-        component: () => import('../views/user/miuser.vue'),
+        component: () => import('../views/user/MiUser.vue'),
         meta: { requiresAuth: true },
       },
     ],

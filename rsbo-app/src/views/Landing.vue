@@ -52,7 +52,7 @@
                                 <div class="field">
                                     <label class="label">Contraseña</label>
                                     <div class="control has-icons-left">
-                                        <input class="input" type="password" name="password"
+                                        <input class="input" type="password" password-reveal name="password" 
                                             placeholder="Ingresa tu contraseña" v-model="credentials.password"
                                             autocomplete="current-password">
                                         <span class="icon is-small is-left">

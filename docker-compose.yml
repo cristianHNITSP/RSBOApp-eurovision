@@ -25,7 +25,7 @@
 #sudo docker compose --profile prod up --build
 #sudo docker compose --profile dev up --build auth-service
 #sudo docker compose --profile dev up auth-service gateway mongo mongo-express
-
+#sudo docker compose --profile dev down
 
 services:
   # 🚀 Auth Service

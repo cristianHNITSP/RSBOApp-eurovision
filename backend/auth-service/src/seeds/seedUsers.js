@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-const bcrypt = require('bcrypt');
 const User = require('../models/User');
 const Role = require('../models/Role');
 
@@ -16,7 +15,7 @@ async function seed() {
     console.log('✅ Conectado a MongoDB');
 
     // =========================================
-    // 1️⃣ Crear Roles con permisos (óptica)
+    // 1️⃣ Crear Roles con permisos
     // =========================================
     const rolesData = [
       {
@@ -68,63 +67,61 @@ async function seed() {
     const modRole = await Role.findOne({ name: 'moderador' });
     const labRole = await Role.findOne({ name: 'laboratorio' });
 
-    // ---- Usuario Administrador ----
-    const existingAdmin = await User.findOne({ email: 'admin@optica.com' });
-    if (!existingAdmin) {
-      const hashedPassword = await bcrypt.hash('admin1234', 10);
-      await User.create({
-        name: 'Administrador Óptica',
+    const usersData = [
+      {
         email: 'admin@optica.com',
-        password: hashedPassword,
+        name: 'Administrador Óptica',
+        password: 'admin1234',
         role: adminRole._id,
-        isActive: true,
         profile: {
           avatar: 'https://cdn.jsdelivr.net/gh/alohe/avatars/png/vibrent_6.png',
           bio: 'Gestión completa del sistema de la óptica',
           phone: '000-000-0000',
         },
-      });
-      console.log('✅ Usuario administrador creado correctamente.');
-    } else {
-      console.log('ℹ️ El usuario administrador ya existe.');
-    }
-
-    // ---- Usuario Moderador (Ventas) ----
-    const existingMod = await User.findOne({ email: 'ventas@optica.com' });
-    if (!existingMod) {
-      const hashedPassword = await bcrypt.hash('ventas1234', 10);
-      await User.create({
-        name: 'Encargado de Ventas',
+      },
+      {
         email: 'ventas@optica.com',
-        password: hashedPassword,
+        name: 'Encargado de Ventas',
+        password: 'ventas1234',
         role: modRole._id,
-        isActive: true,
         profile: {
           avatar: 'https://cdn.jsdelivr.net/gh/alohe/avatars/png/vibrent_1.png',
           bio: 'Atiende a clientes y gestiona ventas',
           phone: '111-111-1111',
         },
-      });
-      console.log('✅ Usuario moderador creado correctamente.');
-    }
-
-    // ---- Usuario Laboratorio ----
-    const existingLab = await User.findOne({ email: 'laboratorio@optica.com' });
-    if (!existingLab) {
-      const hashedPassword = await bcrypt.hash('lab1234', 10);
-      await User.create({
-        name: 'Técnico de Laboratorio',
+      },
+      {
         email: 'laboratorio@optica.com',
-        password: hashedPassword,
+        name: 'Técnico de Laboratorio',
+        password: 'lab1234',
         role: labRole._id,
-        isActive: true,
         profile: {
           avatar: 'https://cdn.jsdelivr.net/gh/alohe/avatars/png/vibrent_3.png',
           bio: 'Encargado del pulido y montaje de lentes',
-          phone: '222-222-2222',
+          phone: '9993676541',
         },
-      });
-      console.log('✅ Usuario laboratorio creado correctamente.');
+      },
+    ];
+
+    for (const u of usersData) {
+      const existingUser = await User.findOne({ email: u.email });
+      if (!existingUser) {
+        // 🔹 Guardar contraseña tal cual, sin hash
+        await User.create({
+          name: u.name,
+          email: u.email,
+          password: u.password, // <-- sin bcrypt
+          role: u.role,
+          tokens: [],
+          isActive: true,
+          lastLogin: null,
+          deletedAt: null,
+          profile: u.profile,
+        });
+        console.log(`✅ Usuario "${u.email}" creado correctamente.`);
+      } else {
+        console.log(`ℹ️ Usuario "${u.email}" ya existe.`);
+      }
     }
 
     console.log('\n🎉 Seed completado con éxito 🎉');

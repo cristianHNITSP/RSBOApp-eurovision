@@ -12,7 +12,7 @@ const User = require('../models/User');
 const Role = require('../models/Role');
 const authMiddleware = require('../middlewares/auth.middleware');
 const DOMPurify = require('isomorphic-dompurify');
-
+const bcrypt = require('bcrypt');
 /**
  * Endpoint: obtener todos los usuarios
  * Recupera la lista completa de usuarios (excluyendo contraseñas)
@@ -24,13 +24,17 @@ const DOMPurify = require('isomorphic-dompurify');
  */
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    const users = await User.find().select('-password'); // no enviar password
+    const users = await User.find()
+      .select('-password') // no enviar password
+      .populate('role', 'name'); // opcional: incluir el nombre del rol
+
     res.json(users);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
+
 
 /**
  * Endpoint: obtener perfil propio
@@ -153,7 +157,10 @@ router.put('/:id/password', authMiddleware, async (req, res) => {
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
 
-    user.password = password; // Asumiendo que tienes middleware en UserSchema que hace hash antes de guardar
+    // Hashear manualmente
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(password, salt);
+
     await user.save();
 
     res.json({ message: 'Contraseña actualizada correctamente' });
@@ -177,14 +184,27 @@ router.put('/:id/password', authMiddleware, async (req, res) => {
  */
 router.delete('/:id', authMiddleware, async (req, res) => {
   try {
-    const user = await User.findByIdAndDelete(req.params.id);
-    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+    const user = await User.findById(req.params.id);
+    if (!user || user.deletedAt) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
 
-    res.json({ message: 'Usuario eliminado correctamente' });
+    // ❌ Verificar si el usuario tiene sesión activa
+    if (user.tokens && user.tokens.length > 0) {
+      return res.status(400).json({ 
+        error: 'No se puede eliminar al usuario mientras tenga sesiones activas' 
+      });
+    }
+
+    await user.softDelete();
+
+    res.json({ message: 'Usuario eliminado correctamente (borrado lógico)' });
   } catch (err) {
     console.error(err);
     res.status(400).json({ error: 'Error al eliminar usuario' });
   }
 });
+
+
 
 module.exports = router;

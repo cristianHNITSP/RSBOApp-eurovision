@@ -29,23 +29,17 @@ const authMiddleware = require('../middlewares/auth.middleware');
  */
 router.post('/login', async (req, res) => {
   try {
-    console.log('--- Login Debug ---');
-    console.log('NODE_ENV:', process.env.NODE_ENV);
-    console.log('JWT_SECRET:', process.env.JWT_SECRET ? 'OK' : 'No definido');
-
     const email = DOMPurify.sanitize(req.body.email || '');
     const password = DOMPurify.sanitize(req.body.password || '');
-    console.log('Credenciales recibidas:', { email, password: password ? '*****' : null });
 
+    // Buscar usuario no borrado
     const user = await User.findOne({ email }).select('+password +tokens');
     if (!user) {
-      console.log('Usuario no encontrado');
       return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
     }
 
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) {
-      console.log('Contraseña incorrecta');
       return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
     }
 
@@ -56,8 +50,6 @@ router.post('/login', async (req, res) => {
       { expiresIn: '8h' }
     );
 
-  console.log('Token generado:', token);
-
     // ➕ Agregar token al array
     user.tokens.push({ token });
 
@@ -66,8 +58,13 @@ router.post('/login', async (req, res) => {
       user.tokens = user.tokens.slice(-10);
     }
 
-    // 🕒 Actualizar la fecha de último inicio de sesión
+    // 🕒 Actualizar último login
     user.lastLogin = new Date();
+
+    // ✅ Marcar como activo solo si no tiene sesiones previas activas
+    if (!user.isActive || user.tokens.length === 1) {
+      user.isActive = true;
+    }
 
     await user.save();
 
@@ -79,9 +76,6 @@ router.post('/login', async (req, res) => {
       maxAge: 8 * 60 * 60 * 1000
     });
 
-  console.log('Cookie establecida:', res.getHeader('Set-Cookie'));
-
-    // ✅ Solo enviar el nombre del usuario
     res.json({
       name: DOMPurify.sanitize(user.name)
     });
@@ -103,14 +97,27 @@ router.post('/login', async (req, res) => {
  */
 router.post('/logout', authMiddleware, async (req, res) => {
   try {
-    // Remove current token from user's tokens array
-    const user = await User.findById(req.user.id);
-    if (user) {
-      user.tokens = user.tokens.filter(t => t.token !== req.cookies.auth_token);
-      await user.save();
+    const tokenFromCookie = req.cookies.auth_token;
+
+    if (!tokenFromCookie) {
+      return res.status(400).json({ error: 'No se encontró token de sesión' });
     }
 
-    // Clear authentication cookie
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    // Filtrar solo el token actual
+    const initialTokensCount = user.tokens.length;
+    user.tokens = user.tokens.filter(t => t.token !== tokenFromCookie);
+
+    // Actualizar isActive si no quedan sesiones activas
+    if (user.tokens.length === 0 && initialTokensCount > 0) {
+      user.isActive = false;
+    }
+
+    await user.save();
+
+    // Limpiar cookie
     res.clearCookie('auth_token', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -118,12 +125,12 @@ router.post('/logout', authMiddleware, async (req, res) => {
     });
 
     res.json({ message: 'Sesión cerrada correctamente' });
+
   } catch (err) {
     console.error('Error en logout:', err);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
-
 
 /**
  * Endpoint de verificación de sesión

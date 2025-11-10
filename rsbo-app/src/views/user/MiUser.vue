@@ -1,5 +1,5 @@
 <template>
-  <section class="section-miuser">
+  <section class="section-miuser" v-motion-fade-visible-once>
 
     <!-- Skeleton Loading -->
     <div v-if="props.loading" class="columns is-multiline">
@@ -515,6 +515,8 @@ const { formatDate, timeSince } = utils
 </script>
 
 <style scoped>
+
+
 .section-miuser {
   border-radius: 12px;
   padding: 1.5rem;

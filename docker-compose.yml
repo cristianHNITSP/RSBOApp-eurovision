@@ -27,6 +27,10 @@
 #sudo docker compose --profile dev up auth-service gateway mongo mongo-express
 #sudo docker compose --profile dev down
 
+#Ejecutar la semillas de auth-service
+#docker exec -it rsboapp-auth npm run seed-users
+
+
 services:
   # 🚀 Auth Service
   auth-service:

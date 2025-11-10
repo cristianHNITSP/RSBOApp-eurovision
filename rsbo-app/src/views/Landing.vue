@@ -1,145 +1,152 @@
 <template>
-    <div>
-        <div class="landing-panel is-flex is-flex-direction-column">
-            <div class="background-animated" ref="floatingContainer" style="flex-grow: 1;">
-                <!-- Sección Hero -->
-                <section class="hero animate-fade-up" :style="heroStyle">
-                    <div class="hero-body is-flex is-justify-content-center is-align-items-center">
-                        <div class="box has-text-centered p-6" :style="boxStyle">
-                            <figure class="mb-4 logo-float" style="width: 200px;">
-                                <img :src="logoImg" alt="Logo" style="width: 100%;" />
-                            </figure>
-                            <h1 class="title is-3 has-text-primary">Bienvenido a Laboratorio Eurovisión</h1>
-                            <p class="subtitle is-5 has-text-grey-dark mt-3">
-                                Una plataforma avanzada para gestión de pedidos ópticos.
-                            </p>
+  <div>
+    <div class="landing-panel is-flex is-flex-direction-column">
+      <div class="background-animated" ref="floatingContainer" style="flex-grow: 1;">
+        <!-- Sección Hero -->
+        <section class="hero animate-fade-up" :style="heroStyle">
+          <div class="hero-body is-flex is-justify-content-center is-align-items-center">
+            <div class="box has-text-centered p-6" :style="boxStyle">
+              <figure class="mb-4 logo-float" style="width: 200px;">
+                <img :src="logoImg" alt="Logo" style="width: 100%;" />
+              </figure>
+              <h1 class="title is-3 has-text-primary">Bienvenido a Laboratorio Eurovisión</h1>
+              <p class="subtitle is-5 has-text-grey-dark mt-3">
+                Una plataforma avanzada para gestión de pedidos ópticos.
+              </p>
 
-                            <!-- Botón para abrir el panel de inicio de sesión -->
-                            <div>
-                                <button class="button is-primary is-medium login-btn animate-pulse"
-                                    @click="showLoginPanel = true">
-                                    <b-icon icon="user" class="mr-2"></b-icon>
-                                    Iniciar Sesión
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- Panel flotante de inicio de sesión con transición -->
-                <transition name="modal-fade">
-                    <div v-if="showLoginPanel" class="modal is-active">
-                        <div class="modal-background" @click="showLoginPanel = false"></div>
-                        <div class="modal-card login-modal">
-                            <header class="modal-card-head">
-                                <p class="modal-card-title has-text-centered">Iniciar Sesión</p>
-                                <button class="delete" aria-label="close" @click="showLoginPanel = false"></button>
-                            </header>
-                            <section class="modal-card-body">
-
-                                <div class="field">
-                                    <label class="label">Correo electrónico</label>
-                                    <div class="control has-icons-left">
-                                        <input class="input" type="email" name="email" v-model="credentials.username"
-                                            autocomplete="email">
-                                        <span class="icon is-small is-left">
-                                            <b-icon icon="envelope"></b-icon>
-
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <div class="field">
-                                    <label class="label">Contraseña</label>
-                                    <div class="control has-icons-left">
-                                        <input class="input" type="password" password-reveal name="password" 
-                                            placeholder="Ingresa tu contraseña" v-model="credentials.password"
-                                            autocomplete="current-password">
-                                        <span class="icon is-small is-left">
-                                            <b-icon icon="lock"></b-icon>
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <div class="field">
-                                    <div class="control">
-                                        <label class="checkbox">
-                                            <input type="checkbox" v-model="rememberUsername">
-                                            Recordar correo electrónico
-                                        </label>
-                                    </div>
-                                </div>
-                            </section>
-                            <footer class="modal-card-foot is-justify-content-center">
-                                <button class="button is-primary" @click="loginUser">
-                                    Iniciar Sesión
-                                </button>
-
-                                <button class="button" @click="showLoginPanel = false">
-                                    Cancelar
-                                </button>
-                            </footer>
-                        </div>
-                    </div>
-                </transition>
-
-                <!-- Sección Features -->
-                <section class="section features-section">
-                    <div class="container">
-                        <div class="columns is-multiline is-variable is-5 is-centered">
-                            <div v-for="(feature, index) in features" :key="index"
-                                class="column is-12-mobile is-6-tablet is-4-desktop animate-fade-up mb-4">
-                                <div
-                                    class="box has-text-centered p-3 is-flex is-flex-direction-column is-align-items-center">
-                                    <b-icon :icon="feature.icon" pack="far" size="is-large"
-                                        class="has-text-primary mb-2" />
-                                    <h3 class="title is-5 mb-2">{{ feature.title }}</h3>
-                                    <p class="subtitle is-6 has-text-grey mt-1">
-                                        {{ feature.description }}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
+              <!-- Botón para abrir el panel de inicio de sesión -->
+              <div>
+                <button class="button is-primary is-medium login-btn animate-pulse"
+                        @click="showLoginPanel = true">
+                  <b-icon icon="user" class="mr-2"></b-icon>
+                  Iniciar Sesión
+                </button>
+              </div>
             </div>
+          </div>
+        </section>
 
-            <section class="section has-background-light animate-fade-up step-section">
-                <div class="container">
-                    <h2 class="title has-text-centered is-4 mb-6">¿Cómo funciona?</h2>
-                    <b-steps type="is-primary" label-position="bottom" size="is-medium" :has-navigation="false"
-                        :animated="true">
-                        <b-step-item v-for="(step, i) in steps" :key="i" :label="step.title" class="animate-fade-up">
-                            <p class="has-text-centered mt-4">{{ step.description }}</p>
-                        </b-step-item>
-                    </b-steps>
+        <!-- Panel flotante de inicio de sesión con transición -->
+        <transition name="modal-fade">
+          <div v-if="showLoginPanel" class="modal is-active">
+            <div class="modal-background" @click="showLoginPanel = false"></div>
+            <div class="modal-card login-modal">
+              <header class="modal-card-head">
+                <p class="modal-card-title has-text-centered">Iniciar Sesión</p>
+                <button class="delete" aria-label="close" @click="showLoginPanel = false"></button>
+              </header>
+              <section class="modal-card-body">
+                <!-- Correo -->
+                <div class="field">
+                  <label class="label">Correo electrónico</label>
+                  <div class="control has-icons-left">
+                    <input class="input" type="email" name="email" v-model="credentials.username"
+                           autocomplete="email">
+                    <span class="icon is-small is-left">
+                      <b-icon icon="envelope"></b-icon>
+                    </span>
+                  </div>
                 </div>
-            </section>
 
-            <footer class="footer has-background-gradient">
-                <div class="content has-text-centered">
-                    <p class="mb-3">
-                        <strong class="has-text-light">Laboratorio Eurovisión</strong> © {{ new Date().getFullYear() }}
-                        – Todos los derechos reservados.
-                    </p>
-                    <div class="social-icons is-flex is-justify-content-center is-align-items-center">
-                        <a href="#" aria-label="Facebook" class="icon is-large mx-3 social-link">
-                            <b-icon pack="fab" icon="facebook-f" size="is-medium" />
-                        </a>
-                        <a href="#" aria-label="Twitter" class="icon is-large mx-3 social-link">
-                            <b-icon pack="fab" icon="twitter" size="is-medium" />
-                        </a>
-                        <a href="#" aria-label="Instagram" class="icon is-large mx-3 social-link">
-                            <b-icon pack="fab" icon="instagram" size="is-medium" />
-                        </a>
-                        <a href="#" aria-label="LinkedIn" class="icon is-large mx-3 social-link">
-                            <b-icon pack="fab" icon="linkedin-in" size="is-medium" />
-                        </a>
-                    </div>
+                <!-- Contraseña con toggle -->
+                <div class="field">
+                  <label class="label">Contraseña</label>
+                  <div class="control has-icons-left has-icons-right">
+                    <input class="input" 
+                           :type="showPassword ? 'text' : 'password'" 
+                           name="password"
+                           placeholder="Ingresa tu contraseña" 
+                           v-model="credentials.password"
+                           autocomplete="current-password">
+                    <span class="icon is-small is-left">
+                      <b-icon icon="lock"></b-icon>
+                    </span>
+                    <span class="icon is-small is-right" 
+                          style="cursor:pointer"
+                          @click="showPassword = !showPassword">
+                      <b-icon :icon="showPassword ? 'eye-slash' : 'eye'"></b-icon>
+                    </span>
+                  </div>
                 </div>
-            </footer>
+
+                <!-- Recordar correo -->
+                <div class="field">
+                  <div class="control">
+                    <label class="checkbox">
+                      <input type="checkbox" v-model="rememberUsername">
+                      Recordar correo electrónico
+                    </label>
+                  </div>
+                </div>
+              </section>
+              <footer class="modal-card-foot is-justify-content-center">
+                <button class="button is-primary" @click="loginUser">
+                  Iniciar Sesión
+                </button>
+                <button class="button" @click="showLoginPanel = false">
+                  Cancelar
+                </button>
+              </footer>
+            </div>
+          </div>
+        </transition>
+
+        <!-- Sección Features -->
+        <section class="section features-section">
+          <div class="container">
+            <div class="columns is-multiline is-variable is-5 is-centered">
+              <div v-for="(feature, index) in features" :key="index"
+                   class="column is-12-mobile is-6-tablet is-4-desktop animate-fade-up mb-4">
+                <div class="box has-text-centered p-3 is-flex is-flex-direction-column is-align-items-center">
+                  <b-icon :icon="feature.icon" pack="far" size="is-large"
+                          class="has-text-primary mb-2" />
+                  <h3 class="title is-5 mb-2">{{ feature.title }}</h3>
+                  <p class="subtitle is-6 has-text-grey mt-1">{{ feature.description }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Sección Steps -->
+      <section class="section has-background-light animate-fade-up step-section">
+        <div class="container">
+          <h2 class="title has-text-centered is-4 mb-6">¿Cómo funciona?</h2>
+          <b-steps type="is-primary" label-position="bottom" size="is-medium" :has-navigation="false"
+                   :animated="true">
+            <b-step-item v-for="(step, i) in steps" :key="i" :label="step.title" class="animate-fade-up">
+              <p class="has-text-centered mt-4">{{ step.description }}</p>
+            </b-step-item>
+          </b-steps>
         </div>
+      </section>
+
+      <!-- Footer -->
+      <footer class="footer has-background-gradient">
+        <div class="content has-text-centered">
+          <p class="mb-3">
+            <strong class="has-text-light">Laboratorio Eurovisión</strong> © {{ new Date().getFullYear() }}
+            – Todos los derechos reservados.
+          </p>
+          <div class="social-icons is-flex is-justify-content-center is-align-items-center">
+            <a href="#" aria-label="Facebook" class="icon is-large mx-3 social-link">
+              <b-icon pack="fab" icon="facebook-f" size="is-medium" />
+            </a>
+            <a href="#" aria-label="Twitter" class="icon is-large mx-3 social-link">
+              <b-icon pack="fab" icon="twitter" size="is-medium" />
+            </a>
+            <a href="#" aria-label="Instagram" class="icon is-large mx-3 social-link">
+              <b-icon pack="fab" icon="instagram" size="is-medium" />
+            </a>
+            <a href="#" aria-label="LinkedIn" class="icon is-large mx-3 social-link">
+              <b-icon pack="fab" icon="linkedin-in" size="is-medium" />
+            </a>
+          </div>
+        </div>
+      </footer>
     </div>
+  </div>
 </template>
 
 <script setup>
@@ -151,209 +158,193 @@ import logoImg from '@/assets/img/logo-euro.png'
 
 useIntersectionObserver('.animate-fade-up')
 
-// Acceso a $buefy
 const internalInstance = getCurrentInstance()
 const $buefy = internalInstance.appContext.config.globalProperties.$buefy
 
-// Router
 const route = useRoute()
 const router = useRouter()
 
-// Estado
+// Login Modal
 const showLoginPanel = ref(false)
+const showPassword = ref(false) // <-- toggle password
 const credentials = reactive({ username: '', password: '' })
 const rememberUsername = ref(false)
 
-// Login
 const { handleLogin } = useAuthService($buefy)
 const loginUser = () => {
-    handleLogin(credentials, showLoginPanel)
-    if (rememberUsername.value) localStorage.setItem('savedUsername', credentials.username)
-    else localStorage.removeItem('savedUsername')
-    credentials.password = ''
+  handleLogin(credentials, showLoginPanel)
+  if (rememberUsername.value) localStorage.setItem('savedUsername', credentials.username)
+  else localStorage.removeItem('savedUsername')
+  credentials.password = ''
 }
 
-// Cargar usuario guardado + mostrar toast si sessionExpired=1
+// Cargar usuario guardado + toast si sessionExpired=1
 onMounted(() => {
-    const saved = localStorage.getItem('savedUsername')
-    if (saved) {
-        credentials.username = saved
-        rememberUsername.value = true
-    }
+  const saved = localStorage.getItem('savedUsername')
+  if (saved) {
+    credentials.username = saved
+    rememberUsername.value = true
+  }
 
-    if (route.query.sessionExpired) {
-        $buefy.toast.open({
-            message: 'No has iniciado sesión o tu sesión expiró',
-            type: 'is-danger',
-            duration: 3000
-        })
+  if (route.query.sessionExpired) {
+    $buefy.toast.open({
+      message: 'No has iniciado sesión o tu sesión expiró',
+      type: 'is-danger',
+      duration: 3000
+    })
+    router.replace({ query: { ...route.query, sessionExpired: undefined } })
+  }
 
-        // Limpiamos la query para evitar que se repita al refrescar
-        router.replace({ query: { ...route.query, sessionExpired: undefined } })
-    }
+  const showToast = (event) => {
+    const message = event?.detail || 'No has iniciado sesión o tu sesión expiró'
+    $buefy.toast.open({ message, type: 'is-danger', duration: 3000 })
+  }
 
-    const showToast = (event) => {
-        const message = event?.detail || 'No has iniciado sesión o tu sesión expiró'
-        $buefy.toast.open({ message, type: 'is-danger', duration: 3000 })
-    }
-
-    window.addEventListener('show-toast-session-expired', showToast)
-    onBeforeUnmount(() => window.removeEventListener('show-toast-session-expired', showToast))
+  window.addEventListener('show-toast-session-expired', showToast)
+  onBeforeUnmount(() => window.removeEventListener('show-toast-session-expired', showToast))
 })
 
-// Estilos
+// Estilos y contenido
 const heroStyle = {
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    backgroundRepeat: 'no-repeat',
-    minHeight: '40vh',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
+  backgroundSize: 'cover',
+  backgroundPosition: 'center',
+  backgroundRepeat: 'no-repeat',
+  minHeight: '40vh',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
 }
 
 const boxStyle = {
-    maxWidth: '700px',
-    width: '100%',
-    padding: '2rem',
-    background: 'rgba(255, 255, 255, 0.85)',
-    borderRadius: '0.75rem',
-    backdropFilter: 'blur(10px)',
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
+  maxWidth: '700px',
+  width: '100%',
+  padding: '2rem',
+  background: 'rgba(255, 255, 255, 0.85)',
+  borderRadius: '0.75rem',
+  backdropFilter: 'blur(10px)',
+  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
 }
 
-// Contenido
 const features = [
-    { icon: 'check-circle', title: 'Pedidos precisos', description: 'Control total sobre los pedidos ópticos.' },
-    { icon: 'clock', title: 'Eficiencia', description: 'Procesos rápidos y automáticos.' },
-    { icon: 'chart-bar', title: 'Estadísticas', description: 'Visualización en tiempo real del rendimiento.' },
+  { icon: 'check-circle', title: 'Pedidos precisos', description: 'Control total sobre los pedidos ópticos.' },
+  { icon: 'clock', title: 'Eficiencia', description: 'Procesos rápidos y automáticos.' },
+  { icon: 'chart-bar', title: 'Estadísticas', description: 'Visualización en tiempo real del rendimiento.' },
 ]
 
 const steps = [
-    { title: 'Paso 1', description: 'Solicita tu cuenta con laboratorio eurovisión.' },
-    { title: 'Paso 2', description: 'Agrega tus productos y comienza a recibir pedidos.' },
-    { title: 'Paso 3', description: 'Consulta estadísticas y mantén el control.' },
+  { title: 'Paso 1', description: 'Solicita tu cuenta con laboratorio eurovisión.' },
+  { title: 'Paso 2', description: 'Agrega tus productos y comienza a recibir pedidos.' },
+  { title: 'Paso 3', description: 'Consulta estadísticas y mantén el control.' },
 ]
 </script>
 
-
 <script>
 export default {
-    data() {
-        return {
-            maxIcons: 15,
-            icons: [],
-            cycleInterval: null,
-            iconTypes: [
-                { icon: 'glasses', size: 'fa-3x' },
-                { icon: 'eye', size: 'fa-3x' },
-            ],
-            animations: [
-                { name: 'floatUpDown', duration: 1 },
-                { name: 'floatLeftRight', duration: 0.9 },
-                { name: 'floatRotate', duration: 1.2 },
-            ],
-            minDistance: 12,
-            nextId: 0,
-        };
+  data() {
+    return {
+      maxIcons: 15,
+      icons: [],
+      cycleInterval: null,
+      iconTypes: [
+        { icon: 'glasses', size: 'fa-3x' },
+        { icon: 'eye', size: 'fa-3x' },
+      ],
+      animations: [
+        { name: 'floatUpDown', duration: 1 },
+        { name: 'floatLeftRight', duration: 0.9 },
+        { name: 'floatRotate', duration: 1.2 },
+      ],
+      minDistance: 12,
+      nextId: 0,
+    };
+  },
+  methods: {
+    createIconElement(id) {
+      const iconType = this.iconTypes[id % this.iconTypes.length];
+      const animation = this.animations[id % this.animations.length];
+      const el = document.createElement('i');
+      el.classList.add('fas', `fa-${iconType.icon}`, 'floating-icon', iconType.size);
+      el.style.position = 'absolute';
+      el.style.animationName = animation.name;
+      el.style.animationDuration = `${animation.duration}s`;
+      el.style.animationTimingFunction = 'ease-in-out';
+      el.style.animationIterationCount = 'infinite';
+      el.style.animationDirection = Math.random() < 0.5 ? 'normal' : 'reverse';
+      el.style.opacity = 0;
+      el.style.color = '#6366f1';
+      el.style.pointerEvents = 'none';
+      el.style.userSelect = 'none';
+      return el;
     },
-    methods: {
-        createIconElement(id) {
-            const iconType = this.iconTypes[id % this.iconTypes.length];
-            const animation = this.animations[id % this.animations.length];
-
-            const el = document.createElement('i');
-            el.classList.add('fas', `fa-${iconType.icon}`, 'floating-icon', iconType.size);
-            el.style.position = 'absolute';
-            el.style.animationName = animation.name;
-            el.style.animationDuration = `${animation.duration}s`;
-            el.style.animationTimingFunction = 'ease-in-out';
-            el.style.animationIterationCount = 'infinite';
-            el.style.animationDirection = Math.random() < 0.5 ? 'normal' : 'reverse';
-            el.style.opacity = 0;
-            el.style.color = '#6366f1';
-            el.style.pointerEvents = 'none';
-            el.style.userSelect = 'none';
-
-            return el;
-        },
-        setPosition(el) {
-            let top, left, attempts = 0;
-            do {
-                top = Math.random() * 80 + 10;
-                left = Math.random() * 80 + 10;
-                attempts++;
-            } while (!this.isPositionValid(top, left, el) && attempts < 50);
-
-            el.style.top = `${top}%`;
-            el.style.left = `${left}%`;
-            el.dataset.top = top;
-            el.dataset.left = left;
-        },
-        isPositionValid(top, left, currentEl) {
-            for (const icon of this.icons) {
-                if (icon === currentEl) continue;
-                const t = parseFloat(icon.dataset.top);
-                const l = parseFloat(icon.dataset.left);
-                const dist = Math.sqrt((t - top) ** 2 + (l - left) ** 2);
-                if (dist < this.minDistance) return false;
-            }
-            return true;
-        },
-        initIcons() {
-            const container = this.$refs.floatingContainer;
-            if (!container) return;
-
-            for (let i = 0; i < this.maxIcons; i++) {
-                const el = this.createIconElement(i);
-                this.setPosition(el);
-                container.appendChild(el);
-                this.icons.push(el);
-
-                setTimeout(() => {
-                    el.style.transition = 'opacity 1s ease-in-out';
-                    el.style.opacity = 0.12;
-                }, 50);
-            }
-            this.nextId = this.maxIcons;
-        },
-        cycleIcons() {
-            const container = this.$refs.floatingContainer;
-            if (!container) return;
-
-            const icon = this.icons.shift();
-            if (!icon) return;
-
-            icon.style.transition = 'opacity 0.8s ease-in-out';
-            icon.style.opacity = 0;
-
-            setTimeout(() => {
-                this.setPosition(icon);
-                icon.style.animationName = this.animations[this.nextId % this.animations.length].name;
-                icon.style.animationDuration = `${this.animations[this.nextId % this.animations.length].duration}s`;
-                icon.style.animationDirection = Math.random() < 0.5 ? 'normal' : 'reverse';
-
-                icon.style.transition = 'opacity 1s ease-in-out';
-                icon.style.opacity = 0.12;
-
-                this.icons.push(icon);
-            }, 800);
-
-            this.nextId = (this.nextId + 1) % 1000000;
-        }
+    setPosition(el) {
+      let top, left, attempts = 0;
+      do {
+        top = Math.random() * 80 + 10;
+        left = Math.random() * 80 + 10;
+        attempts++;
+      } while (!this.isPositionValid(top, left, el) && attempts < 50);
+      el.style.top = `${top}%`;
+      el.style.left = `${left}%`;
+      el.dataset.top = top;
+      el.dataset.left = left;
     },
-    mounted() {
-        this.initIcons();
-        this.cycleInterval = setInterval(this.cycleIcons, 1500);
+    isPositionValid(top, left, currentEl) {
+      for (const icon of this.icons) {
+        if (icon === currentEl) continue;
+        const t = parseFloat(icon.dataset.top);
+        const l = parseFloat(icon.dataset.left);
+        const dist = Math.sqrt((t - top) ** 2 + (l - left) ** 2);
+        if (dist < this.minDistance) return false;
+      }
+      return true;
     },
-    beforeDestroy() {
-        if (this.cycleInterval) clearInterval(this.cycleInterval);
+    initIcons() {
+      const container = this.$refs.floatingContainer;
+      if (!container) return;
+      for (let i = 0; i < this.maxIcons; i++) {
+        const el = this.createIconElement(i);
+        this.setPosition(el);
+        container.appendChild(el);
+        this.icons.push(el);
+        setTimeout(() => {
+          el.style.transition = 'opacity 1s ease-in-out';
+          el.style.opacity = 0.12;
+        }, 50);
+      }
+      this.nextId = this.maxIcons;
+    },
+    cycleIcons() {
+      const container = this.$refs.floatingContainer;
+      if (!container) return;
+      const icon = this.icons.shift();
+      if (!icon) return;
+      icon.style.transition = 'opacity 0.8s ease-in-out';
+      icon.style.opacity = 0;
+      setTimeout(() => {
+        this.setPosition(icon);
+        icon.style.animationName = this.animations[this.nextId % this.animations.length].name;
+        icon.style.animationDuration = `${this.animations[this.nextId % this.animations.length].duration}s`;
+        icon.style.animationDirection = Math.random() < 0.5 ? 'normal' : 'reverse';
+        icon.style.transition = 'opacity 1s ease-in-out';
+        icon.style.opacity = 0.12;
+        this.icons.push(icon);
+      }, 800);
+      this.nextId = (this.nextId + 1) % 1000000;
     }
+  },
+  mounted() {
+    this.initIcons();
+    this.cycleInterval = setInterval(this.cycleIcons, 1500);
+  },
+  beforeDestroy() {
+    if (this.cycleInterval) clearInterval(this.cycleInterval);
+  }
 }
 </script>
+
 
 <style scoped>
 .login-btn {

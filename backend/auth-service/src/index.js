@@ -88,6 +88,14 @@ mongoose.connect(process.env.MONGO_URI, {
   });
 
 /**
+ * Ruta de healthcheck
+ */
+app.get('/health', (_req, res) => {
+  res.json({ ok: true, service: 'users', ts: Date.now() });
+});
+
+
+/**
  * Rutas principales de la API
  * Registra los controladores de rutas principales:
  * - /api/access: rutas de autenticación (login, logout, ver sesión)

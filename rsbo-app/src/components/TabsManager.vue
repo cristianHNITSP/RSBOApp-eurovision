@@ -2,17 +2,20 @@
   <div>
     <!-- Tabs principales (Planillas) -->
     <div ref="tabsContainer" class="tabs-wrapper">
-      <div v-for="planilla in sheets" :key="planilla.id" :data-id="planilla.id"
-        :class="['tab-item', { 'tab-agregar': planilla.id === 'nueva', 'active': planilla.id === activeId }]"
-        @click="handleTabClick(planilla.id)">
+      <div v-for="planilla in sheets" :key="planilla.id" :data-id="planilla.id" :class="[
+        'tab-item',
+        {
+          'tab-agregar': planilla.id === 'nueva',
+          active: planilla.id === activeId
+        }
+      ]" @click="handleTabClick(planilla.id)">
         <template v-if="planilla.id === 'nueva'">
-          <i class="fas fa-plus"></i> <!-- ✅ Ícono bonito -->
+          <i class="fas fa-plus"></i>
         </template>
         <template v-else>
           {{ planilla.name }}
         </template>
       </div>
-
     </div>
 
     <!-- Contenido de cada tab -->
@@ -32,7 +35,7 @@
             </div>
           </b-field>
 
-          <!-- MATERIALES (animado) -->
+          <!-- MATERIALES -->
           <transition name="fade-slide">
             <b-field label="Selecciona el Material" v-if="selectedBase">
               <div class="tabs tabs-opciones is-toggle is-small">
@@ -48,7 +51,7 @@
             </b-field>
           </transition>
 
-          <!-- TRATAMIENTOS (animado) -->
+          <!-- TRATAMIENTOS -->
           <transition name="fade-slide">
             <b-field label="Selecciona Tratamientos" v-if="selectedMaterial">
               <div class="columns is-multiline is-mobile" style="max-height: 150px; overflow-y: auto;">
@@ -68,7 +71,7 @@
             <span v-for="(tag, index) in selectedTratamientos" :key="tag" class="tag is-info is-light is-rounded">
               {{ tag }}
               <button class="delete is-small" @click.prevent="removeTratamiento(index)"
-                aria-label="Eliminar tratamiento" />
+                aria-label="Eliminar tratamiento"></button>
             </span>
           </transition-group>
 
@@ -78,8 +81,7 @@
           </b-field>
 
           <!-- Botón crear -->
-          <b-button type="is-primary" native-type="submit" size="is-small"
-            :disabled="!selectedBase || !selectedMaterial || selectedTratamientos.length === 0 || creatingSheet"
+          <b-button type="is-primary" native-type="submit" size="is-small" :disabled="!canCreate || creatingSheet"
             :loading="creatingSheet">
             Crear Planilla
           </b-button>
@@ -88,16 +90,16 @@
 
       <!-- Contenido de tabs existentes -->
       <div v-else>
-        <slot :activeId="activeId" :activeInternal="activeInternalTab"></slot>
+        <!-- Pasamos info completa al padre -->
+        <slot :activeId="activeId" :activeInternal="activeInternalTab" :activeSheet="activeSheetObj"></slot>
 
-        <!-- Segunda fila de pestañas visual (dinámica) -->
-        <div class="sheet-tabs">
+        <!-- Tabs internas según tipo_matriz -->
+        <div class="sheet-tabs" v-if="internalTabs.length">
           <div v-for="tab in internalTabs" :key="tab.id" class="sheet-tab"
             :class="{ active: activeInternalTab === tab.id }" @click="handleInternalTabClick(tab.id)">
             {{ tab.label }}
           </div>
         </div>
-
       </div>
     </div>
   </div>
@@ -113,20 +115,68 @@ const props = defineProps({
   configuracion: { type: Object, required: true }
 });
 
-const emit = defineEmits(["update:active", "reorder", "crear", "update:internal"]);
+const emit = defineEmits([
+  "update:active",
+  "reorder",
+  "crear",
+  "update:internal"
+]);
 
 const sheets = computed(() => props.initialSheets);
 const tabsContainer = ref(null);
 
 // ===============================
-// 🔸 Pestañas internas
+// 🔹 Planilla activa
 // ===============================
-const internalTabs = ref([
-  { id: "sph-neg", label: "SPH (-)" },
-  { id: "sph-pos", label: "SPH (+)" }
-]);
+const activeSheetObj = computed(() =>
+  sheets.value.find((s) => s.id === props.activeId)
+);
 
-const activeInternalTab = ref(internalTabs.value[0].id);
+// ===============================
+// 🔸 Pestañas internas dinámicas
+// ===============================
+const activeInternalTab = ref(null);
+
+const internalTabs = computed(() => {
+  const tipo = activeSheetObj.value?.tipo_matriz;
+
+  if (!tipo) return [];
+
+  if (tipo === "SPH_ADD") {
+    return [
+      { id: "sph-neg", label: "SPH (-)" },
+      { id: "sph-pos", label: "SPH (+)" }
+    ];
+  }
+
+  if (tipo === "SPH_CYL") {
+    return [
+      { id: "sph-neg", label: "SPH (-)" },
+      { id: "sph-pos", label: "SPH (+)" }
+    ];
+  }
+
+
+  if (tipo === "BASE") {
+    return [];
+  }
+
+  if (tipo === "BASE_ADD") {
+    return [{ id: "base-add", label: "BASE / ADD +" }];
+  }
+
+  return [];
+});
+
+watch(
+  internalTabs,
+  (tabs) => {
+    const first = tabs[0]?.id || null;
+    activeInternalTab.value = first;
+    emit("update:internal", first);
+  },
+  { immediate: true }
+);
 
 const handleInternalTabClick = (id) => {
   activeInternalTab.value = id;
@@ -134,7 +184,7 @@ const handleInternalTabClick = (id) => {
 };
 
 // ===============================
-// 🪄 Estado del formulario
+// 🪄 Formulario
 // ===============================
 const selectedBase = ref(null);
 const selectedMaterial = ref(null);
@@ -143,14 +193,27 @@ const newSheetName = ref("");
 const creatingSheet = ref(false);
 
 const allMaterials = ["Polycarbonato", "CR-39", "1.56", "1.61", "1.74"];
-const allTratamientos = ["Antirreflejo", "Fotocromático", "Tinte Gris", "Blue Light", "Endurecido"];
+const allTratamientos = [
+  "Antirreflejo",
+  "Fotocromático",
+  "Tinte Gris",
+  "Blue Light",
+  "Endurecido"
+];
 
-watch([selectedBase, selectedMaterial, selectedTratamientos], () => {
-  let baseLabel = selectedBase.value ? props.configuracion.bases[selectedBase.value].label : "";
-  let materialLabel = selectedMaterial.value || "";
-  let tratamientosLabel = selectedTratamientos.value.join(" + ");
-  newSheetName.value = [baseLabel, materialLabel, tratamientosLabel].filter(Boolean).join(" | ");
-});
+watch(
+  [selectedBase, selectedMaterial, selectedTratamientos],
+  () => {
+    const baseCfg =
+      selectedBase.value && props.configuracion.bases[selectedBase.value];
+    const baseLabel = baseCfg ? baseCfg.label : "";
+    const materialLabel = selectedMaterial.value || "";
+    const tratamientosLabel = selectedTratamientos.value.join(" + ");
+    newSheetName.value = [baseLabel, materialLabel, tratamientosLabel]
+      .filter(Boolean)
+      .join(" | ");
+  }
+);
 
 const selectBase = (base) => {
   selectedBase.value = base;
@@ -159,28 +222,77 @@ const selectBase = (base) => {
 };
 
 const selectMaterial = (mat) => {
+  if (!isMaterialAllowed(mat)) return;
   selectedMaterial.value = mat;
   selectedTratamientos.value = [];
 };
 
 const isMaterialAllowed = (mat) => {
   if (!selectedBase.value) return false;
-  return props.configuracion.bases[selectedBase.value].materiales.includes(mat);
+  const baseCfg = props.configuracion.bases[selectedBase.value];
+  return baseCfg && baseCfg.materiales.includes(mat);
 };
 
 const isTratamientoAllowed = (trat) => {
   if (!selectedBase.value) return false;
-  return props.configuracion.bases[selectedBase.value].tratamientos.includes(trat);
+  const baseCfg = props.configuracion.bases[selectedBase.value];
+  return baseCfg && baseCfg.tratamientos.includes(trat);
 };
 
-const removeTratamiento = (index) => selectedTratamientos.value.splice(index, 1);
+const removeTratamiento = (index) =>
+  selectedTratamientos.value.splice(index, 1);
+
+const canCreate = computed(
+  () =>
+    !!selectedBase.value &&
+    !!selectedMaterial.value &&
+    selectedTratamientos.value.length > 0 &&
+    !!newSheetName.value
+);
+
+// 🔁 map base -> tipo_matriz
+const mapBaseToTipoMatriz = (baseKey) => {
+  const cfg = props.configuracion.bases[baseKey];
+  if (cfg?.tipo_matriz) return cfg.tipo_matriz;
+
+  if (baseKey === "monofocal") {
+    return "BASE"; // 👉 Monofocal simple solo usa BASE
+  }
+  if (baseKey === "monofocalEsfCil") {
+    return "SPH_CYL"; // 👉 Esférico-cilíndrico sí usa SPH_CYL
+  }
+
+  if (baseKey === "bifocal") {
+    return "SPH_ADD";
+  }
+  if (baseKey === "progresivo") {
+    return "BASE_ADD";
+  }
+  if (baseKey === "base" || baseKey === "bases") {
+    return "BASE";
+  }
+  return "SPH_CYL";
+};
 
 const handleCrear = async () => {
-  if (!newSheetName.value) return;
+  if (!canCreate.value) return;
+
   creatingSheet.value = true;
   await nextTick();
-  await new Promise((r) => setTimeout(r, 500));
-  emit("crear", newSheetName.value);
+
+  const baseCfg = props.configuracion.bases[selectedBase.value];
+  const tipo_matriz = mapBaseToTipoMatriz(selectedBase.value);
+
+  const payload = {
+    nombre: newSheetName.value,
+    baseKey: selectedBase.value,
+    base: baseCfg?.label || selectedBase.value,
+    material: selectedMaterial.value,
+    tratamientos: [...selectedTratamientos.value],
+    tipo_matriz
+  };
+
+  emit("crear", payload);
 
   selectedBase.value = null;
   selectedMaterial.value = null;
@@ -205,7 +317,10 @@ onMounted(() => {
       const relatedEl = evt.related;
       if (relatedEl && relatedEl.classList.contains("tab-agregar")) {
         evt.dragged.classList.add("shake", "shake-color");
-        setTimeout(() => evt.dragged.classList.remove("shake", "shake-color"), 300);
+        setTimeout(
+          () => evt.dragged.classList.remove("shake", "shake-color"),
+          300
+        );
         return false;
       }
       return true;
@@ -215,6 +330,7 @@ onMounted(() => {
       const oldIndex = evt.oldIndex;
       let newIndex = evt.newIndex;
 
+      // Mantener "+ Agregar" al final
       if (newIndex >= maxIndex) {
         evt.from.insertBefore(evt.item, evt.from.children[oldIndex]);
         return;
@@ -226,7 +342,9 @@ onMounted(() => {
   });
 });
 
-const handleTabClick = (id) => emit("update:active", id);
+const handleTabClick = (id) => {
+  emit("update:active", id);
+};
 </script>
 
 <style scoped>
@@ -246,7 +364,6 @@ const handleTabClick = (id) => emit("update:active", id);
   font-size: 0.85rem;
   border-radius: 4px 4px 0 0;
   cursor: pointer;
-  /* ✅ Ahora muestra la manito */
   background-color: #f5f5f5;
   color: #4a4a4a;
   user-select: none;
@@ -255,7 +372,6 @@ const handleTabClick = (id) => emit("update:active", id);
 }
 
 .tab-item.active {
-
   background-color: #8e00d2;
   color: white;
 }
@@ -264,7 +380,6 @@ const handleTabClick = (id) => emit("update:active", id);
   cursor: pointer !important;
   background-color: #494949;
   color: white;
-
 }
 
 /* Tabs internas de opciones */
@@ -273,7 +388,7 @@ const handleTabClick = (id) => emit("update:active", id);
   opacity: 0.4;
 }
 
-/* Shake animación */
+/* Shake */
 @keyframes shake {
 
   0%,
@@ -327,34 +442,13 @@ const handleTabClick = (id) => emit("update:active", id);
 .sheet-tab.active {
   background-color: white;
   border-color: #dbdbdb #dbdbdb white;
-
 }
 
 .sheet-tab:hover:not(.active) {
   background-color: #e8e8e8;
 }
 
-.sheet-tab:hover {
-  background-color: #f0f0f0;
-}
-
-.add-sheet {
-  background: none;
-  border: none;
-  font-size: 18px;
-  cursor: pointer;
-  padding: 0 8px;
-  color: #555;
-}
-
-.add-sheet:hover {
-  background-color: #e0e0e0;
-  border-radius: 3px;
-}
-
-/* ========================
-   ✨ Transiciones vistosas
-======================== */
+/* Transiciones */
 .fade-slide-enter-active,
 .fade-slide-leave-active {
   transition: all 0.4s cubic-bezier(0.55, 0, 0.1, 1);
@@ -366,13 +460,6 @@ const handleTabClick = (id) => emit("update:active", id);
   transform: translateY(-10px);
 }
 
-.fade-slide-enter-to,
-.fade-slide-leave-from {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-/* Tags animados */
 .tag-list-enter-active,
 .tag-list-leave-active {
   transition: all 0.3s ease;
@@ -382,11 +469,5 @@ const handleTabClick = (id) => emit("update:active", id);
 .tag-list-leave-to {
   opacity: 0;
   transform: scale(0.8);
-}
-
-.tag-list-enter-to,
-.tag-list-leave-from {
-  opacity: 1;
-  transform: scale(1);
 }
 </style>

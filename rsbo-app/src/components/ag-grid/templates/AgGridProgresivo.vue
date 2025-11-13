@@ -1,20 +1,9 @@
 <!-- src/components/ag-grid/templates/AgGridProgresivo.vue -->
 <template>
   <div class="is-flex is-flex-direction-column" style="height: 100%;">
-    <!-- 🔹 Barra superior (herramientas + fórmula) -->
-    <navtools
-      v-model="formulaValue"
-      @add-row="handleAddRow"
-      @add-column="handleAddColumn"
-    />
-
-    <!-- 🔹 Contenedor de tabla -->
-    <div
-      class="buefy-balham-light"
-      style="flex: 1 1 auto; display: flex; flex-direction: column; overflow: auto;"
-    >
+    <navtools v-model="formulaValue" @add-row="handleAddRow" @add-column="handleAddColumn" />
+    <div class="buefy-balham-light" style="flex:1 1 auto; display:flex; flex-direction:column; overflow:auto;">
       <AgGridVue
-        ref="gridRef"
         :columnDefs="columns"
         :rowData="rowData"
         :defaultColDef="defaultColDef"
@@ -28,97 +17,41 @@
         style="width: 100%; height: 100%;"
       />
     </div>
+    <div class="p-2 has-text-right">
+      <button class="button is-primary is-small" @click="guardar">Guardar cambios</button>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, watch, computed, nextTick } from "vue";
+import { ref, computed, watch, nextTick, onMounted } from "vue";
 import { AgGridVue } from "ag-grid-vue3";
-import {
-  AllCommunityModule,
-  ModuleRegistry,
-  themeQuartz,
-  iconSetQuartzBold,
-  colorSchemeLight
-} from "ag-grid-community";
+import { AllCommunityModule, ModuleRegistry, themeQuartz, iconSetQuartzBold, colorSchemeLight } from "ag-grid-community";
 import navtools from "@/components/ag-grid/navtools.vue";
-
-// 🧩 Registro de módulos AG Grid
+import { fetchItems, saveChunk } from "@/services/inventory";
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-// ===========================
-// 🔹 Variables reactivas
-// ===========================
-const gridRef = ref(null);
+const props = defineProps({
+  sheetId: { type: String, required: true }
+});
+
 const gridApi = ref(null);
-const gridColumnApi = ref(null);
 const rowData = ref([]);
-const baseValues = ref([]);
-const addCols = ref([0.75, 1.00, 1.25, 1.50, 1.75, 2.00]);
+const dirty = ref(false);
 
-// ===========================
-// 🎨 Tema Quartz personalizado
-// ===========================
-const themeCustom = themeQuartz
-  .withPart(iconSetQuartzBold, colorSchemeLight)
-  .withParams({
-    accentColor: "#8e00d2",
-    backgroundColor: "#FFF",
-    borderColor: "#00000026",
-    borderRadius: 8,
-    browserColorScheme: "light",
-    columnBorder: true,
-    fontFamily: "Satoshi",
-    fontSize: 12,
-    foregroundColor: "#000",
-    headerBackgroundColor: "#FFF",
-    headerFontSize: 12,
-    headerFontWeight: 500,
-    headerRowBorder: false,
-    headerTextColor: "#7957d5",
-    headerVerticalPaddingScale: 1,
-    iconSize: 14,
-    rowBorder: true,
-    spacing: 5,
-    wrapperBorder: true,
-    wrapperBorderRadius: 4
-  });
+const themeCustom = themeQuartz.withPart(iconSetQuartzBold, colorSchemeLight).withParams({
+  accentColor: "#8e00d2", backgroundColor: "#FFF", borderColor: "#00000026", borderRadius: 8,
+  columnBorder: true, fontFamily: "Satoshi", fontSize: 12, foregroundColor: "#000",
+  headerBackgroundColor: "#FFF", headerFontSize: 12, headerFontWeight: 500, headerTextColor: "#7957d5",
+  rowBorder: true, spacing: 5, wrapperBorder: true, wrapperBorderRadius: 4
+});
+const localeText = { noRowsToShow: "No hay filas para mostrar", loadingOoo: "Cargando..." };
 
-// ===========================
-// 🌐 Traducción española
-// ===========================
-const localeText = {
-  noRowsToShow: "No hay filas para mostrar",
-  loadingOoo: "Cargando...",
-  filterOoo: "Filtrar...",
-  applyFilter: "Aplicar filtro",
-  clearFilter: "Limpiar filtro",
-  cancelFilter: "Cancelar",
-  resetFilter: "Reiniciar",
-  equals: "Igual",
-  notEqual: "Distinto",
-  lessThan: "Menor que",
-  greaterThan: "Mayor que",
-  lessThanOrEqual: "Menor o igual",
-  greaterThanOrEqual: "Mayor o igual",
-  inRange: "En rango",
-  contains: "Contiene",
-  notContains: "No contiene",
-  startsWith: "Empieza con",
-  endsWith: "Termina con",
-  blank: "Vacío",
-  notBlank: "No vacío",
-  columns: "Columnas",
-  apply: "Aplicar",
-  andCondition: "Y",
-  orCondition: "O"
-};
+const norm = (n) => String(n).replace(".", "_");
+const addValues = ref([]); // columnas (ADD)
+const eyes = ["OD","OI"];
 
-// ===========================
-// 📊 Columnas dinámicas BASE / ADD
-// ===========================
-const norm = (n) => n.toString().replace(".", "_");
-
+/* ── SOLO VISTA: BASE (°) + ADD (+) → OD/OI ───────────────────────── */
 const columns = computed(() => [
   {
     headerName: "BASE",
@@ -126,170 +59,129 @@ const columns = computed(() => [
       {
         field: "base",
         headerName: "Base (°)",
-        width: 90,
         pinned: "left",
+        width: 110,
         editable: false,
-        resizable: false,
         sortable: true,
-        comparator: (a, b) => a - b
+        comparator: (a, b) => a - b,
+        filter: "agNumberColumnFilter",
       }
     ]
   },
   {
     headerName: "ADD (+)",
-    children: addCols.value.map((a) => ({
-      field: `add_${norm(a)}`,
-      headerName: a.toFixed(2),
-      editable: true,
-      filter: "agNumberColumnFilter",
-      minWidth: 80,
-      maxWidth: 140,
-      resizable: true,
-      valueSetter: (params) => {
-        const val = params.newValue?.toString().trim();
-        if (!val) {
-          params.data[params.colDef.field] = 0;
-          return true;
+    children: addValues.value.map(add => ({
+      headerName: Number(add).toFixed(2),
+      marryChildren: true,
+      children: [
+        {
+          field: `add_${norm(add)}_OD`,
+          headerName: "OD",
+          editable: true,
+          minWidth: 90,
+          valueSetter: (p) => {
+            const v = p.newValue?.toString().trim();
+            p.data[`add_${norm(add)}_OD`] = v && /^-?\d+(\.\d+)?$/.test(v) ? Number(v) : 0;
+            dirty.value = true; return true;
+          }
+        },
+        {
+          field: `add_${norm(add)}_OI`,
+          headerName: "OI",
+          editable: true,
+          minWidth: 90,
+          valueSetter: (p) => {
+            const v = p.newValue?.toString().trim();
+            p.data[`add_${norm(add)}_OI`] = v && /^-?\d+(\.\d+)?$/.test(v) ? Number(v) : 0;
+            dirty.value = true; return true;
+          }
         }
-        if (/^\d+(\.\d+)?$/.test(val)) {
-          params.data[params.colDef.field] = Number(val);
-          return true;
-        }
-        return false;
-      }
+      ]
     }))
   }
 ]);
 
-// ===========================
-// 🔢 Generación de datos base
-// ===========================
-const generarBases = () => {
-  const arr = [];
-  for (let v = 0; v <= 10; v++) arr.push(v);
-  return arr;
-};
+const defaultColDef = { resizable: true, sortable: true, filter: true, editable: true };
+const getRowId = (p) => `${p.data.base_izq}|${p.data.base_der}`;
 
-// Simula stock de inventario
-const seedValue = (base, add) => {
-  const val = Math.floor(((base + add * 10) * 13) % 60);
-  return val < 0 ? 0 : val;
-};
+/* ── Cargar (GET) y pivotear → incluye campo visual 'base' ─────────── */
+async function cargar() {
+  const { data } = await fetchItems(props.sheetId);
+  const items = (data?.data || []);
 
-// Regenera toda la tabla
-const regenerarDatos = () => {
-  baseValues.value = generarBases();
-  rowData.value = baseValues.value.map((b) => {
-    const row = { base: b };
-    addCols.value.forEach((a) => {
-      row[`add_${norm(a)}`] = seedValue(b, a);
+  const baseRowsKeys = [...new Set(items.map(i => `${Number(i.base_izq ?? 0)}|${Number(i.base_der ?? 0)}`))];
+  const addList = [...new Set(items.map(i => Number(i.add)))].sort((a,b)=>a-b);
+  addValues.value = addList;
+
+  const key = (bi, bd, add, eye) => `${bi}|${bd}|${add}|${eye}`;
+  const map = new Map(items.map(i => [
+    key(Number(i.base_izq ?? 0), Number(i.base_der ?? 0), Number(i.add), String(i.eye).toUpperCase()),
+    Number(i.existencias ?? 0)
+  ]));
+
+  rowData.value = baseRowsKeys.map(k => {
+    const [bi, bd] = k.split("|").map(Number);
+    // 👇 campo visible para la vista estilo “Base (°)”
+    const row = { base_izq: bi, base_der: bd, base: bi };
+    addList.forEach(add => {
+      row[`add_${norm(add)}_OD`] = map.get(key(bi, bd, add, "OD")) ?? 0;
+      row[`add_${norm(add)}_OI`] = map.get(key(bi, bd, add, "OI")) ?? 0;
     });
     return row;
   });
+  await nextTick();
+}
+
+onMounted(cargar);
+
+/* ── Edición rápida (sin cambios de lógica) ───────────────────────── */
+const formulaValue = ref(""); let activeCell = null;
+const onCellClicked = (p) => { activeCell = p; formulaValue.value = p.value; };
+const onCellValueChanged = (p) => {
+  if (activeCell && activeCell.rowIndex===p.rowIndex && activeCell.colDef.field===p.colDef.field) formulaValue.value = p.newValue;
+  dirty.value = true;
 };
-
-// Inicializa tabla
-watch(addCols, regenerarDatos, { immediate: true });
-
-// ===========================
-// ⚙️ Configuración general
-// ===========================
-const defaultColDef = {
-  resizable: true,
-  sortable: true,
-  filter: true,
-  editable: true
-};
-
-// ===========================
-// ✏️ Interacción de celdas
-// ===========================
-const formulaValue = ref("");
-let activeCell = null;
-
-const onCellClicked = (params) => {
-  activeCell = params;
-  formulaValue.value = params.value;
-};
-
-const onCellValueChanged = (params) => {
-  if (
-    activeCell &&
-    activeCell.rowIndex === params.rowIndex &&
-    activeCell.colDef.field === params.colDef.field
-  ) {
-    formulaValue.value = params.newValue;
-  }
-};
-
 watch(formulaValue, (val) => {
-  if (activeCell && gridApi.value) {
-    gridApi.value.applyTransaction({
-      update: [
-        {
-          ...activeCell.data,
-          [activeCell.colDef.field]: val
-        }
-      ]
-    });
-  }
+  if (!activeCell || !gridApi.value) return;
+  gridApi.value.applyTransaction({ update: [{ ...activeCell.data, [activeCell.colDef.field]: val }] });
+  dirty.value = true;
 });
+const onGridReady = (p) => (gridApi.value = p.api);
 
-// ===========================
-// 🧮 AG Grid API
-// ===========================
-const getRowId = (p) => p.data.base.toString();
-
-const onGridReady = (params) => {
-  gridApi.value = params.api;
-  gridColumnApi.value = params.columnApi;
+/* ── Navtools (solo agregan en memoria; se mantiene tu lógica) ────── */
+const handleAddRow = (nuevoValor) => {
+  const bi = Number(nuevoValor);
+  if (Number.isNaN(bi)) return alert("Ingresa Base Izq numérica (usaremos Der=Izq por defecto)");
+  const exists = rowData.value.some(r => r.base_izq === bi && r.base_der === bi);
+  if (exists) return alert(`Fila base ${bi}/${bi} ya existe`);
+  const row = { base_izq: bi, base_der: bi, base: bi };
+  addValues.value.forEach(add => { row[`add_${norm(add)}_OD`] = 0; row[`add_${norm(add)}_OI`] = 0; });
+  gridApi.value?.applyTransaction({ add: [row] });
+  dirty.value = true;
+};
+const handleAddColumn = (nuevoValor) => {
+  const add = Number(nuevoValor);
+  if (Number.isNaN(add)) return alert("Ingresa ADD numérico");
+  if (addValues.value.includes(add)) return alert(`ADD ${add} ya existe`);
+  addValues.value = [...addValues.value, add].sort((a,b)=>a-b);
+  rowData.value.forEach(r => { r[`add_${norm(add)}_OD`] = 0; r[`add_${norm(add)}_OI`] = 0; });
+  nextTick(()=>{ gridApi.value?.refreshHeader(); gridApi.value?.redrawRows(); });
+  dirty.value = true;
 };
 
-// ===========================
-// ➕ Métodos dinámicos
-// ===========================
-const handleAddRow = async (nuevoValor) => {
-  const api = gridApi.value;
-  if (!api) return;
-
-  const val = parseFloat(nuevoValor);
-  if (isNaN(val)) {
-    alert("Ingresa un valor numérico");
-    return;
-  }
-  if (rowData.value.find((r) => r.base === val)) {
-    alert(`Base ${val}° ya existe`);
-    return;
-  }
-
-  const nueva = { base: val };
-  addCols.value.forEach((a) => {
-    nueva[`add_${norm(a)}`] = 0;
+/* ── Guardar (intacto) ─────────────────────────────────────────────── */
+async function guardar() {
+  if (!dirty.value) return;
+  const rows = [];
+  rowData.value.forEach(r => {
+    const { base_izq, base_der } = r;
+    addValues.value.forEach(add => {
+      rows.push({ add, eye:"OD", base_izq, base_der, existencias: Number(r[`add_${norm(add)}_OD`] ?? 0) });
+      rows.push({ add, eye:"OI", base_izq, base_der, existencias: Number(r[`add_${norm(add)}_OI`] ?? 0) });
+    });
   });
-
-  api.applyTransaction({ add: [nueva] });
-
-  await nextTick();
-  setTimeout(() => {
-    api.setSortModel([{ colId: "base", sort: "asc" }]);
-    api.refreshClientSideRowModel("sort");
-  }, 50);
-};
-
-const handleAddColumn = async (nuevoValor) => {
-  const val = parseFloat(nuevoValor);
-  if (isNaN(val)) return alert("Ingresa valor numérico");
-  if (addCols.value.includes(val)) return alert(`Columna ADD ${val} ya existe`);
-
-  addCols.value.push(val);
-  addCols.value.sort((a, b) => a - b);
-
-  rowData.value.forEach((r) => {
-    r[`add_${norm(val)}`] = seedValue(r.base, val);
-  });
-
-  await nextTick();
-  gridApi.value.refreshHeader();
-  gridApi.value.redrawRows();
-};
+  await saveChunk(props.sheetId, rows, { userId: "u123", name: "Cristian" });
+  dirty.value = false;
+  await cargar();
+}
 </script>

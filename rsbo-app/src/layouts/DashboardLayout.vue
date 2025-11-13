@@ -24,7 +24,7 @@ const currentRouteName = computed(() => {
 })
 
 const pageTitle = computed(() => {
-    return `Panel de Control / ${currentRouteName.value}`
+    return `Panel de Control`
 })
 
 console.log(unreadNotifications)

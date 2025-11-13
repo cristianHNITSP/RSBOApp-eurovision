@@ -1,18 +1,128 @@
-<!-- rsbo-app/src/components/ag-grid/templates/AgGridMonofocal.vue -->
+<script setup>
+import { ref, computed, watch, nextTick, onMounted } from "vue";
+import { AgGridVue } from "ag-grid-vue3";
+import { AllCommunityModule, ModuleRegistry, themeQuartz, iconSetQuartzBold, colorSchemeLight } from "ag-grid-community";
+import navtools from "@/components/ag-grid/navtools.vue";
+import { fetchItems, saveChunk } from "@/services/inventory";
+ModuleRegistry.registerModules([AllCommunityModule]);
+
+const props = defineProps({
+  sheetId: { type: String, required: true },
+  sphType: { type: String, default: "sph-neg" } // "sph-neg" | "sph-pos"
+});
+
+const gridApi = ref(null);
+const rowData = ref([]);
+const dirty = ref(false);
+
+const themeCustom = themeQuartz.withPart(iconSetQuartzBold, colorSchemeLight).withParams({
+  accentColor: "#8e00d2", backgroundColor: "#FFF", borderColor: "#00000026", borderRadius: 8,
+  columnBorder: true, fontFamily: "Satoshi", fontSize: 12, foregroundColor: "#000",
+  headerBackgroundColor: "#FFF", headerFontSize: 12, headerFontWeight: 500, headerTextColor: "#7957d5",
+  rowBorder: true, spacing: 5, wrapperBorder: true, wrapperBorderRadius: 4
+});
+const localeText = { noRowsToShow: "No hay filas para mostrar", loadingOoo: "Cargando..." };
+
+const norm = (n) => String(n).replace(".", "_");
+const cylValues = ref([]);
+
+const columns = computed(() => [
+  { headerName: `SPH ${props.sphType === "sph-neg" ? "(-)" : "(+)"}`,
+    children: [{ field: "sph", headerName: "SPH", width: 90, pinned:"left", editable:false, sortable:true, comparator:(a,b)=>a-b }] },
+  { headerName: "CYL (-)", children: cylValues.value.map(c => ({
+      field: `cyl_${norm(c)}`, headerName: c.toString(), editable: true, filter:"agNumberColumnFilter",
+      minWidth: 80, maxWidth: 120, resizable: true,
+      valueSetter: (p) => { const v = p.newValue?.toString().trim(); p.data[p.colDef.field] = v && /^-?\d+(\.\d+)?$/.test(v) ? Number(v) : 0; dirty.value = true; return true; }
+  })) }
+]);
+
+const defaultColDef = { resizable: true, sortable: true, filter: true, editable: true };
+const getRowId = (p) => p.data.sph?.toString();
+
+async function cargar() {
+  // ⬇️ filtro por pestaña
+  const query = props.sphType === "sph-pos"
+    ? { sphMin: 0,  sphMax: 6, cylMin: -6, cylMax: 0 }
+    : { sphMin: -6, sphMax: 0, cylMin: -6, cylMax: 0 };
+
+  const { data } = await fetchItems(props.sheetId, query);
+  const items = (data?.data || []);
+
+  const sphList = [...new Set(items.map(i => Number(i.sph)))].sort((a,b)=>a-b);
+  const cylList = [...new Set(items.map(i => Number(i.cyl)))].sort((a,b)=>a-b);
+  cylValues.value = cylList;
+
+  const key = (s,c) => `${s}|${c}`;
+  const map = new Map(items.map(i => [key(Number(i.sph), Number(i.cyl)), Number(i.existencias ?? 0)]));
+
+  rowData.value = sphList.map(sph => {
+    const row = { sph };
+    cylList.forEach(cyl => (row[`cyl_${norm(cyl)}`] = map.get(key(sph, cyl)) ?? 0));
+    return row;
+  });
+
+  await nextTick();
+  gridApi.value?.setSortModel([{ colId: "sph", sort: "asc" }]);
+  gridApi.value?.refreshClientSideRowModel("sort");
+}
+
+onMounted(cargar);
+watch(() => props.sphType, () => cargar());
+
+// edición rápida / navtools / guardar (igual que ya tenías)
+const formulaValue = ref(""); let activeCell = null;
+const onCellClicked = (p) => { activeCell = p; formulaValue.value = p.value; };
+const onCellValueChanged = (p) => {
+  if (activeCell && activeCell.rowIndex===p.rowIndex && activeCell.colDef.field===p.colDef.field) formulaValue.value = p.newValue;
+  dirty.value = true;
+};
+watch(formulaValue, (val) => {
+  if (!activeCell || !gridApi.value) return;
+  gridApi.value.applyTransaction({ update: [{ ...activeCell.data, [activeCell.colDef.field]: val }] });
+  dirty.value = true;
+});
+const onGridReady = (p) => (gridApi.value = p.api);
+
+const handleAddRow = async (nuevoValor) => {
+  const v = Number(nuevoValor);
+  if (Number.isNaN(v)) return alert("Ingresa un SPH numérico");
+  if (rowData.value.some(r => r.sph === v)) return alert(`SPH ${v} ya existe`);
+  const nueva = { sph: v };
+  cylValues.value.forEach(c => (nueva[`cyl_${norm(c)}`] = 0));
+  gridApi.value?.applyTransaction({ add: [nueva] });
+  dirty.value = true;
+};
+const handleAddColumn = async (nuevoValor) => {
+  const v = Number(nuevoValor);
+  if (Number.isNaN(v)) return alert("Ingresa un CYL numérico");
+  if (cylValues.value.includes(v)) return alert(`CYL ${v} ya existe`);
+  cylValues.value = [...cylValues.value, v].sort((a,b)=>a-b);
+  rowData.value.forEach(r => (r[`cyl_${norm(v)}`] = 0));
+  await nextTick(); gridApi.value?.refreshHeader(); gridApi.value?.redrawRows();
+};
+
+async function guardar() {
+  if (!dirty.value) return;
+  const rows = [];
+  rowData.value.forEach(r => {
+    const sph = r.sph;
+    cylValues.value.forEach(cyl => {
+      const field = `cyl_${norm(cyl)}`;
+      const existencias = Number(r[field] ?? 0);
+      rows.push({ sph, cyl, existencias });
+    });
+  });
+  await saveChunk(props.sheetId, rows, { userId: "u123", name: "Cristian" });
+  dirty.value = false;
+  await cargar();
+}
+</script>
+
 <template>
   <div class="is-flex is-flex-direction-column" style="height: 100%;">
-    <navtools
-      v-model="formulaValue"
-      @add-row="handleAddRow"
-      @add-column="handleAddColumn"
-    />
-
-    <div
-      class="buefy-balham-light"
-      style="flex: 1 1 auto; display: flex; flex-direction: column; overflow: auto;"
-    >
+    <navtools v-model="formulaValue" @add-row="handleAddRow" @add-column="handleAddColumn" />
+    <div class="buefy-balham-light" style="flex:1 1 auto; display:flex; flex-direction:column; overflow:auto;">
       <AgGridVue
-        ref="gridRef"
         :columnDefs="columns"
         :rowData="rowData"
         :defaultColDef="defaultColDef"
@@ -26,284 +136,8 @@
         style="width: 100%; height: 100%;"
       />
     </div>
+    <div class="p-2 has-text-right">
+      <button class="button is-primary is-small" @click="guardar">Guardar cambios</button>
+    </div>
   </div>
 </template>
-
-<script setup>
-import { ref, watch, defineProps, computed, nextTick } from "vue";
-import { AgGridVue } from "ag-grid-vue3";
-import {
-  AllCommunityModule,
-  ModuleRegistry,
-  themeQuartz,
-  iconSetQuartzBold,
-  colorSchemeLight
-} from "ag-grid-community";
-import navtools from "@/components/ag-grid/navtools.vue";
-
-ModuleRegistry.registerModules([AllCommunityModule]);
-
-const gridRef = ref(null);
-const gridApi = ref(null);
-const gridColumnApi = ref(null);
-
-const props = defineProps({
-  // Controlado desde TabsManager: "sph-neg" | "sph-pos"
-  sphType: { type: String, default: "sph-neg" },
-  cylMin: { type: Number, default: -2 },
-  cylMax: { type: Number, default: 0 },
-  cylStep: { type: Number, default: 0.25 }
-});
-
-const themeCustom = themeQuartz
-  .withPart(iconSetQuartzBold, colorSchemeLight)
-  .withParams({
-    accentColor: "#8e00d2",
-    backgroundColor: "#FFF",
-    borderColor: "#00000026",
-    borderRadius: 8,
-    browserColorScheme: "light",
-    columnBorder: true,
-    fontFamily: "Satoshi",
-    fontSize: 12,
-    foregroundColor: "#000",
-    headerBackgroundColor: "#FFF",
-    headerFontSize: 12,
-    headerFontWeight: 500,
-    headerRowBorder: false,
-    headerTextColor: "#7957d5",
-    headerVerticalPaddingScale: 1,
-    iconSize: 14,
-    rowBorder: true,
-    spacing: 5,
-    wrapperBorder: true,
-    wrapperBorderRadius: 4
-  });
-
-const localeText = {
-  noRowsToShow: "No hay filas para mostrar",
-  loadingOoo: "Cargando...",
-  filterOoo: "Filtrar...",
-  applyFilter: "Aplicar filtro",
-  clearFilter: "Limpiar filtro",
-  cancelFilter: "Cancelar",
-  resetFilter: "Reiniciar",
-  equals: "Igual",
-  notEqual: "Distinto",
-  lessThan: "Menor que",
-  greaterThan: "Mayor que",
-  lessThanOrEqual: "Menor o igual",
-  greaterThanOrEqual: "Mayor o igual",
-  inRange: "En rango",
-  contains: "Contiene",
-  notContains: "No contiene",
-  startsWith: "Empieza con",
-  endsWith: "Termina con",
-  blank: "Vacío",
-  notBlank: "No vacío",
-  columns: "Columnas",
-  loading: "Cargando...",
-  apply: "Aplicar",
-  andCondition: "Y",
-  orCondition: "O"
-};
-
-const sphValues = ref([]);
-const cylValues = ref([]);
-const rowData = ref([]);
-
-const norm = (n) => n.toString().replace(".", "_");
-
-// Columnas dinámicas SPH ± / CYL -
-const columns = computed(() => [
-  {
-    headerName: `SPH ${props.sphType === "sph-neg" ? "(-)" : "(+)"}`,
-    children: [
-      {
-        field: "sph",
-        headerName: "SPH",
-        width: 90,
-        pinned: "left",
-        editable: false,
-        resizable: false,
-        sortable: true,
-        comparator: (a, b) => a - b
-      }
-    ]
-  },
-  {
-    headerName: "CYL (-)",
-    children: cylValues.value.map((c) => ({
-      field: `cyl_${norm(c)}`,
-      headerName: c.toString(),
-      editable: true,
-      filter: "agNumberColumnFilter",
-      minWidth: 80,
-      maxWidth: 120,
-      resizable: true,
-      valueSetter: (params) => {
-        const val = params.newValue?.toString().trim();
-        if (!val) {
-          params.data[params.colDef.field] = 0;
-          return true;
-        }
-        if (/^-?\d+(\.\d+)?$/.test(val)) {
-          params.data[params.colDef.field] = Number(val);
-          return true;
-        }
-        return false;
-      }
-    }))
-  }
-]);
-
-const generarRango = (min, max, step) => {
-  const arr = [];
-  for (let v = min; v <= max + 1e-6; v += step) {
-    arr.push(Number(v.toFixed(2)));
-  }
-  return arr;
-};
-
-const generarSphPorTipo = (tipo) => {
-  const arr = [];
-  if (tipo === "sph-neg") {
-    for (let v = 0; v >= -6; v -= 0.25) arr.push(Number(v.toFixed(2)));
-  } else {
-    for (let v = 0.25; v <= 6; v += 0.25) arr.push(Number(v.toFixed(2)));
-  }
-  return arr;
-};
-
-// Semilla determinística (ejemplo)
-const seedValue = (sph, cyl) => {
-  const base =
-    Math.abs(Math.round(sph * 100)) + Math.abs(Math.round(cyl * 100));
-  if (base % 2 !== 0) return 0;
-  return (base % 40) + 5;
-};
-
-const regenerarDatos = (tipo) => {
-  sphValues.value = generarSphPorTipo(tipo);
-  cylValues.value = generarRango(props.cylMin, props.cylMax, props.cylStep);
-
-  rowData.value = sphValues.value.map((sph) => {
-    const row = { sph };
-    cylValues.value.forEach((c) => {
-      row[`cyl_${norm(c)}`] = seedValue(sph, c);
-    });
-    return row;
-  });
-
-  if (gridApi.value) {
-    nextTick(() => {
-      gridApi.value.setSortModel([{ colId: "sph", sort: "asc" }]);
-      gridApi.value.refreshClientSideRowModel("sort");
-    });
-  }
-};
-
-watch(
-  () => [props.sphType, props.cylMin, props.cylMax, props.cylStep],
-  () => regenerarDatos(props.sphType),
-  { immediate: true }
-);
-
-const defaultColDef = {
-  resizable: true,
-  sortable: true,
-  filter: true,
-  editable: true
-};
-
-const formulaValue = ref("");
-let activeCell = null;
-
-const onCellClicked = (params) => {
-  activeCell = params;
-  formulaValue.value = params.value;
-};
-
-const onCellValueChanged = (params) => {
-  if (
-    activeCell &&
-    activeCell.rowIndex === params.rowIndex &&
-    activeCell.colDef.field === params.colDef.field
-  ) {
-    formulaValue.value = params.newValue;
-  }
-};
-
-watch(formulaValue, (val) => {
-  if (activeCell && gridApi.value) {
-    gridApi.value.applyTransaction({
-      update: [
-        {
-          ...activeCell.data,
-          [activeCell.colDef.field]: val
-        }
-      ]
-    });
-  }
-});
-
-const getRowId = (p) => p.data.sph.toString();
-
-const onGridReady = (params) => {
-  gridApi.value = params.api;
-  gridColumnApi.value = params.columnApi;
-};
-
-const handleAddRow = async (nuevoValor) => {
-  const api = gridApi.value;
-  if (!api) return;
-
-  const val = parseFloat(nuevoValor);
-  if (isNaN(val)) {
-    alert("Ingresa un valor numérico");
-    return;
-  }
-  if (rowData.value.find((r) => r.sph === val)) {
-    alert(`Fila SPH ${val} ya existe`);
-    return;
-  }
-
-  const nueva = { sph: val };
-  cylValues.value.forEach((c) => {
-    nueva[`cyl_${norm(c)}`] = 0;
-  });
-
-  api.applyTransaction({ add: [nueva] });
-
-  await nextTick();
-  api.setSortModel([{ colId: "sph", sort: "asc" }]);
-  api.refreshClientSideRowModel("sort");
-};
-
-const handleAddColumn = async (nuevoValor) => {
-  const api = gridApi.value;
-  if (!api) return;
-
-  const val = parseFloat(nuevoValor);
-  if (isNaN(val)) {
-    alert("Ingresa un valor numérico");
-    return;
-  }
-  if (cylValues.value.includes(val)) {
-    alert(`Columna CYL ${val} ya existe`);
-    return;
-  }
-
-  cylValues.value.push(val);
-  cylValues.value.sort((a, b) => a - b);
-
-  const field = `cyl_${norm(val)}`;
-  rowData.value.forEach((r) => {
-    r[field] = 0;
-  });
-
-  await nextTick();
-  gridApi.value?.refreshHeader();
-  gridApi.value?.redrawRows();
-};
-</script>

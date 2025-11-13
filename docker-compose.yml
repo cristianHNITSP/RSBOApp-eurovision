@@ -46,6 +46,8 @@ services:
     volumes:
       - ./backend/auth-service:/app
       - /app/node_modules
+    env_file:
+      - ./backend/auth-service/.env   # cargar variables de entorno    
     environment:
       NODE_ENV: development
       MONGO_URI: "mongodb://root:${MONGO_PASSWORD}@mongo:27017/auth_db?authSource=admin"
@@ -66,6 +68,8 @@ services:
     volumes:
       - ./backend/inventory-service:/app
       - /app/node_modules
+    env_file:
+      - ./backend/inventory-service/.env   # cargar variables de entorno  
     environment:
       NODE_ENV: development
       MONGO_URI: "mongodb://root:${MONGO_PASSWORD}@mongo:27017/inventory_db?authSource=admin"
@@ -86,6 +90,8 @@ services:
     volumes:
       - ./backend/orders-service:/app
       - /app/node_modules
+    env_file:
+      - ./backend/orders-service/.env   # cargar variables de entorno  
     environment:
       NODE_ENV: development
       MONGO_URI: "mongodb://root:${MONGO_PASSWORD}@mongo:27017/orders_db?authSource=admin"
@@ -106,6 +112,8 @@ services:
     volumes:
       - ./backend/notification-service:/app
       - /app/node_modules
+    env_file:
+      - ./backend/notification-service/.env   # cargar variables de entorno      
     environment:
       NODE_ENV: development
       MONGO_URI: "mongodb://root:${MONGO_PASSWORD}@mongo:27017/notification_db?authSource=admin"
@@ -129,12 +137,14 @@ services:
     volumes:
       - ./backend/gateway:/app
       - /app/node_modules
+    env_file:
+      - ./backend/gateway/.env   # cargar variables de entorno
     environment:
       NODE_ENV: development
     restart: always
     profiles: ["dev"]
 
-  # 📦 MongoDB
+  #MongoDB
   mongo:
     image: mongo:6
     container_name: rsboapp-mongo
@@ -147,7 +157,7 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
     restart: always
 
-  # 🧪 Mongo Express
+  #Mongo Express
   mongo-express:
     image: mongo-express
     container_name: rsboapp-mongo-express

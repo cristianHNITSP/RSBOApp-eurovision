@@ -2,13 +2,13 @@
   <div>
     <!-- Tabs principales (Planillas) -->
     <div ref="tabsContainer" class="tabs-wrapper">
-      <div v-for="planilla in sheets" :key="planilla.id" :data-id="planilla.id" :class="[
-        'tab-item',
-        {
-          'tab-agregar': planilla.id === 'nueva',
-          active: planilla.id === activeId
-        }
-      ]" @click="handleTabClick(planilla.id)">
+      <div
+        v-for="planilla in sheets"
+        :key="planilla.id"
+        :data-id="planilla.id"
+        :class="['tab-item', { 'tab-agregar': planilla.id === 'nueva', active: planilla.id === activeId }]"
+        @click="handleTabClick(planilla.id)"
+      >
         <template v-if="planilla.id === 'nueva'">
           <i class="fas fa-plus"></i>
         </template>
@@ -18,7 +18,7 @@
       </div>
     </div>
 
-    <!-- Contenido de cada tab -->
+    <!-- Contenido -->
     <div :key="activeId" class="box plantillas-contenedor">
       <!-- Form nueva planilla -->
       <div v-if="activeId === 'nueva'">
@@ -27,8 +27,12 @@
           <b-field label="Selecciona la Base">
             <div class="tabs tabs-opciones is-toggle is-small">
               <ul>
-                <li v-for="(val, key) in configuracion.bases" :key="key" :class="{ 'is-active': selectedBase === key }"
-                  @click="selectBase(key)">
+                <li
+                  v-for="(val, key) in configuracion.bases"
+                  :key="key"
+                  :class="{ 'is-active': selectedBase === key }"
+                  @click="selectBase(key)"
+                >
                   <a>{{ val.label }}</a>
                 </li>
               </ul>
@@ -40,10 +44,12 @@
             <b-field label="Selecciona el Material" v-if="selectedBase">
               <div class="tabs tabs-opciones is-toggle is-small">
                 <ul>
-                  <li v-for="mat in allMaterials" :key="mat" :class="[
-                    { 'is-active': selectedMaterial === mat },
-                    { 'is-disabled': !isMaterialAllowed(mat) }
-                  ]" @click="isMaterialAllowed(mat) && selectMaterial(mat)">
+                  <li
+                    v-for="mat in allMaterials"
+                    :key="mat"
+                    :class="[{ 'is-active': selectedMaterial === mat }, { 'is-disabled': !isMaterialAllowed(mat) }]"
+                    @click="isMaterialAllowed(mat) && selectMaterial(mat)"
+                  >
                     <a>{{ mat }}</a>
                   </li>
                 </ul>
@@ -55,10 +61,18 @@
           <transition name="fade-slide">
             <b-field label="Selecciona Tratamientos" v-if="selectedMaterial">
               <div class="columns is-multiline is-mobile" style="max-height: 150px; overflow-y: auto;">
-                <div class="column is-half-mobile is-one-third-tablet is-one-quarter-desktop"
-                  v-for="trat in allTratamientos" :key="trat">
-                  <b-checkbox v-model="selectedTratamientos" :native-value="trat" size="is-small" type="is-primary"
-                    :disabled="!isTratamientoAllowed(trat)">
+                <div
+                  class="column is-half-mobile is-one-third-tablet is-one-quarter-desktop"
+                  v-for="trat in allTratamientos"
+                  :key="trat"
+                >
+                  <b-checkbox
+                    v-model="selectedTratamientos"
+                    :native-value="trat"
+                    size="is-small"
+                    type="is-primary"
+                    :disabled="!isTratamientoAllowed(trat)"
+                  >
                     {{ trat }}
                   </b-checkbox>
                 </div>
@@ -66,12 +80,15 @@
             </b-field>
           </transition>
 
-          <!-- Tags de tratamientos seleccionados -->
+          <!-- Tags de tratamientos -->
           <transition-group name="tag-list" tag="div" class="tags mb-3">
-            <span v-for="(tag, index) in selectedTratamientos" :key="tag" class="tag is-info is-light is-rounded">
+            <span
+              v-for="(tag, index) in selectedTratamientos"
+              :key="tag"
+              class="tag is-info is-light is-rounded"
+            >
               {{ tag }}
-              <button class="delete is-small" @click.prevent="removeTratamiento(index)"
-                aria-label="Eliminar tratamiento"></button>
+              <button class="delete is-small" @click.prevent="removeTratamiento(index)" aria-label="Eliminar tratamiento"></button>
             </span>
           </transition-group>
 
@@ -81,8 +98,13 @@
           </b-field>
 
           <!-- Botón crear -->
-          <b-button type="is-primary" native-type="submit" size="is-small" :disabled="!canCreate || creatingSheet"
-            :loading="creatingSheet">
+          <b-button
+            type="is-primary"
+            native-type="submit"
+            size="is-small"
+            :disabled="!canCreate || creatingSheet"
+            :loading="creatingSheet"
+          >
             Crear Planilla
           </b-button>
         </form>
@@ -90,13 +112,17 @@
 
       <!-- Contenido de tabs existentes -->
       <div v-else>
-        <!-- Pasamos info completa al padre -->
         <slot :activeId="activeId" :activeInternal="activeInternalTab" :activeSheet="activeSheetObj"></slot>
 
-        <!-- Tabs internas según tipo_matriz -->
+        <!-- Tabs internas (según tipo_matriz) -->
         <div class="sheet-tabs" v-if="internalTabs.length">
-          <div v-for="tab in internalTabs" :key="tab.id" class="sheet-tab"
-            :class="{ active: activeInternalTab === tab.id }" @click="handleInternalTabClick(tab.id)">
+          <div
+            v-for="tab in internalTabs"
+            :key="tab.id"
+            class="sheet-tab"
+            :class="{ active: activeInternalTab === tab.id }"
+            @click="handleInternalTabClick(tab.id)"
+          >
             {{ tab.label }}
           </div>
         </div>
@@ -115,22 +141,14 @@ const props = defineProps({
   configuracion: { type: Object, required: true }
 });
 
-const emit = defineEmits([
-  "update:active",
-  "reorder",
-  "crear",
-  "update:internal"
-]);
+const emit = defineEmits(["update:active", "reorder", "crear", "update:internal"]);
 
 const sheets = computed(() => props.initialSheets);
-const tabsContainer = ref(null);
 
 // ===============================
 // 🔹 Planilla activa
 // ===============================
-const activeSheetObj = computed(() =>
-  sheets.value.find((s) => s.id === props.activeId)
-);
+const activeSheetObj = computed(() => sheets.value.find((s) => s.id === props.activeId));
 
 // ===============================
 // 🔸 Pestañas internas dinámicas
@@ -139,32 +157,15 @@ const activeInternalTab = ref(null);
 
 const internalTabs = computed(() => {
   const tipo = activeSheetObj.value?.tipo_matriz;
-
   if (!tipo) return [];
-
-  if (tipo === "SPH_ADD") {
+  if (tipo === "SPH_ADD" || tipo === "SPH_CYL") {
     return [
       { id: "sph-neg", label: "SPH (-)" },
       { id: "sph-pos", label: "SPH (+)" }
     ];
   }
-
-  if (tipo === "SPH_CYL") {
-    return [
-      { id: "sph-neg", label: "SPH (-)" },
-      { id: "sph-pos", label: "SPH (+)" }
-    ];
-  }
-
-
-  if (tipo === "BASE") {
-    return [];
-  }
-
-  if (tipo === "BASE_ADD") {
-    return [{ id: "base-add", label: "BASE / ADD +" }];
-  }
-
+  if (tipo === "BASE") return [];
+  if (tipo === "BASE_ADD") return [{ id: "base-add", label: "BASE / ADD +" }];
   return [];
 });
 
@@ -193,27 +194,15 @@ const newSheetName = ref("");
 const creatingSheet = ref(false);
 
 const allMaterials = ["Polycarbonato", "CR-39", "1.56", "1.61", "1.74"];
-const allTratamientos = [
-  "Antirreflejo",
-  "Fotocromático",
-  "Tinte Gris",
-  "Blue Light",
-  "Endurecido"
-];
+const allTratamientos = ["Antirreflejo", "Fotocromático", "Tinte Gris", "Blue Light", "Endurecido"];
 
-watch(
-  [selectedBase, selectedMaterial, selectedTratamientos],
-  () => {
-    const baseCfg =
-      selectedBase.value && props.configuracion.bases[selectedBase.value];
-    const baseLabel = baseCfg ? baseCfg.label : "";
-    const materialLabel = selectedMaterial.value || "";
-    const tratamientosLabel = selectedTratamientos.value.join(" + ");
-    newSheetName.value = [baseLabel, materialLabel, tratamientosLabel]
-      .filter(Boolean)
-      .join(" | ");
-  }
-);
+watch([selectedBase, selectedMaterial, selectedTratamientos], () => {
+  const baseCfg = selectedBase.value && props.configuracion.bases[selectedBase.value];
+  const baseLabel = baseCfg ? baseCfg.label : "";
+  const materialLabel = selectedMaterial.value || "";
+  const tratamientosLabel = selectedTratamientos.value.join(" + ");
+  newSheetName.value = [baseLabel, materialLabel, tratamientosLabel].filter(Boolean).join(" | ");
+});
 
 const selectBase = (base) => {
   selectedBase.value = base;
@@ -239,8 +228,7 @@ const isTratamientoAllowed = (trat) => {
   return baseCfg && baseCfg.tratamientos.includes(trat);
 };
 
-const removeTratamiento = (index) =>
-  selectedTratamientos.value.splice(index, 1);
+const removeTratamiento = (index) => selectedTratamientos.value.splice(index, 1);
 
 const canCreate = computed(
   () =>
@@ -254,32 +242,18 @@ const canCreate = computed(
 const mapBaseToTipoMatriz = (baseKey) => {
   const cfg = props.configuracion.bases[baseKey];
   if (cfg?.tipo_matriz) return cfg.tipo_matriz;
-
-  if (baseKey === "monofocal") {
-    return "BASE"; // 👉 Monofocal simple solo usa BASE
-  }
-  if (baseKey === "monofocalEsfCil") {
-    return "SPH_CYL"; // 👉 Esférico-cilíndrico sí usa SPH_CYL
-  }
-
-  if (baseKey === "bifocal") {
-    return "SPH_ADD";
-  }
-  if (baseKey === "progresivo") {
-    return "BASE_ADD";
-  }
-  if (baseKey === "base" || baseKey === "bases") {
-    return "BASE";
-  }
+  if (baseKey === "monofocal") return "BASE";
+  if (baseKey === "monofocalEsfCil") return "SPH_CYL";
+  if (baseKey === "bifocal") return "SPH_ADD";
+  if (baseKey === "progresivo") return "BASE_ADD";
+  if (baseKey === "base" || baseKey === "bases") return "BASE";
   return "SPH_CYL";
 };
 
 const handleCrear = async () => {
   if (!canCreate.value) return;
-
   creatingSheet.value = true;
   await nextTick();
-
   const baseCfg = props.configuracion.bases[selectedBase.value];
   const tipo_matriz = mapBaseToTipoMatriz(selectedBase.value);
 
@@ -304,6 +278,7 @@ const handleCrear = async () => {
 // ===============================
 // 🧲 Drag & drop pestañas
 // ===============================
+const tabsContainer = ref(null);
 onMounted(() => {
   if (!tabsContainer.value) return;
   Sortable.create(tabsContainer.value, {
@@ -317,10 +292,7 @@ onMounted(() => {
       const relatedEl = evt.related;
       if (relatedEl && relatedEl.classList.contains("tab-agregar")) {
         evt.dragged.classList.add("shake", "shake-color");
-        setTimeout(
-          () => evt.dragged.classList.remove("shake", "shake-color"),
-          300
-        );
+        setTimeout(() => evt.dragged.classList.remove("shake", "shake-color"), 300);
         return false;
       }
       return true;
@@ -329,145 +301,34 @@ onMounted(() => {
       const maxIndex = sheets.value.length - 1;
       const oldIndex = evt.oldIndex;
       let newIndex = evt.newIndex;
-
-      // Mantener "+ Agregar" al final
       if (newIndex >= maxIndex) {
         evt.from.insertBefore(evt.item, evt.from.children[oldIndex]);
         return;
       }
       if (oldIndex === newIndex) return;
-
       emit("reorder", { oldIndex, newIndex });
     }
   });
 });
 
-const handleTabClick = (id) => {
-  emit("update:active", id);
-};
+const handleTabClick = (id) => emit("update:active", id);
 </script>
 
 <style scoped>
-/* Tabs de planillas */
-.tabs-wrapper {
-  display: flex;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  overflow-y: hidden;
-  white-space: nowrap;
-  gap: 0.25rem;
-  border-bottom: 2px solid #dbdbdb;
-}
-
-.tab-item {
-  padding: 0.35rem 0.75rem;
-  font-size: 0.85rem;
-  border-radius: 4px 4px 0 0;
-  cursor: pointer;
-  background-color: #f5f5f5;
-  color: #4a4a4a;
-  user-select: none;
-  border: 1px solid #dbdbdb;
-  transition: background-color 0.3s ease, color 0.3s ease;
-}
-
-.tab-item.active {
-  background-color: #8e00d2;
-  color: white;
-}
-
-.tab-agregar {
-  cursor: pointer !important;
-  background-color: #494949;
-  color: white;
-}
-
-/* Tabs internas de opciones */
-.tabs-opciones ul li.is-disabled {
-  pointer-events: none;
-  opacity: 0.4;
-}
-
-/* Shake */
-@keyframes shake {
-
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-
-  20%,
-  60% {
-    transform: translateX(-3px);
-  }
-
-  40%,
-  80% {
-    transform: translateX(3px);
-  }
-}
-
-.shake {
-  animation: shake 0.3s;
-}
-
-.tabs-wrapper .tab-item.shake-color {
-  background-color: red;
-  color: white;
-}
-
-/* Tabs internas de hojas */
-.sheet-tab {
-  padding: 0.25rem 0.75rem;
-  font-size: 0.85rem;
-  background-color: transparent;
-  border: 1px solid transparent;
-  border-bottom: none;
-  border-radius: 4px 4px 0 0;
-  margin-right: 2px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.sheet-tabs {
-  display: flex;
-  height: 34px;
-  align-items: center;
-  border-bottom: 1px solid #dbdbdb;
-  background-color: #f5f5f5;
-  padding-left: 0.25rem;
-  border-radius: 0 0 4px 4px;
-}
-
-.sheet-tab.active {
-  background-color: white;
-  border-color: #dbdbdb #dbdbdb white;
-}
-
-.sheet-tab:hover:not(.active) {
-  background-color: #e8e8e8;
-}
-
-/* Transiciones */
-.fade-slide-enter-active,
-.fade-slide-leave-active {
-  transition: all 0.4s cubic-bezier(0.55, 0, 0.1, 1);
-}
-
-.fade-slide-enter-from,
-.fade-slide-leave-to {
-  opacity: 0;
-  transform: translateY(-10px);
-}
-
-.tag-list-enter-active,
-.tag-list-leave-active {
-  transition: all 0.3s ease;
-}
-
-.tag-list-enter-from,
-.tag-list-leave-to {
-  opacity: 0;
-  transform: scale(0.8);
-}
+.tabs-wrapper { display:flex; flex-wrap:nowrap; overflow-x:auto; gap:0.25rem; border-bottom:2px solid #dbdbdb; }
+.tab-item { padding:0.35rem 0.75rem; font-size:0.85rem; border-radius:4px 4px 0 0; cursor:pointer; background:#f5f5f5; color:#4a4a4a; user-select:none; border:1px solid #dbdbdb; transition:background-color .3s,color .3s; }
+.tab-item.active { background-color:#8e00d2; color:white; }
+.tab-agregar { cursor:pointer !important; background-color:#494949; color:white; }
+.tabs-opciones ul li.is-disabled { pointer-events:none; opacity:.4; }
+@keyframes shake { 0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-3px)}40%,80%{transform:translateX(3px)} }
+.shake { animation: shake .3s; }
+.tabs-wrapper .tab-item.shake-color { background-color:red; color:white; }
+.sheet-tab { padding:.25rem .75rem; font-size:.85rem; background:transparent; border:1px solid transparent; border-bottom:none; border-radius:4px 4px 0 0; margin-right:2px; cursor:pointer; transition:all .2s; }
+.sheet-tabs { display:flex; height:34px; align-items:center; border-bottom:1px solid #dbdbdb; background:#f5f5f5; padding-left:.25rem; border-radius:0 0 4px 4px; }
+.sheet-tab.active { background:white; border-color:#dbdbdb #dbdbdb white; }
+.sheet-tab:hover:not(.active) { background:#e8e8e8; }
+.fade-slide-enter-active, .fade-slide-leave-active { transition: all .4s cubic-bezier(.55,0,.1,1); }
+.fade-slide-enter-from, .fade-slide-leave-to { opacity:0; transform: translateY(-10px); }
+.tag-list-enter-active, .tag-list-leave-active { transition: all .3s ease; }
+.tag-list-enter-from, .tag-list-leave-to { opacity:0; transform: scale(.8); }
 </style>

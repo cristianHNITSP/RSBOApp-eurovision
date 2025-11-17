@@ -1,4 +1,4 @@
-import api from './axios'
+import api from '../api/axios'
 
 export const login = async ({ username, password }) => {
   try {
@@ -9,11 +9,11 @@ export const login = async ({ username, password }) => {
         password
       },
       {
-        withCredentials: true // 👈 importantísimo para enviar/recibir cookies
+        withCredentials: true //IMPORTANTE para enviar/recibir cookies
       }
     )
 
-    // ⚠️ Ya NO guardamos token en localStorage
+    // NO SE guarda token en localStorage
     // La cookie se guarda automáticamente en el navegador
     return res.data
   } catch (err) {

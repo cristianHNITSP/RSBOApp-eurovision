@@ -58,7 +58,7 @@ const columns = computed(() => [
     children: [
       {
         field: "base",
-        headerName: "Base (°)",
+        headerName: "Base ()",
         pinned: "left",
         width: 110,
         editable: false,

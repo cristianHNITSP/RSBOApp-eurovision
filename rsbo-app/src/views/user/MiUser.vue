@@ -50,90 +50,138 @@
       <!-- Columna izquierda: Avatar, estadísticas y seguridad -->
       <div class="column is-4">
         <div class="box position-relative">
+          <!-- Info básica -->
           <div class="section-info has-text-centered">
-            <figure class="image is-128x128 is-inline-block mb-3 avatar-frame" @click="editMode && (avatarModal = true)" :class="{ 'is-disabled': !editMode }">
-              <img :src="formData.avatar || avatarUrl" alt="Avatar" class="is-rounded" />
-            </figure>
+            <!-- Componente de avatar -->
+            <AvatarPicker
+              v-model="formData.avatar"
+              :edit-mode="isEditingProfile"
+              :placeholder="avatarUrl"
+            />
+
             <div class="tags is-centered mb-3">
               <span class="tag is-light">Estado</span>
-              <span class="tag is-success">{{ props.user?.isActive ? 'Activo' : 'Inactivo' }}</span>
+              <span class="tag" :class="props.user?.isActive ? 'is-success' : 'is-danger'">
+                {{ props.user?.isActive ? 'Activo' : 'Inactivo' }}
+              </span>
             </div>
-            <h2 class="title is-4">{{ props.user?.name || 'Error al cargar usuario.' }}</h2>
-            <p class="subtitle is-6 has-text-grey mt-1">{{ props.user?.email || 'Error al cargar el correo.' }}</p>
-            <b-tag type="is-primary" size="is-medium" rounded>
-              {{ props.user?.role?.name || 'Error al encontrar el rol.' }}
-            </b-tag>
+
+            <h2 class="title is-4 mb-1">
+              {{ props.user?.name || 'Error al cargar usuario.' }}
+            </h2>
+
+            <p class="subtitle is-6 has-text-grey mt-1">
+              {{ props.user?.email || 'Error al cargar el correo.' }}
+            </p>
+
+            <div class="mt-2">
+              <b-tag type="is-primary" size="is-medium" rounded>
+                {{ props.user?.role?.name || 'Error al encontrar el rol.' }}
+              </b-tag>
+            </div>
           </div>
-          <div class="columns is-mobile is-centered is-multiline user-stats mt-3">
+
+          <!-- Estadísticas -->
+          <div class="columns is-mobile is-centered is-multiline user-stats mt-4">
             <div class="column has-text-centered">
-              <p class="has-text-weight-bold has-text-primary">{{ formatDate(props.user?.createdAt) }}</p>
+              <p class="has-text-weight-bold has-text-primary">
+                {{ formatDate(props.user?.createdAt) }}
+              </p>
               <p class="is-size-7 has-text-grey">Miembro desde</p>
             </div>
             <div class="column has-text-centered">
-              <p class="has-text-weight-bold has-text-primary">{{ timeSince(props.user?.lastLogin) }}</p>
+              <p class="has-text-weight-bold has-text-primary">
+                {{ timeSince(props.user?.lastLogin) }}
+              </p>
               <p class="is-size-7 has-text-grey">Último acceso</p>
             </div>
           </div>
 
-          <div class="section-seguridad">
-            <p class="has-text-weight-semibold mb-2">
-              <span class="icon mr-1"><i class="fas fa-shield-alt"></i></span>
-              Seguridad
+          <!-- Seguridad (cambiar contraseña) -->
+          <div class="section-seguridad mt-4">
+            <div class="is-flex is-justify-content-space-between is-align-items-center mb-2">
+              <p class="has-text-weight-semibold mb-0">
+                <span class="icon mr-1"><i class="fas fa-shield-alt"></i></span>
+                Seguridad
+              </p>
+
+              <b-button
+                size="is-small"
+                type="is-text"
+                @click="togglePasswordEdit"
+                :disabled="loadingPassword || props.loading"
+                class="is-size-7 has-text-weight-semibold"
+              >
+                <span class="icon is-small mr-1">
+                  <i :class="isEditingPassword ? 'fas fa-times' : 'fas fa-lock-open'"></i>
+                </span>
+                <span>{{ isEditingPassword ? 'Cancelar' : 'Cambiar contraseña' }}</span>
+              </b-button>
+            </div>
+
+            <p class="is-size-7 has-text-grey mb-3">
+              Mantén tu cuenta segura utilizando una contraseña única y difícil de adivinar.
             </p>
-            
+
             <!-- Mensajes de error para contraseña -->
             <transition name="slide-fade">
-              <b-message 
-                v-if="passwordMessage" 
+              <b-message
+                v-if="passwordMessage"
                 :type="passwordSuccess ? 'is-success' : 'is-danger'"
                 :icon="passwordSuccess ? 'check-circle' : 'exclamation-circle'"
                 class="mb-3"
                 :closable="true"
                 @close="passwordMessage = ''"
-                :has-animation="true">
+                :has-animation="true"
+              >
                 {{ passwordMessage }}
               </b-message>
             </transition>
 
-            <b-field 
-              label="Nueva contraseña" 
+            <b-field
+              label="Nueva contraseña"
               :type="passwordErrors.password ? 'is-danger' : ''"
-              :message="passwordErrors.password">
-              <b-input 
-                type="password" 
-                placeholder="Nueva contraseña" 
-                v-model="formData.password" 
-                :disabled="!editMode || loadingPassword || props.loading"
+              :message="passwordErrors.password"
+            >
+              <b-input
+                type="password"
+                placeholder="Nueva contraseña"
+                v-model="formData.password"
+                :disabled="!isEditingPassword || loadingPassword || props.loading"
                 :loading="loadingPassword"
                 icon="lock"
-                @input="clearPasswordError('password')">
-              </b-input>
+                password-reveal
+                @input="clearPasswordError('password')"
+              />
             </b-field>
-            
-            <b-field 
-              label="Confirmar contraseña" 
+
+            <b-field
+              label="Confirmar contraseña"
               :type="passwordErrors.confirmPassword ? 'is-danger' : ''"
-              :message="passwordErrors.confirmPassword">
-              <b-input 
-                type="password" 
-                placeholder="Confirmar contraseña" 
-                v-model="formData.confirmPassword" 
-                :disabled="!editMode || loadingPassword || props.loading"
+              :message="passwordErrors.confirmPassword"
+            >
+              <b-input
+                type="password"
+                placeholder="Confirmar contraseña"
+                v-model="formData.confirmPassword"
+                :disabled="!isEditingPassword || loadingPassword || props.loading"
                 :loading="loadingPassword"
                 icon="lock"
-                @input="clearPasswordError('confirmPassword')">
-              </b-input>
+                password-reveal
+                @input="clearPasswordError('confirmPassword')"
+              />
             </b-field>
-            
+
             <div class="field is-grouped mt-3">
               <div class="control">
-                <b-button 
-                  type="is-primary" 
-                  icon-left="check" 
-                  @click="updatePassword" 
-                  :loading="loadingPassword" 
-                  :disabled="!editMode || loadingPassword || props.loading"
-                  :class="{ 'pulse-animation': loadingPassword }">
+                <b-button
+                  type="is-primary"
+                  icon-left="check"
+                  @click="updatePassword"
+                  :loading="loadingPassword"
+                  :disabled="!isEditingPassword || loadingPassword || props.loading"
+                  :class="{ 'pulse-animation': loadingPassword }"
+                >
                   Actualizar contraseña
                 </b-button>
               </div>
@@ -145,11 +193,22 @@
       <!-- Columna derecha: Perfil -->
       <div class="column is-8">
         <div class="box position-relative">
+          <!-- Iconos de edición perfil -->
           <div class="box-icons">
-            <span v-if="!editMode" class="icon is-clickable" @click="editMode = true">
+            <span
+              v-if="!isEditingProfile"
+              class="icon is-clickable"
+              title="Editar perfil"
+              @click="startProfileEdit"
+            >
               <i class="fas fa-pencil-alt"></i>
             </span>
-            <span v-else class="icon is-clickable" @click="cancelEdit()">
+            <span
+              v-else
+              class="icon is-clickable"
+              title="Cancelar cambios"
+              @click="cancelEdit"
+            >
               <i class="fas fa-times"></i>
             </span>
           </div>
@@ -161,162 +220,143 @@
 
           <!-- Mensajes de error para perfil -->
           <transition name="slide-fade">
-            <b-message 
-              v-if="profileMessage" 
+            <b-message
+              v-if="profileMessage"
               :type="profileSuccess ? 'is-success' : 'is-danger'"
               :icon="profileSuccess ? 'check-circle' : 'exclamation-circle'"
               class="mb-3"
               :closable="true"
               @close="profileMessage = ''"
-              :has-animation="true">
+              :has-animation="true"
+            >
               {{ profileMessage }}
             </b-message>
           </transition>
 
-          <b-field 
-            label="Nombre completo" 
+          <b-field
+            label="Nombre completo"
             :type="profileErrors.name ? 'is-danger' : ''"
-            :message="profileErrors.name">
-            <b-input 
-              placeholder="Tu nombre" 
-              v-model="formData.name" 
-              :disabled="!editMode || loadingProfile || props.loading" 
+            :message="profileErrors.name"
+          >
+            <b-input
+              placeholder="Tu nombre"
+              v-model="formData.name"
+              :disabled="!isEditingProfile || loadingProfile || props.loading"
               expanded
               icon="user"
-              @input="clearProfileError('name')">
-            </b-input>
-          </b-field>
-          
-          <b-field 
-            label="Correo electrónico" 
-            :type="profileErrors.email ? 'is-danger' : ''"
-            :message="profileErrors.email">
-            <b-input 
-              type="email" 
-              placeholder="Tu correo" 
-              v-model="formData.email" 
-              :disabled="!editMode || loadingProfile || props.loading" 
-              expanded
-              icon="envelope"
-              @input="clearProfileError('email')">
-            </b-input>
-          </b-field>
-          
-          <b-field 
-            label="Teléfono" 
-            :type="profileErrors.phone ? 'is-danger' : ''"
-            :message="profileErrors.phone">
-            <b-input 
-              placeholder="Tu teléfono" 
-              v-model="formData.phone" 
-              :disabled="!editMode || loadingProfile || props.loading" 
-              expanded
-              icon="phone"
-              @input="clearProfileError('phone')">
-            </b-input>
-          </b-field>
-          
-          <b-field :type="profileErrors.role ? 'is-danger' : ''" :message="profileErrors.role">
-            <b-select 
-              v-model="formData.role" 
-              placeholder="Selecciona un rol" 
-              :disabled="!editMode || loadingProfile || props.loading" 
-              expanded
-              icon="user-tag"
-              @input="clearProfileError('role')">
-              <option v-for="role in roles" :key="role._id" :value="role._id">{{ role.name }}</option>
-            </b-select>
-          </b-field>
-          
-          <b-field 
-            label="Biografía" 
-            :type="profileErrors.bio ? 'is-danger' : ''"
-            :message="profileErrors.bio">
-            <b-input 
-              type="textarea" 
-              placeholder="Cuéntanos sobre ti..." 
-              v-model="formData.bio" 
-              maxlength="500" 
-              show-counter 
-              :disabled="!editMode || loadingProfile || props.loading"
-              icon="file-alt"
-              @input="clearProfileError('bio')">
-            </b-input>
+              @input="clearProfileError('name')"
+            />
           </b-field>
 
-          <b-button 
-            type="is-primary" 
-            icon-left="check" 
-            @click="updateProfile" 
-            :loading="loadingProfile" 
-            :disabled="!editMode || loadingProfile || props.loading"
-            :class="{ 'pulse-animation': loadingProfile }">
-            Guardar perfil
-          </b-button>
+          <b-field
+            label="Correo electrónico"
+            :type="profileErrors.email ? 'is-danger' : ''"
+            :message="profileErrors.email"
+          >
+            <b-input
+              type="email"
+              placeholder="Tu correo"
+              v-model="formData.email"
+              :disabled="!isEditingProfile || loadingProfile || props.loading"
+              expanded
+              icon="envelope"
+              @input="clearProfileError('email')"
+            />
+          </b-field>
+
+          <b-field
+            label="Teléfono"
+            :type="profileErrors.phone ? 'is-danger' : ''"
+            :message="profileErrors.phone"
+          >
+            <b-input
+              placeholder="Tu teléfono"
+              v-model="formData.phone"
+              :disabled="!isEditingProfile || loadingProfile || props.loading"
+              expanded
+              icon="phone"
+              @input="clearProfileError('phone')"
+            />
+          </b-field>
+
+          <!-- Rol solo lectura -->
+          <b-field label="Rol asignado">
+            <b-input
+              :value="props.user?.role?.name || 'Sin rol asignado'"
+              icon="user-tag"
+              disabled
+            />
+          </b-field>
+
+          <!-- Biografía textarea ajustada -->
+          <b-field
+            label="Biografía"
+            :type="profileErrors.bio ? 'is-danger' : ''"
+            :message="profileErrors.bio"
+          >
+            <b-input
+              type="textarea"
+              placeholder="Cuéntanos sobre ti..."
+              v-model="formData.bio"
+              maxlength="500"
+              show-counter
+              rows="5"
+              custom-class="textarea-bio"
+              :disabled="!isEditingProfile || loadingProfile || props.loading"
+              @input="clearProfileError('bio')"
+            />
+          </b-field>
+
+          <div class="mt-3">
+            <b-button
+              type="is-primary"
+              icon-left="check"
+              @click="updateProfile"
+              :loading="loadingProfile"
+              :disabled="!isEditingProfile || loadingProfile || props.loading"
+              :class="{ 'pulse-animation': loadingProfile }"
+            >
+              Guardar perfil
+            </b-button>
+          </div>
         </div>
       </div>
     </div>
-
-    <!-- Modal Avatar -->
-    <b-modal v-model="avatarModal" :width="640" :can-cancel="['escape', 'outside']" :on-cancel="closeAvatarModal">
-      <div class="modal-card">
-        <header class="modal-card-head">
-          <p class="modal-card-title">Selecciona un avatar</p>
-          <button class="delete" aria-label="close" @click="closeAvatarModal"></button>
-        </header>
-        <section class="modal-card-body">
-          <b-tabs v-model="activeAvatarTab" animated>
-            <b-tab-item v-for="(category, name) in avatarCategories" :key="name" :label="name">
-              <div class="columns is-multiline is-mobile avatar-grid">
-                <div class="column is-3" v-for="(img, index) in category" :key="index">
-                  <figure class="image is-64x64 avatar-option-container" @click="editMode && selectAvatar(img)">
-                    <img :src="img" class="avatar-option" :class="{ 'is-selected': img === currentAvatar }" />
-                    <div v-if="img === currentAvatar" class="avatar-selected-overlay">
-                      <span class="icon has-text-white"><i class="fas fa-check"></i></span>
-                    </div>
-                  </figure>
-                </div>
-              </div>
-            </b-tab-item>
-          </b-tabs>
-        </section>
-        <footer class="modal-card-foot">
-          <b-button @click="closeAvatarModal">Cerrar</b-button>
-          <b-button type="is-primary" @click="confirmAvatarSelection">Seleccionar</b-button>
-        </footer>
-      </div>
-    </b-modal>
 
   </section>
 </template>
 
 <script setup>
-import { ref, reactive, watch, onMounted } from 'vue'
-import { userService, utils, avatarCategories } from '../../services/myUserCRUD'
+import { ref, reactive, watch, onMounted, computed } from 'vue'
+import { userService, utils } from '../../services/myUserCRUD'
+import AvatarPicker from '../../components/AvatarPicker.vue' // ajusta la ruta según tu estructura
 
 // Constantes y configuración
 const avatarUrl = 'https://cdn.jsdelivr.net/gh/alohe/avatars/png/vibrent_1.png'
 
 // Props
-const props = defineProps({ user: Object, loading: Boolean })
+const props = defineProps({
+  user: { type: Object, default: null },
+  loading: { type: Boolean, default: false }
+})
+
+// ID del usuario (soporta _id o id)
+const userId = computed(() => props.user?._id || props.user?.id || '')
 
 // Estado de UI
-const avatarModal = ref(false)
-const activeAvatarTab = ref(0)
-const currentAvatar = ref('')
-const editMode = ref(false)
+const isEditingProfile = ref(false)
+const isEditingPassword = ref(false)
+
 const loadingProfile = ref(false)
 const loadingPassword = ref(false)
 
 // Datos y estado
-const roles = ref([])
 const formData = reactive({
   name: '',
   email: '',
   phone: '',
   avatar: '',
   bio: '',
-  role: '',
   password: '',
   confirmPassword: ''
 })
@@ -331,8 +371,7 @@ const profileErrors = reactive({
   name: '',
   email: '',
   phone: '',
-  bio: '',
-  role: ''
+  bio: ''
 })
 
 const passwordErrors = reactive({
@@ -345,43 +384,55 @@ const originalData = reactive({})
 
 // Lifecycle
 onMounted(async () => {
-  await loadRoles()
+  // Si después quieres cargar algo extra (roles globales u otra info), aquí
 })
 
 // Watchers
-watch(() => props.user, (newUser) => {
-  if (newUser) {
-    initializeFormData(newUser)
-  }
-}, { immediate: true })
+watch(
+  () => props.user,
+  (newUser) => {
+    if (newUser) {
+      initializeFormData(newUser)
+    }
+  },
+  { immediate: true }
+)
 
-// Métodos de UI
-function selectAvatar(img) {
-  currentAvatar.value = img
-}
-
-function confirmAvatarSelection() {
-  formData.avatar = currentAvatar.value
-  avatarModal.value = false
-}
-
-function closeAvatarModal() {
-  currentAvatar.value = formData.avatar
-  avatarModal.value = false
+// ----- Métodos de UI -----
+function startProfileEdit() {
+  isEditingProfile.value = true
+  profileMessage.value = ''
 }
 
 function cancelEdit() {
   Object.assign(formData, originalData)
-  currentAvatar.value = formData.avatar
-  editMode.value = false
+  isEditingProfile.value = false
   profileMessage.value = ''
-  passwordMessage.value = ''
-  clearAllErrors()
+  profileSuccess.value = true
+  clearProfileErrors()
 }
 
-function clearAllErrors() {
-  Object.keys(profileErrors).forEach(key => profileErrors[key] = '')
-  Object.keys(passwordErrors).forEach(key => passwordErrors[key] = '')
+function togglePasswordEdit() {
+  if (isEditingPassword.value) {
+    // Cancelar edición de contraseña
+    formData.password = ''
+    formData.confirmPassword = ''
+    clearPasswordErrors()
+    passwordMessage.value = ''
+    passwordSuccess.value = true
+    isEditingPassword.value = false
+  } else {
+    isEditingPassword.value = true
+    passwordMessage.value = ''
+  }
+}
+
+function clearProfileErrors() {
+  Object.keys(profileErrors).forEach((key) => (profileErrors[key] = ''))
+}
+
+function clearPasswordErrors() {
+  Object.keys(passwordErrors).forEach((key) => (passwordErrors[key] = ''))
 }
 
 function clearProfileError(field) {
@@ -398,10 +449,10 @@ function clearPasswordError(field) {
   }
 }
 
-// Validaciones
+// ----- Validaciones -----
 function validateProfile() {
   let isValid = true
-  clearAllErrors()
+  clearProfileErrors()
 
   if (!formData.name.trim()) {
     profileErrors.name = 'El nombre completo es requerido'
@@ -416,17 +467,12 @@ function validateProfile() {
     isValid = false
   }
 
-  if (!formData.role) {
-    profileErrors.role = 'Debe seleccionar un rol'
-    isValid = false
-  }
-
   return isValid
 }
 
 function validatePassword() {
   let isValid = true
-  clearAllErrors()
+  clearPasswordErrors()
 
   if (!formData.password) {
     passwordErrors.password = 'La nueva contraseña es requerida'
@@ -447,56 +493,68 @@ function validatePassword() {
   return isValid
 }
 
-// Métodos que utilizan el servicio
-async function loadRoles() {
-  try {
-    roles.value = await userService.getRoles()
-  } catch (error) {
-    console.error('Error loading roles:', error)
-  }
-}
-
+// ----- Métodos que utilizan el servicio -----
 async function updateProfile() {
   if (!validateProfile()) return
+  if (!userId.value) {
+    profileMessage.value = 'No se pudo identificar al usuario para actualizar.'
+    profileSuccess.value = false
+    return
+  }
 
   loadingProfile.value = true
-  
-  const result = await userService.updateProfile(props.user.id, formData)
-  
+
+  const payload = {
+    name: formData.name,
+    email: formData.email,
+    phone: formData.phone,
+    avatar: formData.avatar,
+    bio: formData.bio
+  }
+
+  const result = await userService.updateProfile(userId.value, payload)
+
   if (result.success) {
     profileMessage.value = 'Perfil actualizado correctamente'
     profileSuccess.value = true
-    editMode.value = false
-    Object.assign(originalData, formData)
+    isEditingProfile.value = false
+    Object.assign(originalData, payload)
   } else {
-    profileMessage.value = result.message
+    profileMessage.value = result.message || 'Ocurrió un error al actualizar el perfil'
     profileSuccess.value = false
   }
-  
+
   loadingProfile.value = false
 }
 
 async function updatePassword() {
   if (!validatePassword()) return
+  if (!userId.value) {
+    passwordMessage.value = 'No se pudo identificar al usuario para actualizar la contraseña.'
+    passwordSuccess.value = false
+    return
+  }
 
   loadingPassword.value = true
-  
-  const result = await userService.updatePassword(props.user.id, formData.password)
-  
+
+  const result = await userService.updatePassword(userId.value, formData.password)
+
   if (result.success) {
     passwordMessage.value = 'Contraseña actualizada correctamente'
     passwordSuccess.value = true
     formData.password = ''
     formData.confirmPassword = ''
+    clearPasswordErrors()
+    isEditingPassword.value = false
   } else {
-    passwordMessage.value = result.message
+    passwordMessage.value = result.message || 'Ocurrió un error al actualizar la contraseña'
     passwordSuccess.value = false
   }
-  
+
   loadingPassword.value = false
 }
 
-// Métodos auxiliares
+// ----- Métodos auxiliares -----
 function initializeFormData(user) {
   Object.assign(formData, {
     name: user.name || '',
@@ -504,78 +562,30 @@ function initializeFormData(user) {
     phone: user.phone || '',
     bio: user.bio || '',
     avatar: user.avatar || avatarUrl,
-    role: user.role?.id || ''
+    password: '',
+    confirmPassword: ''
   })
-  Object.assign(originalData, formData)
-  currentAvatar.value = user.avatar || avatarUrl
+
+  Object.assign(originalData, {
+    name: formData.name,
+    email: formData.email,
+    phone: formData.phone,
+    bio: formData.bio,
+    avatar: formData.avatar
+  })
 }
 
-// Exportar utilidades para usar en el template si es necesario
+// Exportar utilidades para usar en el template
 const { formatDate, timeSince } = utils
 </script>
 
 <style scoped>
-
-
 .section-miuser {
   border-radius: 12px;
   padding: 1.5rem;
   background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
   border-bottom: 1px solid #ccc;
-}
-
-.avatar-option-container {
-  cursor: pointer;
-  transition: transform 0.2s ease;
-  position: relative;
-}
-
-.avatar-option-container:hover {
-  transform: scale(1.05);
-}
-
-.avatar-selected-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(50, 115, 220, 0.5);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.2s ease;
-}
-
-.avatar-frame img {
-  cursor: pointer;
-  transition: transform 0.2s ease;
-}
-
-.avatar-frame img:hover {
-  transform: scale(1.03);
-}
-
-.avatar-option {
-  border-radius: 50%;
-  width: 64px;
-  height: 64px;
-  transition: transform 0.2s;
-}
-
-.avatar-option:hover {
-  transform: scale(1.05);
-}
-
-.avatar-option.is-selected {
-  border: 2px solid #3273dc;
-}
-
-.is-disabled {
-  pointer-events: none;
-  opacity: 0.5;
 }
 
 .position-relative {
@@ -600,6 +610,12 @@ const { formatDate, timeSince } = utils
 .box-icons .icon:hover {
   transform: scale(1.1);
   color: #2765c7;
+}
+
+/* Sección seguridad */
+.section-seguridad {
+  border-top: 1px dashed #dcdcdc;
+  padding-top: 1.25rem;
 }
 
 /* Animaciones */
@@ -633,12 +649,7 @@ const { formatDate, timeSince } = utils
   }
 }
 
-/* Transiciones para los campos */
-.b-field {
-  transition: all 0.3s ease;
-}
-
-/* Mejoras visuales para mensajes de error */
+/* Mensajes */
 :deep(.message.is-danger) {
   border-left: 4px solid #ff3860;
   animation: shake 0.5s ease-in-out;
@@ -650,9 +661,16 @@ const { formatDate, timeSince } = utils
 }
 
 @keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-5px); }
-  75% { transform: translateX(5px); }
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
 }
 
 @keyframes slideIn {
@@ -666,12 +684,7 @@ const { formatDate, timeSince } = utils
   }
 }
 
-/* Transición suave para toda la sección */
-.section-miuser > div {
-  transition: opacity 0.3s ease;
-}
-
-/* Estilos para iconos en campos */
+/* Íconos dentro de fields */
 :deep(.b-field .field .control .icon) {
   color: #3273dc;
   transition: color 0.3s ease;
@@ -689,12 +702,10 @@ const { formatDate, timeSince } = utils
   color: #ff3860;
 }
 
-:deep(.b-select select) {
-  padding-left: 2.5em;
-}
-
-:deep(.b-select .icon) {
-  left: 0;
-  pointer-events: none;
+/* Textarea biografía */
+:deep(textarea.textarea-bio) {
+  min-height: 160px;
+  padding-top: 0.75rem;
+  resize: vertical;
 }
 </style>

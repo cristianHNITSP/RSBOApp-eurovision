@@ -12,7 +12,7 @@
 </template>
 
 <script setup>
-import notfoundlog from '@/assets/img/huohuo.jpg'
+import notfoundlog from '@/assets/img/huohuo.png'
 </script>
 
 <script>

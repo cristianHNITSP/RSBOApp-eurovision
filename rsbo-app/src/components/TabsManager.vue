@@ -134,59 +134,43 @@
 <script setup>
 import { ref, onMounted, computed, watch, nextTick } from "vue";
 import Sortable from "sortablejs";
+import { createSheet } from "@/services/inventory";
 
 const props = defineProps({
   initialSheets: { type: Array, required: true },
   activeId: { type: String, required: true },
-  configuracion: { type: Object, required: true }
+  configuracion: { type: Object, required: true },
+  /** Actor opcional: { id, name }. Si no viene, intenta leer de window.__currentUser */
+  actor: { type: Object, default: null }
 });
 
 const emit = defineEmits(["update:active", "reorder", "crear", "update:internal"]);
 
-const sheets = computed(() => props.initialSheets);
+/** Copia local */
+const sheets = ref([...props.initialSheets]);
+watch(() => props.initialSheets, v => (sheets.value = [...v]), { deep: true });
 
-// ===============================
-// 🔹 Planilla activa
-// ===============================
-const activeSheetObj = computed(() => sheets.value.find((s) => s.id === props.activeId));
+/** activo */
+const activeId = computed(() => props.activeId);
+const activeSheetObj = computed(() => sheets.value.find(s => s.id === activeId.value));
 
-// ===============================
-// 🔸 Pestañas internas dinámicas
-// ===============================
+/** pestañas internas */
 const activeInternalTab = ref(null);
-
 const internalTabs = computed(() => {
-  const tipo = activeSheetObj.value?.tipo_matriz;
-  if (!tipo) return [];
-  if (tipo === "SPH_ADD" || tipo === "SPH_CYL") {
-    return [
-      { id: "sph-neg", label: "SPH (-)" },
-      { id: "sph-pos", label: "SPH (+)" }
-    ];
-  }
-  if (tipo === "BASE") return [];
-  if (tipo === "BASE_ADD") return [{ id: "base-add", label: "BASE / ADD +" }];
+  const t = activeSheetObj.value?.tipo_matriz;
+  if (!t) return [];
+  if (t === "SPH_ADD" || t === "SPH_CYL") return [{ id: "sph-neg", label: "SPH (-)" }, { id: "sph-pos", label: "SPH (+)" }];
+  if (t === "BASE_ADD") return [{ id: "base-add", label: "BASE / ADD +" }];
   return [];
 });
+watch(internalTabs, (tabs) => {
+  const first = tabs[0]?.id || null;
+  activeInternalTab.value = first;
+  emit("update:internal", first);
+}, { immediate: true });
+const handleInternalTabClick = (id) => { activeInternalTab.value = id; emit("update:internal", id); };
 
-watch(
-  internalTabs,
-  (tabs) => {
-    const first = tabs[0]?.id || null;
-    activeInternalTab.value = first;
-    emit("update:internal", first);
-  },
-  { immediate: true }
-);
-
-const handleInternalTabClick = (id) => {
-  activeInternalTab.value = id;
-  emit("update:internal", id);
-};
-
-// ===============================
-// 🪄 Formulario
-// ===============================
+/** form */
 const selectedBase = ref(null);
 const selectedMaterial = ref(null);
 const selectedTratamientos = ref([]);
@@ -196,6 +180,7 @@ const creatingSheet = ref(false);
 const allMaterials = ["Polycarbonato", "CR-39", "1.56", "1.61", "1.74"];
 const allTratamientos = ["Antirreflejo", "Fotocromático", "Tinte Gris", "Blue Light", "Endurecido"];
 
+/** nombre autogenerado */
 watch([selectedBase, selectedMaterial, selectedTratamientos], () => {
   const baseCfg = selectedBase.value && props.configuracion.bases[selectedBase.value];
   const baseLabel = baseCfg ? baseCfg.label : "";
@@ -204,41 +189,17 @@ watch([selectedBase, selectedMaterial, selectedTratamientos], () => {
   newSheetName.value = [baseLabel, materialLabel, tratamientosLabel].filter(Boolean).join(" | ");
 });
 
-const selectBase = (base) => {
-  selectedBase.value = base;
-  selectedMaterial.value = null;
-  selectedTratamientos.value = [];
-};
+const selectBase = (base) => { selectedBase.value = base; selectedMaterial.value = null; selectedTratamientos.value = []; };
+const selectMaterial = (mat) => { if (!isMaterialAllowed(mat)) return; selectedMaterial.value = mat; selectedTratamientos.value = []; };
+const isMaterialAllowed = (mat) => { if (!selectedBase.value) return false; const b = props.configuracion.bases[selectedBase.value]; return b && b.materiales.includes(mat); };
+const isTratamientoAllowed = (trat) => { if (!selectedBase.value) return false; const b = props.configuracion.bases[selectedBase.value]; return b && b.tratamientos.includes(trat); };
+const removeTratamiento = (i) => selectedTratamientos.value.splice(i, 1);
 
-const selectMaterial = (mat) => {
-  if (!isMaterialAllowed(mat)) return;
-  selectedMaterial.value = mat;
-  selectedTratamientos.value = [];
-};
-
-const isMaterialAllowed = (mat) => {
-  if (!selectedBase.value) return false;
-  const baseCfg = props.configuracion.bases[selectedBase.value];
-  return baseCfg && baseCfg.materiales.includes(mat);
-};
-
-const isTratamientoAllowed = (trat) => {
-  if (!selectedBase.value) return false;
-  const baseCfg = props.configuracion.bases[selectedBase.value];
-  return baseCfg && baseCfg.tratamientos.includes(trat);
-};
-
-const removeTratamiento = (index) => selectedTratamientos.value.splice(index, 1);
-
-const canCreate = computed(
-  () =>
-    !!selectedBase.value &&
-    !!selectedMaterial.value &&
-    selectedTratamientos.value.length > 0 &&
-    !!newSheetName.value
+const canCreate = computed(() =>
+  !!selectedBase.value && !!selectedMaterial.value && selectedTratamientos.value.length > 0 && !!newSheetName.value
 );
 
-// 🔁 map base -> tipo_matriz
+/** map baseKey -> tipo_matriz */
 const mapBaseToTipoMatriz = (baseKey) => {
   const cfg = props.configuracion.bases[baseKey];
   if (cfg?.tipo_matriz) return cfg.tipo_matriz;
@@ -250,34 +211,72 @@ const mapBaseToTipoMatriz = (baseKey) => {
   return "SPH_CYL";
 };
 
+/** actor final */
+const actorRef = computed(() => {
+  const src = props.actor || (typeof window !== "undefined" ? window.__currentUser : null) || null;
+  return src && (src.id || src.userId) ? { userId: src.id || src.userId, name: src.name } : null;
+});
+
+/** crear planilla (autogenerado SIEMPRE) */
 const handleCrear = async () => {
   if (!canCreate.value) return;
   creatingSheet.value = true;
   await nextTick();
-  const baseCfg = props.configuracion.bases[selectedBase.value];
-  const tipo_matriz = mapBaseToTipoMatriz(selectedBase.value);
 
-  const payload = {
-    nombre: newSheetName.value,
-    baseKey: selectedBase.value,
-    base: baseCfg?.label || selectedBase.value,
-    material: selectedMaterial.value,
-    tratamientos: [...selectedTratamientos.value],
-    tipo_matriz
-  };
+  try {
+    const baseCfg = props.configuracion.bases[selectedBase.value];
+    const tipo_matriz = mapBaseToTipoMatriz(selectedBase.value);
 
-  emit("crear", payload);
+    const payload = {
+      nombre: newSheetName.value,
+      baseKey: selectedBase.value,
+      base: baseCfg?.label || selectedBase.value,
+      material: selectedMaterial.value,
+      tratamientos: [...selectedTratamientos.value],
+      tipo_matriz,
+      // siempre autogenerado:
+      seed: true,
+      autoGenerate: true,
+      rangos: baseCfg?.rangos || undefined,
+      actor: actorRef.value || undefined
+    };
 
-  selectedBase.value = null;
-  selectedMaterial.value = null;
-  selectedTratamientos.value = [];
-  newSheetName.value = "";
-  creatingSheet.value = false;
+    const { data } = await createSheet(payload);
+    const s = data?.data?.sheet;
+    const tabs = data?.data?.tabs || [];
+    if (!s) throw new Error("Sin hoja en respuesta");
+
+    const newTab = {
+      id: String(s._id),
+      name: s.nombre,
+      tipo_matriz: s.tipo_matriz,
+      baseKey: s.baseKey,
+      material: s.material,
+      tratamientos: s.tratamientos || [],
+      tabs
+    };
+
+    const addIndex = sheets.value.findIndex(x => x.id === "nueva");
+    sheets.value.splice(addIndex >= 0 ? addIndex : sheets.value.length, 0, newTab);
+
+    emit("update:active", newTab.id);
+    emit("crear", { payload, result: s });
+
+    // reset form
+    selectedBase.value = null;
+    selectedMaterial.value = null;
+    selectedTratamientos.value = [];
+    newSheetName.value = "";
+  } catch (err) {
+    console.error("Error al crear planilla:", err);
+    // opcional: toast si tienes Buefy global
+    // this?.$buefy?.toast.open({ message: 'No se pudo crear la planilla', type: 'is-danger' });
+  } finally {
+    creatingSheet.value = false;
+  }
 };
 
-// ===============================
-// 🧲 Drag & drop pestañas
-// ===============================
+/** drag & drop */
 const tabsContainer = ref(null);
 onMounted(() => {
   if (!tabsContainer.value) return;
@@ -298,7 +297,7 @@ onMounted(() => {
       return true;
     },
     onEnd: (evt) => {
-      const maxIndex = sheets.value.length - 1;
+      const maxIndex = sheets.value.length - 1; // última es "nueva"
       const oldIndex = evt.oldIndex;
       let newIndex = evt.newIndex;
       if (newIndex >= maxIndex) {
@@ -306,6 +305,9 @@ onMounted(() => {
         return;
       }
       if (oldIndex === newIndex) return;
+
+      const moved = sheets.value.splice(oldIndex, 1)[0];
+      sheets.value.splice(newIndex, 0, moved);
       emit("reorder", { oldIndex, newIndex });
     }
   });

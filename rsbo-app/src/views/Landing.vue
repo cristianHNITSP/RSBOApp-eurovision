@@ -171,33 +171,87 @@ const credentials = reactive({ username: '', password: '' })
 const rememberUsername = ref(false)
 
 const { handleLogin } = useAuthService($buefy)
+
 const loginUser = () => {
   handleLogin(credentials, showLoginPanel)
-  if (rememberUsername.value) localStorage.setItem('savedUsername', credentials.username)
-  else localStorage.removeItem('savedUsername')
+  if (rememberUsername.value) {
+    localStorage.setItem('savedUsername', credentials.username)
+  } else {
+    localStorage.removeItem('savedUsername')
+  }
   credentials.password = ''
 }
 
-// Cargar usuario guardado + toast si sessionExpired=1
+// Mapa de razones de auth → configuración del toast
+const AUTH_REASON_TO_TOAST = {
+  'no-token': {
+    message: 'No has iniciado sesión. Por favor inicia sesión para continuar.',
+    type: 'is-warning',
+  },
+  'token-expired': {
+    message: 'Tu sesión expiró. Vuelve a iniciar sesión para continuar.',
+    type: 'is-warning',
+  },
+  'invalid-token': {
+    message: 'Sesión inválida. Por favor inicia sesión nuevamente.',
+    type: 'is-danger',
+  },
+}
+
+// Cargar usuario guardado + manejar authReason
 onMounted(() => {
+  // Restaurar usuario recordado
   const saved = localStorage.getItem('savedUsername')
   if (saved) {
     credentials.username = saved
     rememberUsername.value = true
   }
 
-  if (route.query.sessionExpired) {
-    $buefy.toast.open({
-      message: 'No has iniciado sesión o tu sesión expiró',
+  // Leer razón de autenticación de la query (?authReason=...)
+  const authReason = route.query.authReason
+
+  if (authReason) {
+    const fallbackToast = {
+      message: 'No has iniciado sesión o tu sesión no es válida.',
       type: 'is-danger',
-      duration: 3000
+    }
+
+    const toastConfig = AUTH_REASON_TO_TOAST[authReason] || fallbackToast
+
+    $buefy.toast.open({
+      message: toastConfig.message,
+      type: toastConfig.type,
+      duration: 4000,
     })
-    router.replace({ query: { ...route.query, sessionExpired: undefined } })
+
+    // Abrir automáticamente el modal de login si venimos de un redirect por auth
+    showLoginPanel.value = true
+
+    // Limpiar la query para que no se repita el toast al recargar
+    router.replace({
+      query: {
+        ...route.query,
+        authReason: undefined,
+      },
+    })
   }
 
+  // Evento global opcional para mostrar toast de sesión expirada
   const showToast = (event) => {
-    const message = event?.detail || 'No has iniciado sesión o tu sesión expiró'
-    $buefy.toast.open({ message, type: 'is-danger', duration: 3000 })
+    const detail = event?.detail
+    // Permite mandar { message, type } o solo un string
+    const message = typeof detail === 'object' && detail?.message
+      ? detail.message
+      : (detail || 'Tu sesión expiró. Vuelve a iniciar sesión.')
+    const type = typeof detail === 'object' && detail?.type
+      ? detail.type
+      : 'is-danger'
+
+    $buefy.toast.open({
+      message,
+      type,
+      duration: 3000,
+    })
   }
 
   window.addEventListener('show-toast-session-expired', showToast)
@@ -344,7 +398,6 @@ export default {
   }
 }
 </script>
-
 
 <style scoped>
 .login-btn {

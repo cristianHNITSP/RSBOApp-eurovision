@@ -9,6 +9,11 @@ import AgGridProgresivo from "@/components/ag-grid/templates/AgGridProgresivo.vu
 
 import { listSheets, createSheet } from "@/services/inventory";
 
+// ⬇️ recibe user (ya lo tienes según tu log)
+const props = defineProps({
+  user: { type: Object, required: false, default: null }
+});
+
 const dynamicSheets = reactive([{ id: "nueva", name: "+ Agregar" }]);
 const activeSheet = ref("nueva");
 const activeInternalTab = ref(null);
@@ -63,18 +68,20 @@ async function cargarSheets() {
 
     if (aInsertar.length && activeSheet.value === "nueva") activeSheet.value = aInsertar[0].id;
   } catch (e) {
-    console.error("Error listSheets:", e);
+    console.error("Error listSheets:", e?.response?.data || e);
   }
 }
 onMounted(cargarSheets);
 
 async function crearNuevaPlanilla(payload) {
   try {
-    const { data } = await createSheet({
+    const body = {
       ...payload,
-      seed: false, // no autollenado (el backend crea raíz mínima)
-      actor: { userId: "u123", name: "Cristian" }
-    });
+      seed: true, // ⬅️ autollenado siempre
+      actor: props.user ? { userId: props.user.id || props.user.userId, name: props.user.name } : undefined,
+      rangos: payload.rangos || payload.rango
+    };
+    const { data } = await createSheet(body);
     const s = data?.data?.sheet;
     if (!s) return;
     const newSheet = {
@@ -90,15 +97,8 @@ async function crearNuevaPlanilla(payload) {
     dynamicSheets.splice(addIndex, 0, newSheet);
     activeSheet.value = newSheet.id;
   } catch (e) {
-    console.error("Error createSheet:", e);
-    const id = `local-${Date.now()}`;
-    const localSheet = {
-      id, name: payload.nombre, tipo_matriz: payload.tipo_matriz,
-      baseKey: payload.baseKey, material: payload.material, tratamientos: payload.tratamientos, tabs: []
-    };
-    const addIndex = dynamicSheets.findIndex((x) => x.id === "nueva");
-    dynamicSheets.splice(addIndex, 0, localSheet);
-    activeSheet.value = localSheet.id;
+    console.error("Error createSheet:", e?.response?.data || e);
+    // 🚫 sin fallback local
   }
 }
 
@@ -123,10 +123,9 @@ const resolverGrid = (tipo) => {
 const resolverGridProps = (sheet, activeInternal) => {
   if (!sheet) return {};
   const base = { sheetId: sheet.id };
-  // Para SPH_* usamos la pestaña interna "sph-neg/sph-pos"
   if (sheet.tipo_matriz === "SPH_ADD" || sheet.tipo_matriz === "SPH_CYL") {
     return { ...base, sphType: activeInternal || "sph-neg" };
-  }
+    }
   return base;
 };
 </script>
@@ -139,6 +138,7 @@ const resolverGridProps = (sheet, activeInternal) => {
           :initial-sheets="dynamicSheets"
           :active-id="activeSheet"
           :configuracion="configuracion"
+          :actor="user"
           @update:active="activeSheet = $event"
           @update:internal="activeInternalTab = $event"
           @crear="crearNuevaPlanilla"

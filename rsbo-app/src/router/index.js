@@ -14,9 +14,9 @@ const routes = [
     children: [
       {
         path: 'home',
-        name: 'home',
-        component: () => import('../views/dashboard/DashboardHome.vue'),
-        meta: { requiresAuth: true },
+          name: 'home',
+          component: () => import('../views/dashboard/DashboardHome.vue'),
+          meta: { requiresAuth: true },
       },
       {
         path: 'inventario',
@@ -24,7 +24,7 @@ const routes = [
         component: () => import('../views/inventario/Inventario.vue'),
         meta: { requiresAuth: true },
       },
-            {
+      {
         path: 'mi.perfil.panel',
         name: 'Mi perfil',
         component: () => import('../views/user/MiUser.vue'),
@@ -44,24 +44,37 @@ const router = createRouter({
   routes,
 })
 
-router.beforeEach(async (to, from, next) => {
-  // Si la ruta necesita autenticación
-  if (to.meta.requiresAuth) {
-    try {
-      // ✅ Verificar sesión con credenciales (cookies incluidas)
-      await api.get('/access/check-session', { withCredentials: true })
-      next()
-    } catch (err) {
-      console.warn('⚠️ Sesión inválida o expirada:', err?.response?.status)
+// Mapa de código de error → razón usada en la query
+const ERROR_REASON_MAP = {
+  NO_TOKEN: 'no-token',
+  TOKEN_EXPIRED: 'token-expired',
+  INVALID_TOKEN: 'invalid-token',
+}
 
-      // 🧭 Redirigir a landing con query para mostrar toast
-      next({
-        name: 'Landing',
-        query: { sessionExpired: '1' },
-      })
-    }
-  } else {
-    next()
+const mapErrorToAuthReason = (code) => ERROR_REASON_MAP[code] || 'unknown'
+
+router.beforeEach(async (to, from, next) => {
+  const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
+
+  if (!requiresAuth) {
+    return next()
+  }
+
+  try {
+    await api.get('/access/check-session', { withCredentials: true })
+    return next()
+  } catch (err) {
+    const status = err?.response?.status
+    const code = err?.response?.data?.error
+
+    console.warn('Sesión inválida o no autorizada', { status, code })
+
+    const authReason = mapErrorToAuthReason(code)
+
+    return next({
+      name: 'Landing',
+      query: { authReason },
+    })
   }
 })
 

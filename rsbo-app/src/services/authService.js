@@ -1,5 +1,5 @@
 // service/authService.js
-import { login } from '@/api/auth'
+import { login } from '../services/auth'
 import router from '../router/index'
 
 export const useAuthService = ($buefy) => {

@@ -1,3 +1,4 @@
+// models/InventorySheet.js
 const mongoose = require('mongoose');
 
 const InventorySheetSchema = new mongoose.Schema({
@@ -13,6 +14,12 @@ const InventorySheetSchema = new mongoose.Schema({
     base: { min: Number, max: Number, step: Number },
     vista_sph: { type: String, enum: ['neg', 'pos', null], default: null }
   },
+
+  // 👇 Borrado lógico
+  isDeleted: { type: Boolean, default: false, index: true },
+  deletedAt: { type: Date, default: null },
+  deletedBy: { userId: { type: String, default: null }, name: { type: String, default: null } },
+
   owner:     { userId: { type: String, default: null }, name: { type: String, default: null } },
   createdBy: { userId: { type: String, default: null }, name: { type: String, default: null } },
   updatedBy: { userId: { type: String, default: null }, name: { type: String, default: null } },

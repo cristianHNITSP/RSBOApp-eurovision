@@ -1,4 +1,3 @@
-// routes/inventory.js
 const express = require('express');
 const router = express.Router();
 const { body, param, validationResult, oneOf } = require('express-validator');
@@ -214,9 +213,9 @@ const seedFullForSheet = async (sheet, actor) => {
       { new: true, upsert: true }
     );
 
-    // ⬇️ ahora incluye SPH positivos: [-6..0] ∪ [0.25..6]
+    // incluye SPH positivos: [-6..0] ∪ [0.25..6]
     const sphVals = [...frange(-6, 0, 0.25), ...frange(0.25, 6, 0.25)];
-    const cylVals = frange(-6, 0, 0.25); // deja CYL negativos por defecto
+    const cylVals = frange(-6, 0, 0.25); // CYL negativos por defecto
 
     doc.set('cells', doc.cells || new Map());
     let count = 0;
@@ -242,7 +241,7 @@ const seedFullForSheet = async (sheet, actor) => {
       { new: true, upsert: true }
     );
 
-    // ⬇️ incluye SPH negativos y positivos
+    // incluye SPH negativos y positivos
     const sphVals = [...frange(-6, 0, 0.25), ...frange(0.25, 6, 0.25)];
     const addVals = frange(1, 6, 0.25);
 
@@ -297,9 +296,12 @@ const seedFullForSheet = async (sheet, actor) => {
 
 /* ======================= ENDPOINTS SHEETS ======================= */
 
-router.get('/', async (_req, res) => {
+// Listar (excluye eliminadas por defecto)
+router.get('/', async (req, res) => {
   try {
-    const sheets = await InventorySheet.find().sort({ updatedAt: -1, createdAt: -1 });
+    const includeDeleted = String(req.query.includeDeleted) === 'true';
+    const query = includeDeleted ? {} : { isDeleted: { $ne: true } };
+    const sheets = await InventorySheet.find(query).sort({ updatedAt: -1, createdAt: -1 });
     const data = sheets.map(s => ({ ...s.toObject(), tabs: buildTabsForTipo(s.tipo_matriz) }));
     res.json({ ok: true, data });
   } catch (err) {
@@ -308,6 +310,7 @@ router.get('/', async (_req, res) => {
   }
 });
 
+// Crear
 router.post(
   '/sheets',
   oneOf([
@@ -371,6 +374,7 @@ router.post(
   }
 );
 
+// Obtener por id
 router.get('/sheets/:sheetId',
   param('sheetId').isMongoId(),
   handleValidation,
@@ -378,6 +382,7 @@ router.get('/sheets/:sheetId',
     try {
       const sheet = await InventorySheet.findById(req.params.sheetId);
       if (!sheet) return res.status(404).json({ ok: false, message: 'Sheet no existe' });
+      if (sheet.isDeleted) return res.status(410).json({ ok: false, message: 'Sheet eliminada (soft-delete)' });
       res.json({ ok: true, data: { sheet, tabs: buildTabsForTipo(sheet.tipo_matriz) } });
     } catch (err) {
       console.error('GET /sheets/:sheetId error:', err);
@@ -386,6 +391,7 @@ router.get('/sheets/:sheetId',
   }
 );
 
+// Actualizar
 router.patch(
   '/sheets/:sheetId',
   param('sheetId').isMongoId(),
@@ -401,6 +407,7 @@ router.patch(
     try {
       const sheet = await InventorySheet.findById(req.params.sheetId);
       if (!sheet) return res.status(404).json({ ok: false, message: 'Sheet no existe' });
+      if (sheet.isDeleted) return res.status(410).json({ ok: false, message: 'Sheet eliminada (soft-delete)' });
 
       const updates = { updatedBy: actor, updatedAt: new Date() };
       if (isDef(req.body.nombre) || isDef(req.body.name)) updates.nombre = (req.body.nombre ?? req.body.name).trim();
@@ -426,6 +433,7 @@ router.patch(
   }
 );
 
+/* ===== Soft-Delete (DELETE clásico) ===== */
 router.delete(
   '/sheets/:sheetId',
   param('sheetId').isMongoId(),
@@ -436,26 +444,23 @@ router.delete(
     try {
       const sheet = await InventorySheet.findById(req.params.sheetId);
       if (!sheet) return res.status(404).json({ ok: false, message: 'Sheet no existe' });
+      if (sheet.isDeleted) return res.json({ ok: true, message: 'Hoja ya estaba eliminada' });
 
-      // Borra cualquier matriz asociada (solo habrá una, pero por robustez llamamos a todas)
-      const [m1, m2, m3, m4] = await Promise.all([
-        MatrixBase.deleteOne({ sheet: sheet._id }),
-        MatrixSphCyl.deleteOne({ sheet: sheet._id }),
-        MatrixBifocal.deleteOne({ sheet: sheet._id }),
-        MatrixProgresivo.deleteOne({ sheet: sheet._id }),
-      ]);
-
-      await InventorySheet.deleteOne({ _id: sheet._id });
+      sheet.isDeleted = true;
+      sheet.deletedAt = new Date();
+      sheet.deletedBy = actor;
+      sheet.updatedBy = actor;
+      await sheet.save();
 
       await InventoryChangeLog.create({
         sheet: sheet._id,
         tipo_matriz: sheet.tipo_matriz,
-        type: 'SHEET_DELETE',
-        details: { deleted: { base: m1.deletedCount, sph_cyl: m2.deletedCount, bifocal: m3.deletedCount, progresivo: m4.deletedCount } },
+        type: 'SHEET_SOFT_DELETE',
+        details: { isDeleted: true },
         actor
       });
 
-      res.json({ ok: true, message: 'Hoja eliminada' });
+      res.json({ ok: true, message: 'Hoja eliminada (soft-delete)' });
     } catch (err) {
       console.error('DELETE /sheets/:sheetId error:', err);
       res.status(500).json({ ok: false, message: 'Error al eliminar hoja' });
@@ -463,7 +468,77 @@ router.delete(
   }
 );
 
-/* ======================= ENDPOINTS ITEMS (compat API) ======================= */
+/* ===== Soft-Delete (RUTA ORIGINAL: mover a papelera) ===== */
+router.patch(
+  '/sheets/:sheetId/trash',
+  param('sheetId').isMongoId(),
+  body('actor').optional().isObject(),
+  handleValidation,
+  async (req, res) => {
+    const actor = actorFromBody(req);
+    try {
+      const sheet = await InventorySheet.findById(req.params.sheetId);
+      if (!sheet) return res.status(404).json({ ok: false, message: 'Sheet no existe' });
+      if (sheet.isDeleted) return res.json({ ok: true, message: 'Hoja ya estaba en papelera' });
+
+      sheet.isDeleted = true;
+      sheet.deletedAt = new Date();
+      sheet.deletedBy = actor;
+      sheet.updatedBy = actor;
+      await sheet.save();
+
+      await InventoryChangeLog.create({
+        sheet: sheet._id,
+        tipo_matriz: sheet.tipo_matriz,
+        type: 'SHEET_SOFT_DELETE',
+        details: { movedTo: 'trash', isDeleted: true },
+        actor
+      });
+
+      res.json({ ok: true, message: 'Hoja enviada a papelera' });
+    } catch (err) {
+      console.error('PATCH /sheets/:sheetId/trash error:', err);
+      res.status(500).json({ ok: false, message: 'Error al enviar a papelera' });
+    }
+  }
+);
+
+// Restaurar (opcional)
+router.patch(
+  '/sheets/:sheetId/restore',
+  param('sheetId').isMongoId(),
+  body('actor').optional().isObject(),
+  handleValidation,
+  async (req, res) => {
+    const actor = actorFromBody(req);
+    try {
+      const sheet = await InventorySheet.findById(req.params.sheetId);
+      if (!sheet) return res.status(404).json({ ok:false, message:'Sheet no existe' });
+      if (!sheet.isDeleted) return res.json({ ok:true, message:'Hoja ya está activa' });
+
+      sheet.isDeleted = false;
+      sheet.deletedAt = null;
+      sheet.deletedBy = { userId: null, name: null };
+      sheet.updatedBy = actor;
+      await sheet.save();
+
+      await InventoryChangeLog.create({
+        sheet: sheet._id,
+        tipo_matriz: sheet.tipo_matriz,
+        type: 'SHEET_RESTORE',
+        details: { isDeleted: false },
+        actor
+      });
+
+      res.json({ ok:true, data: { sheet, tabs: buildTabsForTipo(sheet.tipo_matriz) } });
+    } catch (err) {
+      console.error('PATCH /sheets/:sheetId/restore error:', err);
+      res.status(500).json({ ok:false, message:'Error al restaurar hoja' });
+    }
+  }
+);
+
+/* ======================= ENDPOINTS ITEMS ======================= */
 
 router.get(
   '/sheets/:sheetId/items',
@@ -472,7 +547,8 @@ router.get(
   async (req, res) => {
     try {
       const sheet = await InventorySheet.findById(req.params.sheetId);
-      if (!sheet) return res.status(404).json({ ok:false, message:'Sheet no existe' });
+      if (!sheet) return res.status(404).json({ ok: false, message:'Sheet no existe' });
+      if (sheet.isDeleted) return res.status(410).json({ ok:false, message:'Sheet eliminada (soft-delete)' });
 
       const limit = Math.min(Number(req.query.limit ?? 5000), 20000);
 
@@ -498,7 +574,7 @@ router.get(
       if (sheet.tipo_matriz === 'SPH_CYL') {
         const doc = await MatrixSphCyl.findOne({ sheet: sheet._id });
         const sphMin = Number(req.query.sphMin ?? -6);
-        const sphMax = Number(req.query.sphMax ??  6); // ⬅️ incluye positivos por defecto
+        const sphMax = Number(req.query.sphMax ??  6); // incluye positivos
         const cylMin = Number(req.query.cylMin ?? -6);
         const cylMax = Number(req.query.cylMax ??  0); // CYL negativos por defecto
         let rows = [];
@@ -518,7 +594,7 @@ router.get(
       if (sheet.tipo_matriz === 'SPH_ADD') {
         const doc = await MatrixBifocal.findOne({ sheet: sheet._id });
         const sphMin = Number(req.query.sphMin ?? -6);
-        const sphMax = Number(req.query.sphMax ??  6); // por defecto mira hasta +6
+        const sphMax = Number(req.query.sphMax ??  6);
         const addMin = Number(req.query.addMin ??  1.00);
         const addMax = Number(req.query.addMax ??  6.00);
         const eyes   = String(req.query.eyes ?? 'OD,OI').split(',').map(s=>s.trim().toUpperCase());
@@ -564,7 +640,7 @@ router.get(
   }
 );
 
-// Reseed opcional para completar datos por defecto
+// Reseed opcional
 router.post(
   '/sheets/:sheetId/seed',
   param('sheetId').isMongoId(),
@@ -575,6 +651,7 @@ router.post(
     try {
       const sheet = await InventorySheet.findById(req.params.sheetId);
       if (!sheet) return res.status(404).json({ ok:false, message:'Sheet no existe' });
+      if (sheet.isDeleted) return res.status(410).json({ ok:false, message:'Sheet eliminada (soft-delete)' });
       const stats = await seedFullForSheet(sheet, actor);
       await InventoryChangeLog.create({
         sheet: sheet._id, tipo_matriz: sheet.tipo_matriz,
@@ -588,6 +665,7 @@ router.post(
   }
 );
 
+// Guardar chunk
 router.post(
   '/sheets/:sheetId/chunk',
   param('sheetId').isMongoId(),
@@ -599,10 +677,10 @@ router.post(
     try {
       const sheet = await InventorySheet.findById(req.params.sheetId);
       if (!sheet) return res.status(404).json({ ok:false, message:'Sheet no existe' });
+      if (sheet.isDeleted) return res.status(410).json({ ok:false, message:'Sheet eliminada (soft-delete)' });
 
       const rows = req.body.rows || [];
       let upserts = 0;
-
       const touch = (field) => (doc) => { doc.markModified(field); return doc; };
 
       if (sheet.tipo_matriz === 'BASE') {

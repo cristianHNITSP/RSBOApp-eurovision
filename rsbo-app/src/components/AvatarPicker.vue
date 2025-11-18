@@ -1,19 +1,11 @@
 <template>
   <div class="avatar-picker has-text-centered">
-    <figure
-      class="image is-128x128 is-inline-block mb-3 avatar-frame"
-      :class="{ 'is-disabled': !editMode }"
-      @click="editMode && openModal()"
-    >
+    <figure class="image is-128x128 is-inline-block mb-3 avatar-frame" :class="{ 'is-disabled': !editMode }"
+      @click="editMode && openModal()">
       <img :src="currentValue" alt="Avatar" class="is-rounded" />
     </figure>
 
-    <b-modal
-      v-model="isModalActive"
-      :width="640"
-      :can-cancel="['escape', 'outside']"
-      @close="closeModal"
-    >
+    <b-modal v-model="isModalActive" :width="640" :can-cancel="['escape', 'outside']" @close="closeModal">
       <div class="modal-card">
         <header class="modal-card-head">
           <p class="modal-card-title">Selecciona un avatar</p>
@@ -21,30 +13,12 @@
         </header>
         <section class="modal-card-body">
           <b-tabs v-model="activeTab" animated>
-            <b-tab-item
-              v-for="(category, name) in avatarCategories"
-              :key="name"
-              :label="name"
-            >
+            <b-tab-item v-for="(category, name) in avatarCategories" :key="name" :label="name">
               <div class="columns is-multiline is-mobile avatar-grid">
-                <div
-                  class="column is-3"
-                  v-for="(img, index) in category"
-                  :key="index"
-                >
-                  <figure
-                    class="image is-64x64 avatar-option-container"
-                    @click="selectAvatar(img)"
-                  >
-                    <img
-                      :src="img"
-                      class="avatar-option"
-                      :class="{ 'is-selected': img === selectedAvatar }"
-                    />
-                    <div
-                      v-if="img === selectedAvatar"
-                      class="avatar-selected-overlay"
-                    >
+                <div class="column is-3" v-for="(img, index) in category" :key="index">
+                  <figure class="image is-64x64 avatar-option-container" @click="selectAvatar(img)">
+                    <img :src="img" class="avatar-option" :class="{ 'is-selected': img === selectedAvatar }" />
+                    <div v-if="img === selectedAvatar" class="avatar-selected-overlay">
                       <span class="icon has-text-white">
                         <i class="fas fa-check"></i>
                       </span>

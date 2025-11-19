@@ -35,7 +35,7 @@ export function useAuth() {
    * Navegar a configuración
    */
   const settings = (router) => {
-    router.push('/settings')
+    router.push('/layouts/config.panel')
   }
 
   /**

@@ -3,12 +3,33 @@
   <div class="is-flex is-flex-direction-column" style="height: 100%;">
     <navtools
       v-model="formulaValue"
+      :dirty="dirty"
+      :saving="saving"
+      :total-rows="totalRows"
+      :sheet-name="sheetName"
+      :tipo-matriz="tipoMatriz"
+      :material="material"
+      :tratamientos="tratamientos"
+      :last-saved-at="lastSavedAt"
       @add-row="handleAddRow"
       @add-column="handleAddColumn"
+      @clear-filters="clearFilters"
+      @reset-sort="resetSort"
+      @toggle-filters="handleToggleFilters"
+      @save-request="handleSave"
+      @discard-changes="handleDiscard"
+      @refresh="handleRefresh"
+      @seed="handleSeed"
+      @export="handleExport"
     />
-    <div class="buefy-balham-light" style="flex:1 1 auto; display:flex; flex-direction:column; overflow:auto;">
+
+    <div
+      class="buefy-balham-light"
+      style="flex: 1 1 auto; display: flex; flex-direction: column; overflow: auto;"
+    >
       <AgGridVue
         ref="gridRef"
+        class="ag-grid-buefy"
         :columnDefs="columns"
         :rowData="rowData"
         :defaultColDef="defaultColDef"
@@ -16,6 +37,9 @@
         :animateRows="true"
         :localeText="localeText"
         :theme="themeCustom"
+        :rowHeight="30"
+        :headerHeight="32"
+        :suppressMovableColumns="true"
         @cellClicked="onCellClicked"
         @cellValueChanged="onCellValueChanged"
         @grid-ready="onGridReady"
@@ -28,208 +52,506 @@
 <script setup>
 import { ref, computed, watch, nextTick, onMounted } from "vue";
 import { AgGridVue } from "ag-grid-vue3";
-import { AllCommunityModule, ModuleRegistry, themeQuartz, iconSetQuartzBold, colorSchemeLight } from "ag-grid-community";
+import {
+  AllCommunityModule,
+  ModuleRegistry,
+  themeQuartz,
+  iconSetQuartzBold,
+  colorSchemeLight
+} from "ag-grid-community";
 import navtools from "@/components/ag-grid/navtools.vue";
-import { fetchItems, saveChunk, getSheet } from "@/services/inventory";
+import {
+  fetchItems,
+  saveChunk,
+  getSheet,
+  reseedSheet
+} from "@/services/inventory";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 /* ===== Props ===== */
 const props = defineProps({
   sheetId: { type: String, required: true },
-  // 'sph-neg' | 'sph-pos' (TabsManager te lo pasa)
-  sphType: { type: String, default: "sph-neg" },
+  sphType: { type: String, default: "sph-neg" }, // 'sph-neg' | 'sph-pos'
+  actor: { type: Object, default: null }
 });
 
 /* ===== Tema / textos ===== */
-const themeCustom = themeQuartz.withPart(iconSetQuartzBold, colorSchemeLight).withParams({
-  accentColor: "#8e00d2", backgroundColor: "#FFF", borderColor: "#00000026", borderRadius: 8,
-  columnBorder: true, fontFamily: "Satoshi", fontSize: 12, foregroundColor: "#000",
-  headerBackgroundColor: "#FFF", headerFontSize: 12, headerFontWeight: 500, headerTextColor: "#7957d5",
-  rowBorder: true, spacing: 5, wrapperBorder: true, wrapperBorderRadius: 4
-});
-const localeText = { noRowsToShow: "No hay filas para mostrar", loadingOoo: "Cargando..." };
+const themeCustom = themeQuartz
+  .withPart(iconSetQuartzBold, colorSchemeLight)
+  .withParams({
+    accentColor: "#7957d5",
+    backgroundColor: "#ffffff",
+    foregroundColor: "#2d2242",
+    borderColor: "#e5e5f0",
+    borderRadius: 10,
+    wrapperBorder: true,
+    wrapperBorderRadius: 10,
+    columnBorder: true,
+    rowBorder: true,
+    headerBackgroundColor: "#f5f3ff",
+    headerTextColor: "#4527a0",
+    headerFontSize: 11,
+    headerFontWeight: 600,
+    fontFamily:
+      "Satoshi, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    fontSize: 12,
+    spacing: 3,
+    oddRowBackgroundColor: "#fbfbff"
+  });
+
+const localeText = {
+  noRowsToShow: "No hay filas para mostrar",
+  loadingOoo: "Cargando..."
+};
 
 /* ===== Helpers ===== */
-const to2  = (n) => Number(parseFloat(n).toFixed(2));
+const to2 = (n) => Number(parseFloat(n).toFixed(2));
 const norm = (n) => String(to2(n)).replace(".", "_");
-const isNum = (v) => /^-?\d+(\.\d+)?$/.test(String(v).trim());
-const uniqSorted = (arr) => [...new Set(arr)].sort((a,b)=>a-b);
+const isNumeric = (v) => /^-?\d+(\.\d+)?$/.test(String(v ?? "").trim());
+const uniqSorted = (arr) => [...new Set(arr)].sort((a, b) => a - b);
 const frange = (start, end, step) => {
-  const out=[]; if(!step) return out;
-  if (start<=end) { for(let v=start; v<=end+1e-9; v+=step) out.push(to2(v)); }
-  else { for(let v=start; v>=end-1e-9; v-=step) out.push(to2(v)); }
+  const out = [];
+  if (!step) return out;
+  if (start <= end) {
+    for (let v = start; v <= end + 1e-9; v += step) out.push(to2(v));
+  } else {
+    for (let v = start; v >= end - 1e-9; v -= step) out.push(to2(v));
+  }
   return out;
 };
+
+const effectiveActor = computed(() => props.actor || null);
 
 /* ===== Estado ===== */
 const gridApi = ref(null);
 const rowData = ref([]);
-const addCols = ref([]);          // se llena desde API (items o tabs)
-const sheetTabs = ref([]);        // tabs del sheet (API)
-const basesPorSph = ref(new Map());// {sph -> {base_izq, base_der}}
+const addCols = ref([]); // ADD(+)
+const sheetTabs = ref([]);
+const basesPorSph = ref(new Map());
+const dirty = ref(false);
+const saving = ref(false);
+const lastSavedAt = ref(null);
+const sheetMeta = ref(null);
+
+const totalRows = computed(() => rowData.value.length);
+const sheetName = computed(
+  () => sheetMeta.value?.nombre || sheetMeta.value?.name || "Hoja bifocal"
+);
+const tipoMatriz = computed(() => sheetMeta.value?.tipo_matriz || "SPH_ADD");
+const material = computed(() => sheetMeta.value?.material || "");
+const tratamientos = computed(() => sheetMeta.value?.tratamientos || []);
 
 /* ===== Columnas (SPH | ADD(+): OD/OI) ===== */
 const makeLeaf = (field, header) => ({
-  field, headerName: header, editable: true,
-  filter: "agNumberColumnFilter", minWidth: 80, maxWidth: 140, width: 110,
+  field,
+  headerName: header,
+  editable: true,
+  filter: "agNumberColumnFilter",
+  width: 96,
+  minWidth: 80,
+  maxWidth: 110,
   resizable: true,
+  cellClass: ["ag-cell--compact", "ag-cell--numeric"],
+  headerClass: ["ag-header-cell--compact"],
   valueSetter: (p) => {
-    const v = p.newValue?.toString().trim();
-    p.data[p.colDef.field] = isNum(v) ? Number(v) : 0;
+    const v = String(p.newValue ?? "").trim();
+    p.data[p.colDef.field] = isNumeric(v) ? Number(v) : 0;
+    dirty.value = true;
     return true;
   }
 });
 
 const columns = computed(() => {
   const neg = props.sphType === "sph-neg";
+
   return [
     {
       headerName: neg ? "SPH (-)" : "SPH (+)",
-      children: [{
-        field: "sph",
-        headerName: neg ? "(-)" : "(+)",
-        pinned: "left",
-        width: 90,
-        editable: false,
-        sortable: true,
-        comparator: (a,b)=>a-b,
-        filter: "agNumberColumnFilter",
-      }]
+      children: [
+        {
+          field: "sph",
+          headerName: neg ? "SPH -" : "SPH +",
+          pinned: "left",
+          width: 90,
+          minWidth: 86,
+          maxWidth: 96,
+          resizable: false,
+          editable: false,
+          sortable: true,
+          comparator: (a, b) => a - b,
+          filter: "agNumberColumnFilter",
+          cellClass: [
+            "ag-cell--compact",
+            "ag-cell--numeric",
+            "ag-cell--pinned"
+          ],
+          headerClass: [
+            "ag-header-cell--compact",
+            "ag-header-cell--pinned"
+          ]
+        }
+      ]
     },
     {
       headerName: "ADD +",
-      children: addCols.value.map(a => ({
+      children: addCols.value.map((a) => ({
         headerName: a.toFixed(2),
         marryChildren: true,
         children: [
           makeLeaf(`add_${norm(a)}_OD`, "OD"),
-          makeLeaf(`add_${norm(a)}_OI`, "OI"),
+          makeLeaf(`add_${norm(a)}_OI`, "OI")
         ]
       }))
     }
   ];
 });
 
-const defaultColDef = { resizable:true, sortable:true, filter:true, editable:true };
+const defaultColDef = {
+  resizable: true,
+  sortable: true,
+  filter: "agNumberColumnFilter",
+  floatingFilter: true,
+  editable: true,
+  minWidth: 90,
+  maxWidth: 160,
+  cellClass: "ag-cell--compact",
+  headerClass: "ag-header-cell--compact"
+};
+
 const getRowId = (p) => p.data.sph.toString();
 
 /* ===== Carga desde API (tabs + items) ===== */
-const rangeForTab = (tab) => tab === "sph-pos"
-  ? { sphMin: 0, sphMax: 6 }       // incluye 0 como en tus capturas
-  : { sphMin: -6, sphMax: 0 };
+const rangeForTab = (tabId) =>
+  tabId === "sph-pos" ? { sphMin: 0, sphMax: 6 } : { sphMin: -6, sphMax: 0 };
 
-async function cargar() {
-  // 1) Tabs del sheet (para rangos sugeridos si BD está vacía)
-  const meta = await getSheet(props.sheetId);
-  sheetTabs.value = meta?.data?.data?.tabs || [];
-  const tab = sheetTabs.value.find(t => t.id === props.sphType);
+async function loadAll() {
+  try {
+    const { data } = await getSheet(props.sheetId);
+    const metaData = data?.data || data;
+    sheetMeta.value = metaData?.sheet || null;
+    sheetTabs.value = metaData?.tabs || [];
 
-  // 2) Items según tab
-  const { sphMin, sphMax } = rangeForTab(props.sphType);
-  const { data } = await fetchItems(props.sheetId, { sphMin, sphMax, eyes: "OD,OI" });
-  const items = (data?.data || []);
+    const tab = sheetTabs.value.find((t) => t.id === props.sphType);
 
-  // 3) Columnas ADD: prioriza lo que exista en BD; si no hay, usa tabs.ranges.addCols
-  const addsFromData = uniqSorted(items.map(i => to2(i.add)).filter(v => !Number.isNaN(v)));
-  const addsFromTab  = Array.isArray(tab?.ranges?.addCols) ? tab.ranges.addCols.map(to2).sort((a,b)=>a-b) : [];
-  addCols.value = addsFromData.length ? addsFromData : addsFromTab;
-
-  // 4) Base por SPH (si existe en BD) para conservarla al guardar
-  basesPorSph.value = new Map();
-  for (const it of items) {
-    const sph = to2(it.sph);
-    if (!basesPorSph.value.has(sph)) {
-      basesPorSph.value.set(sph, {
-        base_izq: to2(it.base_izq ?? 0),
-        base_der: to2(it.base_der ?? 0),
-      });
-    }
-  }
-
-  // 5) Pivot: filas SPH, columnas ADD·OD/OI
-  const map = new Map(items.map(i => [`${to2(i.sph)}|${to2(i.add)}|${String(i.eye).toUpperCase()}`, Number(i.existencias ?? 0)]));
-
-  // SPH list: si BD no trae nada, genera con lo que diga el tab (o el rango por defecto del tab actual)
-  let sphList = uniqSorted(items.map(i => to2(i.sph)));
-  if (!sphList.length) {
-    const rg = tab?.ranges?.sph;
-    if (rg && typeof rg.start === "number" && typeof rg.end === "number" && typeof rg.step === "number") {
-      // normaliza para incluir 0 si cae dentro
-      const generated = frange(rg.start, rg.end, rg.step);
-      if (!generated.includes(0) && ((rg.start<=0 && rg.end>=0) || (rg.start>=0 && rg.end<=0))) generated.push(0);
-      sphList = uniqSorted(generated);
-    } else {
-      // fallback a rango del tab (incluye 0)
-      const r = rangeForTab(props.sphType);
-      sphList = uniqSorted(frange(r.sphMin, r.sphMax, 0.25));
-    }
-  }
-
-  rowData.value = sphList.map(sph => {
-    const bases = basesPorSph.value.get(sph) || { base_izq: 0, base_der: 0 };
-    const row = { sph, base_izq: bases.base_izq, base_der: bases.base_der }; // campos ocultos para guardar
-    addCols.value.forEach(add => {
-      row[`add_${norm(add)}_OD`] = map.get(`${sph}|${add}|OD`) ?? 0;
-      row[`add_${norm(add)}_OI`] = map.get(`${sph}|${add}|OI`) ?? 0;
+    const { sphMin, sphMax } = rangeForTab(props.sphType);
+    const { data: itemsRes } = await fetchItems(props.sheetId, {
+      sphMin,
+      sphMax,
+      eyes: "OD,OI"
     });
-    return row;
-  });
+    const items = itemsRes?.data || [];
 
-  await nextTick();
+    const addsFromData = uniqSorted(
+      items.map((i) => to2(i.add)).filter((v) => !Number.isNaN(v))
+    );
+    const addsFromTab = Array.isArray(tab?.ranges?.addCols)
+      ? tab.ranges.addCols.map(to2).sort((a, b) => a - b)
+      : [];
+    addCols.value = addsFromData.length ? addsFromData : addsFromTab;
+
+    basesPorSph.value = new Map();
+    for (const it of items) {
+      const sph = to2(it.sph);
+      if (!basesPorSph.value.has(sph)) {
+        basesPorSph.value.set(sph, {
+          base_izq: to2(it.base_izq ?? 0),
+          base_der: to2(it.base_der ?? 0)
+        });
+      }
+    }
+
+    const map = new Map(
+      items.map((i) => [
+        `${to2(i.sph)}|${to2(i.add)}|${String(i.eye).toUpperCase()}`,
+        Number(i.existencias ?? 0)
+      ])
+    );
+
+    let sphList = uniqSorted(items.map((i) => to2(i.sph)));
+    if (!sphList.length) {
+      const rg = tab?.ranges?.sph;
+      if (
+        rg &&
+        typeof rg.start === "number" &&
+        typeof rg.end === "number" &&
+        typeof rg.step === "number"
+      ) {
+        const generated = frange(rg.start, rg.end, rg.step);
+        if (
+          !generated.includes(0) &&
+          ((rg.start <= 0 && rg.end >= 0) ||
+            (rg.start >= 0 && rg.end <= 0))
+        ) {
+          generated.push(0);
+        }
+        sphList = uniqSorted(generated);
+      } else {
+        const r = rangeForTab(props.sphType);
+        sphList = uniqSorted(frange(r.sphMin, r.sphMax, 0.25));
+      }
+    }
+
+    rowData.value = sphList.map((sph) => {
+      const bases = basesPorSph.value.get(sph) || {
+        base_izq: 0,
+        base_der: 0
+      };
+      const row = {
+        sph,
+        base_izq: bases.base_izq,
+        base_der: bases.base_der
+      };
+      addCols.value.forEach((add) => {
+        row[`add_${norm(add)}_OD`] =
+          map.get(`${sph}|${add}|OD`) ?? 0;
+        row[`add_${norm(add)}_OI`] =
+          map.get(`${sph}|${add}|OI`) ?? 0;
+      });
+      return row;
+    });
+
+    dirty.value = false;
+    await nextTick();
+  } catch (e) {
+    console.error("[AgGridBifocal] Error loadAll:", e?.response?.data || e);
+  }
 }
 
-/* ===== Guardado (depivotea y manda /chunk) ===== */
-async function guardar() {
-  const rows = [];
-  rowData.value.forEach(r => {
-    const { sph, base_izq = 0, base_der = 0 } = r;
-    addCols.value.forEach(add => {
-      rows.push({ sph, add, eye: "OD", base_izq, base_der, existencias: Number(r[`add_${norm(add)}_OD`] ?? 0) });
-      rows.push({ sph, add, eye: "OI", base_izq, base_der, existencias: Number(r[`add_${norm(add)}_OI`] ?? 0) });
+onMounted(loadAll);
+watch(
+  () => [props.sheetId, props.sphType],
+  () => loadAll(),
+  { deep: true }
+);
+
+/* ===== Guardado ===== */
+async function handleSave() {
+  if (!dirty.value) return;
+  saving.value = true;
+  try {
+    const rows = [];
+    rowData.value.forEach((r) => {
+      const { sph, base_izq = 0, base_der = 0 } = r;
+      addCols.value.forEach((add) => {
+        rows.push({
+          sph,
+          add,
+          eye: "OD",
+          base_izq,
+          base_der,
+          existencias: Number(r[`add_${norm(add)}_OD`] ?? 0)
+        });
+        rows.push({
+          sph,
+          add,
+          eye: "OI",
+          base_izq,
+          base_der,
+          existencias: Number(r[`add_${norm(add)}_OI`] ?? 0)
+        });
+      });
     });
-  });
-  await saveChunk(props.sheetId, rows, { userId: "u123", name: "Cristian" });
-  await cargar();
+
+    await saveChunk(props.sheetId, rows, effectiveActor.value);
+    dirty.value = false;
+    lastSavedAt.value = new Date();
+    await loadAll();
+  } catch (e) {
+    console.error("[AgGridBifocal] Error saveChunk:", e?.response?.data || e);
+  } finally {
+    saving.value = false;
+  }
 }
 
 /* ===== Edición rápida (barra fórmula) ===== */
-const formulaValue = ref(""); let activeCell = null;
-const onCellClicked = (p) => { activeCell = p; formulaValue.value = p.value; };
-const onCellValueChanged = (p) => { if (activeCell && activeCell.rowIndex===p.rowIndex && activeCell.colDef.field===p.colDef.field) formulaValue.value = p.newValue; };
+const formulaValue = ref("");
+let activeCell = null;
+
+const onCellClicked = (p) => {
+  activeCell = p;
+  formulaValue.value = p.value;
+};
+
+const onCellValueChanged = (p) => {
+  if (
+    activeCell &&
+    activeCell.rowIndex === p.rowIndex &&
+    activeCell.colDef.field === p.colDef.field
+  ) {
+    formulaValue.value = p.newValue;
+  }
+  dirty.value = true;
+};
+
 watch(formulaValue, (val) => {
   if (!activeCell || !gridApi.value) return;
-  gridApi.value.applyTransaction({ update: [{ ...activeCell.data, [activeCell.colDef.field]: isNum(val) ? Number(val) : 0 }] });
+  const field = activeCell.colDef.field;
+  const raw = String(val ?? "").trim();
+  const newVal = isNumeric(raw) ? Number(raw) : raw;
+
+  gridApi.value.applyTransaction({
+    update: [
+      {
+        ...activeCell.data,
+        [field]: newVal
+      }
+    ]
+  });
+  dirty.value = true;
 });
 
 /* ===== Adders ===== */
 const handleAddRow = async (nuevoValor) => {
   const sph = Number(nuevoValor);
-  if (Number.isNaN(sph)) return alert("Ingresa un SPH numérico");
-  if (rowData.value.some(r => r.sph === sph)) return alert(`SPH ${sph} ya existe`);
-  const bases = basesPorSph.value.get(sph) || { base_izq: 0, base_der: 0 };
-  const row = { sph, base_izq: bases.base_izq, base_der: bases.base_der };
-  addCols.value.forEach(add => { row[`add_${norm(add)}_OD`] = 0; row[`add_${norm(add)}_OI`] = 0; });
+  if (Number.isNaN(sph)) {
+    alert("Ingresa un SPH numérico");
+    return;
+  }
+  if (rowData.value.some((r) => r.sph === sph)) {
+    alert(`SPH ${sph} ya existe`);
+    return;
+  }
+
+  const bases = basesPorSph.value.get(sph) || {
+    base_izq: 0,
+    base_der: 0
+  };
+  const row = {
+    sph,
+    base_izq: bases.base_izq,
+    base_der: bases.base_der
+  };
+  addCols.value.forEach((add) => {
+    row[`add_${norm(add)}_OD`] = 0;
+    row[`add_${norm(add)}_OI`] = 0;
+  });
+
   gridApi.value?.applyTransaction({ add: [row] });
   await nextTick();
-  gridApi.value?.setSortModel([{ colId: "sph", sort: "asc" }]);
-  gridApi.value?.refreshClientSideRowModel("sort");
+  resetSort();
+  dirty.value = true;
 };
 
 const handleAddColumn = async (nuevoValor) => {
   const add = Number(nuevoValor);
-  if (Number.isNaN(add)) return alert("Ingresa ADD numérico");
-  if (addCols.value.includes(add)) return alert(`ADD ${add} ya existe`);
+  if (Number.isNaN(add)) {
+    alert("Ingresa ADD numérico");
+    return;
+  }
+  if (addCols.value.includes(add)) {
+    alert(`ADD ${add} ya existe`);
+    return;
+  }
+
   addCols.value = uniqSorted([...addCols.value, add]);
-  rowData.value.forEach(r => { r[`add_${norm(add)}_OD`] = 0; r[`add_${norm(add)}_OI`] = 0; });
-  await nextTick(); gridApi.value?.refreshHeader(); gridApi.value?.redrawRows();
+  rowData.value.forEach((r) => {
+    r[`add_${norm(add)}_OD`] = 0;
+    r[`add_${norm(add)}_OI`] = 0;
+  });
+  await nextTick();
+  gridApi.value?.refreshHeader();
+  gridApi.value?.redrawRows();
+  dirty.value = true;
 };
 
 /* ===== Grid hooks ===== */
-const onGridReady = (p) => (gridApi.value = p.api);
-onMounted(cargar);
-watch(() => [props.sheetId, props.sphType], cargar, { deep: true });
+const onGridReady = (p) => {
+  gridApi.value = p.api;
+};
 
-/* Exponer guardar() por si tu botón está afuera */
-defineExpose({ guardar });
+/* Filtros / orden para navtools */
+const clearFilters = () => {
+  if (!gridApi.value || typeof gridApi.value.setFilterModel !== "function") {
+    console.warn("[AgGridBifocal] setFilterModel no disponible", gridApi.value);
+    return;
+  }
+  gridApi.value.setFilterModel(null);
+};
+
+const resetSort = () => {
+  if (!gridApi.value || typeof gridApi.value.setSortModel !== "function") {
+    console.warn("[AgGridBifocal] setSortModel no disponible", gridApi.value);
+    return;
+  }
+  gridApi.value.setSortModel([{ colId: "sph", sort: "asc" }]);
+  gridApi.value.refreshClientSideRowModel("sort");
+};
+
+const handleToggleFilters = () => {
+  clearFilters();
+};
+
+/* Refresh / seed / export / discard */
+async function handleDiscard() {
+  await loadAll();
+  dirty.value = false;
+}
+
+async function handleRefresh() {
+  await loadAll();
+}
+
+async function handleSeed() {
+  try {
+    saving.value = true;
+    await reseedSheet(props.sheetId, effectiveActor.value);
+    await loadAll();
+    lastSavedAt.value = new Date();
+  } catch (e) {
+    console.error("[AgGridBifocal] Error reseed:", e?.response?.data || e);
+  } finally {
+    saving.value = false;
+  }
+}
+
+function handleExport() {
+  if (!gridApi.value || typeof gridApi.value.exportDataAsCsv !== "function") {
+    console.warn("[AgGridBifocal] exportDataAsCsv no disponible", gridApi.value);
+    return;
+  }
+  const nameSlug = sheetName.value.replace(/\s+/g, "_");
+  const posNeg = props.sphType === "sph-pos" ? "pos" : "neg";
+  gridApi.value.exportDataAsCsv({
+    fileName: `${nameSlug || "bifocal"}_${posNeg}.csv`
+  });
+}
 </script>
+
+<style scoped>
+.buefy-balham-light {
+  padding: 0.5rem 0.75rem 0.75rem;
+  background-color: #ffffff;
+  border-radius: 0.75rem;
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.03);
+}
+
+.ag-grid-buefy .ag-header-cell.ag-header-cell--compact {
+  padding-inline: 6px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ag-grid-buefy .ag-cell.ag-cell--compact {
+  padding-inline: 6px;
+  line-height: 1.2;
+  font-size: 0.75rem;
+}
+
+.ag-grid-buefy .ag-cell.ag-cell--numeric {
+  justify-content: flex-end;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.ag-grid-buefy .ag-cell.ag-cell--pinned,
+.ag-grid-buefy .ag-header-cell.ag-header-cell--pinned {
+  background-color: #f5f3ff;
+  font-weight: 600;
+}
+
+.ag-grid-buefy .ag-row-hover {
+  background-color: #f3f0ff !important;
+}
+</style>

@@ -1,128 +1,395 @@
+<!-- src/components/ag-grid/templates/AgGridMonofocal.vue -->
 <script setup>
 import { ref, computed, watch, nextTick, onMounted } from "vue";
 import { AgGridVue } from "ag-grid-vue3";
-import { AllCommunityModule, ModuleRegistry, themeQuartz, iconSetQuartzBold, colorSchemeLight } from "ag-grid-community";
+import {
+  AllCommunityModule,
+  ModuleRegistry,
+  themeQuartz,
+  iconSetQuartzBold,
+  colorSchemeLight
+} from "ag-grid-community";
 import navtools from "@/components/ag-grid/navtools.vue";
-import { fetchItems, saveChunk } from "@/services/inventory";
+import {
+  fetchItems,
+  saveChunk,
+  reseedSheet,
+  getSheet
+} from "@/services/inventory";
+
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 const props = defineProps({
   sheetId: { type: String, required: true },
-  sphType: { type: String, default: "sph-neg" } // "sph-neg" | "sph-pos"
+  sphType: { type: String, default: "sph-neg" }, // "sph-neg" | "sph-pos"
+  actor: { type: Object, default: null }
 });
 
 const gridApi = ref(null);
 const rowData = ref([]);
 const dirty = ref(false);
+const saving = ref(false);
+const lastSavedAt = ref(null);
+const sheetMeta = ref(null);
 
-const themeCustom = themeQuartz.withPart(iconSetQuartzBold, colorSchemeLight).withParams({
-  accentColor: "#8e00d2", backgroundColor: "#FFF", borderColor: "#00000026", borderRadius: 8,
-  columnBorder: true, fontFamily: "Satoshi", fontSize: 12, foregroundColor: "#000",
-  headerBackgroundColor: "#FFF", headerFontSize: 12, headerFontWeight: 500, headerTextColor: "#7957d5",
-  rowBorder: true, spacing: 5, wrapperBorder: true, wrapperBorderRadius: 4
-});
-const localeText = { noRowsToShow: "No hay filas para mostrar", loadingOoo: "Cargando..." };
+const isNumeric = (v) =>
+  /^-?\d+(\.\d+)?$/.test(String(v ?? "").trim());
+
+/* Tema */
+const themeCustom = themeQuartz
+  .withPart(iconSetQuartzBold, colorSchemeLight)
+  .withParams({
+    accentColor: "#7957d5",
+    backgroundColor: "#ffffff",
+    foregroundColor: "#2d2242",
+    borderColor: "#e5e5f0",
+    borderRadius: 10,
+    wrapperBorder: true,
+    wrapperBorderRadius: 10,
+    columnBorder: true,
+    rowBorder: true,
+    headerBackgroundColor: "#f5f3ff",
+    headerTextColor: "#4527a0",
+    headerFontSize: 11,
+    headerFontWeight: 600,
+    fontFamily:
+      "Satoshi, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    fontSize: 12,
+    spacing: 3,
+    oddRowBackgroundColor: "#fbfbff"
+  });
+
+const localeText = {
+  noRowsToShow: "No hay filas para mostrar",
+  loadingOoo: "Cargando..."
+};
+
+const effectiveActor = computed(() => props.actor || null);
+
+const totalRows = computed(() => rowData.value.length);
+const sheetName = computed(
+  () => sheetMeta.value?.nombre || sheetMeta.value?.name || "Hoja monofocal (Esf/Cil)"
+);
+const tipoMatriz = computed(() => sheetMeta.value?.tipo_matriz || "SPH_CYL");
+const material = computed(() => sheetMeta.value?.material || "");
+const tratamientos = computed(() => sheetMeta.value?.tratamientos || []);
 
 const norm = (n) => String(n).replace(".", "_");
 const cylValues = ref([]);
 
 const columns = computed(() => [
-  { headerName: `SPH ${props.sphType === "sph-neg" ? "(-)" : "(+)"}`,
-    children: [{ field: "sph", headerName: "SPH", width: 90, pinned:"left", editable:false, sortable:true, comparator:(a,b)=>a-b }] },
-  { headerName: "CYL (-)", children: cylValues.value.map(c => ({
-      field: `cyl_${norm(c)}`, headerName: c.toString(), editable: true, filter:"agNumberColumnFilter",
-      minWidth: 80, maxWidth: 120, resizable: true,
-      valueSetter: (p) => { const v = p.newValue?.toString().trim(); p.data[p.colDef.field] = v && /^-?\d+(\.\d+)?$/.test(v) ? Number(v) : 0; dirty.value = true; return true; }
-  })) }
+  {
+    headerName: `SPH ${props.sphType === "sph-neg" ? "(-)" : "(+)"}`,
+    children: [
+      {
+        field: "sph",
+        headerName: "SPH",
+        width: 90,
+        minWidth: 86,
+        maxWidth: 96,
+        pinned: "left",
+        editable: false,
+        sortable: true,
+        comparator: (a, b) => a - b,
+        resizable: false,
+        filter: "agNumberColumnFilter",
+        cellClass: [
+          "ag-cell--compact",
+          "ag-cell--numeric",
+          "ag-cell--pinned"
+        ],
+        headerClass: [
+          "ag-header-cell--compact",
+          "ag-header-cell--pinned"
+        ]
+      }
+    ]
+  },
+  {
+    headerName: "CYL (-)",
+    children: cylValues.value.map((c) => ({
+      field: `cyl_${norm(c)}`,
+      headerName: c.toString(),
+      editable: true,
+      filter: "agNumberColumnFilter",
+      minWidth: 80,
+      maxWidth: 110,
+      resizable: true,
+      cellClass: ["ag-cell--compact", "ag-cell--numeric"],
+      headerClass: ["ag-header-cell--compact"],
+      valueSetter: (p) => {
+        const v = String(p.newValue ?? "").trim();
+        p.data[p.colDef.field] = isNumeric(v) ? Number(v) : 0;
+        dirty.value = true;
+        return true;
+      }
+    }))
+  }
 ]);
 
-const defaultColDef = { resizable: true, sortable: true, filter: true, editable: true };
+const defaultColDef = {
+  resizable: true,
+  sortable: true,
+  filter: "agNumberColumnFilter",
+  floatingFilter: true,
+  editable: true,
+  minWidth: 90,
+  maxWidth: 150,
+  cellClass: "ag-cell--compact",
+  headerClass: "ag-header-cell--compact"
+};
+
 const getRowId = (p) => p.data.sph?.toString();
 
-async function cargar() {
-  // ⬇️ filtro por pestaña
-  const query = props.sphType === "sph-pos"
-    ? { sphMin: 0,  sphMax: 6, cylMin: -6, cylMax: 0 }
-    : { sphMin: -6, sphMax: 0, cylMin: -6, cylMax: 0 };
-
-  const { data } = await fetchItems(props.sheetId, query);
-  const items = (data?.data || []);
-
-  const sphList = [...new Set(items.map(i => Number(i.sph)))].sort((a,b)=>a-b);
-  const cylList = [...new Set(items.map(i => Number(i.cyl)))].sort((a,b)=>a-b);
-  cylValues.value = cylList;
-
-  const key = (s,c) => `${s}|${c}`;
-  const map = new Map(items.map(i => [key(Number(i.sph), Number(i.cyl)), Number(i.existencias ?? 0)]));
-
-  rowData.value = sphList.map(sph => {
-    const row = { sph };
-    cylList.forEach(cyl => (row[`cyl_${norm(cyl)}`] = map.get(key(sph, cyl)) ?? 0));
-    return row;
-  });
-
-  await nextTick();
-  gridApi.value?.setSortModel([{ colId: "sph", sort: "asc" }]);
-  gridApi.value?.refreshClientSideRowModel("sort");
+/* Cargar */
+async function loadSheetMeta() {
+  try {
+    const { data } = await getSheet(props.sheetId);
+    const payload = data?.data || data;
+    sheetMeta.value = payload?.sheet || null;
+  } catch (e) {
+    console.error("[AgGridMonofocal] Error getSheet:", e?.response?.data || e);
+  }
 }
 
-onMounted(cargar);
-watch(() => props.sphType, () => cargar());
+async function loadRows() {
+  const query =
+    props.sphType === "sph-pos"
+      ? { sphMin: 0, sphMax: 6, cylMin: -6, cylMax: 0 }
+      : { sphMin: -6, sphMax: 0, cylMin: -6, cylMax: 0 };
 
-// edición rápida / navtools / guardar (igual que ya tenías)
-const formulaValue = ref(""); let activeCell = null;
-const onCellClicked = (p) => { activeCell = p; formulaValue.value = p.value; };
+  try {
+    const { data } = await fetchItems(props.sheetId, query);
+    const items = data?.data || [];
+
+    const sphList = [...new Set(items.map((i) => Number(i.sph)))].sort(
+      (a, b) => a - b
+    );
+    const cylList = [...new Set(items.map((i) => Number(i.cyl)))].sort(
+      (a, b) => a - b
+    );
+    cylValues.value = cylList;
+
+    const key = (s, c) => `${s}|${c}`;
+    const map = new Map(
+      items.map((i) => [
+        key(Number(i.sph), Number(i.cyl)),
+        Number(i.existencias ?? 0)
+      ])
+    );
+
+    rowData.value = sphList.map((sph) => {
+      const row = { sph };
+      cylList.forEach((cyl) => {
+        row[`cyl_${norm(cyl)}`] = map.get(key(sph, cyl)) ?? 0;
+      });
+      return row;
+    });
+
+    dirty.value = false;
+    await nextTick();
+  } catch (e) {
+    console.error("[AgGridMonofocal] Error fetchItems:", e?.response?.data || e);
+  }
+}
+
+async function loadAll() {
+  await Promise.all([loadSheetMeta(), loadRows()]);
+}
+
+onMounted(loadAll);
+watch(
+  () => [props.sheetId, props.sphType],
+  () => loadAll()
+);
+
+/* Edición rápida / navtools / guardar */
+const formulaValue = ref("");
+let activeCell = null;
+
+const onCellClicked = (p) => {
+  activeCell = p;
+  formulaValue.value = p.value;
+};
+
 const onCellValueChanged = (p) => {
-  if (activeCell && activeCell.rowIndex===p.rowIndex && activeCell.colDef.field===p.colDef.field) formulaValue.value = p.newValue;
+  if (
+    activeCell &&
+    activeCell.rowIndex === p.rowIndex &&
+    activeCell.colDef.field === p.colDef.field
+  ) {
+    formulaValue.value = p.newValue;
+  }
   dirty.value = true;
 };
+
 watch(formulaValue, (val) => {
   if (!activeCell || !gridApi.value) return;
-  gridApi.value.applyTransaction({ update: [{ ...activeCell.data, [activeCell.colDef.field]: val }] });
+  const field = activeCell.colDef.field;
+  const raw = String(val ?? "").trim();
+  const newVal = isNumeric(raw) ? Number(raw) : raw;
+
+  gridApi.value.applyTransaction({
+    update: [{ ...activeCell.data, [field]: newVal }]
+  });
   dirty.value = true;
 });
-const onGridReady = (p) => (gridApi.value = p.api);
+
+const onGridReady = (p) => {
+  gridApi.value = p.api;
+};
 
 const handleAddRow = async (nuevoValor) => {
   const v = Number(nuevoValor);
-  if (Number.isNaN(v)) return alert("Ingresa un SPH numérico");
-  if (rowData.value.some(r => r.sph === v)) return alert(`SPH ${v} ya existe`);
+  if (Number.isNaN(v)) {
+    alert("Ingresa un SPH numérico");
+    return;
+  }
+  if (rowData.value.some((r) => r.sph === v)) {
+    alert(`SPH ${v} ya existe`);
+    return;
+  }
+
   const nueva = { sph: v };
-  cylValues.value.forEach(c => (nueva[`cyl_${norm(c)}`] = 0));
+  cylValues.value.forEach((c) => (nueva[`cyl_${norm(c)}`] = 0));
+
   gridApi.value?.applyTransaction({ add: [nueva] });
   dirty.value = true;
-};
-const handleAddColumn = async (nuevoValor) => {
-  const v = Number(nuevoValor);
-  if (Number.isNaN(v)) return alert("Ingresa un CYL numérico");
-  if (cylValues.value.includes(v)) return alert(`CYL ${v} ya existe`);
-  cylValues.value = [...cylValues.value, v].sort((a,b)=>a-b);
-  rowData.value.forEach(r => (r[`cyl_${norm(v)}`] = 0));
-  await nextTick(); gridApi.value?.refreshHeader(); gridApi.value?.redrawRows();
+  await nextTick();
+  resetSort();
 };
 
-async function guardar() {
+const handleAddColumn = async (nuevoValor) => {
+  const v = Number(nuevoValor);
+  if (Number.isNaN(v)) {
+    alert("Ingresa un CYL numérico");
+    return;
+  }
+  if (cylValues.value.includes(v)) {
+    alert(`CYL ${v} ya existe`);
+    return;
+  }
+
+  cylValues.value = [...cylValues.value, v].sort((a, b) => a - b);
+  rowData.value.forEach((r) => (r[`cyl_${norm(v)}`] = 0));
+  await nextTick();
+  gridApi.value?.refreshHeader();
+  gridApi.value?.redrawRows();
+  dirty.value = true;
+};
+
+/* Filtros / orden para navtools */
+const clearFilters = () => {
+  if (!gridApi.value || typeof gridApi.value.setFilterModel !== "function") {
+    console.warn("[AgGridMonofocal] setFilterModel no disponible", gridApi.value);
+    return;
+  }
+  gridApi.value.setFilterModel(null);
+};
+
+const resetSort = () => {
+  if (!gridApi.value || typeof gridApi.value.setSortModel !== "function") {
+    console.warn("[AgGridMonofocal] setSortModel no disponible", gridApi.value);
+    return;
+  }
+  gridApi.value.setSortModel([{ colId: "sph", sort: "asc" }]);
+  gridApi.value.refreshClientSideRowModel("sort");
+};
+
+const handleToggleFilters = () => {
+  clearFilters();
+};
+
+/* Guardar / refresh / seed / export */
+async function handleSave() {
   if (!dirty.value) return;
-  const rows = [];
-  rowData.value.forEach(r => {
-    const sph = r.sph;
-    cylValues.value.forEach(cyl => {
-      const field = `cyl_${norm(cyl)}`;
-      const existencias = Number(r[field] ?? 0);
-      rows.push({ sph, cyl, existencias });
+  saving.value = true;
+  try {
+    const rows = [];
+    rowData.value.forEach((r) => {
+      const sph = r.sph;
+      cylValues.value.forEach((cyl) => {
+        const field = `cyl_${norm(cyl)}`;
+        const existencias = Number(r[field] ?? 0);
+        rows.push({ sph, cyl, existencias });
+      });
     });
-  });
-  await saveChunk(props.sheetId, rows, { userId: "u123", name: "Cristian" });
+    await saveChunk(props.sheetId, rows, effectiveActor.value);
+    dirty.value = false;
+    lastSavedAt.value = new Date();
+    await loadRows();
+  } catch (e) {
+    console.error("[AgGridMonofocal] Error saveChunk:", e?.response?.data || e);
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function handleDiscard() {
+  await loadRows();
   dirty.value = false;
-  await cargar();
+}
+
+async function handleRefresh() {
+  await loadAll();
+}
+
+async function handleSeed() {
+  try {
+    saving.value = true;
+    await reseedSheet(props.sheetId, effectiveActor.value);
+    await loadRows();
+    dirty.value = false;
+    lastSavedAt.value = new Date();
+  } catch (e) {
+    console.error("[AgGridMonofocal] Error reseed:", e?.response?.data || e);
+  } finally {
+    saving.value = false;
+  }
+}
+
+function handleExport() {
+  if (!gridApi.value || typeof gridApi.value.exportDataAsCsv !== "function") {
+    console.warn("[AgGridMonofocal] exportDataAsCsv no disponible", gridApi.value);
+    return;
+  }
+  const nameSlug = sheetName.value.replace(/\s+/g, "_");
+  const posNeg = props.sphType === "sph-pos" ? "pos" : "neg";
+  gridApi.value.exportDataAsCsv({
+    fileName: `${nameSlug || "sph_cyl"}_${posNeg}.csv`
+  });
 }
 </script>
 
 <template>
   <div class="is-flex is-flex-direction-column" style="height: 100%;">
-    <navtools v-model="formulaValue" @add-row="handleAddRow" @add-column="handleAddColumn" />
-    <div class="buefy-balham-light" style="flex:1 1 auto; display:flex; flex-direction:column; overflow:auto;">
+    <navtools
+      v-model="formulaValue"
+      :dirty="dirty"
+      :saving="saving"
+      :total-rows="totalRows"
+      :sheet-name="sheetName"
+      :tipo-matriz="tipoMatriz"
+      :material="material"
+      :tratamientos="tratamientos"
+      :last-saved-at="lastSavedAt"
+      @add-row="handleAddRow"
+      @add-column="handleAddColumn"
+      @clear-filters="clearFilters"
+      @reset-sort="resetSort"
+      @toggle-filters="handleToggleFilters"
+      @save-request="handleSave"
+      @discard-changes="handleDiscard"
+      @refresh="handleRefresh"
+      @seed="handleSeed"
+      @export="handleExport"
+    />
+    <div
+      class="buefy-balham-light"
+      style="flex: 1 1 auto; display: flex; flex-direction: column; overflow: auto;"
+    >
       <AgGridVue
+        class="ag-grid-buefy"
         :columnDefs="columns"
         :rowData="rowData"
         :defaultColDef="defaultColDef"
@@ -130,14 +397,52 @@ async function guardar() {
         :animateRows="true"
         :localeText="localeText"
         :theme="themeCustom"
+        :rowHeight="30"
+        :headerHeight="32"
+        :suppressMovableColumns="true"
         @cellClicked="onCellClicked"
         @cellValueChanged="onCellValueChanged"
         @grid-ready="onGridReady"
         style="width: 100%; height: 100%;"
       />
     </div>
-    <div class="p-2 has-text-right">
-      <button class="button is-primary is-small" @click="guardar">Guardar cambios</button>
-    </div>
   </div>
 </template>
+
+<style scoped>
+.buefy-balham-light {
+  padding: 0.5rem 0.75rem 0.75rem;
+  background-color: #ffffff;
+  border-radius: 0.75rem;
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.03);
+}
+
+.ag-grid-buefy .ag-header-cell.ag-header-cell--compact {
+  padding-inline: 6px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ag-grid-buefy .ag-cell.ag-cell--compact {
+  padding-inline: 6px;
+  line-height: 1.2;
+  font-size: 0.75rem;
+}
+
+.ag-grid-buefy .ag-cell.ag-cell--numeric {
+  justify-content: flex-end;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.ag-grid-buefy .ag-cell.ag-cell--pinned,
+.ag-grid-buefy .ag-header-cell.ag-header-cell--pinned {
+  background-color: #f5f3ff;
+  font-weight: 600;
+}
+
+.ag-grid-buefy .ag-row-hover {
+  background-color: #f3f0ff !important;
+}
+</style>

@@ -2,27 +2,37 @@
   <div>
     <!-- TABS -->
     <div ref="tabsContainer" class="tabs-wrapper">
-      <div
-        v-for="planilla in sheets"
-        :key="planilla.id"
-        :data-id="planilla.id"
-        :class="['tab-item', { 'tab-agregar': planilla.id === 'nueva', active: planilla.id === activeId }]"
-        @click="handleTabClick(planilla.id)"
-      >
-        <template v-if="planilla.id === 'nueva'">
-          <i class="fas fa-plus"></i>
-        </template>
-        <template v-else>
-          <span class="tab-label" :title="planilla.name">{{ planilla.name }}</span>
-          <!-- 3 puntos (abre modal; no deforma layout) -->
-          <button
-            class="tab-menu-btn"
-            title="Más acciones"
-            aria-label="Más acciones"
-            @click.stop="openActions(planilla)"
-          >⋮</button>
-        </template>
-      </div>
+      <!-- Skeleton de tabs mientras se cargan las planillas -->
+      <template v-if="loadingTabs">
+        <div v-for="n in 3" :key="'sk-'+n" class="tab-item skeleton-tab">
+          <span class="skeleton-bar"></span>
+        </div>
+      </template>
+
+      <!-- Tabs reales -->
+      <template v-else>
+        <div
+          v-for="planilla in sheets"
+          :key="planilla.id"
+          :data-id="planilla.id"
+          :class="['tab-item', { 'tab-agregar': planilla.id === 'nueva', active: planilla.id === activeId }]"
+          @click="handleTabClick(planilla.id)"
+        >
+          <template v-if="planilla.id === 'nueva'">
+            <i class="fas fa-plus"></i>
+          </template>
+          <template v-else>
+            <span class="tab-label" :title="planilla.name">{{ planilla.name }}</span>
+            <!-- 3 puntos (abre modal; no deforma layout) -->
+            <button
+              class="tab-menu-btn"
+              title="Más acciones"
+              aria-label="Más acciones"
+              @click.stop="openActions(planilla)"
+            >⋮</button>
+          </template>
+        </div>
+      </template>
     </div>
 
     <!-- CONTENIDO -->
@@ -271,13 +281,20 @@ const props = defineProps({
   initialSheets: { type: Array, required: true },
   activeId: { type: String, required: true },
   configuracion: { type: Object, required: true },
-  actor: { type: Object, default: null }
+  actor: { type: Object, default: null },
+  // 🔹 flag de loading para skeletons de tabs
+  loadingTabs: { type: Boolean, default: false }
 });
+
 const emit = defineEmits(["update:active", "reorder", "crear", "update:internal", "deleted", "renamed"]);
 
 /* ===== Tabs ===== */
 const sheets = ref([...props.initialSheets]);
-watch(() => props.initialSheets, v => (sheets.value = [...v]), { deep: true });
+watch(
+  () => props.initialSheets,
+  v => (sheets.value = [...v]),
+  { deep: true }
+);
 
 const activeId = computed(() => props.activeId);
 const activeSheetObj = computed(() => sheets.value.find(s => s.id === activeId.value));
@@ -287,16 +304,28 @@ const activeInternalTab = ref(null);
 const internalTabs = computed(() => {
   const t = activeSheetObj.value?.tipo_matriz;
   if (!t) return [];
-  if (t === "SPH_ADD" || t === "SPH_CYL") return [{ id: "sph-neg", label: "SPH (-)" }, { id: "sph-pos", label: "SPH (+)" }];
+  if (t === "SPH_ADD" || t === "SPH_CYL") {
+    return [
+      { id: "sph-neg", label: "SPH (-)" },
+      { id: "sph-pos", label: "SPH (+)" }
+    ];
+  }
   if (t === "BASE_ADD") return [{ id: "base-add", label: "BASE / ADD +" }];
   return [];
 });
-watch(internalTabs, (tabs) => {
-  const first = tabs[0]?.id || null;
-  activeInternalTab.value = first;
-  emit("update:internal", first);
-}, { immediate: true });
-const handleInternalTabClick = (id) => { activeInternalTab.value = id; emit("update:internal", id); };
+watch(
+  internalTabs,
+  (tabs) => {
+    const first = tabs[0]?.id || null;
+    activeInternalTab.value = first;
+    emit("update:internal", first);
+  },
+  { immediate: true }
+);
+const handleInternalTabClick = (id) => {
+  activeInternalTab.value = id;
+  emit("update:internal", id);
+};
 
 /* ===== Crear ===== */
 const selectedBase = ref(null);
@@ -316,16 +345,42 @@ watch([selectedBase, selectedMaterial, selectedTratamientos], () => {
   const tratamientosLabel = selectedTratamientos.value.join(" + ");
   newSheetName.value = [baseLabel, materialLabel, tratamientosLabel].filter(Boolean).join(" | ");
 });
-const selectBase = (base) => { selectedBase.value = base; selectedMaterial.value = null; selectedTratamientos.value = []; };
-const selectMaterial = (mat) => { if (!isMaterialAllowed(mat)) return; selectedMaterial.value = mat; selectedTratamientos.value = []; };
-const isMaterialAllowed = (mat) => { if (!selectedBase.value) return false; const b = props.configuracion.bases[selectedBase.value]; return b && b.materiales.includes(mat); };
-const isTratamientoAllowed = (trat) => { if (!selectedBase.value) return false; const b = props.configuracion.bases[selectedBase.value]; return b && b.tratamientos.includes(trat); };
+const selectBase = (base) => {
+  selectedBase.value = base;
+  selectedMaterial.value = null;
+  selectedTratamientos.value = [];
+};
+const selectMaterial = (mat) => {
+  if (!isMaterialAllowed(mat)) return;
+  selectedMaterial.value = mat;
+  selectedTratamientos.value = [];
+};
+const isMaterialAllowed = (mat) => {
+  if (!selectedBase.value) return false;
+  const b = props.configuracion.bases[selectedBase.value];
+  return b && b.materiales.includes(mat);
+};
+const isTratamientoAllowed = (trat) => {
+  if (!selectedBase.value) return false;
+  const b = props.configuracion.bases[selectedBase.value];
+  return b && b.tratamientos.includes(trat);
+};
 const removeTratamiento = (i) => selectedTratamientos.value.splice(i, 1);
-const canCreate = computed(() => !!selectedBase.value && !!selectedMaterial.value && selectedTratamientos.value.length > 0 && !!newSheetName.value);
+const canCreate = computed(
+  () =>
+    !!selectedBase.value &&
+    !!selectedMaterial.value &&
+    selectedTratamientos.value.length > 0 &&
+    !!newSheetName.value
+);
 
 /* Feedback helpers */
-const hasAnyAllowedMaterial = computed(() => allMaterials.some((m) => isMaterialAllowed(m)));
-const hasAnyAllowedTratamiento = computed(() => allTratamientos.some((t) => isTratamientoAllowed(t)));
+const hasAnyAllowedMaterial = computed(() =>
+  allMaterials.some((m) => isMaterialAllowed(m))
+);
+const hasAnyAllowedTratamiento = computed(() =>
+  allTratamientos.some((t) => isTratamientoAllowed(t))
+);
 const baseLabel = computed(() => {
   const b = selectedBase.value && props.configuracion.bases[selectedBase.value];
   return b ? b.label : "";
@@ -345,8 +400,13 @@ const mapBaseToTipoMatriz = (baseKey) => {
 
 /* Actor */
 const actorRef = computed(() => {
-  const src = props.actor || (typeof window !== "undefined" ? window.__currentUser : null) || null;
-  return src && (src.id || src.userId) ? { userId: src.id || src.userId, name: src.name } : null;
+  const src =
+    props.actor ||
+    (typeof window !== "undefined" ? window.__currentUser : null) ||
+    null;
+  return src && (src.id || src.userId)
+    ? { userId: src.id || src.userId, name: src.name }
+    : null;
 });
 
 /* Crear */
@@ -385,12 +445,22 @@ const handleCrear = async () => {
       tratamientos: s.tratamientos || [],
       tabs
     };
-    const addIndex = sheets.value.findIndex(x => x.id === "nueva");
-    sheets.value.splice(addIndex >= 0 ? addIndex : sheets.value.length, 0, newTab);
-    emit("update:active", newTab.id);
-    emit("crear", { payload, result: s });
+    const addIndex = sheets.value.findIndex((x) => x.id === "nueva");
+    sheets.value.splice(
+      addIndex >= 0 ? addIndex : sheets.value.length,
+      0,
+      newTab
+    );
 
-    selectedBase.value = null; selectedMaterial.value = null; selectedTratamientos.value = []; newSheetName.value = "";
+    emit("update:active", newTab.id);
+    // ⬇️ avisamos al padre, pero ya SIN duplicar el createSheet
+    emit("crear", { payload, result: s, tabs });
+
+    // reset form
+    selectedBase.value = null;
+    selectedMaterial.value = null;
+    selectedTratamientos.value = [];
+    newSheetName.value = "";
   } catch (err) {
     console.error("Error al crear planilla:", err?.response?.data || err);
     alert("No se pudo crear la planilla");
@@ -411,15 +481,23 @@ onMounted(() => {
     delay: 200,
     delayOnTouchOnly: true,
     onMove: (evt) => {
+      // 🔹 Evita drag mientras está en modo skeleton
+      if (props.loadingTabs) return false;
       const relatedEl = evt.related;
       if (relatedEl && relatedEl.classList.contains("tab-agregar")) {
         evt.dragged.classList.add("shake", "shake-color");
-        setTimeout(() => evt.dragged.classList.remove("shake", "shake-color"), 300);
+        setTimeout(
+          () => evt.dragged.classList.remove("shake", "shake-color"),
+          300
+        );
         return false;
       }
       return true;
     },
     onEnd: (evt) => {
+      // 🔹 No reordenar si aún se están cargando las sheets
+      if (props.loadingTabs) return;
+
       const maxIndex = sheets.value.length - 1;
       const oldIndex = evt.oldIndex;
       let newIndex = evt.newIndex;
@@ -443,12 +521,13 @@ const renaming = ref(false);
 const confirmingDelete = ref(false);
 const deleting = ref(false);
 
-const tipoHuman = (t) => ({
-  BASE: "Monofocal (Base)",
-  SPH_CYL: "Monofocal (Esf/Cil)",
-  SPH_ADD: "Bifocal (SPH + ADD)",
-  BASE_ADD: "Progresivo (BASE + ADD)"
-}[t] || t);
+const tipoHuman = (t) =>
+  ({
+    BASE: "Monofocal (Base)",
+    SPH_CYL: "Monofocal (Esf/Cil)",
+    SPH_ADD: "Bifocal (SPH + ADD)",
+    BASE_ADD: "Progresivo (BASE + ADD)"
+  }[t] || t);
 
 const openActions = (sheet) => {
   selectedSheet.value = sheet;
@@ -468,10 +547,13 @@ const confirmRename = async () => {
   renaming.value = true;
   try {
     const { id } = selectedSheet.value;
-    const { data } = await updateSheet(id, { nombre: renameName.value, actor: actorRef.value || undefined });
+    const { data } = await updateSheet(id, {
+      nombre: renameName.value,
+      actor: actorRef.value || undefined
+    });
     const updated = data?.data?.sheet;
     if (updated) {
-      const idx = sheets.value.findIndex(s => s.id === id);
+      const idx = sheets.value.findIndex((s) => s.id === id);
       if (idx >= 0) sheets.value[idx].name = updated.nombre;
       emit("renamed", { id, nombre: updated.nombre });
     }
@@ -487,12 +569,14 @@ const softDelete = async () => {
   deleting.value = true;
   try {
     const id = selectedSheet.value.id;
-    // Ruta original: PATCH /sheets/:id/trash
     await moveSheetToTrash(id, actorRef.value || undefined);
-    const idx = sheets.value.findIndex(s => s.id === id);
+    const idx = sheets.value.findIndex((s) => s.id === id);
     if (idx >= 0) sheets.value.splice(idx, 1);
     if (activeId.value === id) {
-      const next = sheets.value[idx] || sheets.value[idx - 1] || sheets.value.find(s => s.id !== 'nueva') || { id: 'nueva' };
+      const next =
+        sheets.value[idx] ||
+        sheets.value[idx - 1] ||
+        sheets.value.find((s) => s.id !== "nueva") || { id: "nueva" };
       emit("update:active", next.id);
     }
     emit("deleted", { id });
@@ -506,7 +590,10 @@ const softDelete = async () => {
   }
 };
 
-const handleTabClick = (id) => emit("update:active", id);
+const handleTabClick = (id) => {
+  if (props.loadingTabs) return; // pequeña protección extra
+  emit("update:active", id);
+};
 </script>
 
 <style scoped>
@@ -528,6 +615,26 @@ const handleTabClick = (id) => emit("update:active", id);
   border-radius:4px; opacity:.8;
 }
 .tab-menu-btn:hover{ opacity:1; background:rgba(0,0,0,.06); }
+
+/* 🔹 Skeleton para tabs */
+.skeleton-tab{
+  background:transparent;
+  border-color:transparent;
+  cursor:default;
+}
+.skeleton-bar{
+  display:block;
+  width:110px;
+  height:0.8rem;
+  border-radius:999px;
+  background:linear-gradient(90deg,#eee 0%,#f5f5f5 50%,#eee 100%);
+  background-size:200% 100%;
+  animation:skeleton-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes skeleton-shimmer{
+  0%{background-position:200% 0;}
+  100%{background-position:-200% 0;}
+}
 
 /* ===== Tabs internas ===== */
 .sheet-tab{ padding:.25rem .75rem; font-size:.85rem; background:transparent; border:1px solid transparent; border-bottom:none; border-radius:4px 4px 0 0; margin-right:2px; cursor:pointer; transition:all .2s; }
@@ -554,7 +661,7 @@ const handleTabClick = (id) => emit("update:active", id);
 /* ===== Modal ===== */
 .rsbo-actions-card{ width:100%; border-radius:14px; overflow:hidden; }
 .rsbo-actions-head{
-  background:#fff; /* opaco */
+  background:#fff;
   border-bottom:1px solid #eee;
   box-shadow:0 2px 8px rgba(0,0,0,.03);
 }
@@ -565,7 +672,7 @@ const handleTabClick = (id) => emit("update:active", id);
 }
 .pill.strong{ background:rgba(142,0,210,.08); color:var(--rsbo-primary,#8e00d2); border-color:rgba(142,0,210,.25); }
 
-.rsbo-actions-body{ padding:1rem 1.25rem; min-height:320px; } /* altura estable */
+.rsbo-actions-body{ padding:1rem 1.25rem; min-height:320px; }
 
 .action-card{
   display:flex; gap:1rem; align-items:flex-start; padding:1rem; background:#fff;

@@ -1,9 +1,35 @@
+<!-- src/components/ag-grid/templates/AgGridBase.vue -->
 <template>
   <div class="is-flex is-flex-direction-column" style="height: 100%;">
-    <navtools v-model="formulaValue" @add-row="handleAddRow" @add-column="handleAddColumn" />
-    <div class="buefy-balham-light" style="flex:1 1 auto; display:flex; flex-direction:column; overflow:auto;">
+    <navtools
+      v-model="formulaValue"
+      :dirty="dirty"
+      :saving="saving"
+      :total-rows="totalRows"
+      :sheet-name="sheetName"
+      :tipo-matriz="tipoMatriz"
+      :material="material"
+      :tratamientos="tratamientos"
+      :last-saved-at="lastSavedAt"
+      @add-row="handleAddRow"
+      @add-column="handleAddColumn"
+      @clear-filters="clearFilters"
+      @reset-sort="resetSort"
+      @toggle-filters="handleToggleFilters"
+      @save-request="handleSave"
+      @discard-changes="handleDiscard"
+      @refresh="handleRefresh"
+      @seed="handleSeed"
+      @export="handleExport"
+    />
+
+    <div
+      class="buefy-balham-light"
+      style="flex: 1 1 auto; display: flex; flex-direction: column; overflow: auto;"
+    >
       <AgGridVue
         ref="gridRef"
+        class="ag-grid-buefy"
         :columnDefs="columns"
         :rowData="rowData"
         :defaultColDef="defaultColDef"
@@ -11,14 +37,14 @@
         :animateRows="true"
         :localeText="localeText"
         :theme="themeCustom"
+        :rowHeight="30"
+        :headerHeight="32"
+        :suppressMovableColumns="true"
         @cellClicked="onCellClicked"
         @cellValueChanged="onCellValueChanged"
         @grid-ready="onGridReady"
         style="width: 100%; height: 100%;"
       />
-    </div>
-    <div class="p-2 has-text-right">
-      <button class="button is-primary is-small" @click="guardar">Guardar cambios</button>
     </div>
   </div>
 </template>
@@ -26,78 +52,337 @@
 <script setup>
 import { ref, computed, watch, nextTick, onMounted } from "vue";
 import { AgGridVue } from "ag-grid-vue3";
-import { AllCommunityModule, ModuleRegistry, themeQuartz, iconSetQuartzBold, colorSchemeLight } from "ag-grid-community";
+import {
+  AllCommunityModule,
+  ModuleRegistry,
+  themeQuartz,
+  iconSetQuartzBold,
+  colorSchemeLight
+} from "ag-grid-community";
 import navtools from "@/components/ag-grid/navtools.vue";
-import { fetchItems, saveChunk } from "@/services/inventory";
+import {
+  fetchItems,
+  saveChunk,
+  reseedSheet,
+  getSheet
+} from "@/services/inventory";
+
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 const props = defineProps({
-  sheetId: { type: String, required: true }
+  sheetId: { type: String, required: true },
+  actor: { type: Object, default: null }
 });
 
 const gridApi = ref(null);
 const rowData = ref([]);
 const dirty = ref(false);
+const saving = ref(false);
+const lastSavedAt = ref(null);
+const sheetMeta = ref(null);
 
-const themeCustom = themeQuartz.withPart(iconSetQuartzBold, colorSchemeLight).withParams({
-  accentColor: "#8e00d2", backgroundColor: "#FFF", borderColor: "#00000026", borderRadius: 8,
-  columnBorder: true, fontFamily: "Satoshi", fontSize: 12, foregroundColor: "#000",
-  headerBackgroundColor: "#FFF", headerFontSize: 12, headerFontWeight: 500, headerTextColor: "#7957d5",
-  rowBorder: true, spacing: 5, wrapperBorder: true, wrapperBorderRadius: 4
-});
+const isNumeric = (v) =>
+  /^-?\d+(\.\d+)?$/.test(String(v ?? "").trim());
 
-const localeText = { noRowsToShow: "No hay filas para mostrar", loadingOoo: "Cargando..." };
+/* ========= TEMA QUARTZ + LOOK BUEFY ========= */
+const themeCustom = themeQuartz
+  .withPart(iconSetQuartzBold, colorSchemeLight)
+  .withParams({
+    accentColor: "#7957d5",
+    backgroundColor: "#ffffff",
+    foregroundColor: "#2d2242",
+    borderColor: "#e5e5f0",
+    borderRadius: 10,
+    wrapperBorder: true,
+    wrapperBorderRadius: 10,
+    columnBorder: true,
+    rowBorder: true,
+    headerBackgroundColor: "#f5f3ff",
+    headerTextColor: "#4527a0",
+    headerFontSize: 11,
+    headerFontWeight: 600,
+    fontFamily:
+      "Satoshi, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    fontSize: 12,
+    spacing: 3,
+    oddRowBackgroundColor: "#fbfbff"
+  });
 
+const localeText = {
+  noRowsToShow: "No hay filas para mostrar",
+  loadingOoo: "Cargando..."
+};
+
+const effectiveActor = computed(() => props.actor || null);
+
+const totalRows = computed(() => rowData.value.length);
+const sheetName = computed(
+  () => sheetMeta.value?.nombre || sheetMeta.value?.name || "Hoja monofocal (Base)"
+);
+const tipoMatriz = computed(() => sheetMeta.value?.tipo_matriz || "BASE");
+const material = computed(() => sheetMeta.value?.material || "");
+const tratamientos = computed(() => sheetMeta.value?.tratamientos || []);
+
+/* ========= COLUMNAS ========= */
 const columns = computed(() => [
-  { headerName: "BASE", field: "base", pinned: "left", width: 120, editable: false, sortable: true, comparator: (a,b)=>a-b },
-  { headerName: "EXISTENCIAS", field: "existencias", editable: true, filter: "agNumberColumnFilter", minWidth: 120, resizable: true,
-    valueSetter: (p) => { const v = p.newValue?.toString().trim(); p.data.existencias = v && /^-?\d+(\.\d+)?$/.test(v) ? Number(v) : 0; dirty.value = true; return true; } }
+  {
+    headerName: "BASE (°)",
+    field: "base",
+    pinned: "left",
+    width: 96,
+    minWidth: 90,
+    maxWidth: 105,
+    resizable: false,
+    editable: false,
+    sortable: true,
+    comparator: (a, b) => a - b,
+    filter: "agNumberColumnFilter",
+    cellClass: ["ag-cell--compact", "ag-cell--numeric", "ag-cell--pinned"],
+    headerClass: ["ag-header-cell--compact", "ag-header-cell--pinned"]
+  },
+  {
+    headerName: "Existencias",
+    field: "existencias",
+    editable: true,
+    filter: "agNumberColumnFilter",
+    width: 120,
+    minWidth: 110,
+    maxWidth: 140,
+    resizable: true,
+    cellClass: ["ag-cell--compact", "ag-cell--numeric"],
+    headerClass: ["ag-header-cell--compact"],
+    valueSetter: (p) => {
+      const v = String(p.newValue ?? "").trim();
+      p.data.existencias = isNumeric(v) ? Number(v) : 0;
+      dirty.value = true;
+      return true;
+    }
+  }
 ]);
 
-const defaultColDef = { resizable: true, sortable: true, filter: true, editable: true };
+const defaultColDef = {
+  resizable: true,
+  sortable: true,
+  filter: "agNumberColumnFilter",
+  floatingFilter: true,
+  editable: true,
+  minWidth: 90,
+  maxWidth: 160,
+  cellClass: "ag-cell--compact",
+  headerClass: "ag-header-cell--compact"
+};
+
 const getRowId = (p) => p.data.base?.toString();
 
-async function cargar() {
-  const { data } = await fetchItems(props.sheetId);
-  rowData.value = (data?.data || []).map(it => ({ base: it.base, existencias: it.existencias ?? 0 }))
-                                     .sort((a,b)=>a.base - b.base);
+/* ========= CARGA ========= */
+async function loadSheetMeta() {
+  try {
+    const { data } = await getSheet(props.sheetId);
+    const payload = data?.data || data;
+    sheetMeta.value = payload?.sheet || null;
+  } catch (e) {
+    console.error("[AgGridBase] Error getSheet:", e?.response?.data || e);
+  }
 }
 
-onMounted(cargar);
+async function loadRows() {
+  try {
+    const { data } = await fetchItems(props.sheetId);
+    rowData.value = (data?.data || [])
+      .map((it) => ({
+        base: Number(it.base),
+        existencias: Number(it.existencias ?? 0)
+      }))
+      .sort((a, b) => a.base - b.base);
+  } catch (e) {
+    console.error("[AgGridBase] Error fetchItems:", e?.response?.data || e);
+  }
+}
 
-// edición rápida
-const formulaValue = ref(""); let activeCell = null;
-const onCellClicked = (p) => { activeCell = p; formulaValue.value = p.value; };
+async function loadAll() {
+  await Promise.all([loadSheetMeta(), loadRows()]);
+  dirty.value = false;
+}
+
+onMounted(loadAll);
+
+/* ========= EDICIÓN RÁPIDA / FORMULA BAR ========= */
+const formulaValue = ref("");
+let activeCell = null;
+
+const onCellClicked = (p) => {
+  activeCell = p;
+  formulaValue.value = p.value;
+};
+
 const onCellValueChanged = (p) => {
-  if (activeCell && activeCell.rowIndex===p.rowIndex && activeCell.colDef.field===p.colDef.field) formulaValue.value = p.newValue;
+  if (
+    activeCell &&
+    activeCell.rowIndex === p.rowIndex &&
+    activeCell.colDef.field === p.colDef.field
+  ) {
+    formulaValue.value = p.newValue;
+  }
   dirty.value = true;
 };
+
 watch(formulaValue, (val) => {
   if (!activeCell || !gridApi.value) return;
-  gridApi.value.applyTransaction({ update: [{ ...activeCell.data, [activeCell.colDef.field]: val }] });
+
+  const field = activeCell.colDef.field;
+  const raw = String(val ?? "").trim();
+  const newVal = isNumeric(raw) ? Number(raw) : raw;
+
+  gridApi.value.applyTransaction({
+    update: [{ ...activeCell.data, [field]: newVal }]
+  });
   dirty.value = true;
 });
-const onGridReady = (p) => (gridApi.value = p.api);
 
-// navtools
+const onGridReady = (p) => {
+  gridApi.value = p.api;
+};
+
+/* ========= NAVTOOLS: estructura ========= */
 const handleAddRow = async (nuevoValor) => {
   const v = Number(nuevoValor);
-  if (Number.isNaN(v)) return alert("Ingresa una base numérica");
-  if (rowData.value.some(r => r.base === v)) return alert(`Base ${v} ya existe`);
-  gridApi.value?.applyTransaction({ add: [{ base: v, existencias: 0 }] });
-  dirty.value = true;
-  await nextTick(); gridApi.value?.setSortModel([{ colId: "base", sort: "asc" }]); gridApi.value?.refreshClientSideRowModel("sort");
-};
-const handleAddColumn = () => alert("Monofocal BASE no admite columnas dinámicas.");
+  if (Number.isNaN(v)) {
+    alert("Ingresa una base numérica");
+    return;
+  }
+  if (rowData.value.some((r) => r.base === v)) {
+    alert(`Base ${v} ya existe`);
+    return;
+  }
 
-// Guardar a backend
-async function guardar() {
+  gridApi.value?.applyTransaction({
+    add: [{ base: v, existencias: 0 }]
+  });
+  dirty.value = true;
+
+  await nextTick();
+  resetSort();
+};
+
+const handleAddColumn = () =>
+  alert("Esta hoja no admite columnas dinámicas.");
+
+/* Filtros / orden (para navtools) */
+const clearFilters = () => {
+  if (!gridApi.value || typeof gridApi.value.setFilterModel !== "function") {
+    console.warn("[AgGridBase] setFilterModel no disponible", gridApi.value);
+    return;
+  }
+  gridApi.value.setFilterModel(null);
+};
+
+const resetSort = () => {
+  if (!gridApi.value || typeof gridApi.value.setSortModel !== "function") {
+    console.warn("[AgGridBase] setSortModel no disponible", gridApi.value);
+    return;
+  }
+  gridApi.value.setSortModel([{ colId: "base", sort: "asc" }]);
+  gridApi.value.refreshClientSideRowModel("sort");
+};
+
+const handleToggleFilters = () => {
+  clearFilters();
+};
+
+/* ========= GUARDAR / REFRESH / SEED / EXPORT ========= */
+async function handleSave() {
   if (!dirty.value) return;
-  const rows = [];
-  rowData.value.forEach(r => rows.push({ base: r.base, existencias: r.existencias }));
-  await saveChunk(props.sheetId, rows, { userId: "u123", name: "Cristian" });
+  saving.value = true;
+  try {
+    const rows = rowData.value.map((r) => ({
+      base: r.base,
+      existencias: Number(r.existencias ?? 0)
+    }));
+    await saveChunk(props.sheetId, rows, effectiveActor.value);
+    dirty.value = false;
+    lastSavedAt.value = new Date();
+    await loadRows(); // refrescar desde backend
+  } catch (e) {
+    console.error("[AgGridBase] Error saveChunk:", e?.response?.data || e);
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function handleDiscard() {
+  await loadRows();
   dirty.value = false;
-  // recarga para reflejar timestamps/trigger externos
-  await cargar();
+}
+
+async function handleRefresh() {
+  await loadAll();
+}
+
+async function handleSeed() {
+  try {
+    saving.value = true;
+    await reseedSheet(props.sheetId, effectiveActor.value);
+    await loadRows();
+    dirty.value = false;
+    lastSavedAt.value = new Date();
+  } catch (e) {
+    console.error("[AgGridBase] Error reseed:", e?.response?.data || e);
+  } finally {
+    saving.value = false;
+  }
+}
+
+function handleExport() {
+  if (!gridApi.value || typeof gridApi.value.exportDataAsCsv !== "function") {
+    console.warn("[AgGridBase] exportDataAsCsv no disponible", gridApi.value);
+    return;
+  }
+  const nameSlug = sheetName.value.replace(/\s+/g, "_");
+  gridApi.value.exportDataAsCsv({
+    fileName: `${nameSlug || "base"}.csv`
+  });
 }
 </script>
+
+<style scoped>
+.buefy-balham-light {
+  padding: 0.5rem 0.75rem 0.75rem;
+  background-color: #ffffff;
+  border-radius: 0.75rem;
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.03);
+}
+
+/* Header compacto */
+.ag-grid-buefy .ag-header-cell.ag-header-cell--compact {
+  padding-inline: 6px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Celdas compactas */
+.ag-grid-buefy .ag-cell.ag-cell--compact {
+  padding-inline: 6px;
+  line-height: 1.2;
+  font-size: 0.75rem;
+}
+
+/* Números alineados a la derecha */
+.ag-grid-buefy .ag-cell.ag-cell--numeric {
+  justify-content: flex-end;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Pinned visual */
+.ag-grid-buefy .ag-cell.ag-cell--pinned,
+.ag-grid-buefy .ag-header-cell.ag-header-cell--pinned {
+  background-color: #f5f3ff;
+  font-weight: 600;
+}
+
+/* Hover estilo Buefy */
+.ag-grid-buefy .ag-row-hover {
+  background-color: #f3f0ff !important;
+}
+</style>

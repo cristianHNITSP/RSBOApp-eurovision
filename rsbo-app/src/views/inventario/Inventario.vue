@@ -7,9 +7,9 @@ import AgGridBase from "@/components/ag-grid/templates/AgGridBase.vue";         
 import AgGridMonofocal from "@/components/ag-grid/templates/AgGridMonofocal.vue";     // SPH_CYL
 import AgGridProgresivo from "@/components/ag-grid/templates/AgGridProgresivo.vue";   // BASE_ADD
 
-import { listSheets, createSheet } from "@/services/inventory";
+import { listSheets } from "@/services/inventory";
 
-// ⬇️ recibe user (ya lo tienes según tu log)
+// ⬇️ recibe user (la cookie de sesión; contiene el actor)
 const props = defineProps({
   user: { type: Object, required: false, default: null }
 });
@@ -17,6 +17,9 @@ const props = defineProps({
 const dynamicSheets = reactive([{ id: "nueva", name: "+ Agregar" }]);
 const activeSheet = ref("nueva");
 const activeInternalTab = ref(null);
+
+// 🔹 estado de carga para skeletons de tabs
+const loadingSheets = ref(true);
 
 const configuracion = {
   bases: {
@@ -48,9 +51,10 @@ const configuracion = {
 };
 
 async function cargarSheets() {
+  loadingSheets.value = true;
   try {
     const { data } = await listSheets();
-    const arr = (data?.data || []).map(s => ({
+    const arr = (data?.data || []).map((s) => ({
       id: String(s._id),
       name: s.nombre,
       tipo_matriz: s.tipo_matriz,
@@ -61,45 +65,40 @@ async function cargarSheets() {
     }));
 
     // Inserta antes de "nueva" evitando duplicados
-    const addIndex = dynamicSheets.findIndex(s => s.id === "nueva");
-    const existentes = new Set(dynamicSheets.map(s => s.id));
-    const aInsertar = arr.filter(s => !existentes.has(s.id));
+    const addIndex = dynamicSheets.findIndex((s) => s.id === "nueva");
+    const existentes = new Set(dynamicSheets.map((s) => s.id));
+    const aInsertar = arr.filter((s) => !existentes.has(s.id));
     if (aInsertar.length) dynamicSheets.splice(addIndex, 0, ...aInsertar);
 
-    if (aInsertar.length && activeSheet.value === "nueva") activeSheet.value = aInsertar[0].id;
+    if (aInsertar.length && activeSheet.value === "nueva") {
+      activeSheet.value = aInsertar[0].id;
+    }
   } catch (e) {
     console.error("Error listSheets:", e?.response?.data || e);
+  } finally {
+    loadingSheets.value = false;
   }
 }
 onMounted(cargarSheets);
 
-async function crearNuevaPlanilla(payload) {
-  try {
-    const body = {
-      ...payload,
-      seed: true, // ⬅️ autollenado siempre
-      actor: props.user ? { userId: props.user.id || props.user.userId, name: props.user.name } : undefined,
-      rangos: payload.rangos || payload.rango
-    };
-    const { data } = await createSheet(body);
-    const s = data?.data?.sheet;
-    if (!s) return;
-    const newSheet = {
-      id: String(s._id),
-      name: s.nombre,
-      tipo_matriz: s.tipo_matriz,
-      baseKey: s.baseKey,
-      material: s.material,
-      tratamientos: s.tratamientos || [],
-      tabs: data?.data?.tabs || []
-    };
-    const addIndex = dynamicSheets.findIndex((x) => x.id === "nueva");
-    dynamicSheets.splice(addIndex, 0, newSheet);
-    activeSheet.value = newSheet.id;
-  } catch (e) {
-    console.error("Error createSheet:", e?.response?.data || e);
-    // 🚫 sin fallback local
-  }
+// 👇 TabsManager ya hace el createSheet → aquí solo sincronizamos
+function crearNuevaPlanilla({ payload, result, tabs }) {
+  const s = result;
+  if (!s) return;
+
+  const newSheet = {
+    id: String(s._id),
+    name: s.nombre,
+    tipo_matriz: s.tipo_matriz,
+    baseKey: s.baseKey,
+    material: s.material,
+    tratamientos: s.tratamientos || [],
+    tabs: tabs || []
+  };
+
+  const addIndex = dynamicSheets.findIndex((x) => x.id === "nueva");
+  dynamicSheets.splice(addIndex >= 0 ? addIndex : dynamicSheets.length, 0, newSheet);
+  activeSheet.value = newSheet.id;
 }
 
 function reordenarSheets({ oldIndex, newIndex }) {
@@ -112,11 +111,16 @@ function reordenarSheets({ oldIndex, newIndex }) {
 
 const resolverGrid = (tipo) => {
   switch (tipo) {
-    case "SPH_CYL":  return AgGridMonofocal;
-    case "SPH_ADD":  return AgGridBifocal;
-    case "BASE":     return AgGridBase;
-    case "BASE_ADD": return AgGridProgresivo;
-    default:         return AgGridMonofocal;
+    case "SPH_CYL":
+      return AgGridMonofocal;
+    case "SPH_ADD":
+      return AgGridBifocal;
+    case "BASE":
+      return AgGridBase;
+    case "BASE_ADD":
+      return AgGridProgresivo;
+    default:
+      return AgGridMonofocal;
   }
 };
 
@@ -125,7 +129,7 @@ const resolverGridProps = (sheet, activeInternal) => {
   const base = { sheetId: sheet.id };
   if (sheet.tipo_matriz === "SPH_ADD" || sheet.tipo_matriz === "SPH_CYL") {
     return { ...base, sphType: activeInternal || "sph-neg" };
-    }
+  }
   return base;
 };
 </script>
@@ -139,17 +143,23 @@ const resolverGridProps = (sheet, activeInternal) => {
           :active-id="activeSheet"
           :configuracion="configuracion"
           :actor="user"
+          :loading-tabs="loadingSheets"
           @update:active="activeSheet = $event"
           @update:internal="activeInternalTab = $event"
           @crear="crearNuevaPlanilla"
           @reorder="reordenarSheets"
         >
           <template #default="{ activeSheet: sheet, activeInternal }">
-            <div v-if="sheet && sheet.id !== 'nueva'" :key="sheet.id" class="contenido-planilla animated-sheet">
+            <div
+              v-if="sheet && sheet.id !== 'nueva'"
+              :key="sheet.id"
+              class="contenido-planilla animated-sheet"
+            >
               <div class="planilla-wrapper">
                 <component
                   :is="resolverGrid(sheet.tipo_matriz)"
                   v-bind="resolverGridProps(sheet, activeInternal)"
+                  :actor="user"         
                 />
               </div>
             </div>
@@ -161,12 +171,33 @@ const resolverGridProps = (sheet, activeInternal) => {
 </template>
 
 <style scoped>
-.section-matriz-dioptrias { border-bottom:1px solid #ccc; border-radius:8px; padding:1rem; background-color:#ffffff; }
-.contenido-planilla { width:100%; height:100%; }
-.planilla-wrapper { width:100%; height:600px; }
-.animated-sheet { animation: sheetFadeSlide .26s cubic-bezier(0.22, 0.61, 0.36, 1); }
+.section-matriz-dioptrias {
+  border-bottom: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 1rem;
+  background-color: #ffffff;
+}
+.contenido-planilla {
+  width: 100%;
+  height: 100%;
+}
+.planilla-wrapper {
+  width: 100%;
+  height: 600px;
+}
+.animated-sheet {
+  animation: sheetFadeSlide 0.26s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
 @keyframes sheetFadeSlide {
-  0% { opacity:0; transform: translateY(10px) scale(0.98); box-shadow:0 6px 18px rgba(0,0,0,.04); }
-  100% { opacity:1; transform: translateY(0) scale(1); box-shadow:0 14px 40px rgba(0,0,0,.06); }
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.06);
+  }
 }
 </style>

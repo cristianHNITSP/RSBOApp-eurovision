@@ -21,7 +21,8 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 
 const props = defineProps({
   sheetId: { type: String, required: true },
-  sphType: { type: String, default: "sph-neg" }, // "sph-neg" | "sph-pos"
+  // En monofocal/bifocal usa sphType si aplica:
+  sphType: { type: String, default: "sph-neg" },
   actor: { type: Object, default: null }
 });
 
@@ -72,7 +73,21 @@ const localeText = {
   loadingOoo: "Cargando..."
 };
 
-const effectiveActor = computed(() => props.actor || null);
+// 🔹 Actor normalizado: siempre { userId, name }
+const effectiveActor = computed(() => {
+  const src =
+    props.actor ||
+    (typeof window !== "undefined" ? window.__currentUser : null) ||
+    null;
+
+  if (!src) return null;
+
+  const userId = src.userId || src.id || src._id || null;
+  const name = src.name || src.email || "Usuario";
+
+  // Siempre mandamos estas dos propiedades para el backend
+  return { userId, name };
+});
 
 const totalRows = computed(() => rowData.value.length);
 const sheetName = computed(

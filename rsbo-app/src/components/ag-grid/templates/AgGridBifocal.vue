@@ -76,6 +76,14 @@ const props = defineProps({
   actor: { type: Object, default: null }
 });
 
+console.log(
+  "[AgGridBifocal] creado",
+  "sheetId:",
+  props.sheetId,
+  "sphType:",
+  props.sphType
+);
+
 /* ===== Tema / textos ===== */
 const themeCustom = themeQuartz
   .withPart(iconSetQuartzBold, colorSchemeLight)
@@ -134,6 +142,13 @@ const saving = ref(false);
 const lastSavedAt = ref(null);
 const sheetMeta = ref(null);
 
+watch(dirty, (v) => {
+  console.log("[AgGridBifocal] dirty cambió →", v);
+});
+watch(saving, (v) => {
+  console.log("[AgGridBifocal] saving cambió →", v);
+});
+
 const totalRows = computed(() => rowData.value.length);
 const sheetName = computed(
   () => sheetMeta.value?.nombre || sheetMeta.value?.name || "Hoja bifocal"
@@ -156,8 +171,19 @@ const makeLeaf = (field, header) => ({
   headerClass: ["ag-header-cell--compact"],
   valueSetter: (p) => {
     const v = String(p.newValue ?? "").trim();
+    const before = p.data[p.colDef.field];
     p.data[p.colDef.field] = isNumeric(v) ? Number(v) : 0;
     dirty.value = true;
+    console.log(
+      "[AgGridBifocal] valueSetter",
+      p.colDef.field,
+      "sph=",
+      p.data.sph,
+      "old=",
+      before,
+      "new=",
+      p.data[p.colDef.field]
+    );
     return true;
   }
 });
@@ -227,20 +253,36 @@ const rangeForTab = (tabId) =>
 
 async function loadAll() {
   try {
+    console.log(
+      "[AgGridBifocal] loadAll",
+      "sheetId:",
+      props.sheetId,
+      "sphType:",
+      props.sphType
+    );
     const { data } = await getSheet(props.sheetId);
     const metaData = data?.data || data;
     sheetMeta.value = metaData?.sheet || null;
     sheetTabs.value = metaData?.tabs || [];
+    console.log("[AgGridBifocal] sheetMeta:", sheetMeta.value);
+    console.log("[AgGridBifocal] tabs:", sheetTabs.value);
 
     const tab = sheetTabs.value.find((t) => t.id === props.sphType);
 
     const { sphMin, sphMax } = rangeForTab(props.sphType);
+    console.log(
+      "[AgGridBifocal] fetchItems rango SPH:",
+      sphMin,
+      "→",
+      sphMax
+    );
     const { data: itemsRes } = await fetchItems(props.sheetId, {
       sphMin,
       sphMax,
       eyes: "OD,OI"
     });
     const items = itemsRes?.data || [];
+    console.log("[AgGridBifocal] items recibidos:", items.length);
 
     const addsFromData = uniqSorted(
       items.map((i) => to2(i.add)).filter((v) => !Number.isNaN(v))
@@ -249,6 +291,12 @@ async function loadAll() {
       ? tab.ranges.addCols.map(to2).sort((a, b) => a - b)
       : [];
     addCols.value = addsFromData.length ? addsFromData : addsFromTab;
+    console.log(
+      "[AgGridBifocal] ADDs (data):",
+      addsFromData,
+      "| (tab):",
+      addsFromTab
+    );
 
     basesPorSph.value = new Map();
     for (const it of items) {
@@ -291,6 +339,7 @@ async function loadAll() {
         sphList = uniqSorted(frange(r.sphMin, r.sphMax, 0.25));
       }
     }
+    console.log("[AgGridBifocal] sphList final:", sphList);
 
     rowData.value = sphList.map((sph) => {
       const bases = basesPorSph.value.get(sph) || {
@@ -311,54 +360,73 @@ async function loadAll() {
       return row;
     });
 
+    console.log(
+      "[AgGridBifocal] filas construidas:",
+      rowData.value.length
+    );
+
     dirty.value = false;
     await nextTick();
   } catch (e) {
-    console.error("[AgGridBifocal] Error loadAll:", e?.response?.data || e);
+    console.error(
+      "[AgGridBifocal] Error loadAll:",
+      e?.response?.data || e
+    );
   }
 }
 
 onMounted(loadAll);
 watch(
   () => [props.sheetId, props.sphType],
-  () => loadAll(),
+  () => {
+    console.log(
+      "[AgGridBifocal] props cambiaron → loadAll",
+      "sheetId:",
+      props.sheetId,
+      "sphType:",
+      props.sphType
+    );
+    loadAll();
+  },
   { deep: true }
 );
 
 /* ===== Guardado ===== */
 async function handleSave() {
-  if (!dirty.value) return;
+  console.log(
+    "[AgGridBifocal] handleSave llamado. dirty:",
+    dirty.value,
+    "saving:",
+    saving.value
+  );
+  if (!dirty.value) {
+    console.log("[AgGridBifocal] handleSave → no dirty, return");
+    return;
+  }
+  if (!gridApi.value) {
+    console.warn("[AgGridBifocal] handleSave → sin gridApi, no se puede recolectar filas");
+    return;
+  }
+
   saving.value = true;
   try {
-    const rows = [];
-    rowData.value.forEach((r) => {
-      const { sph, base_izq = 0, base_der = 0 } = r;
-      addCols.value.forEach((add) => {
-        rows.push({
-          sph,
-          add,
-          eye: "OD",
-          base_izq,
-          base_der,
-          existencias: Number(r[`add_${norm(add)}_OD`] ?? 0)
-        });
-        rows.push({
-          sph,
-          add,
-          eye: "OI",
-          base_izq,
-          base_der,
-          existencias: Number(r[`add_${norm(add)}_OI`] ?? 0)
-        });
-      });
-    });
+    const rows = collectRowsFromGrid();
+    console.log(
+      "[AgGridBifocal] rows a enviar:",
+      rows.length,
+      "ej row[0]:",
+      rows[0]
+    );
 
     await saveChunk(props.sheetId, rows, effectiveActor.value);
     dirty.value = false;
     lastSavedAt.value = new Date();
     await loadAll();
   } catch (e) {
-    console.error("[AgGridBifocal] Error saveChunk:", e?.response?.data || e);
+    console.error(
+      "[AgGridBifocal] Error saveChunk:",
+      e?.response?.data || e
+    );
   } finally {
     saving.value = false;
   }
@@ -371,9 +439,33 @@ let activeCell = null;
 const onCellClicked = (p) => {
   activeCell = p;
   formulaValue.value = p.value;
+  console.log(
+    "[AgGridBifocal] cellClicked",
+    "rowIndex=",
+    p.rowIndex,
+    "field=",
+    p.colDef.field,
+    "sph=",
+    p.data?.sph,
+    "value=",
+    p.value
+  );
 };
 
 const onCellValueChanged = (p) => {
+  console.log(
+    "[AgGridBifocal] cellValueChanged",
+    "rowIndex=",
+    p.rowIndex,
+    "field=",
+    p.colDef.field,
+    "sph=",
+    p.data?.sph,
+    "old=",
+    p.oldValue,
+    "new=",
+    p.newValue
+  );
   if (
     activeCell &&
     activeCell.rowIndex === p.rowIndex &&
@@ -390,6 +482,16 @@ watch(formulaValue, (val) => {
   const raw = String(val ?? "").trim();
   const newVal = isNumeric(raw) ? Number(raw) : raw;
 
+  console.log(
+    "[AgGridBifocal] formulaValue watch → update",
+    "sph=",
+    activeCell.data?.sph,
+    "field=",
+    field,
+    "newVal=",
+    newVal
+  );
+
   gridApi.value.applyTransaction({
     update: [
       {
@@ -403,6 +505,7 @@ watch(formulaValue, (val) => {
 
 /* ===== Adders ===== */
 const handleAddRow = async (nuevoValor) => {
+  console.log("[AgGridBifocal] handleAddRow nuevoValor:", nuevoValor);
   const sph = Number(nuevoValor);
   if (Number.isNaN(sph)) {
     alert("Ingresa un SPH numérico");
@@ -434,6 +537,10 @@ const handleAddRow = async (nuevoValor) => {
 };
 
 const handleAddColumn = async (nuevoValor) => {
+  console.log(
+    "[AgGridBifocal] handleAddColumn nuevoValor:",
+    nuevoValor
+  );
   const add = Number(nuevoValor);
   if (Number.isNaN(add)) {
     alert("Ingresa ADD numérico");
@@ -457,49 +564,108 @@ const handleAddColumn = async (nuevoValor) => {
 
 /* ===== Grid hooks ===== */
 const onGridReady = (p) => {
+  console.log("[AgGridBifocal] grid ready");
   gridApi.value = p.api;
 };
+
+/** 🔹 Guardamos leyendo SIEMPRE desde la grilla */
+function collectRowsFromGrid() {
+  const rows = [];
+  if (!gridApi.value) {
+    console.warn("[AgGridBifocal] collectRowsFromGrid sin gridApi");
+    return rows;
+  }
+
+  gridApi.value.forEachNode((node) => {
+    const r = node.data;
+    if (!r) return;
+
+    const sph = Number(r.sph);
+    const base_izq = Number(r.base_izq ?? 0);
+    const base_der = Number(r.base_der ?? 0);
+
+    addCols.value.forEach((add) => {
+      const fieldOD = `add_${norm(add)}_OD`;
+      const fieldOI = `add_${norm(add)}_OI`;
+
+      rows.push({
+        sph,
+        add,
+        eye: "OD",
+        base_izq,
+        base_der,
+        existencias: Number(r[fieldOD] ?? 0)
+      });
+
+      rows.push({
+        sph,
+        add,
+        eye: "OI",
+        base_izq,
+        base_der,
+        existencias: Number(r[fieldOI] ?? 0)
+      });
+    });
+  });
+
+  return rows;
+}
 
 /* Filtros / orden para navtools */
 const clearFilters = () => {
   if (!gridApi.value || typeof gridApi.value.setFilterModel !== "function") {
-    console.warn("[AgGridBifocal] setFilterModel no disponible", gridApi.value);
+    console.warn(
+      "[AgGridBifocal] setFilterModel no disponible",
+      gridApi.value
+    );
     return;
   }
+  console.log("[AgGridBifocal] clearFilters");
   gridApi.value.setFilterModel(null);
 };
 
 const resetSort = () => {
   if (!gridApi.value || typeof gridApi.value.setSortModel !== "function") {
-    console.warn("[AgGridBifocal] setSortModel no disponible", gridApi.value);
+    console.warn(
+      "[AgGridBifocal] setSortModel no disponible",
+      gridApi.value
+    );
     return;
   }
+  console.log("[AgGridBifocal] resetSort por sph ASC");
   gridApi.value.setSortModel([{ colId: "sph", sort: "asc" }]);
   gridApi.value.refreshClientSideRowModel("sort");
 };
 
 const handleToggleFilters = () => {
+  console.log("[AgGridBifocal] handleToggleFilters → clearFilters");
   clearFilters();
 };
 
 /* Refresh / seed / export / discard */
 async function handleDiscard() {
+  console.log("[AgGridBifocal] handleDiscard");
   await loadAll();
   dirty.value = false;
 }
 
 async function handleRefresh() {
+  console.log("[AgGridBifocal] handleRefresh");
   await loadAll();
 }
 
 async function handleSeed() {
   try {
+    console.log("[AgGridBifocal] handleSeed");
     saving.value = true;
     await reseedSheet(props.sheetId, effectiveActor.value);
     await loadAll();
     lastSavedAt.value = new Date();
   } catch (e) {
-    console.error("[AgGridBifocal] Error reseed:", e?.response?.data || e);
+    console.error(
+      "[AgGridBifocal] Error reseed:",
+      e?.response?.data || e
+    );
   } finally {
     saving.value = false;
   }
@@ -507,11 +673,15 @@ async function handleSeed() {
 
 function handleExport() {
   if (!gridApi.value || typeof gridApi.value.exportDataAsCsv !== "function") {
-    console.warn("[AgGridBifocal] exportDataAsCsv no disponible", gridApi.value);
+    console.warn(
+      "[AgGridBifocal] exportDataAsCsv no disponible",
+      gridApi.value
+    );
     return;
   }
   const nameSlug = sheetName.value.replace(/\s+/g, "_");
   const posNeg = props.sphType === "sph-pos" ? "pos" : "neg";
+  console.log("[AgGridBifocal] handleExport", nameSlug, posNeg);
   gridApi.value.exportDataAsCsv({
     fileName: `${nameSlug || "bifocal"}_${posNeg}.csv`
   });

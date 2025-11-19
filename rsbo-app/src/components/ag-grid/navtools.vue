@@ -81,7 +81,7 @@
           <div class="ribbon-group">
             <button
               class="ribbon-btn"
-              @click="undo"
+              @click="handleUndoClick"
               :disabled="!canUndo"
             >
               <span class="ribbon-btn__icon">
@@ -95,7 +95,7 @@
 
             <button
               class="ribbon-btn"
-              @click="redo"
+              @click="handleRedoClick"
               :disabled="!canRedo"
             >
               <span class="ribbon-btn__icon">
@@ -109,7 +109,7 @@
           </div>
 
           <div class="ribbon-group">
-            <button class="ribbon-btn" @click="copyCell">
+            <button class="ribbon-btn" @click="handleCopyClick">
               <span class="ribbon-btn__icon">
                 <i class="far fa-copy"></i>
               </span>
@@ -119,7 +119,7 @@
               </span>
             </button>
 
-            <button class="ribbon-btn" @click="cutCell">
+            <button class="ribbon-btn" @click="handleCutClick">
               <span class="ribbon-btn__icon">
                 <i class="far fa-cut"></i>
               </span>
@@ -132,7 +132,7 @@
             <button
               v-if="!isMobile"
               class="ribbon-btn"
-              @click="pasteCell"
+              @click="handlePasteClick"
             >
               <span class="ribbon-btn__icon">
                 <i class="far fa-paste"></i>
@@ -228,7 +228,7 @@
             <button
               class="ribbon-btn"
               :disabled="!dirty || saving"
-              @click="handleSave"
+              @click="handleSaveClick"
             >
               <span class="ribbon-btn__icon">
                 <i class="far fa-save"></i>
@@ -341,8 +341,6 @@ import {
 
 const props = defineProps({
   modelValue: { type: [Number, String], default: "" },
-
-  // ==== Estado de hoja / inventario ====
   dirty: { type: Boolean, default: false },
   saving: { type: Boolean, default: false },
   totalRows: { type: Number, default: 0 },
@@ -377,31 +375,49 @@ const $buefy =
 
 /* ========= Historial deshacer / rehacer ========= */
 const MAX_HISTORY = 200;
-const undoStack = ref([]); // valores previos
-const redoStack = ref([]); // valores hacia adelante
+const undoStack = ref([]);
+const redoStack = ref([]);
 const isApplyingHistory = ref(false);
 
 const canUndo = computed(() => undoStack.value.length > 0);
 const canRedo = computed(() => redoStack.value.length > 0);
 
+console.log("[Navtools] mounted for sheet:", props.sheetName || "(sin nombre)");
+
 watch(
   () => props.modelValue,
   (val, oldVal) => {
-    // cuando el valor viene del grid, registramos historial
     if (!isApplyingHistory.value && oldVal !== undefined && oldVal !== val) {
       if (undoStack.value.length >= MAX_HISTORY) {
         undoStack.value.shift();
       }
       undoStack.value.push(oldVal ?? "");
-      // cualquier cambio "normal" invalida rehacer
       redoStack.value = [];
     }
     localValue.value = val ?? "";
   }
 );
 
+/* Logs de dirty / saving para ver cuándo cambian desde el grid */
+watch(
+  () => props.dirty,
+  (val) => {
+    console.log("[Navtools] props.dirty cambió →", val);
+  },
+  { immediate: true }
+);
+
+watch(
+  () => props.saving,
+  (val) => {
+    console.log("[Navtools] props.saving cambió →", val);
+  },
+  { immediate: true }
+);
+
 const applyChange = () => {
   const raw = String(localValue.value ?? "").trim();
+  console.log("[Navtools] applyChange, raw:", raw);
   if (raw === "") {
     emit("update:modelValue", 0);
   } else if (/^-?\d+(\.\d+)?$/.test(raw)) {
@@ -411,11 +427,11 @@ const applyChange = () => {
   }
 };
 
-/* Deshacer / rehacer solo afectan al modelValue que ve el grid */
 const undo = () => {
   if (!undoStack.value.length) return;
   const current = props.modelValue ?? "";
   const previous = undoStack.value.pop();
+  console.log("[Navtools] undo", { current, previous });
   redoStack.value.push(current);
   isApplyingHistory.value = true;
   emit("update:modelValue", previous);
@@ -428,6 +444,7 @@ const redo = () => {
   if (!redoStack.value.length) return;
   const current = props.modelValue ?? "";
   const next = redoStack.value.pop();
+  console.log("[Navtools] redo", { current, next });
   undoStack.value.push(current);
   isApplyingHistory.value = true;
   emit("update:modelValue", next);
@@ -439,6 +456,7 @@ const redo = () => {
 /* ========= Copiar / Cortar / Pegar ========= */
 const copyToClipboard = async (text) => {
   try {
+    console.log("[Navtools] copyToClipboard:", text);
     if (navigator.clipboard && window.isSecureContext) {
       await navigator.clipboard.writeText(text);
     } else {
@@ -463,6 +481,7 @@ const copyToClipboard = async (text) => {
 
 const pasteFromClipboard = async () => {
   try {
+    console.log("[Navtools] pasteFromClipboard");
     if (navigator.clipboard && window.isSecureContext) {
       return await navigator.clipboard.readText();
     } else {
@@ -492,12 +511,14 @@ const pasteFromClipboard = async () => {
 };
 
 const copyCell = async () => {
+  console.log("[Navtools] copyCell, localValue:", localValue.value);
   if (localValue.value !== "" && localValue.value != null) {
     await copyToClipboard(localValue.value.toString());
   }
 };
 
 const cutCell = async () => {
+  console.log("[Navtools] cutCell, localValue:", localValue.value);
   if (localValue.value !== "" && localValue.value != null) {
     await copyToClipboard(localValue.value.toString());
     emit("update:modelValue", 0);
@@ -506,6 +527,7 @@ const cutCell = async () => {
 
 const pasteCell = async () => {
   const pasted = await pasteFromClipboard();
+  console.log("[Navtools] pasteCell, pasted:", pasted);
   if (!pasted) return;
   const str = pasted.trim();
   if (/^-?\d+(\.\d+)?$/.test(str)) {
@@ -517,6 +539,7 @@ const pasteCell = async () => {
 
 /* ========= Modales Nueva fila / columna (Buefy) ========= */
 const openAddRowModal = () => {
+  console.log("[Navtools] openAddRowModal");
   $buefy?.dialog.prompt({
     message: "Agregar nueva fila",
     inputAttrs: {
@@ -526,6 +549,7 @@ const openAddRowModal = () => {
     },
     trapFocus: true,
     onConfirm: (value) => {
+      console.log("[Navtools] add-row confirm:", value);
       if (value !== null && value !== undefined && value !== "") {
         emit("add-row", parseFloat(value));
       }
@@ -534,6 +558,7 @@ const openAddRowModal = () => {
 };
 
 const openAddColumnModal = () => {
+  console.log("[Navtools] openAddColumnModal");
   $buefy?.dialog.prompt({
     message: "Agregar nueva columna",
     inputAttrs: {
@@ -543,6 +568,7 @@ const openAddColumnModal = () => {
     },
     trapFocus: true,
     onConfirm: (value) => {
+      console.log("[Navtools] add-column confirm:", value);
       if (value !== null && value !== undefined && value !== "") {
         emit("add-column", parseFloat(value));
       }
@@ -550,41 +576,121 @@ const openAddColumnModal = () => {
   });
 };
 
+/* ========= Click handlers wrapper (solo logs extra) ========= */
+const handleUndoClick = () => {
+  console.log("[Navtools] botón Deshacer");
+  undo();
+};
+const handleRedoClick = () => {
+  console.log("[Navtools] botón Rehacer");
+  redo();
+};
+const handleCopyClick = () => {
+  console.log("[Navtools] botón Copiar");
+  copyCell();
+};
+const handleCutClick = () => {
+  console.log("[Navtools] botón Cortar");
+  cutCell();
+};
+const handlePasteClick = () => {
+  console.log("[Navtools] botón Pegar");
+  pasteCell();
+};
+
 /* ========= Atajos de teclado (desktop) ========= */
 const isMobile =
   typeof navigator !== "undefined" &&
   /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "");
+
+const handleSaveInternal = () => {
+  console.log(
+    "[Navtools] handleSaveInternal llamado. dirty:",
+    props.dirty,
+    "saving:",
+    props.saving
+  );
+
+  if (!props.dirty) {
+    console.log("[Navtools] handleSaveInternal → sin cambios, no emite");
+    $buefy?.toast.open({
+      message: "No hay cambios pendientes por guardar.",
+      type: "is-info"
+    });
+    return;
+  }
+  if (props.saving) {
+    console.log("[Navtools] handleSaveInternal → ya está guardando, return");
+    return;
+  }
+
+  console.log("[Navtools] Abriendo diálogo de confirmación de guardado");
+  $buefy?.dialog.confirm({
+    title: "Guardar cambios",
+    message: "Se guardarán los cambios realizados en esta planilla.",
+    confirmText: "Guardar",
+    cancelText: "Cancelar",
+    type: "is-primary",
+    trapFocus: true,
+    onConfirm: () => {
+      console.log("[Navtools] Confirm guardado aceptado → emit('save-request')");
+      emit("save-request");
+    },
+    onCancel: () => {
+      console.log("[Navtools] Confirm guardado cancelado");
+    }
+  });
+};
+
+const handleSaveClick = () => {
+  console.log("[Navtools] Botón Guardar clicado");
+  handleSaveInternal();
+};
 
 const handleKey = async (e) => {
   if (isMobile) return;
   if (e.ctrlKey || e.metaKey) {
     const key = e.key.toLowerCase();
     if (key === "z") {
+      console.log("[Navtools] Ctrl+Z detectado");
       e.preventDefault();
       undo();
     } else if (key === "y") {
+      console.log("[Navtools] Ctrl+Y detectado");
       e.preventDefault();
       redo();
     } else if (key === "c") {
+      console.log("[Navtools] Ctrl+C detectado");
       e.preventDefault();
       await copyCell();
     } else if (key === "x") {
+      console.log("[Navtools] Ctrl+X detectado");
       e.preventDefault();
       await cutCell();
     } else if (key === "v") {
+      console.log("[Navtools] Ctrl+V detectado");
       e.preventDefault();
       await pasteCell();
     } else if (key === "s") {
+      console.log("[Navtools] Ctrl+S detectado");
       e.preventDefault();
-      handleSave();
+      handleSaveInternal();
     }
   }
 };
+
 onMounted(() => {
-  if (!isMobile) window.addEventListener("keydown", handleKey);
+  if (!isMobile) {
+    console.log("[Navtools] Registrando listener global de teclado");
+    window.addEventListener("keydown", handleKey);
+  }
 });
+
 onBeforeUnmount(() => {
-  if (!isMobile) window.removeEventListener("keydown", handleKey);
+  if (!isMobile) {
+    console.log("[Navtools] Eliminando listener global de teclado");
+    window.removeEventListener("keydown", handleKey);
+  }
 });
 
 /* ========= Estado y helpers visuales ========= */
@@ -627,28 +733,9 @@ const statusClass = computed(() => {
   return "status-pill clean";
 });
 
-/* ========= Acciones de hoja (guardar / recargar / seed) ========= */
-const handleSave = () => {
-  if (!props.dirty) {
-    $buefy?.toast.open({
-      message: "No hay cambios pendientes por guardar.",
-      type: "is-info"
-    });
-    return;
-  }
-  if (props.saving) return;
-  $buefy?.dialog.confirm({
-    title: "Guardar cambios",
-    message: "Se guardarán los cambios realizados en esta planilla.",
-    confirmText: "Guardar",
-    cancelText: "Cancelar",
-    type: "is-primary",
-    trapFocus: true,
-    onConfirm: () => emit("save-request")
-  });
-};
-
+/* ========= Acciones de hoja (descartar / refresh / seed) ========= */
 const handleDiscard = () => {
+  console.log("[Navtools] handleDiscard, dirty:", props.dirty);
   if (!props.dirty) {
     $buefy?.toast.open({
       message: "No hay cambios locales para descartar.",
@@ -658,16 +745,21 @@ const handleDiscard = () => {
   }
   $buefy?.dialog.confirm({
     title: "Descartar cambios",
-    message: "Se perderán los cambios locales no guardados. ¿Deseas continuar?",
+    message:
+      "Se perderán los cambios locales no guardados. ¿Deseas continuar?",
     confirmText: "Descartar",
     cancelText: "Cancelar",
     type: "is-danger",
     trapFocus: true,
-    onConfirm: () => emit("discard-changes")
+    onConfirm: () => {
+      console.log("[Navtools] confirm discard → emit('discard-changes')");
+      emit("discard-changes");
+    }
   });
 };
 
 const handleRefresh = () => {
+  console.log("[Navtools] handleRefresh, dirty:", props.dirty);
   if (props.dirty) {
     $buefy?.dialog.confirm({
       title: "Recargar datos",
@@ -677,14 +769,19 @@ const handleRefresh = () => {
       cancelText: "Cancelar",
       type: "is-warning",
       trapFocus: true,
-      onConfirm: () => emit("refresh")
+      onConfirm: () => {
+        console.log("[Navtools] confirm refresh → emit('refresh')");
+        emit("refresh");
+      }
     });
   } else {
+    console.log("[Navtools] refresh directo → emit('refresh')");
     emit("refresh");
   }
 };
 
 const handleSeed = () => {
+  console.log("[Navtools] handleSeed");
   $buefy?.dialog.confirm({
     title: "Regenerar matriz",
     message:
@@ -693,12 +790,16 @@ const handleSeed = () => {
     cancelText: "Cancelar",
     type: "is-danger",
     trapFocus: true,
-    onConfirm: () => emit("seed")
+    onConfirm: () => {
+      console.log("[Navtools] confirm seed → emit('seed')");
+      emit("seed");
+    }
   });
 };
 </script>
 
 <style scoped>
+/* estilos iguales a los que ya tenías, sin cambios */
 .ribbon {
   display: flex;
   flex-direction: column;
@@ -706,7 +807,6 @@ const handleSeed = () => {
   border-bottom: 1px solid #e0def5;
 }
 
-/* HEADER */
 .ribbon-header {
   display: flex;
   align-items: center;
@@ -780,7 +880,6 @@ const handleSeed = () => {
   color: #7a7a9a;
 }
 
-/* Tabs más planas */
 .ribbon-tabs ::v-deep(.tabs) {
   margin-bottom: 0;
 }
@@ -799,7 +898,6 @@ const handleSeed = () => {
   font-size: 11px;
 }
 
-/* Contenido del ribbon */
 .ribbon-content {
   display: flex;
   flex-wrap: wrap;
@@ -820,7 +918,6 @@ const handleSeed = () => {
   border-right: none;
 }
 
-/* Botones ribbon */
 .ribbon-btn {
   min-width: 120px;
   padding: 4px 8px;
@@ -880,7 +977,6 @@ const handleSeed = () => {
   box-shadow: none;
 }
 
-/* Barra de fórmulas */
 .formula-bar {
   display: flex;
   align-items: center;
@@ -926,7 +1022,6 @@ const handleSeed = () => {
   border-color: #7957d5;
 }
 
-/* Status */
 .badge-tipo {
   padding: 2px 8px;
   border-radius: 999px;
@@ -961,7 +1056,6 @@ const handleSeed = () => {
   border: 1px solid rgba(26, 115, 232, 0.2);
 }
 
-/* Mobile: ribbon scrolleable horizontal */
 @media (max-width: 768px) {
   .ribbon-header {
     flex-direction: column;

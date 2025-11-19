@@ -680,6 +680,18 @@ router.post(
       if (sheet.isDeleted) return res.status(410).json({ ok:false, message:'Sheet eliminada (soft-delete)' });
 
       const rows = req.body.rows || [];
+
+      console.log(
+        "POST /inventory/sheets/%s/chunk inicio → tipo_matriz=%s rowsArray=%s rows.len=%s",
+        req.params.sheetId,
+        sheet.tipo_matriz,
+        Array.isArray(rows),
+        Array.isArray(rows) ? rows.length : "N/A"
+      );
+      if (Array.isArray(rows) && rows.length > 0) {
+        console.log("POST /inventory/chunk ejemplo row[0]:", rows[0]);
+      }
+
       let upserts = 0;
       const touch = (field) => (doc) => { doc.markModified(field); return doc; };
 
@@ -795,6 +807,12 @@ router.post(
         sheet: sheet._id, tipo_matriz: sheet.tipo_matriz,
         type: 'BULK_UPSERT_MATRIX', details: { count: upserts }, actor
       });
+
+      console.log(
+        "POST /inventory/sheets/%s/chunk fin → upserts=%s",
+        req.params.sheetId,
+        upserts
+      );
 
       res.json({ ok: true, data: { upserted: upserts } });
     } catch (err) {

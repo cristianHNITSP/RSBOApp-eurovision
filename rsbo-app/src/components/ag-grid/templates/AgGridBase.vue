@@ -1,4 +1,3 @@
-<!-- src/components/ag-grid/templates/AgGridBase.vue -->
 <template>
   <div class="is-flex is-flex-direction-column" style="height: 100%;">
     <navtools
@@ -24,8 +23,8 @@
     />
 
     <div
-      class="buefy-balham-light"
-      style="flex: 1 1 auto; display: flex; flex-direction: column; overflow: auto;"
+          class="buefy-balham-light"
+          style="flex: 1 1 auto; display: flex; flex-direction: column; overflow: auto;"
     >
       <AgGridVue
         ref="gridRef"
@@ -74,7 +73,10 @@ const props = defineProps({
   actor: { type: Object, default: null }
 });
 
+console.log("[AgGridBase] creado para sheetId:", props.sheetId);
+
 const gridApi = ref(null);
+const gridRef = ref(null);
 const rowData = ref([]);
 const dirty = ref(false);
 const saving = ref(false);
@@ -153,8 +155,17 @@ const columns = computed(() => [
     headerClass: ["ag-header-cell--compact"],
     valueSetter: (p) => {
       const v = String(p.newValue ?? "").trim();
+      const before = p.data.existencias;
       p.data.existencias = isNumeric(v) ? Number(v) : 0;
       dirty.value = true;
+      console.log(
+        "[AgGridBase] valueSetter existencias base=",
+        p.data.base,
+        "old=",
+        before,
+        "new=",
+        p.data.existencias
+      );
       return true;
     }
   }
@@ -177,9 +188,11 @@ const getRowId = (p) => p.data.base?.toString();
 /* ========= CARGA ========= */
 async function loadSheetMeta() {
   try {
+    console.log("[AgGridBase] loadSheetMeta");
     const { data } = await getSheet(props.sheetId);
     const payload = data?.data || data;
     sheetMeta.value = payload?.sheet || null;
+    console.log("[AgGridBase] sheetMeta:", sheetMeta.value);
   } catch (e) {
     console.error("[AgGridBase] Error getSheet:", e?.response?.data || e);
   }
@@ -187,6 +200,7 @@ async function loadSheetMeta() {
 
 async function loadRows() {
   try {
+    console.log("[AgGridBase] loadRows");
     const { data } = await fetchItems(props.sheetId);
     rowData.value = (data?.data || [])
       .map((it) => ({
@@ -194,12 +208,17 @@ async function loadRows() {
         existencias: Number(it.existencias ?? 0)
       }))
       .sort((a, b) => a.base - b.base);
+    console.log(
+      "[AgGridBase] loadRows resultado filas:",
+      rowData.value.length
+    );
   } catch (e) {
     console.error("[AgGridBase] Error fetchItems:", e?.response?.data || e);
   }
 }
 
 async function loadAll() {
+  console.log("[AgGridBase] loadAll");
   await Promise.all([loadSheetMeta(), loadRows()]);
   dirty.value = false;
 }
@@ -213,9 +232,18 @@ let activeCell = null;
 const onCellClicked = (p) => {
   activeCell = p;
   formulaValue.value = p.value;
+  console.log("[AgGridBase] cellClicked base=", p.data?.base, "value=", p.value);
 };
 
 const onCellValueChanged = (p) => {
+  console.log(
+    "[AgGridBase] cellValueChanged base=",
+    p.data?.base,
+    "old=",
+    p.oldValue,
+    "new=",
+    p.newValue
+  );
   if (
     activeCell &&
     activeCell.rowIndex === p.rowIndex &&
@@ -228,10 +256,19 @@ const onCellValueChanged = (p) => {
 
 watch(formulaValue, (val) => {
   if (!activeCell || !gridApi.value) return;
-
   const field = activeCell.colDef.field;
   const raw = String(val ?? "").trim();
   const newVal = isNumeric(raw) ? Number(raw) : raw;
+
+  console.log(
+    "[AgGridBase] formulaValue watch → update",
+    "base=",
+    activeCell.data?.base,
+    "field=",
+    field,
+    "newVal=",
+    newVal
+  );
 
   gridApi.value.applyTransaction({
     update: [{ ...activeCell.data, [field]: newVal }]
@@ -240,11 +277,34 @@ watch(formulaValue, (val) => {
 });
 
 const onGridReady = (p) => {
+  console.log("[AgGridBase] grid ready");
   gridApi.value = p.api;
 };
 
+/** 🔹 SIEMPRE guardamos leyendo lo que tiene realmente la grilla */
+function collectRowsFromGrid() {
+  const rows = [];
+  if (!gridApi.value) {
+    console.warn("[AgGridBase] collectRowsFromGrid sin gridApi");
+    return rows;
+  }
+
+  gridApi.value.forEachNode((node) => {
+    const d = node.data;
+    if (!d) return;
+
+    rows.push({
+      base: Number(d.base),
+      existencias: Number(d.existencias ?? 0)
+    });
+  });
+
+  return rows;
+}
+
 /* ========= NAVTOOLS: estructura ========= */
 const handleAddRow = async (nuevoValor) => {
+  console.log("[AgGridBase] handleAddRow nuevoValor:", nuevoValor);
   const v = Number(nuevoValor);
   if (Number.isNaN(v)) {
     alert("Ingresa una base numérica");
@@ -267,12 +327,13 @@ const handleAddRow = async (nuevoValor) => {
 const handleAddColumn = () =>
   alert("Esta hoja no admite columnas dinámicas.");
 
-/* Filtros / orden (para navtools) */
+/* Filtros / orden */
 const clearFilters = () => {
   if (!gridApi.value || typeof gridApi.value.setFilterModel !== "function") {
     console.warn("[AgGridBase] setFilterModel no disponible", gridApi.value);
     return;
   }
+  console.log("[AgGridBase] clearFilters");
   gridApi.value.setFilterModel(null);
 };
 
@@ -281,27 +342,46 @@ const resetSort = () => {
     console.warn("[AgGridBase] setSortModel no disponible", gridApi.value);
     return;
   }
+  console.log("[AgGridBase] resetSort por base ASC");
   gridApi.value.setSortModel([{ colId: "base", sort: "asc" }]);
   gridApi.value.refreshClientSideRowModel("sort");
 };
 
 const handleToggleFilters = () => {
+  console.log("[AgGridBase] handleToggleFilters → clearFilters");
   clearFilters();
 };
 
 /* ========= GUARDAR / REFRESH / SEED / EXPORT ========= */
 async function handleSave() {
-  if (!dirty.value) return;
+  console.log(
+    "[AgGridBase] handleSave llamado. dirty:",
+    dirty.value,
+    "saving:",
+    saving.value
+  );
+  if (!dirty.value) {
+    console.log("[AgGridBase] handleSave → no dirty, return");
+    return;
+  }
+  if (!gridApi.value) {
+    console.warn("[AgGridBase] handleSave → sin gridApi, no se puede recolectar filas");
+    return;
+  }
+
   saving.value = true;
   try {
-    const rows = rowData.value.map((r) => ({
-      base: r.base,
-      existencias: Number(r.existencias ?? 0)
-    }));
+    const rows = collectRowsFromGrid();
+    console.log(
+      "[AgGridBase] handleSave enviando rows:",
+      rows.length,
+      "ejemplo row[0]:",
+      rows[0]
+    );
     await saveChunk(props.sheetId, rows, effectiveActor.value);
     dirty.value = false;
     lastSavedAt.value = new Date();
-    await loadRows(); // refrescar desde backend
+    await loadRows();
   } catch (e) {
     console.error("[AgGridBase] Error saveChunk:", e?.response?.data || e);
   } finally {
@@ -310,16 +390,19 @@ async function handleSave() {
 }
 
 async function handleDiscard() {
+  console.log("[AgGridBase] handleDiscard");
   await loadRows();
   dirty.value = false;
 }
 
 async function handleRefresh() {
+  console.log("[AgGridBase] handleRefresh");
   await loadAll();
 }
 
 async function handleSeed() {
   try {
+    console.log("[AgGridBase] handleSeed");
     saving.value = true;
     await reseedSheet(props.sheetId, effectiveActor.value);
     await loadRows();
@@ -338,6 +421,7 @@ function handleExport() {
     return;
   }
   const nameSlug = sheetName.value.replace(/\s+/g, "_");
+  console.log("[AgGridBase] handleExport file:", nameSlug);
   gridApi.value.exportDataAsCsv({
     fileName: `${nameSlug || "base"}.csv`
   });
@@ -352,7 +436,6 @@ function handleExport() {
   box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.03);
 }
 
-/* Header compacto */
 .ag-grid-buefy .ag-header-cell.ag-header-cell--compact {
   padding-inline: 6px;
   font-size: 0.7rem;
@@ -360,28 +443,24 @@ function handleExport() {
   letter-spacing: 0.04em;
 }
 
-/* Celdas compactas */
 .ag-grid-buefy .ag-cell.ag-cell--compact {
   padding-inline: 6px;
   line-height: 1.2;
   font-size: 0.75rem;
 }
 
-/* Números alineados a la derecha */
 .ag-grid-buefy .ag-cell.ag-cell--numeric {
   justify-content: flex-end;
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-/* Pinned visual */
 .ag-grid-buefy .ag-cell.ag-cell--pinned,
 .ag-grid-buefy .ag-header-cell.ag-header-cell--pinned {
   background-color: #f5f3ff;
   font-weight: 600;
 }
 
-/* Hover estilo Buefy */
 .ag-grid-buefy .ag-row-hover {
   background-color: #f3f0ff !important;
 }

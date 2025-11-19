@@ -25,6 +25,14 @@ const props = defineProps({
   actor: { type: Object, default: null }
 });
 
+console.log(
+  "[AgGridMonofocal] creado",
+  "sheetId:",
+  props.sheetId,
+  "sphType:",
+  props.sphType
+);
+
 const gridApi = ref(null);
 const rowData = ref([]);
 const dirty = ref(false);
@@ -68,7 +76,10 @@ const effectiveActor = computed(() => props.actor || null);
 
 const totalRows = computed(() => rowData.value.length);
 const sheetName = computed(
-  () => sheetMeta.value?.nombre || sheetMeta.value?.name || "Hoja monofocal (Esf/Cil)"
+  () =>
+    sheetMeta.value?.nombre ||
+    sheetMeta.value?.name ||
+    "Hoja monofocal (Esf/Cil)"
 );
 const tipoMatriz = computed(() => sheetMeta.value?.tipo_matriz || "SPH_CYL");
 const material = computed(() => sheetMeta.value?.material || "");
@@ -76,6 +87,13 @@ const tratamientos = computed(() => sheetMeta.value?.tratamientos || []);
 
 const norm = (n) => String(n).replace(".", "_");
 const cylValues = ref([]);
+
+watch(dirty, (val) => {
+  console.log("[AgGridMonofocal] dirty cambió →", val);
+});
+watch(saving, (val) => {
+  console.log("[AgGridMonofocal] saving cambió →", val);
+});
 
 const columns = computed(() => [
   {
@@ -119,8 +137,19 @@ const columns = computed(() => [
       headerClass: ["ag-header-cell--compact"],
       valueSetter: (p) => {
         const v = String(p.newValue ?? "").trim();
+        const antes = p.data[p.colDef.field];
         p.data[p.colDef.field] = isNumeric(v) ? Number(v) : 0;
         dirty.value = true;
+        console.log(
+          "[AgGridMonofocal] valueSetter",
+          p.colDef.field,
+          "sph=",
+          p.data.sph,
+          "old=",
+          antes,
+          "new=",
+          p.data[p.colDef.field]
+        );
         return true;
       }
     }))
@@ -144,11 +173,16 @@ const getRowId = (p) => p.data.sph?.toString();
 /* Cargar */
 async function loadSheetMeta() {
   try {
+    console.log("[AgGridMonofocal] loadSheetMeta");
     const { data } = await getSheet(props.sheetId);
     const payload = data?.data || data;
     sheetMeta.value = payload?.sheet || null;
+    console.log("[AgGridMonofocal] sheetMeta:", sheetMeta.value);
   } catch (e) {
-    console.error("[AgGridMonofocal] Error getSheet:", e?.response?.data || e);
+    console.error(
+      "[AgGridMonofocal] Error getSheet:",
+      e?.response?.data || e
+    );
   }
 }
 
@@ -159,8 +193,13 @@ async function loadRows() {
       : { sphMin: -6, sphMax: 0, cylMin: -6, cylMax: 0 };
 
   try {
+    console.log("[AgGridMonofocal] loadRows query:", query);
     const { data } = await fetchItems(props.sheetId, query);
     const items = data?.data || [];
+    console.log(
+      "[AgGridMonofocal] items recibidos:",
+      items.length
+    );
 
     const sphList = [...new Set(items.map((i) => Number(i.sph)))].sort(
       (a, b) => a - b
@@ -169,6 +208,13 @@ async function loadRows() {
       (a, b) => a - b
     );
     cylValues.value = cylList;
+
+    console.log(
+      "[AgGridMonofocal] sphList:",
+      sphList,
+      "cylList:",
+      cylList
+    );
 
     const key = (s, c) => `${s}|${c}`;
     const map = new Map(
@@ -185,22 +231,45 @@ async function loadRows() {
       });
       return row;
     });
+    console.log(
+      "[AgGridMonofocal] filas construidas:",
+      rowData.value.length
+    );
 
     dirty.value = false;
     await nextTick();
   } catch (e) {
-    console.error("[AgGridMonofocal] Error fetchItems:", e?.response?.data || e);
+    console.error(
+      "[AgGridMonofocal] Error fetchItems:",
+      e?.response?.data || e
+    );
   }
 }
 
 async function loadAll() {
+  console.log(
+    "[AgGridMonofocal] loadAll",
+    "sheetId:",
+    props.sheetId,
+    "sphType:",
+    props.sphType
+  );
   await Promise.all([loadSheetMeta(), loadRows()]);
 }
 
 onMounted(loadAll);
 watch(
   () => [props.sheetId, props.sphType],
-  () => loadAll()
+  () => {
+    console.log(
+      "[AgGridMonofocal] props cambiaron → recargar",
+      "sheetId:",
+      props.sheetId,
+      "sphType:",
+      props.sphType
+    );
+    loadAll();
+  }
 );
 
 /* Edición rápida / navtools / guardar */
@@ -210,9 +279,33 @@ let activeCell = null;
 const onCellClicked = (p) => {
   activeCell = p;
   formulaValue.value = p.value;
+  console.log(
+    "[AgGridMonofocal] cellClicked",
+    "rowIndex=",
+    p.rowIndex,
+    "field=",
+    p.colDef.field,
+    "sph=",
+    p.data?.sph,
+    "value=",
+    p.value
+  );
 };
 
 const onCellValueChanged = (p) => {
+  console.log(
+    "[AgGridMonofocal] cellValueChanged",
+    "rowIndex=",
+    p.rowIndex,
+    "field=",
+    p.colDef.field,
+    "sph=",
+    p.data?.sph,
+    "old=",
+    p.oldValue,
+    "new=",
+    p.newValue
+  );
   if (
     activeCell &&
     activeCell.rowIndex === p.rowIndex &&
@@ -229,6 +322,16 @@ watch(formulaValue, (val) => {
   const raw = String(val ?? "").trim();
   const newVal = isNumeric(raw) ? Number(raw) : raw;
 
+  console.log(
+    "[AgGridMonofocal] formulaValue watch → update",
+    "sph=",
+    activeCell.data?.sph,
+    "field=",
+    field,
+    "newVal=",
+    newVal
+  );
+
   gridApi.value.applyTransaction({
     update: [{ ...activeCell.data, [field]: newVal }]
   });
@@ -236,10 +339,35 @@ watch(formulaValue, (val) => {
 });
 
 const onGridReady = (p) => {
+  console.log("[AgGridMonofocal] grid ready");
   gridApi.value = p.api;
 };
 
+/** 🔹 Guardamos SIEMPRE leyendo la data desde gridApi */
+function collectRowsFromGrid() {
+  const rows = [];
+  if (!gridApi.value) {
+    console.warn("[AgGridMonofocal] collectRowsFromGrid sin gridApi");
+    return rows;
+  }
+
+  gridApi.value.forEachNode((node) => {
+    const r = node.data;
+    if (!r) return;
+
+    const sph = Number(r.sph);
+    cylValues.value.forEach((cyl) => {
+      const field = `cyl_${norm(cyl)}`;
+      const existencias = Number(r[field] ?? 0);
+      rows.push({ sph, cyl, existencias });
+    });
+  });
+
+  return rows;
+}
+
 const handleAddRow = async (nuevoValor) => {
+  console.log("[AgGridMonofocal] handleAddRow nuevoValor:", nuevoValor);
   const v = Number(nuevoValor);
   if (Number.isNaN(v)) {
     alert("Ingresa un SPH numérico");
@@ -260,6 +388,10 @@ const handleAddRow = async (nuevoValor) => {
 };
 
 const handleAddColumn = async (nuevoValor) => {
+  console.log(
+    "[AgGridMonofocal] handleAddColumn nuevoValor:",
+    nuevoValor
+  );
   const v = Number(nuevoValor);
   if (Number.isNaN(v)) {
     alert("Ingresa un CYL numérico");
@@ -281,68 +413,98 @@ const handleAddColumn = async (nuevoValor) => {
 /* Filtros / orden para navtools */
 const clearFilters = () => {
   if (!gridApi.value || typeof gridApi.value.setFilterModel !== "function") {
-    console.warn("[AgGridMonofocal] setFilterModel no disponible", gridApi.value);
+    console.warn(
+      "[AgGridMonofocal] setFilterModel no disponible",
+      gridApi.value
+    );
     return;
   }
+  console.log("[AgGridMonofocal] clearFilters");
   gridApi.value.setFilterModel(null);
 };
 
 const resetSort = () => {
   if (!gridApi.value || typeof gridApi.value.setSortModel !== "function") {
-    console.warn("[AgGridMonofocal] setSortModel no disponible", gridApi.value);
+    console.warn(
+      "[AgGridMonofocal] setSortModel no disponible",
+      gridApi.value
+    );
     return;
   }
+  console.log("[AgGridMonofocal] resetSort por sph ASC");
   gridApi.value.setSortModel([{ colId: "sph", sort: "asc" }]);
   gridApi.value.refreshClientSideRowModel("sort");
 };
 
 const handleToggleFilters = () => {
+  console.log("[AgGridMonofocal] handleToggleFilters → clearFilters");
   clearFilters();
 };
 
 /* Guardar / refresh / seed / export */
 async function handleSave() {
-  if (!dirty.value) return;
+  console.log(
+    "[AgGridMonofocal] handleSave llamado. dirty:",
+    dirty.value,
+    "saving:",
+    saving.value
+  );
+  if (!dirty.value) {
+    console.log("[AgGridMonofocal] handleSave → no dirty, return");
+    return;
+  }
+  if (!gridApi.value) {
+    console.warn("[AgGridMonofocal] handleSave → sin gridApi, no se puede recolectar filas");
+    return;
+  }
+
   saving.value = true;
   try {
-    const rows = [];
-    rowData.value.forEach((r) => {
-      const sph = r.sph;
-      cylValues.value.forEach((cyl) => {
-        const field = `cyl_${norm(cyl)}`;
-        const existencias = Number(r[field] ?? 0);
-        rows.push({ sph, cyl, existencias });
-      });
-    });
+    const rows = collectRowsFromGrid();
+    console.log(
+      "[AgGridMonofocal] rows a enviar:",
+      rows.length,
+      "ej row[0]:",
+      rows[0]
+    );
     await saveChunk(props.sheetId, rows, effectiveActor.value);
     dirty.value = false;
     lastSavedAt.value = new Date();
     await loadRows();
   } catch (e) {
-    console.error("[AgGridMonofocal] Error saveChunk:", e?.response?.data || e);
+    console.error(
+      "[AgGridMonofocal] Error saveChunk:",
+      e?.response?.data || e
+    );
   } finally {
     saving.value = false;
   }
 }
 
 async function handleDiscard() {
+  console.log("[AgGridMonofocal] handleDiscard");
   await loadRows();
   dirty.value = false;
 }
 
 async function handleRefresh() {
+  console.log("[AgGridMonofocal] handleRefresh");
   await loadAll();
 }
 
 async function handleSeed() {
   try {
+    console.log("[AgGridMonofocal] handleSeed");
     saving.value = true;
     await reseedSheet(props.sheetId, effectiveActor.value);
     await loadRows();
     dirty.value = false;
     lastSavedAt.value = new Date();
   } catch (e) {
-    console.error("[AgGridMonofocal] Error reseed:", e?.response?.data || e);
+    console.error(
+      "[AgGridMonofocal] Error reseed:",
+      e?.response?.data || e
+    );
   } finally {
     saving.value = false;
   }
@@ -350,11 +512,15 @@ async function handleSeed() {
 
 function handleExport() {
   if (!gridApi.value || typeof gridApi.value.exportDataAsCsv !== "function") {
-    console.warn("[AgGridMonofocal] exportDataAsCsv no disponible", gridApi.value);
+    console.warn(
+      "[AgGridMonofocal] exportDataAsCsv no disponible",
+      gridApi.value
+    );
     return;
   }
   const nameSlug = sheetName.value.replace(/\s+/g, "_");
   const posNeg = props.sphType === "sph-pos" ? "pos" : "neg";
+  console.log("[AgGridMonofocal] handleExport", nameSlug, posNeg);
   gridApi.value.exportDataAsCsv({
     fileName: `${nameSlug || "sph_cyl"}_${posNeg}.csv`
   });

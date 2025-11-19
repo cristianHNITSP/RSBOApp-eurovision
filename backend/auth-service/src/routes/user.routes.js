@@ -59,11 +59,18 @@ router.get(
 );
 
 // PUT /api/users/:id
-// Solo manage_users puede editar usuarios
+// Todos los usuarios pueden editar su usuario
 router.put(
   '/:id',
   authMiddleware,
-  requirePermissions(['manage_users']),
+  (req, res, next) => {
+    // Si el usuario autenticado está editando su propio perfil, dejamos pasar
+    if (req.user && String(req.user.id) === String(req.params.id)) {
+      return next();
+    }
+    // Si no, exigimos manage_users
+    return canManageOrSelf(req, res, next);
+  },
   async (req, res) => {
     try {
       const updated = await userService.updateUser(req.params.id, req.body);
@@ -78,11 +85,17 @@ router.put(
 );
 
 // PUT /api/users/:id/password
-// Solo manage_users (o podrías permitir que cada usuario edite su propia password)
+// El usuario puede cambiar su propia contraseña
+// Admin (manage_users) puede cambiar la de otros (por ejemplo, reset)
 router.put(
   '/:id/password',
   authMiddleware,
-  requirePermissions(['manage_users']),
+  (req, res, next) => {
+    if (req.user && String(req.user.id) === String(req.params.id)) {
+      return next();
+    }
+    return canManageOrSelf(req, res, next);
+  },
   async (req, res) => {
     try {
       const result = await userService.updatePassword(

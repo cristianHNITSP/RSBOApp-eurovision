@@ -14,9 +14,9 @@ const routes = [
     children: [
       {
         path: 'home',
-          name: 'home',
-          component: () => import('../views/dashboard/DashboardHome.vue'),
-          meta: { requiresAuth: true },
+        name: 'home',
+        component: () => import('../views/dashboard/DashboardHome.vue'),
+        meta: { requiresAuth: true },
       },
       {
         path: 'inventario',
@@ -24,11 +24,25 @@ const routes = [
         component: () => import('../views/inventario/Inventario.vue'),
         meta: { requiresAuth: true },
       },
+      // CONFIG principal con tabs
+      {
+        path: 'config.panel',
+        name: 'configuración',
+        component: () => import('../views/config/Config.vue'),
+        meta: { requiresAuth: true },
+      },
+      // Ruta antigua de "mi.perfil.panel" → redirige a Config con tab=profile
       {
         path: 'mi.perfil.panel',
         name: 'Mi perfil',
-        component: () => import('../views/user/MiUser.vue'),
         meta: { requiresAuth: true },
+        redirect: (to) => ({
+          name: 'configuración',
+          query: {
+            ...to.query,
+            tab: 'profile', // tab que activaremos en Config.vue
+          },
+        }),
       },
     ],
   },

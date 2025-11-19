@@ -1,5 +1,5 @@
 <template>
-  <section class="section-miuser" v-motion-fade-visible-once>
+  <section v-motion-fade-visible-once>
 
     <!-- Skeleton Loading -->
     <div v-if="props.loading" class="columns is-multiline">
@@ -328,8 +328,8 @@
 
 <script setup>
 import { ref, reactive, watch, onMounted, computed } from 'vue'
-import { userService, utils } from '../../services/myUserCRUD'
-import AvatarPicker from '../../components/AvatarPicker.vue' // ajusta la ruta según tu estructura
+import { userService, utils } from '../../../services/myUserCRUD'
+import AvatarPicker from '../../../components/AvatarPicker.vue' // ajusta la ruta según tu estructura
 
 // Constantes y configuración
 const avatarUrl = 'https://cdn.jsdelivr.net/gh/alohe/avatars/png/vibrent_1.png'
@@ -340,8 +340,14 @@ const props = defineProps({
   loading: { type: Boolean, default: false }
 })
 
+console.log('[MiUser] props iniciales:', props)
+
 // ID del usuario (soporta _id o id)
-const userId = computed(() => props.user?._id || props.user?.id || '')
+const userId = computed(() => {
+  const id = props.user?._id || props.user?.id || ''
+  console.log('[MiUser] computed userId:', id)
+  return id
+})
 
 // Estado de UI
 const isEditingProfile = ref(false)
@@ -384,13 +390,14 @@ const originalData = reactive({})
 
 // Lifecycle
 onMounted(async () => {
-  // Si después quieres cargar algo extra (roles globales u otra info), aquí
+  console.log('[MiUser] onMounted -> props.user:', props.user, 'loading:', props.loading)
 })
 
 // Watchers
 watch(
   () => props.user,
-  (newUser) => {
+  (newUser, oldUser) => {
+    console.log('[MiUser] watch props.user ->', { oldUser, newUser })
     if (newUser) {
       initializeFormData(newUser)
     }
@@ -400,11 +407,13 @@ watch(
 
 // ----- Métodos de UI -----
 function startProfileEdit() {
+  console.log('[MiUser] startProfileEdit')
   isEditingProfile.value = true
   profileMessage.value = ''
 }
 
 function cancelEdit() {
+  console.log('[MiUser] cancelEdit -> restaurando originalData:', { ...originalData })
   Object.assign(formData, originalData)
   isEditingProfile.value = false
   profileMessage.value = ''
@@ -413,6 +422,7 @@ function cancelEdit() {
 }
 
 function togglePasswordEdit() {
+  console.log('[MiUser] togglePasswordEdit. isEditingPassword antes:', isEditingPassword.value)
   if (isEditingPassword.value) {
     // Cancelar edición de contraseña
     formData.password = ''
@@ -425,6 +435,7 @@ function togglePasswordEdit() {
     isEditingPassword.value = true
     passwordMessage.value = ''
   }
+  console.log('[MiUser] togglePasswordEdit. isEditingPassword después:', isEditingPassword.value)
 }
 
 function clearProfileErrors() {
@@ -451,6 +462,7 @@ function clearPasswordError(field) {
 
 // ----- Validaciones -----
 function validateProfile() {
+  console.log('[MiUser] validateProfile -> formData:', { ...formData })
   let isValid = true
   clearProfileErrors()
 
@@ -471,6 +483,10 @@ function validateProfile() {
 }
 
 function validatePassword() {
+  console.log('[MiUser] validatePassword ->', {
+    password: formData.password,
+    confirmPassword: formData.confirmPassword
+  })
   let isValid = true
   clearPasswordErrors()
 
@@ -495,10 +511,15 @@ function validatePassword() {
 
 // ----- Métodos que utilizan el servicio -----
 async function updateProfile() {
-  if (!validateProfile()) return
+  console.log('[MiUser] updateProfile llamado')
+  if (!validateProfile()) {
+    console.log('[MiUser] updateProfile -> validación falló')
+    return
+  }
   if (!userId.value) {
     profileMessage.value = 'No se pudo identificar al usuario para actualizar.'
     profileSuccess.value = false
+    console.warn('[MiUser] updateProfile -> userId vacío')
     return
   }
 
@@ -512,7 +533,11 @@ async function updateProfile() {
     bio: formData.bio
   }
 
+  console.log('[MiUser] updateProfile -> payload:', payload)
+
   const result = await userService.updateProfile(userId.value, payload)
+
+  console.log('[MiUser] updateProfile -> result:', result)
 
   if (result.success) {
     profileMessage.value = 'Perfil actualizado correctamente'
@@ -528,16 +553,23 @@ async function updateProfile() {
 }
 
 async function updatePassword() {
-  if (!validatePassword()) return
+  console.log('[MiUser] updatePassword llamado')
+  if (!validatePassword()) {
+    console.log('[MiUser] updatePassword -> validación falló')
+    return
+  }
   if (!userId.value) {
     passwordMessage.value = 'No se pudo identificar al usuario para actualizar la contraseña.'
     passwordSuccess.value = false
+    console.warn('[MiUser] updatePassword -> userId vacío')
     return
   }
 
   loadingPassword.value = true
 
   const result = await userService.updatePassword(userId.value, formData.password)
+
+  console.log('[MiUser] updatePassword -> result:', result)
 
   if (result.success) {
     passwordMessage.value = 'Contraseña actualizada correctamente'
@@ -556,6 +588,7 @@ async function updatePassword() {
 
 // ----- Métodos auxiliares -----
 function initializeFormData(user) {
+  console.log('[MiUser] initializeFormData con user:', user)
   Object.assign(formData, {
     name: user.name || '',
     email: user.email || '',
@@ -573,6 +606,8 @@ function initializeFormData(user) {
     bio: formData.bio,
     avatar: formData.avatar
   })
+
+  console.log('[MiUser] formData inicializado:', { ...formData })
 }
 
 // Exportar utilidades para usar en el template
@@ -580,14 +615,6 @@ const { formatDate, timeSince } = utils
 </script>
 
 <style scoped>
-.section-miuser {
-  border-radius: 12px;
-  padding: 1.5rem;
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-  border-bottom: 1px solid #ccc;
-}
-
 .position-relative {
   position: relative;
 }

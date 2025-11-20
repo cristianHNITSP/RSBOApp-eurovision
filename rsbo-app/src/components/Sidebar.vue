@@ -25,7 +25,7 @@
           </figure>
         </div>
 
-        <!-- Toggle mejorado -->
+        <!-- Toggle -->
         <b-button
           class="sidebar-toggle"
           type="is-text"
@@ -98,12 +98,11 @@
         </template>
       </div>
 
-      <!-- FOOTER USUARIO (sin botón cerrar sesión) -->
+      <!-- FOOTER USUARIO -->
       <div class="sidebar-footer">
         <div class="sidebar-footer-inner" v-if="!loading">
           <div class="user-profile">
             <div class="user-avatar">
-              <!-- Skeleton redondo -->
               <b-skeleton
                 v-if="!avatarLoaded"
                 :width="32"
@@ -111,7 +110,6 @@
                 :animated="true"
                 style="border-radius:50%;"
               />
-              <!-- Avatar -->
               <img
                 v-else
                 :key="avatarUrl"
@@ -131,7 +129,7 @@
       </div>
     </aside>
 
-    <!-- SUBMENU LATERAL MEJORADO -->
+    <!-- SUBMENU LATERAL -->
     <aside
       v-if="activeSubmenu"
       ref="submenu"
@@ -260,7 +258,6 @@ export default {
         this.avatarLoaded = false
         this.$nextTick(() => {
           this.avatarUrl = avatar
-          // Preload para cache
           const img = new Image()
           img.src = avatar
           img.onload = () => (this.avatarLoaded = true)
@@ -335,7 +332,6 @@ export default {
       this.activeSubmenu = null
     },
     logout() {
-      // Dejado por si lo quieres usar en otro lado
       this.$buefy.notification.open({
         message: 'Sesión cerrada correctamente',
         type: 'is-success'
@@ -370,9 +366,7 @@ import logoeuro from '@/assets/img/logoside.png'
 </script>
 
 <style scoped lang="scss">
-/* Estilo Bulma/Buefy: plano, ligero, con acento primary */
-
-$primary: #906fe1; // ajusta a tu primary de Buefy
+$primary: #906fe1;
 $primary-soft: rgba($primary, 0.08);
 $border: #dbdbdb;
 $bg: #ffffff;
@@ -385,7 +379,7 @@ $group: #b5b5b5;
   z-index: 21;
 }
 
-/* CONTENEDOR PRINCIPAL */
+/* SIDEBAR */
 
 .sidebar {
   position: fixed;
@@ -412,6 +406,20 @@ $group: #b5b5b5;
     }
 
     .menu-item {
+      justify-content: center;
+      padding-left: 0.4rem;
+      padding-right: 0.4rem;
+    }
+
+    .menu-item-inner {
+      justify-content: center;
+    }
+
+    .sidebar-footer-inner {
+      justify-content: center;
+    }
+
+    .user-profile {
       justify-content: center;
     }
 
@@ -483,7 +491,7 @@ $group: #b5b5b5;
   color: $text-muted;
 }
 
-/* Toggle más cómodo */
+/* Toggle */
 
 .sidebar-toggle {
   margin-left: auto;
@@ -523,8 +531,6 @@ $group: #b5b5b5;
   font-weight: 600;
   color: $group;
 }
-
-/* ITEMS */
 
 .menu-item {
   display: flex;
@@ -599,7 +605,7 @@ $group: #b5b5b5;
   text-transform: uppercase;
 }
 
-/* Chevron de submenu */
+/* Chevron */
 
 .menu-item-chevron {
   margin-left: 0.25rem;
@@ -668,22 +674,7 @@ $group: #b5b5b5;
   color: $text-muted;
 }
 
-/* Scrollbar */
-
-.sidebar-menu::-webkit-scrollbar {
-  width: 6px;
-}
-
-.sidebar-menu::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.18);
-  border-radius: 4px;
-}
-
-.sidebar-menu::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-/* SUBMENU PANEL MEJORADO */
+/* SUBMENU PANEL */
 
 .submenu-panel {
   background: $bg;
@@ -790,8 +781,8 @@ $group: #b5b5b5;
   background-color: #f5f5f5;
 }
 
+/* ⚡ Estado activo del submenu: solo bar + color, sin fondo pesado */
 .submenu-item.is-active {
-  background-color: $primary-soft;
   border-left-color: $primary;
   color: $primary;
 

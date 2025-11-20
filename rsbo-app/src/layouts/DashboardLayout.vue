@@ -1,5 +1,13 @@
 <script setup>
-import { ref, watch, onMounted, onBeforeUnmount, onBeforeMount, computed, nextTick } from 'vue'
+import {
+    ref,
+    watch,
+    onMounted,
+    onBeforeUnmount,
+    onBeforeMount,
+    computed,
+    nextTick
+} from 'vue'
 import { useRoute } from 'vue-router'
 
 import Sidebar from '../components/Sidebar.vue'
@@ -7,33 +15,27 @@ import NotificationPanel from '../components/NotificationPanel.vue'
 
 import { useSidebarState } from '../composables/useSidebarState'
 import { useMotionEffects } from '../composables/useMotionEffects'
-//import { useUserActions } from '../composables/useUserActions'
 import { useNotifications } from '../composables/useNotificationsState'
 
+// ---- Sidebar & motion ----
 const { isSidebarCollapsed, toggleSidebar, setSidebarState } = useSidebarState()
-const { motionRef, motionControls, animateSidebarShift } = useMotionEffects()
-//const { profile, settings, logout } = useUserActions()
+const { motionRef, animateSidebarShift } = useMotionEffects()
 
+// ---- Notificaciones ----
 const { showPanel, openPanel, closePanel } = useNotifications()
 const unreadNotifications = ref(0)
 
-// Breadcrumb dinámico
+// ---- Breadcrumb dinámico ----
 const route = useRoute()
 const currentRouteName = computed(() => {
     return route.meta.breadcrumb || route.name || 'Dashboard'
 })
 
 const pageTitle = computed(() => {
-    return `Panel de Control`
+    return 'Panel de Control'
 })
 
-console.log(unreadNotifications)
-
-watch(isSidebarCollapsed, (newVal) => {
-    animateSidebarShift(newVal)
-})
-
-// ⚙️ Estado del modo oscuro
+// ---- Modo oscuro ----
 const isDark = ref(document.documentElement.getAttribute('data-theme') === 'dark')
 
 function toggleDarkMode() {
@@ -51,7 +53,7 @@ function toggleDarkMode() {
     }
 }
 
-// control de la resolución en app-layout para móviles
+// ---- Control de la altura del viewport en móviles ----
 const viewportHeight = ref(window.innerHeight)
 
 function updateViewportHeight() {
@@ -64,7 +66,11 @@ onMounted(() => {
     window.addEventListener('resize', updateViewportHeight)
 })
 
-// se cierra la sidebar 
+onBeforeUnmount(() => {
+    window.removeEventListener('resize', updateViewportHeight)
+})
+
+// ---- Watch sidebar colapsada ----
 watch(isSidebarCollapsed, (newVal) => {
     animateSidebarShift(newVal)
 
@@ -74,8 +80,7 @@ watch(isSidebarCollapsed, (newVal) => {
     }
 })
 
-
-// ———————— NUEVO: Control de tamaño de fuente con persistencia ————————
+// ---- Tamaño de fuente con persistencia ----
 const FONT_SIZE_KEY = 'user-font-size'
 const defaultFontSize = 'md'
 
@@ -83,7 +88,7 @@ const sizes = {
     xs: '85%',
     sm: '92.5%',
     md: '100%',
-    lg: '112.5%',
+    lg: '112.5%'
 }
 
 // Aplicar tamaño antes de montar para evitar salto visual
@@ -114,8 +119,7 @@ onMounted(() => {
     setFontSize(fontSize.value)
 })
 
-
-// NO CONEXION 
+// ---- Estado de conexión ----
 const isOffline = ref(!navigator.onLine)
 const showLoading = ref(false)
 
@@ -140,9 +144,7 @@ onBeforeUnmount(() => {
     window.removeEventListener('offline', updateOnlineStatus)
 })
 
-
-//LOFICA PARA LA SIDEBAR COLLAPSADA Y NO OCUPE TANTO ESPACIO
-// lógica de la sidebar
+// ---- Lógica de sidebar móvil ----
 const isMobileSidebarVisible = ref(true)
 const sidebarmobile = ref(null)
 const windowWidth = ref(window.innerWidth)
@@ -182,9 +184,13 @@ function showSidebarMobile() {
     el.classList.remove('mobileSidebtraction-leave-active')
     el.classList.add('mobileSidebtraction-enter-active')
 
-    el.addEventListener('animationend', () => {
-        el.classList.remove('mobileSidebtraction-enter-active')
-    }, { once: true })
+    el.addEventListener(
+        'animationend',
+        () => {
+            el.classList.remove('mobileSidebtraction-enter-active')
+        },
+        { once: true }
+    )
 }
 
 function hideSidebarMobile() {
@@ -194,15 +200,19 @@ function hideSidebarMobile() {
     el.classList.remove('mobileSidebtraction-enter-active')
     el.classList.add('mobileSidebtraction-leave-active')
 
-    el.addEventListener('animationend', () => {
-        el.classList.remove('mobileSidebtraction-leave-active')
-        isMobileSidebarVisible.value = false
-        localStorage.setItem('mobileSidebarVisible', 'false')
-        updateMainClass(false)
-    }, { once: true })
+    el.addEventListener(
+        'animationend',
+        () => {
+            el.classList.remove('mobileSidebtraction-leave-active')
+            isMobileSidebarVisible.value = false
+            localStorage.setItem('mobileSidebarVisible', 'false')
+            updateMainClass(false)
+        },
+        { once: true }
+    )
 }
 
-// ✅ ACTUALIZADA: manejar margin-left dinámico por tamaño de pantalla y colapso
+// Manejar margin-left dinámico por tamaño de pantalla y colapso
 function updateMainClass(sidebarVisible) {
     const mainEl = document.querySelector('main.main-content')
     if (!mainEl) return
@@ -226,8 +236,6 @@ function updateMainClass(sidebarVisible) {
             mainEl.classList.remove('main-sidebar-hidden')
         }
     }
-
-
 }
 
 function handleResize() {
@@ -250,134 +258,128 @@ onMounted(() => {
 onBeforeUnmount(() => {
     window.removeEventListener('resize', handleResize)
 })
-
 </script>
-
 
 <script>
 import { useAuth } from '@/services/useAuth'
 
 export default {
-  name: 'DashboardLayout',
+    name: 'DashboardLayout',
 
-  data() {
-    return {
-      user: null,
-      loading: true
+    data() {
+        return {
+            user: null,
+            loading: true
+        }
+    },
+
+    methods: {
+        async fetchUserData() {
+            const { fetchUser, user } = useAuth()
+            await fetchUser()
+            this.user = user.value
+            this.loading = false
+        },
+
+        profile() {
+            const { profile } = useAuth()
+            profile(this.$router)
+        },
+
+        settings() {
+            const { settings } = useAuth()
+            settings(this.$router)
+        },
+
+        logout() {
+            const { logout } = useAuth()
+            logout(this.$router, this.$buefy)
+        }
+    },
+
+    mounted() {
+        this.fetchUserData()
     }
-  },
-
-  methods: {
-    async fetchUserData() {
-      const { fetchUser, user } = useAuth()
-      await fetchUser()
-      this.user = user.value
-      this.loading = false
-    },
-
-    profile() {
-      const { profile } = useAuth()
-      profile(this.$router)
-    },
-
-    settings() {
-      const { settings } = useAuth()
-      settings(this.$router)
-    },
-
-    logout() {
-      const { logout } = useAuth()
-      logout(this.$router, this.$buefy)
-    }
-  },
-
-  mounted() {
-    this.fetchUserData()
-  }
 }
 </script>
 
-
-
 <template>
     <div class="app-layout" style="background-color: white;">
-
+        <!-- 🔌 Aviso sin conexión -->
         <b-notification v-if="isOffline" type="is-danger" aria-close-label="Cerrar notificación" has-icon
             class="has-text-centered" style="position: fixed; top: 0; width: 100%; z-index: 2000;">
             No hay conexión a internet. Por favor verifica tu red.
         </b-notification>
 
+        <!--Loading global -->
         <b-loading v-model="showLoading" :is-full-page="true" :can-cancel="false" :is-fullscreen="true"
             aria-label="Cargando...">
-            <b-icon pack="fas" icon="sync-alt" size="is-large" custom-class="fa-spin">
-            </b-icon>
+            <b-icon pack="fas" icon="sync-alt" size="is-large" custom-class="fa-spin" />
         </b-loading>
 
         <div class="content-layout">
-
+            <!--Sidebar -->
             <Sidebar ref="sidebarmobile" class="sidebar-mobile-panel" v-if="!isMobile || isMobileSidebarVisible"
                 @toggle="setSidebarState" :collapsed="isSidebarCollapsed" :user="user" :loading="loading" />
 
+            <!--Panel de notificaciones -->
             <NotificationPanel :visible="showPanel" @close="closePanel" @update-unread="unreadNotifications = $event" />
 
-            <!-- DIV overlay que aplica el blur y fondo -->
+            <!-- DIV overlay que aplica el blur y fondo en móvil -->
             <div v-if="isMobile && showPanel" class="blur-overlay"></div>
 
+            <!--Contenido principal -->
             <main class="main-content p-0" :class="{
                 'is-hidden-mobile': !isSidebarCollapsed,
                 'is-collapsed': isSidebarCollapsed,
                 'ignore-grid-mobile': isMobile && showPanel,
                 'visible-sidebar': isMobileSidebarVisible && isMobile && showPanel
             }" :style="{
-                marginLeft: isMobile
-                    ? (isMobileSidebarVisible ? '70px' : '0px')
-                    : (isSidebarCollapsed ? '70px' : '240px'),
-                marginRight: showPanel ? '285px' : '0px',
-                transition: 'margin-left 0.3s ease, margin-right 0.3s ease'
-            }">
-
-                <!-- Panel superior del dashboard -->
-                <section class="hero dashboard-panel" ref="motionRef">
-
-                    <div class="columns is-vcentered is-multiline">
-
-                        <!-- Botón solo visible en móviles -->
-
-                        <!-- Título y breadcrumb -->
-                        <div class="column is-full-mobile is-4-desktop">
-                            <!-- Contenedor en fila para el botón y el breadcrumb -->
-                            <div class="is-flex is-align-items-center">
+            marginLeft: isMobile
+                ? (isMobileSidebarVisible ? '70px' : '0px')
+                : (isSidebarCollapsed ? '70px' : '240px'),
+            marginRight: showPanel ? '285px' : '0px',
+            transition: 'margin-left 0.3s ease, margin-right 0.3s ease'
+        }">
+                <!--Header / Panel superior -->
+                <section class="dashboard-header" ref="motionRef">
+                    <div class="dashboard-toolbar">
+                        <!-- LEFT: breadcrumb + título -->
+                        <div class="dashboard-toolbar__left">
+                            <div class="breadcrumb-wrapper">
                                 <!-- Botón solo visible en móvil -->
-                                <b-button icon-left="bars" class="is-hidden-desktop is-hidden-tablet mr-2"
-                                    type="is-primary" @click="toggleMobileSidebar" size="is-small" />
+                                <b-button icon-left="bars" class="menu-toggle is-hidden-desktop is-hidden-tablet mr-2"
+                                    type="is-primary" size="is-small" @click="toggleMobileSidebar" />
 
-                                <!-- Breadcrumb -->
-                                <b-breadcrumb separator="succeeds">
+                                <b-breadcrumb separator="succeeds" class="is-size-7-mobile">
                                     <b-breadcrumb-item href="/layouts/home">Dashboard</b-breadcrumb-item>
                                     <b-breadcrumb-item active>{{ currentRouteName }}</b-breadcrumb-item>
                                 </b-breadcrumb>
                             </div>
 
-                            <!-- Título -->
-                            <h1 class="title is-4 mt-2">{{ pageTitle }}</h1>
+                            <div class="page-heading">
+                                <h1 class="dashboard-title">
+                                    {{ pageTitle }}
+                                </h1>
+
+                            </div>
                         </div>
 
-
-                        <!-- Buscador -->
-                        <div class="column is-full-mobile is-4-desktop">
-                            <b-field position="is-centered">
-                                <b-input placeholder="Buscar..." rounded icon="search" icon-pack="fas" expanded>
+                        <!-- CENTER: buscador -->
+                        <div class="dashboard-toolbar__center">
+                            <b-field class="dashboard-search" position="is-centered">
+                                <b-input placeholder="Buscar en el panel..." rounded expanded icon="search"
+                                    icon-pack="fas">
                                     <template #icon>
-                                        <b-icon icon="magnify"></b-icon>
+                                        <b-icon icon="magnify" />
                                     </template>
                                 </b-input>
                             </b-field>
                         </div>
 
-                        <!-- Iconos de acciones -->
-                        <div class="column is-12-mobile is-4-desktop">
-                            <div
-                                class="buttons is-flex is-flex-wrap-wrap is-justify-content-flex-end-desktop is-justify-content-flex-start-mobile">
+                        <!-- RIGHT: acciones -->
+                        <div class="dashboard-toolbar__right">
+                            <div class="dashboard-actions">
                                 <!-- Notificaciones -->
                                 <b-tooltip label="Notificaciones" position="is-bottom" append-to-body>
                                     <div class="has-badge-wrapper">
@@ -391,7 +393,6 @@ export default {
                                         </transition>
                                     </div>
                                 </b-tooltip>
-
 
                                 <!-- Modo oscuro -->
                                 <b-tooltip label="Modo oscuro (beta)" position="is-bottom" append-to-body>
@@ -407,69 +408,151 @@ export default {
                                             Tamaño
                                         </b-button>
                                     </template>
-                                    <b-dropdown-item @click="setFontSize('xs')">🅰 Extra Pequeña</b-dropdown-item>
+                                    <b-dropdown-item @click="setFontSize('xs')">🅰 Extra pequeña</b-dropdown-item>
                                     <b-dropdown-item @click="setFontSize('sm')">🅰 Pequeña</b-dropdown-item>
                                     <b-dropdown-item @click="setFontSize('md')">🅰 Mediana
-                                        (Recomendado)</b-dropdown-item>
+                                        (recomendada)</b-dropdown-item>
                                     <b-dropdown-item @click="setFontSize('lg')">🅰 Grande</b-dropdown-item>
                                 </b-dropdown>
 
                                 <!-- Menú usuario -->
                                 <b-dropdown position="is-bottom-left" aria-role="menu" append-to-body
-                                    class="is-light is-radiusless m-0 p-0" menu-class="">
+                                    class="is-light is-radiusless m-0 p-0">
                                     <template #trigger>
                                         <b-button type="is-primary" icon-right="user-circle" label="Usuario" />
                                     </template>
 
                                     <b-dropdown-item aria-role="menu-item" @click="profile" class="dropmenu-is-light">
-                                        <b-icon icon="user" size="is-small" /> Perfil
+                                        <b-icon icon="user" size="is-small" />&nbsp; Perfil
                                     </b-dropdown-item>
 
                                     <b-dropdown-item aria-role="menu-item" @click="settings" class="dropmenu-is-light">
-                                        <b-icon icon="cog" size="is-small" /> Configuración
+                                        <b-icon icon="cog" size="is-small" />&nbsp; Configuración
                                     </b-dropdown-item>
 
                                     <hr class="dropdown-divider" />
 
                                     <b-dropdown-item aria-role="menu-item" @click="logout" class="dropmenu-is-light">
-                                        <b-icon icon="sign-out-alt" size="is-small" /> Cerrar sesión
+                                        <b-icon icon="sign-out-alt" size="is-small" />&nbsp; Cerrar sesión
                                     </b-dropdown-item>
                                 </b-dropdown>
                             </div>
                         </div>
-
-
                     </div>
-
                 </section>
 
-                <!-- Aquí puedes poner tu sidebar, header, etc. -->
-                <router-view v-slot="{ Component }">
-                    <component :is="Component" :user="user" :loading="loading" />
-                </router-view>
+                <!--Contenido de las vistas -->
+                <section class="dashboard-body">
+                    <router-view v-slot="{ Component }">
+                        <component :is="Component" :user="user" :loading="loading" />
+                    </router-view>
+                </section>
 
-
-
-
-                <footer class="mt-2 mb-2">
+                <!-- ⚓ Footer -->
+                <footer class="dashboard-footer mt-2 mb-2">
                     <div class="content has-text-centered">
                         <p>
-                            <strong>RSBO</strong> by <a href="https://jgthms.com">Jeremy Thomas</a>.
-                            The source code is licensed
-                            <a href="https://opensource.org/license/mit">MIT</a>. The
-                            website content is licensed
-                            <a href="https://creativecommons.org/licenses/by-nc-sa/4.0//">CC BY NC SA 4.0</a>.
+                            <strong>RSBO</strong> · Lightweight UI components for Vue 3 based on Bulma. <br />
+                            <small>
+                                Código bajo licencia
+                                <a href="https://opensource.org/license/mit">MIT</a> · Contenido bajo
+                                <a href="https://creativecommons.org/licenses/by-nc-sa/4.0//">CC BY NC SA 4.0</a>.
+                            </small>
                         </p>
                     </div>
                 </footer>
 
             </main>
-
         </div>
     </div>
 </template>
 
 <style scoped>
+/* ===========================
+   HEADER / TOOLBAR
+   =========================== */
+
+.dashboard-header {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    padding: 1rem 1.5rem 0.75rem;
+    background-color: #ffffff;
+    border-bottom: 1px solid rgba(10, 10, 10, 0.06);
+}
+
+.dashboard-toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) auto;
+    grid-template-areas: 'left center right';
+    align-items: center;
+    column-gap: 1rem;
+    row-gap: 0.75rem;
+}
+
+.dashboard-toolbar__left {
+    grid-area: left;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 0;
+}
+
+.dashboard-toolbar__center {
+    grid-area: center;
+    min-width: 0;
+}
+
+.dashboard-toolbar__right {
+    grid-area: right;
+    min-width: 0;
+}
+
+/* Breadcrumb + título */
+.breadcrumb-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+}
+
+.page-heading {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.dashboard-title {
+    margin: 0;
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #363636;
+}
+
+
+
+/* Buscador */
+.dashboard-search {
+    width: 100%;
+    max-width: 520px;
+    margin: 0 auto;
+}
+
+/* Acciones */
+.dashboard-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.menu-toggle {
+    border-radius: 999px;
+}
+
+
+/* Badge de notificación */
 .has-badge-wrapper {
     position: relative;
     display: inline-block;
@@ -484,15 +567,28 @@ export default {
     z-index: 1;
 }
 
+/* Animación del badge */
+.badge-fade-enter-active,
+.badge-fade-leave-active {
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.badge-fade-enter-from,
+.badge-fade-leave-to {
+    opacity: 0;
+    transform: translate(40%, -60%) scale(0.85);
+}
+
+/* ===========================
+   LAYOUT GENERAL
+   =========================== */
+
 .app-layout {
     display: flex;
     flex-direction: column;
     height: calc(var(--vh, 1vh) * 100);
     width: 100%;
-    /* Quitar overflow hidden para permitir scroll horizontal si se reduce más */
-    /* overflow: hidden; */
     min-width: 360px;
-    /* <-- Agregado para que no se reduzca más allá de 360px */
 }
 
 .content-layout {
@@ -501,73 +597,52 @@ export default {
     min-height: 0;
     min-width: 0;
     position: relative;
-    /* Mantener row para que sidebar y main estén lado a lado */
     flex-direction: row;
     min-width: 360px;
-    /* <-- Agregado para mantener mínimo ancho */
 }
-
-/* Aquí asumes que Sidebar.vue tiene su propio CSS para ancho y colapsado,
-   pero si quieres que main-content se ajuste, haces flex:1 sin margen */
 
 .main-content {
     margin-left: 240px;
-    /* o ajusta según sidebar colapsado */
     transition: margin-left 0.3s ease, margin-right 0.3s ease;
     flex: 1;
     min-width: 0;
     overflow-y: auto;
-    /*   background-color: #f5f5f5; 
-    padding: 1.5rem; */
-    min-height: auto;
-
     box-sizing: border-box;
-
-    /* o usa height:auto según necesidad */
 }
 
-/* Si quieres animar main-content según sidebar colapsado,
-   mejor hacerlo con flex-basis o padding, no margin-left */
 .main-content.is-collapsed {
-    /* Por ejemplo, podrías ajustar padding para que luzca diferente */
     margin-left: 70px;
 }
 
-.dashboard-panel {
-    border-bottom: 1px solid #ccc;
-    padding-bottom: 1rem;
-
-    padding: 1.5rem;
-
+/* Para cuando sidebar visible/oculta desde JS */
+.main-sidebar-hidden {
+    margin-left: 70px;
 }
 
-/* 
-.dashboard-panel {
-    background: white;
-    border-radius: 8px;
-    padding: 1.5rem;
-    box-shadow: 0 2px 3px rgba(10, 10, 10, 0.1);
+.main-sidebar-visible {
+    margin-left: 240px;
 }
 
-.content-container {
-    background: white;
-    border-radius: 8px;
-    padding: 1.5rem;
-    box-shadow: 0 2px 3px rgba(10, 10, 10, 0.1);
+/* Overlay blur para notificaciones en móvil */
+.blur-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    z-index: 9;
+    pointer-events: auto;
 }
-*/
 
+/* ===========================
+   RESPONSIVE
+   =========================== */
 
-/* Responsive */
-/* Importante: NO cambiar flex-direction a column para .content-layout */
 .hidden-when-sidebar-open-on-mobile {
     display: none;
-}
-
-@media screen and (max-width: 768px) {
-    .is-hidden-on-mobile-panel {
-        display: none !important;
-    }
 }
 
 @media (min-width: 361px) {
@@ -576,59 +651,74 @@ export default {
     }
 }
 
+/* Mobile / Tablet */
 @media screen and (max-width: 768px) {
+    .main-sidebar-hidden {
+        margin-left: 0 !important;
+        transition: margin-left 0.2s ease;
+    }
+
+    .main-sidebar-visible {
+        margin-left: 70px !important;
+        transition: margin-left 0.2s ease;
+    }
+
     .ignore-grid-mobile {
         all: unset !important;
-        /* resetea TODO */
-
-        /* Mantener un contenedor block que ocupe toda la pantalla */
         display: block !important;
         width: 100vw !important;
-        /* ancho completo viewport */
         height: 100vh !important;
-        /* alto completo viewport */
         overflow-y: auto !important;
-
         position: fixed !important;
         top: 0;
         left: 0;
-        background-color: rgb(3, 3, 3);
-        /* o color de fondo que corresponda */
+        background-color: #030303;
         z-index: 10;
-
-        /* Mantener box-sizing para evitar apachurramientos */
         box-sizing: border-box !important;
-
-        /* Opcional: para evitar scroll horizontal */
         overscroll-behavior: contain !important;
     }
 
-    /* Variante cuando mobileSidebarVisible es true */
     .ignore-grid-mobile.visible-sidebar {
         margin-left: 70px !important;
     }
 
+    .dashboard-header {
+        padding: 0.75rem 1rem 0.5rem;
+    }
 
-    .blur-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(255, 255, 255, 0.7);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        z-index: 9;
-        /* Más alto que ignore-grid-mobile */
-        pointer-events: auto;
-        /* Ahora bloquea clics debajo */
-        /* Para que no bloquee clicks */
+    .dashboard-toolbar {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            'left'
+            'center'
+            'right';
+    }
+
+    .dashboard-actions {
+        justify-content: flex-start;
+    }
+
+    .dashboard-body {
+        padding: 0.75rem 1rem 1rem;
+    }
+
+    .dashboard-footer {
+        padding: 0.75rem 1rem 1.25rem;
     }
 }
-</style>
 
-<style scoped>
-/* Animación para sidebar móvil */
+/* Desktop un poco más compacto en altura pero relajado en ancho */
+@media screen and (min-width: 1024px) {
+    .dashboard-header {
+        padding-top: 1.1rem;
+        padding-bottom: 0.9rem;
+    }
+}
+
+/* ===========================
+   ANIMACIONES SIDEBAR
+   =========================== */
+
 @keyframes mobileSidebtractionIn {
     0% {
         transform: translateX(-110%);
@@ -667,28 +757,5 @@ export default {
 
 .mobileSidebtraction-leave-active {
     animation: mobileSidebtractionOut 0.3s forwards cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-
-.main-sidebar-hidden {
-    margin-left: 70px;
-}
-
-.main-sidebar-visible {
-    margin-left: 240px;
-}
-
-@media screen and (max-width: 768px) {
-    .main-sidebar-hidden {
-        margin-left: 0 !important;
-        transition: margin-left 0.2s ease;
-
-    }
-
-    .main-sidebar-visible {
-        margin-left: 70px !important;
-        transition: margin-left 0.2s ease;
-
-    }
 }
 </style>

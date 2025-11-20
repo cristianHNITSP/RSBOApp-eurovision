@@ -544,7 +544,7 @@ function handleExport() {
 
 <template>
   <div class="is-flex is-flex-direction-column" style="height: 100%;">
-    <navtools
+    <navtools className="p-4"
       v-model="formulaValue"
       :dirty="dirty"
       :saving="saving"

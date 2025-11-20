@@ -605,7 +605,7 @@ const handleTabClick = (id) => {
   cursor:pointer; background:#f5f5f5; color:#4a4a4a; user-select:none; border:1px solid #dbdbdb;
   transition: background-color .3s, color .3s, box-shadow .2s;
 }
-.tab-item.active{ background-color:var(--rsbo-primary,#8e00d2); color:#fff; box-shadow:0 4px 10px rgba(0,0,0,.08); }
+.tab-item.active{ background-color:var(--rsbo-primary,#714DD2); color:#fff; box-shadow:0 4px 10px rgba(0,0,0,.08); }
 .tab-agregar{ cursor:pointer !important; background:#494949; color:#fff; }
 .tab-label{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding-right:.5rem; }
 .tab-menu-btn{

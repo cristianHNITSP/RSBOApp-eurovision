@@ -1,6 +1,7 @@
+<!-- src/components/ag-grid/templates/AgGridBase.vue -->
 <template>
   <div class="is-flex is-flex-direction-column" style="height: 100%;">
-    <navtools className="p-4"
+    <navtools class="p-4"
       v-model="formulaValue"
       :dirty="dirty"
       :saving="saving"
@@ -23,8 +24,8 @@
     />
 
     <div
-          class="buefy-balham-light"
-          style="flex: 1 1 auto; display: flex; flex-direction: column; overflow: auto;"
+      class="buefy-balham-light"
+      style="flex: 1 1 auto; display: flex; flex-direction: column; overflow: auto;"
     >
       <AgGridVue
         ref="gridRef"
@@ -70,7 +71,6 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 
 const props = defineProps({
   sheetId: { type: String, required: true },
-  // En monofocal/bifocal usa sphType si aplica:
   sphType: { type: String, default: "sph-neg" },
   actor: { type: Object, default: null }
 });
@@ -85,10 +85,13 @@ const saving = ref(false);
 const lastSavedAt = ref(null);
 const sheetMeta = ref(null);
 
+/** Buffer de cambios pendientes a guardar (solo filas modificadas) */
+const pendingChanges = ref(new Map());
+
 const isNumeric = (v) =>
   /^-?\d+(\.\d+)?$/.test(String(v ?? "").trim());
 
-/* ========= TEMA QUARTZ + LOOK BUEFY ========= */
+/* Tema */
 const themeCustom = themeQuartz
   .withPart(iconSetQuartzBold, colorSchemeLight)
   .withParams({
@@ -117,7 +120,7 @@ const localeText = {
   loadingOoo: "Cargando..."
 };
 
-// 🔹 Actor normalizado: siempre { userId, name }
+// Actor normalizado
 const effectiveActor = computed(() => {
   const src =
     props.actor ||
@@ -129,7 +132,6 @@ const effectiveActor = computed(() => {
   const userId = src.userId || src.id || src._id || null;
   const name = src.name || src.email || "Usuario";
 
-  // Siempre mandamos estas dos propiedades para el backend
   return { userId, name };
 });
 
@@ -141,7 +143,18 @@ const tipoMatriz = computed(() => sheetMeta.value?.tipo_matriz || "BASE");
 const material = computed(() => sheetMeta.value?.material || "");
 const tratamientos = computed(() => sheetMeta.value?.tratamientos || []);
 
-/* ========= COLUMNAS ========= */
+/** Marca una fila como modificada en el buffer */
+function markRowChanged(base, existencias) {
+  const b = Number(base);
+  const key = String(b);
+  pendingChanges.value.set(key, {
+    base: b,
+    existencias: Number(existencias ?? 0)
+  });
+  dirty.value = true;
+}
+
+/* Columnas */
 const columns = computed(() => [
   {
     headerName: "BASE (°)",
@@ -156,7 +169,11 @@ const columns = computed(() => [
     comparator: (a, b) => a - b,
     filter: "agNumberColumnFilter",
     cellClass: ["ag-cell--compact", "ag-cell--numeric", "ag-cell--pinned"],
-    headerClass: ["ag-header-cell--compact", "ag-header-cell--pinned"]
+    headerClass: ["ag-header-cell--compact", "ag-header-cell--pinned"],
+    valueFormatter: (p) => {
+      const v = Number(p.value);
+      return Number.isFinite(v) ? v.toFixed(2) : p.value ?? "";
+    }
   },
   {
     headerName: "Existencias",
@@ -172,8 +189,11 @@ const columns = computed(() => [
     valueSetter: (p) => {
       const v = String(p.newValue ?? "").trim();
       const before = p.data.existencias;
-      p.data.existencias = isNumeric(v) ? Number(v) : 0;
-      dirty.value = true;
+      const newVal = isNumeric(v) ? Number(v) : 0;
+
+      p.data.existencias = newVal;
+      markRowChanged(p.data.base, newVal);
+
       console.log(
         "[AgGridBase] valueSetter existencias base=",
         p.data.base,
@@ -201,7 +221,7 @@ const defaultColDef = {
 
 const getRowId = (p) => p.data.base?.toString();
 
-/* ========= CARGA ========= */
+/* Carga */
 async function loadSheetMeta() {
   try {
     console.log("[AgGridBase] loadSheetMeta");
@@ -224,10 +244,8 @@ async function loadRows() {
         existencias: Number(it.existencias ?? 0)
       }))
       .sort((a, b) => a.base - b.base);
-    console.log(
-      "[AgGridBase] loadRows resultado filas:",
-      rowData.value.length
-    );
+    console.log("[AgGridBase] loadRows resultado filas:", rowData.value.length);
+    pendingChanges.value.clear();
   } catch (e) {
     console.error("[AgGridBase] Error fetchItems:", e?.response?.data || e);
   }
@@ -241,7 +259,7 @@ async function loadAll() {
 
 onMounted(loadAll);
 
-/* ========= EDICIÓN RÁPIDA / FORMULA BAR ========= */
+/* Edición rápida */
 const formulaValue = ref("");
 let activeCell = null;
 
@@ -267,14 +285,18 @@ const onCellValueChanged = (p) => {
   ) {
     formulaValue.value = p.newValue;
   }
-  dirty.value = true;
+  if (p.colDef.field === "existencias") {
+    markRowChanged(p.data.base, p.data.existencias);
+  } else {
+    dirty.value = true;
+  }
 };
 
 watch(formulaValue, (val) => {
   if (!activeCell || !gridApi.value) return;
   const field = activeCell.colDef.field;
   const raw = String(val ?? "").trim();
-  const newVal = isNumeric(raw) ? Number(raw) : raw;
+  const newVal = isNumeric(raw) ? Number(raw) : 0;
 
   console.log(
     "[AgGridBase] formulaValue watch → update",
@@ -286,10 +308,19 @@ watch(formulaValue, (val) => {
     newVal
   );
 
+  const updatedRow = { ...activeCell.data, [field]: newVal };
   gridApi.value.applyTransaction({
-    update: [{ ...activeCell.data, [field]: newVal }]
+    update: [updatedRow]
   });
-  dirty.value = true;
+  if (activeCell.data) {
+    activeCell.data[field] = newVal;
+  }
+
+  if (field === "existencias") {
+    markRowChanged(updatedRow.base, updatedRow.existencias);
+  } else {
+    dirty.value = true;
+  }
 });
 
 const onGridReady = (p) => {
@@ -297,28 +328,7 @@ const onGridReady = (p) => {
   gridApi.value = p.api;
 };
 
-/** 🔹 SIEMPRE guardamos leyendo lo que tiene realmente la grilla */
-function collectRowsFromGrid() {
-  const rows = [];
-  if (!gridApi.value) {
-    console.warn("[AgGridBase] collectRowsFromGrid sin gridApi");
-    return rows;
-  }
-
-  gridApi.value.forEachNode((node) => {
-    const d = node.data;
-    if (!d) return;
-
-    rows.push({
-      base: Number(d.base),
-      existencias: Number(d.existencias ?? 0)
-    });
-  });
-
-  return rows;
-}
-
-/* ========= NAVTOOLS: estructura ========= */
+/* Navtools */
 const handleAddRow = async (nuevoValor) => {
   console.log("[AgGridBase] handleAddRow nuevoValor:", nuevoValor);
   const v = Number(nuevoValor);
@@ -331,13 +341,23 @@ const handleAddRow = async (nuevoValor) => {
     return;
   }
 
+  const newRow = { base: v, existencias: 0 };
+
   gridApi.value?.applyTransaction({
-    add: [{ base: v, existencias: 0 }]
+    add: [newRow]
   });
-  dirty.value = true;
 
   await nextTick();
   resetSort();
+
+  // Persistir inmediatamente la nueva base (existencias 0)
+  try {
+    await saveChunk(props.sheetId, [newRow], effectiveActor.value);
+    console.log("[AgGridBase] Fila nueva persistida en BD");
+    lastSavedAt.value = new Date();
+  } catch (e) {
+    console.error("[AgGridBase] Error al persistir fila nueva:", e?.response?.data || e);
+  }
 };
 
 const handleAddColumn = () =>
@@ -345,59 +365,72 @@ const handleAddColumn = () =>
 
 /* Filtros / orden */
 const clearFilters = () => {
-  if (!gridApi.value || typeof gridApi.value.setFilterModel !== "function") {
-    console.warn("[AgGridBase] setFilterModel no disponible", gridApi.value);
-    return;
-  }
+  if (!gridApi.value) return;
+  const api = gridApi.value;
   console.log("[AgGridBase] clearFilters");
-  gridApi.value.setFilterModel(null);
+  if (typeof api.setFilterModel === "function") {
+    api.setFilterModel(null);
+  } else if (typeof api.setGridOption === "function") {
+    api.setGridOption("filterModel", null);
+  }
 };
 
 const resetSort = () => {
-  if (!gridApi.value || typeof gridApi.value.setSortModel !== "function") {
-    console.warn("[AgGridBase] setSortModel no disponible", gridApi.value);
-    return;
-  }
   console.log("[AgGridBase] resetSort por base ASC");
-  gridApi.value.setSortModel([{ colId: "base", sort: "asc" }]);
-  gridApi.value.refreshClientSideRowModel("sort");
+
+  const api = gridApi.value;
+  if (!api) return;
+
+  // SOLO ajustar el sort del grid, NO tocar rowData.value
+  if (typeof api.applyColumnState === "function") {
+    api.applyColumnState({
+      defaultState: { sort: null },
+      state: [{ colId: "base", sort: "asc" }],
+    });
+  } else if (typeof api.setSortModel === "function") {
+    api.setSortModel([{ colId: "base", sort: "asc" }]);
+  }
 };
+
 
 const handleToggleFilters = () => {
   console.log("[AgGridBase] handleToggleFilters → clearFilters");
   clearFilters();
 };
 
-/* ========= GUARDAR / REFRESH / SEED / EXPORT ========= */
+/* Guardar / refresh / seed / export */
 async function handleSave() {
   console.log(
     "[AgGridBase] handleSave llamado. dirty:",
     dirty.value,
     "saving:",
-    saving.value
+    saving.value,
+    "pendingChanges:",
+    pendingChanges.value.size
   );
-  if (!dirty.value) {
-    console.log("[AgGridBase] handleSave → no dirty, return");
+  if (!dirty.value || pendingChanges.value.size === 0) {
+    console.log("[AgGridBase] handleSave → nada que guardar");
     return;
   }
   if (!gridApi.value) {
-    console.warn("[AgGridBase] handleSave → sin gridApi, no se puede recolectar filas");
+    console.warn("[AgGridBase] handleSave → sin gridApi");
     return;
   }
 
   saving.value = true;
   try {
-    const rows = collectRowsFromGrid();
+    const rows = Array.from(pendingChanges.value.values());
     console.log(
-      "[AgGridBase] handleSave enviando rows:",
+      "[AgGridBase] handleSave enviando rows (chunk):",
       rows.length,
       "ejemplo row[0]:",
       rows[0]
     );
     await saveChunk(props.sheetId, rows, effectiveActor.value);
     dirty.value = false;
+    pendingChanges.value.clear();
     lastSavedAt.value = new Date();
-    await loadRows();
+    // Ya no recargamos toda la hoja aquí
   } catch (e) {
     console.error("[AgGridBase] Error saveChunk:", e?.response?.data || e);
   } finally {
@@ -409,11 +442,13 @@ async function handleDiscard() {
   console.log("[AgGridBase] handleDiscard");
   await loadRows();
   dirty.value = false;
+  pendingChanges.value.clear();
 }
 
 async function handleRefresh() {
   console.log("[AgGridBase] handleRefresh");
   await loadAll();
+  pendingChanges.value.clear();
 }
 
 async function handleSeed() {
@@ -423,6 +458,7 @@ async function handleSeed() {
     await reseedSheet(props.sheetId, effectiveActor.value);
     await loadRows();
     dirty.value = false;
+    pendingChanges.value.clear();
     lastSavedAt.value = new Date();
   } catch (e) {
     console.error("[AgGridBase] Error reseed:", e?.response?.data || e);

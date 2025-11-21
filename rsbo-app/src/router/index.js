@@ -67,15 +67,34 @@ const ERROR_REASON_MAP = {
 
 const mapErrorToAuthReason = (code) => ERROR_REASON_MAP[code] || 'unknown'
 
+// helper para no repetir
+const checkSession = () =>
+  api.get('/access/check-session', { withCredentials: true })
+
 router.beforeEach(async (to, from, next) => {
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
 
+  // Caso especial: si intenta ir a "/" con sesión válida, NO se permite,
+  // se manda a /layouts/home
+  if (to.name === 'Landing') {
+    try {
+      await checkSession()
+      // Sesión válida → redirigir a home
+      return next({ name: 'home' })
+    } catch (err) {
+      // Sin sesión → Landing permitido
+      return next()
+    }
+  }
+
+  // Rutas públicas (que no necesitan auth) → pasan directo
   if (!requiresAuth) {
     return next()
   }
 
+  // Rutas protegidas
   try {
-    await api.get('/access/check-session', { withCredentials: true })
+    await checkSession()
     return next()
   } catch (err) {
     const status = err?.response?.status

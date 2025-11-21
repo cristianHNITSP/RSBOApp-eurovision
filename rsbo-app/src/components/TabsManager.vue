@@ -153,7 +153,8 @@
             :disabled="!canCreate || creatingSheet"
             :loading="creatingSheet"
           >
-            Crear Planilla
+            <span v-if="!creatingSheet">Crear Planilla</span>
+            <span v-else>Creando planilla…</span>
           </b-button>
         </form>
       </div>
@@ -234,6 +235,65 @@
             </div>
           </div>
 
+          <!-- NOTAS Y OBSERVACIONES -->
+          <div class="action-card" :class="{ 'meta-glow': metaGlow }">
+            <div class="action-icon"><i class="far fa-comment-dots"></i></div>
+            <div class="action-content">
+              <div class="action-title">Notas y observaciones</div>
+              <div class="action-desc">
+                Guarda comentarios internos sobre la planilla (no afectan el stock).
+              </div>
+
+              <div class="meta-grid">
+                <b-field label="Observaciones">
+                  <b-input
+                    v-model.trim="metaForm.observaciones"
+                    type="textarea"
+                    rows="2"
+                    maxlength="500"
+                  />
+                </b-field>
+
+                <b-field label="Notas">
+                  <b-input
+                    v-model.trim="metaForm.notas"
+                    type="textarea"
+                    rows="2"
+                    maxlength="500"
+                  />
+                </b-field>
+              </div>
+
+              <div class="buttons is-right mt-2 meta-actions-row">
+                <div class="meta-status-wrapper">
+                  <transition name="fade-status">
+                    <div
+                      v-if="metaStatus !== 'idle'"
+                      class="meta-status"
+                      :class="metaStatus"
+                    >
+                      <span v-if="metaStatus === 'saving'" class="dot-pulse"></span>
+                      <i v-else-if="metaStatus === 'saved'" class="far fa-check-circle"></i>
+                      <i v-else-if="metaStatus === 'error'" class="far fa-exclamation-triangle"></i>
+                      <span class="meta-status-text">{{ metaStatusMessage }}</span>
+                    </div>
+                  </transition>
+                </div>
+
+                <b-button
+                  type="is-primary"
+                  size="is-small"
+                  :loading="savingMeta"
+                  :disabled="!canSaveMeta"
+                  @click="confirmSaveMeta"
+                >
+                  <span v-if="!savingMeta">Guardar notas</span>
+                  <span v-else>Sincronizando…</span>
+                </b-button>
+              </div>
+            </div>
+          </div>
+
           <!-- ENVIAR A PAPELERA (soft-delete con /trash) -->
           <div class="action-card danger">
             <div class="action-icon danger"><i class="far fa-trash-alt"></i></div>
@@ -286,7 +346,14 @@ const props = defineProps({
   loadingTabs: { type: Boolean, default: false }
 });
 
-const emit = defineEmits(["update:active", "reorder", "crear", "update:internal", "deleted", "renamed"]);
+const emit = defineEmits([
+  "update:active",
+  "reorder",
+  "crear",
+  "update:internal",
+  "deleted",
+  "renamed"
+]);
 
 /* ===== Tabs ===== */
 const sheets = ref([...props.initialSheets]);
@@ -427,7 +494,6 @@ const handleCrear = async () => {
       tipo_matriz,
       seed: true,
       autoGenerate: true,
-      rangos: baseCfg?.rangos || undefined,
       actor: actorRef.value || undefined
     };
 
@@ -443,6 +509,7 @@ const handleCrear = async () => {
       baseKey: s.baseKey,
       material: s.material,
       tratamientos: s.tratamientos || [],
+      meta: s.meta || { observaciones: "", notas: "" },
       tabs
     };
     const addIndex = sheets.value.findIndex((x) => x.id === "nueva");
@@ -453,7 +520,6 @@ const handleCrear = async () => {
     );
 
     emit("update:active", newTab.id);
-    // ⬇️ avisamos al padre, pero ya SIN duplicar el createSheet
     emit("crear", { payload, result: s, tabs });
 
     // reset form
@@ -481,7 +547,6 @@ onMounted(() => {
     delay: 200,
     delayOnTouchOnly: true,
     onMove: (evt) => {
-      // 🔹 Evita drag mientras está en modo skeleton
       if (props.loadingTabs) return false;
       const relatedEl = evt.related;
       if (relatedEl && relatedEl.classList.contains("tab-agregar")) {
@@ -495,7 +560,6 @@ onMounted(() => {
       return true;
     },
     onEnd: (evt) => {
-      // 🔹 No reordenar si aún se están cargando las sheets
       if (props.loadingTabs) return;
 
       const maxIndex = sheets.value.length - 1;
@@ -521,6 +585,93 @@ const renaming = ref(false);
 const confirmingDelete = ref(false);
 const deleting = ref(false);
 
+/* Meta: notas y observaciones */
+const metaForm = ref({
+  observaciones: "",
+  notas: ""
+});
+const savingMeta = ref(false);
+
+// estado visual de sincronización
+const metaStatus = ref("idle"); // 'idle' | 'saving' | 'saved' | 'error'
+const metaStatusMessage = ref("");
+const metaGlow = ref(false);
+
+const canSaveMeta = computed(() => !!selectedSheet.value);
+
+const loadMetaFromSheet = (sheet) => {
+  const meta = sheet?.meta || {};
+  metaForm.value = {
+    observaciones: meta.observaciones || "",
+    notas: meta.notas || ""
+  };
+  metaStatus.value = "idle";
+  metaStatusMessage.value = "";
+  metaGlow.value = false;
+};
+
+const confirmSaveMeta = async () => {
+  if (!selectedSheet.value) return;
+  savingMeta.value = true;
+  metaStatus.value = "saving";
+  metaStatusMessage.value = "Conectando con el servidor…";
+
+  try {
+    const { id } = selectedSheet.value;
+    const metaPayload = {
+      observaciones: metaForm.value.observaciones || "",
+      notas: metaForm.value.notas || ""
+    };
+
+    const { data } = await updateSheet(id, {
+      meta: metaPayload,
+      actor: actorRef.value || undefined
+    });
+
+    const updated = data?.data?.sheet;
+    const tabs = data?.data?.tabs;
+
+    if (updated) {
+      const idx = sheets.value.findIndex((s) => s.id === id);
+      const newMeta = updated.meta || metaPayload;
+      const newTabs =
+        tabs ||
+        (idx >= 0 ? sheets.value[idx].tabs : selectedSheet.value?.tabs || []);
+
+      // MUTAR el objeto, no reemplazarlo
+      if (idx >= 0) {
+        sheets.value[idx].meta = newMeta;
+        sheets.value[idx].tabs = newTabs;
+      }
+
+      if (selectedSheet.value) {
+        selectedSheet.value.meta = newMeta;
+        selectedSheet.value.tabs = newTabs;
+      }
+
+      metaStatus.value = "saved";
+      metaStatusMessage.value = "Notas sincronizadas correctamente";
+      metaGlow.value = true;
+      setTimeout(() => {
+        metaGlow.value = false;
+      }, 900);
+      setTimeout(() => {
+        metaStatus.value = "idle";
+        metaStatusMessage.value = "";
+      }, 1800);
+    } else {
+      metaStatus.value = "error";
+      metaStatusMessage.value = "No se pudo actualizar la planilla";
+    }
+  } catch (e) {
+    console.error("update meta error:", e?.response?.data || e);
+    metaStatus.value = "error";
+    metaStatusMessage.value = "Error al guardar notas";
+  } finally {
+    savingMeta.value = false;
+  }
+};
+
 const tipoHuman = (t) =>
   ({
     BASE: "Monofocal (Base)",
@@ -533,6 +684,7 @@ const openActions = (sheet) => {
   selectedSheet.value = sheet;
   renameName.value = sheet.name || "";
   confirmingDelete.value = false;
+  loadMetaFromSheet(sheet);
   isActionsOpen.value = true;
 };
 
@@ -591,7 +743,7 @@ const softDelete = async () => {
 };
 
 const handleTabClick = (id) => {
-  if (props.loadingTabs) return; // pequeña protección extra
+  if (props.loadingTabs) return;
   emit("update:active", id);
 };
 </script>
@@ -677,6 +829,7 @@ const handleTabClick = (id) => {
 .action-card{
   display:flex; gap:1rem; align-items:flex-start; padding:1rem; background:#fff;
   border:1px solid rgba(0,0,0,.08); border-radius:14px; box-shadow:0 8px 20px rgba(0,0,0,.04); margin-bottom:1rem;
+  transition: box-shadow .25s ease, border-color .25s ease, transform .18s ease;
 }
 .action-card.primary{ border-color: rgba(142,0,210,.25); }
 .action-icon{
@@ -687,6 +840,107 @@ const handleTabClick = (id) => {
 .action-content{ flex:1; min-width:0; }
 .action-title{ font-weight:800; font-size:1rem; margin-bottom:.15rem; }
 .action-desc{ opacity:.85; font-size:.9rem; }
+
+/* Meta */
+.meta-grid{
+  display:flex;
+  flex-direction:column;
+  gap:.5rem;
+}
+
+.meta-actions-row{
+  display:flex;
+  align-items:center;
+  gap:.5rem;
+}
+
+.meta-status-wrapper{
+  flex:1;
+  min-height:24px;
+}
+
+.meta-status{
+  display:inline-flex;
+  align-items:center;
+  gap:.35rem;
+  padding:.25rem .55rem;
+  border-radius:999px;
+  font-size:.75rem;
+  border:1px solid transparent;
+  background:#f5f5f5;
+  color:#555;
+}
+.meta-status.saving{
+  border-color:rgba(0,123,255,.2);
+  background:rgba(0,123,255,.06);
+}
+.meta-status.saved{
+  border-color:rgba(40,167,69,.3);
+  background:rgba(40,167,69,.06);
+  color:#1f6f38;
+}
+.meta-status.error{
+  border-color:rgba(220,53,69,.3);
+  background:rgba(220,53,69,.06);
+  color:#b0212f;
+}
+.meta-status-text{
+  white-space:nowrap;
+}
+
+/* Puntitos "conectando…" */
+.dot-pulse{
+  position:relative;
+  width:5px;
+  height:5px;
+  border-radius:50%;
+  background:currentColor;
+  box-shadow:0 0 0 currentColor;
+  animation:dotPulse 1s infinite linear;
+}
+@keyframes dotPulse{
+  0%{ box-shadow: 0 0 0 0 currentColor; opacity:1; }
+  70%{ box-shadow: 0 0 0 6px rgba(0,0,0,0); opacity:.6; }
+  100%{ box-shadow: 0 0 0 0 rgba(0,0,0,0); opacity:.4; }
+}
+
+/* Glow al guardar meta */
+.meta-glow{
+  box-shadow:0 0 0 1px rgba(40,167,69,.2), 0 0 18px rgba(40,167,69,.25);
+  transform:translateY(-1px);
+}
+
+/* Fade del status */
+.fade-status-enter-active,
+.fade-status-leave-active{
+  transition:opacity .25s ease, transform .25s ease;
+}
+.fade-status-enter-from,
+.fade-status-leave-to{
+  opacity:0;
+  transform:translateY(3px);
+}
+
+/* Rangos */
+.range-grid{
+  margin-top:.5rem;
+}
+.range-row{
+  display:flex;
+  flex-wrap:wrap;
+  gap:.75rem;
+}
+.range-row .field{
+  flex:1 1 90px;
+}
+.range-section-title{
+  display:block;
+  margin-top:.5rem;
+  font-size:.8rem;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+  opacity:.8;
+}
 
 /* Confirmación: bloque compacto sin “saltar” de tamaño */
 .confirm-space{ min-height:56px; }

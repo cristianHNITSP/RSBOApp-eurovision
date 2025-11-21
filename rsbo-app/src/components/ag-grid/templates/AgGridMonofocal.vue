@@ -21,7 +21,6 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 
 const props = defineProps({
   sheetId: { type: String, required: true },
-  // En monofocal/bifocal usa sphType si aplica:
   sphType: { type: String, default: "sph-neg" },
   actor: { type: Object, default: null }
 });
@@ -40,6 +39,10 @@ const dirty = ref(false);
 const saving = ref(false);
 const lastSavedAt = ref(null);
 const sheetMeta = ref(null);
+const sheetTabs = ref([]);
+
+/** Buffer de cambios (sph, cyl) → existencias */
+const pendingChanges = ref(new Map());
 
 const isNumeric = (v) =>
   /^-?\d+(\.\d+)?$/.test(String(v ?? "").trim());
@@ -73,7 +76,7 @@ const localeText = {
   loadingOoo: "Cargando..."
 };
 
-// 🔹 Actor normalizado: siempre { userId, name }
+// Actor normalizado
 const effectiveActor = computed(() => {
   const src =
     props.actor ||
@@ -85,7 +88,6 @@ const effectiveActor = computed(() => {
   const userId = src.userId || src.id || src._id || null;
   const name = src.name || src.email || "Usuario";
 
-  // Siempre mandamos estas dos propiedades para el backend
   return { userId, name };
 });
 
@@ -101,6 +103,7 @@ const material = computed(() => sheetMeta.value?.material || "");
 const tratamientos = computed(() => sheetMeta.value?.tratamientos || []);
 
 const norm = (n) => String(n).replace(".", "_");
+const denorm = (s) => Number(String(s).replace("_", "."));
 const cylValues = ref([]);
 
 watch(dirty, (val) => {
@@ -110,6 +113,20 @@ watch(saving, (val) => {
   console.log("[AgGridMonofocal] saving cambió →", val);
 });
 
+/** Registra cambio de una celda sph/cyl */
+function markCellChangedMonofocal(sph, cyl, existencias) {
+  const s = Number(sph);
+  const c = Number(cyl);
+  const key = `${s}|${c}`;
+  pendingChanges.value.set(key, {
+    sph: s,
+    cyl: c,
+    existencias: Number(existencias ?? 0)
+  });
+  dirty.value = true;
+}
+
+/* Columnas */
 const columns = computed(() => [
   {
     headerName: `SPH ${props.sphType === "sph-neg" ? "(-)" : "(+)"}`,
@@ -134,7 +151,11 @@ const columns = computed(() => [
         headerClass: [
           "ag-header-cell--compact",
           "ag-header-cell--pinned"
-        ]
+        ],
+        valueFormatter: (p) => {
+          const v = Number(p.value);
+          return Number.isFinite(v) ? v.toFixed(2) : p.value ?? "";
+        }
       }
     ]
   },
@@ -142,7 +163,7 @@ const columns = computed(() => [
     headerName: "CYL (-)",
     children: cylValues.value.map((c) => ({
       field: `cyl_${norm(c)}`,
-      headerName: c.toString(),
+      headerName: Number(c).toFixed(2),
       editable: true,
       filter: "agNumberColumnFilter",
       minWidth: 80,
@@ -153,8 +174,11 @@ const columns = computed(() => [
       valueSetter: (p) => {
         const v = String(p.newValue ?? "").trim();
         const antes = p.data[p.colDef.field];
-        p.data[p.colDef.field] = isNumeric(v) ? Number(v) : 0;
-        dirty.value = true;
+        const newVal = isNumeric(v) ? Number(v) : 0;
+        p.data[p.colDef.field] = newVal;
+
+        markCellChangedMonofocal(p.data.sph, c, newVal);
+
         console.log(
           "[AgGridMonofocal] valueSetter",
           p.colDef.field,
@@ -185,14 +209,16 @@ const defaultColDef = {
 
 const getRowId = (p) => p.data.sph?.toString();
 
-/* Cargar */
+/* Cargar meta + tabs */
 async function loadSheetMeta() {
   try {
     console.log("[AgGridMonofocal] loadSheetMeta");
     const { data } = await getSheet(props.sheetId);
     const payload = data?.data || data;
     sheetMeta.value = payload?.sheet || null;
+    sheetTabs.value = payload?.tabs || [];
     console.log("[AgGridMonofocal] sheetMeta:", sheetMeta.value);
+    console.log("[AgGridMonofocal] sheetTabs:", sheetTabs.value);
   } catch (e) {
     console.error(
       "[AgGridMonofocal] Error getSheet:",
@@ -201,20 +227,47 @@ async function loadSheetMeta() {
   }
 }
 
+/* Rango SPH/CYL a partir de tabs del backend */
+function buildQueryFromTabs() {
+  const defaultNeg = { sphMin: -6, sphMax: 0, cylMin: -6, cylMax: 0 };
+  const defaultPos = { sphMin: 0, sphMax: 6, cylMin: -6, cylMax: 0 };
+
+  const tabs = sheetTabs.value || [];
+  const tab = tabs.find((t) => t.id === props.sphType);
+
+  if (!tab || !tab.ranges) {
+    return props.sphType === "sph-pos" ? defaultPos : defaultNeg;
+  }
+
+  const r = tab.ranges || {};
+  const sphStart = Number(
+    r.sph?.start ??
+      (props.sphType === "sph-pos" ? defaultPos.sphMin : defaultNeg.sphMin)
+  );
+  const sphEnd = Number(
+    r.sph?.end ??
+      (props.sphType === "sph-pos" ? defaultPos.sphMax : defaultNeg.sphMax)
+  );
+  const cylStart = Number(r.cyl?.start ?? defaultNeg.cylMin);
+  const cylEnd = Number(r.cyl?.end ?? defaultNeg.cylMax);
+
+  const sphMin = Math.min(sphStart, sphEnd);
+  const sphMax = Math.max(sphStart, sphEnd);
+  const cylMin = Math.min(cylStart, cylEnd);
+  const cylMax = Math.max(cylStart, cylEnd);
+
+  return { sphMin, sphMax, cylMin, cylMax };
+}
+
+/* Cargar filas */
 async function loadRows() {
-  const query =
-    props.sphType === "sph-pos"
-      ? { sphMin: 0, sphMax: 6, cylMin: -6, cylMax: 0 }
-      : { sphMin: -6, sphMax: 0, cylMin: -6, cylMax: 0 };
+  const query = buildQueryFromTabs();
 
   try {
     console.log("[AgGridMonofocal] loadRows query:", query);
     const { data } = await fetchItems(props.sheetId, query);
     const items = data?.data || [];
-    console.log(
-      "[AgGridMonofocal] items recibidos:",
-      items.length
-    );
+    console.log("[AgGridMonofocal] items recibidos:", items.length);
 
     const sphList = [...new Set(items.map((i) => Number(i.sph)))].sort(
       (a, b) => a - b
@@ -252,6 +305,7 @@ async function loadRows() {
     );
 
     dirty.value = false;
+    pendingChanges.value.clear();
     await nextTick();
   } catch (e) {
     console.error(
@@ -269,7 +323,8 @@ async function loadAll() {
     "sphType:",
     props.sphType
   );
-  await Promise.all([loadSheetMeta(), loadRows()]);
+  await loadSheetMeta();
+  await loadRows();
 }
 
 onMounted(loadAll);
@@ -287,7 +342,7 @@ watch(
   }
 );
 
-/* Edición rápida / navtools / guardar */
+/* Edición rápida / fórmula */
 const formulaValue = ref("");
 let activeCell = null;
 
@@ -328,14 +383,24 @@ const onCellValueChanged = (p) => {
   ) {
     formulaValue.value = p.newValue;
   }
-  dirty.value = true;
+  if (p.colDef.field.startsWith("cyl_")) {
+    const cyl = denorm(p.colDef.field.slice(4));
+    markCellChangedMonofocal(p.data.sph, cyl, p.data[p.colDef.field]);
+  } else {
+    dirty.value = true;
+  }
 };
+
+function parseCylFromField(field) {
+  if (!field.startsWith("cyl_")) return null;
+  return denorm(field.slice(4));
+}
 
 watch(formulaValue, (val) => {
   if (!activeCell || !gridApi.value) return;
   const field = activeCell.colDef.field;
   const raw = String(val ?? "").trim();
-  const newVal = isNumeric(raw) ? Number(raw) : raw;
+  const newVal = isNumeric(raw) ? Number(raw) : 0;
 
   console.log(
     "[AgGridMonofocal] formulaValue watch → update",
@@ -347,10 +412,22 @@ watch(formulaValue, (val) => {
     newVal
   );
 
+  const updatedRow = { ...activeCell.data, [field]: newVal };
   gridApi.value.applyTransaction({
-    update: [{ ...activeCell.data, [field]: newVal }]
+    update: [updatedRow]
   });
-  dirty.value = true;
+  if (activeCell.data) {
+    activeCell.data[field] = newVal;
+  }
+
+  if (field.startsWith("cyl_")) {
+    const cyl = parseCylFromField(field);
+    if (!Number.isNaN(cyl)) {
+      markCellChangedMonofocal(updatedRow.sph, cyl, newVal);
+    }
+  } else {
+    dirty.value = true;
+  }
 });
 
 const onGridReady = (p) => {
@@ -358,7 +435,7 @@ const onGridReady = (p) => {
   gridApi.value = p.api;
 };
 
-/** 🔹 Guardamos SIEMPRE leyendo la data desde gridApi */
+/* Guardar desde la grilla */
 function collectRowsFromGrid() {
   const rows = [];
   if (!gridApi.value) {
@@ -381,6 +458,7 @@ function collectRowsFromGrid() {
   return rows;
 }
 
+/* Navtools: add row/col */
 const handleAddRow = async (nuevoValor) => {
   console.log("[AgGridMonofocal] handleAddRow nuevoValor:", nuevoValor);
   const v = Number(nuevoValor);
@@ -397,9 +475,30 @@ const handleAddRow = async (nuevoValor) => {
   cylValues.value.forEach((c) => (nueva[`cyl_${norm(c)}`] = 0));
 
   gridApi.value?.applyTransaction({ add: [nueva] });
-  dirty.value = true;
   await nextTick();
   resetSort();
+
+  // Persistir inmediatamente todas las combinaciones sph nuevo + cada cyl existente
+  try {
+    const rowsToPersist = cylValues.value.map((cyl) => ({
+      sph: v,
+      cyl,
+      existencias: 0
+    }));
+    if (rowsToPersist.length) {
+      await saveChunk(props.sheetId, rowsToPersist, effectiveActor.value);
+      console.log(
+        "[AgGridMonofocal] Nuevas filas SPH persistidas en BD, filas:",
+        rowsToPersist.length
+      );
+      lastSavedAt.value = new Date();
+    }
+  } catch (e) {
+    console.error(
+      "[AgGridMonofocal] Error al persistir SPH nuevo:",
+      e?.response?.data || e
+    );
+  }
 };
 
 const handleAddColumn = async (nuevoValor) => {
@@ -419,37 +518,62 @@ const handleAddColumn = async (nuevoValor) => {
 
   cylValues.value = [...cylValues.value, v].sort((a, b) => a - b);
   rowData.value.forEach((r) => (r[`cyl_${norm(v)}`] = 0));
+
   await nextTick();
   gridApi.value?.refreshHeader();
   gridApi.value?.redrawRows();
-  dirty.value = true;
+
+  // Persistir inmediatamente todas las combinaciones sph existente + nuevo cyl
+  try {
+    const rowsToPersist = rowData.value.map((r) => ({
+      sph: Number(r.sph),
+      cyl: v,
+      existencias: 0
+    }));
+    if (rowsToPersist.length) {
+      await saveChunk(props.sheetId, rowsToPersist, effectiveActor.value);
+      console.log(
+        "[AgGridMonofocal] Nueva columna CYL persistida en BD, filas:",
+        rowsToPersist.length
+      );
+      lastSavedAt.value = new Date();
+    }
+  } catch (e) {
+    console.error(
+      "[AgGridMonofocal] Error al persistir CYL nuevo:",
+      e?.response?.data || e
+    );
+  }
 };
 
-/* Filtros / orden para navtools */
+/* Filtros / sort */
 const clearFilters = () => {
-  if (!gridApi.value || typeof gridApi.value.setFilterModel !== "function") {
-    console.warn(
-      "[AgGridMonofocal] setFilterModel no disponible",
-      gridApi.value
-    );
-    return;
-  }
+  if (!gridApi.value) return;
+  const api = gridApi.value;
   console.log("[AgGridMonofocal] clearFilters");
-  gridApi.value.setFilterModel(null);
+  if (typeof api.setFilterModel === "function") {
+    api.setFilterModel(null);
+  } else if (typeof api.setGridOption === "function") {
+    api.setGridOption("filterModel", null);
+  }
 };
 
 const resetSort = () => {
-  if (!gridApi.value || typeof gridApi.value.setSortModel !== "function") {
-    console.warn(
-      "[AgGridMonofocal] setSortModel no disponible",
-      gridApi.value
-    );
-    return;
-  }
   console.log("[AgGridMonofocal] resetSort por sph ASC");
-  gridApi.value.setSortModel([{ colId: "sph", sort: "asc" }]);
-  gridApi.value.refreshClientSideRowModel("sort");
+
+  const api = gridApi.value;
+  if (!api) return;
+
+  if (typeof api.applyColumnState === "function") {
+    api.applyColumnState({
+      defaultState: { sort: null },
+      state: [{ colId: "sph", sort: "asc" }],
+    });
+  } else if (typeof api.setSortModel === "function") {
+    api.setSortModel([{ colId: "sph", sort: "asc" }]);
+  }
 };
+
 
 const handleToggleFilters = () => {
   console.log("[AgGridMonofocal] handleToggleFilters → clearFilters");
@@ -462,10 +586,12 @@ async function handleSave() {
     "[AgGridMonofocal] handleSave llamado. dirty:",
     dirty.value,
     "saving:",
-    saving.value
+    saving.value,
+    "pendingChanges:",
+    pendingChanges.value.size
   );
-  if (!dirty.value) {
-    console.log("[AgGridMonofocal] handleSave → no dirty, return");
+  if (!dirty.value || pendingChanges.value.size === 0) {
+    console.log("[AgGridMonofocal] handleSave → nada que guardar");
     return;
   }
   if (!gridApi.value) {
@@ -475,17 +601,18 @@ async function handleSave() {
 
   saving.value = true;
   try {
-    const rows = collectRowsFromGrid();
+    const rows = Array.from(pendingChanges.value.values());
     console.log(
-      "[AgGridMonofocal] rows a enviar:",
+      "[AgGridMonofocal] rows a enviar (chunk):",
       rows.length,
       "ej row[0]:",
       rows[0]
     );
     await saveChunk(props.sheetId, rows, effectiveActor.value);
     dirty.value = false;
+    pendingChanges.value.clear();
     lastSavedAt.value = new Date();
-    await loadRows();
+    // Ya no recargamos toda la estructura aquí
   } catch (e) {
     console.error(
       "[AgGridMonofocal] Error saveChunk:",
@@ -500,11 +627,13 @@ async function handleDiscard() {
   console.log("[AgGridMonofocal] handleDiscard");
   await loadRows();
   dirty.value = false;
+  pendingChanges.value.clear();
 }
 
 async function handleRefresh() {
   console.log("[AgGridMonofocal] handleRefresh");
   await loadAll();
+  pendingChanges.value.clear();
 }
 
 async function handleSeed() {
@@ -512,8 +641,9 @@ async function handleSeed() {
     console.log("[AgGridMonofocal] handleSeed");
     saving.value = true;
     await reseedSheet(props.sheetId, effectiveActor.value);
-    await loadRows();
+    await loadAll();
     dirty.value = false;
+    pendingChanges.value.clear();
     lastSavedAt.value = new Date();
   } catch (e) {
     console.error(
@@ -544,7 +674,7 @@ function handleExport() {
 
 <template>
   <div class="is-flex is-flex-direction-column" style="height: 100%;">
-    <navtools className="p-4"
+    <navtools class="p-4"
       v-model="formulaValue"
       :dirty="dirty"
       :saving="saving"

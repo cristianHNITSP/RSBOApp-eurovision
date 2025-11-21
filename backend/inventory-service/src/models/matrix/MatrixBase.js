@@ -2,7 +2,8 @@ const mongoose = require('mongoose');
 
 const CellBaseSchema = new mongoose.Schema({
   existencias: { type: Number, default: 0, min: 0 },
-  sku:         { type: String, index: true },
+  sku:         { type: String, index: true },           // ID lógico interno
+  codebar:     { type: String, default: null, index: true }, // para escanear
   createdBy:   { userId: String, name: String },
   updatedBy:   { userId: String, name: String }
 }, { _id: false });

@@ -44,18 +44,9 @@
         </span>
 
         <span :class="statusClass">
-          <i
-            v-if="saving"
-            class="fas fa-spinner fa-spin mr-1"
-          ></i>
-          <i
-            v-else-if="dirty"
-            class="fas fa-exclamation-circle mr-1"
-          ></i>
-          <i
-            v-else
-            class="fas fa-check-circle mr-1"
-          ></i>
+          <i v-if="saving" class="fas fa-spinner fa-spin mr-1"></i>
+          <i v-else-if="dirty" class="fas fa-exclamation-circle mr-1"></i>
+          <i v-else class="fas fa-check-circle mr-1"></i>
           {{ statusText }}
         </span>
       </div>
@@ -157,23 +148,33 @@
 
         <div class="ribbon-content">
           <div class="ribbon-group">
+            <!-- Nueva fila (siempre disponible) -->
             <button class="ribbon-btn" @click="openAddRowModal">
               <span class="ribbon-btn__icon">
                 <i class="fas fa-plus-square"></i>
               </span>
               <span class="ribbon-btn__text">
                 <span class="ribbon-btn__title">Nueva fila</span>
-                <span class="ribbon-btn__hint">SPH / Base</span>
+                <span class="ribbon-btn__hint">
+                  {{ rowHint }}
+                </span>
               </span>
             </button>
 
-            <button class="ribbon-btn" @click="openAddColumnModal">
+            <!-- Nueva columna (NO se muestra en tipoMatriz === 'BASE') -->
+            <button
+              v-if="allowColumns"
+              class="ribbon-btn"
+              @click="openAddColumnModal"
+            >
               <span class="ribbon-btn__icon">
                 <i class="fas fa-plus"></i>
               </span>
               <span class="ribbon-btn__text">
                 <span class="ribbon-btn__title">Nueva columna</span>
-                <span class="ribbon-btn__hint">ADD / CYL</span>
+                <span class="ribbon-btn__hint">
+                  {{ colHint }}
+                </span>
               </span>
             </button>
           </div>
@@ -332,6 +333,14 @@ const internalInstance = getCurrentInstance();
 const $buefy =
   internalInstance?.appContext?.config?.globalProperties?.$buefy;
 
+/* ========= Límites físicos de dioptrías (match backend) ========= */
+const PHYSICAL_LIMITS = Object.freeze({
+  SPH: { min: -40, max: 40 },
+  CYL: { min: -15, max: 15 },
+  BASE: { min: -40, max: 40 },
+  ADD: { min: 0, max: 8 }
+});
+
 /* ========= Historial deshacer / rehacer ========= */
 const MAX_HISTORY = 200;
 const undoStack = ref([]);
@@ -341,7 +350,10 @@ const isApplyingHistory = ref(false);
 const canUndo = computed(() => undoStack.value.length > 0);
 const canRedo = computed(() => redoStack.value.length > 0);
 
-console.log("[Navtools] mounted for sheet:", props.sheetName || "(sin nombre)");
+console.log(
+  "[Navtools] mounted for sheet:",
+  props.sheetName || "(sin nombre)"
+);
 
 watch(
   () => props.modelValue,
@@ -373,6 +385,127 @@ watch(
   },
   { immediate: true }
 );
+
+/* ========= Dioptrías: múltiplos de 0.25 + límites físicos ========= */
+
+const isQuarterStep = (value) => {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return false;
+  const scaled = num * 4;
+  return Math.abs(scaled - Math.round(scaled)) < 1e-6;
+};
+
+const rowLabel = computed(() => {
+  switch (props.tipoMatriz) {
+    case "SPH_CYL":
+    case "SPH_ADD":
+      return "SPH";
+    case "BASE_ADD":
+    case "BASE":
+      return "BASE";
+    default:
+      return "valor";
+  }
+});
+
+const colLabel = computed(() => {
+  switch (props.tipoMatriz) {
+    case "SPH_CYL":
+      return "CYL";
+    case "SPH_ADD":
+    case "BASE_ADD":
+      return "ADD";
+    case "BASE":
+      return "valor";
+    default:
+      return "valor";
+  }
+});
+
+/** En monofocal BASE no hay columnas dinámicas */
+const allowColumns = computed(() => props.tipoMatriz !== "BASE");
+
+const rowHint = computed(() => {
+  if (rowLabel.value === "SPH") {
+    const { min, max } = PHYSICAL_LIMITS.SPH;
+    return `SPH (±) en pasos de 0.25 D. Rango físico aprox: ${min} a ${max} D.`;
+  }
+  if (rowLabel.value === "BASE") {
+    const { min, max } = PHYSICAL_LIMITS.BASE;
+    return `Base en pasos de 0.25 D. Rango físico aprox: ${min} a ${max} D.`;
+  }
+  return "SPH / Base en formato 0.00, pasos de 0.25 D.";
+});
+
+const colHint = computed(() => {
+  if (colLabel.value === "CYL") {
+    const { min, max } = PHYSICAL_LIMITS.CYL;
+    return `CYL (±) en pasos de 0.25 D. Rango físico aprox: ${min} a ${max} D.`;
+  }
+  if (colLabel.value === "ADD") {
+    const { min, max } = PHYSICAL_LIMITS.ADD;
+    return `ADD (+) en pasos de 0.25 D. Rango típico: ${min} a ${max} D.`;
+  }
+  return "ADD / CYL en formato 0.00, pasos de 0.25 D.";
+});
+
+/**
+ * Determina qué tipo de dioptría se está editando según el contexto:
+ *  - row  → SPH / BASE
+ *  - col  → CYL / ADD
+ */
+const getContextDimension = (kind) => {
+  if (kind === "row") {
+    if (rowLabel.value === "SPH") return "SPH";
+    if (rowLabel.value === "BASE") return "BASE";
+  } else if (kind === "col") {
+    if (colLabel.value === "CYL") return "CYL";
+    if (colLabel.value === "ADD") return "ADD";
+  }
+  return null;
+};
+
+const ensureQuarterStepOrToast = (value, kind) => {
+  const num = Number(value);
+  const lbl = kind === "row" ? rowLabel.value : colLabel.value;
+
+  if (!Number.isFinite(num)) {
+    $buefy?.toast.open({
+      message: `Ingresa un valor numérico válido${
+        lbl === "valor" ? "" : ` para ${lbl}`
+      }.`,
+      type: "is-danger"
+    });
+    return false;
+  }
+
+  const dim = getContextDimension(kind);
+  if (dim && PHYSICAL_LIMITS[dim]) {
+    const { min, max } = PHYSICAL_LIMITS[dim];
+    if (num < min || num > max) {
+      $buefy?.toast.open({
+        message: `${dim} debe estar entre ${min.toFixed(2)} y ${max.toFixed(
+          2
+        )} D.`,
+        type: "is-danger"
+      });
+      return false;
+    }
+  }
+
+  if (!isQuarterStep(num)) {
+    const what = lbl === "valor" ? "" : ` de ${lbl}`;
+    $buefy?.toast.open({
+      message:
+        `El valor${what} debe ser múltiplo de 0.25 D (…00, …25, …50, …75). ` +
+        `Ejemplos válidos: -6.00, -5.75, -5.50, 0.00, 0.25, 0.50.`,
+      type: "is-danger"
+    });
+    return false;
+  }
+
+  return true;
+};
 
 const applyChange = () => {
   const raw = String(localValue.value ?? "").trim();
@@ -499,43 +632,102 @@ const pasteCell = async () => {
 /* ========= Modales Nueva fila / columna (Buefy) ========= */
 const openAddRowModal = () => {
   console.log("[Navtools] openAddRowModal");
+
+  const dim = getContextDimension("row");
+  const limits = dim ? PHYSICAL_LIMITS[dim] : null;
+
+  const placeholder =
+    rowLabel.value === "SPH"
+      ? "Ej: -6.00, -5.75, -5.50, 0.00, 0.25…"
+      : rowLabel.value === "BASE"
+      ? "Ej: 0.00, 0.25, 0.50…"
+      : "Ej: 0.00, 0.25, 0.50…";
+
+  const inputAttrs = {
+    placeholder,
+    type: "number",
+    step: "0.25"
+  };
+
+  if (limits) {
+    inputAttrs.min = limits.min;
+    inputAttrs.max = limits.max;
+  }
+
   $buefy?.dialog.prompt({
-    message: "Agregar nueva fila",
-    inputAttrs: {
-      placeholder: "Ej: -0.25, 0.00, 0.25…",
-      type: "number",
-      step: "0.25"
-    },
+    message: `Agregar nueva fila (${rowLabel.value})`,
+    inputAttrs,
     trapFocus: true,
     onConfirm: (value) => {
       console.log("[Navtools] add-row confirm:", value);
-      if (value !== null && value !== undefined && value !== "") {
-        emit("add-row", parseFloat(value));
-      }
+      if (value === null || value === undefined || value === "") return;
+
+      const num = Number(value);
+      if (!ensureQuarterStepOrToast(num, "row")) return;
+
+      emit("add-row", num);
+
+      const unit = rowLabel.value === "valor" ? "" : " D";
+      $buefy?.toast.open({
+        message: `Se agregó la fila ${rowLabel.value} ${num.toFixed(
+          2
+        )}${unit}.`,
+        type: "is-success"
+      });
     }
   });
 };
 
 const openAddColumnModal = () => {
   console.log("[Navtools] openAddColumnModal");
+  if (!allowColumns.value) return; // protección extra para BASE
+
+  const dim = getContextDimension("col");
+  const limits = dim ? PHYSICAL_LIMITS[dim] : null;
+
+  const placeholder =
+    colLabel.value === "CYL"
+      ? "Ej: -0.25, -0.50, -0.75, 0.25, 0.50…"
+      : colLabel.value === "ADD"
+      ? "Ej: 0.75, 1.00, 1.25, 1.50…"
+      : "Ej: 0.00, 0.25, 0.50…";
+
+  const inputAttrs = {
+    placeholder,
+    type: "number",
+    step: "0.25"
+  };
+
+  if (limits) {
+    inputAttrs.min = limits.min;
+    inputAttrs.max = limits.max;
+  }
+
   $buefy?.dialog.prompt({
-    message: "Agregar nueva columna",
-    inputAttrs: {
-      placeholder: "Ej: 1.00, 1.50, 2.00…",
-      type: "number",
-      step: "0.25"
-    },
+    message: `Agregar nueva columna (${colLabel.value})`,
+    inputAttrs,
     trapFocus: true,
     onConfirm: (value) => {
       console.log("[Navtools] add-column confirm:", value);
-      if (value !== null && value !== undefined && value !== "") {
-        emit("add-column", parseFloat(value));
-      }
+      if (value === null || value === undefined || value === "") return;
+
+      const num = Number(value);
+      if (!ensureQuarterStepOrToast(num, "col")) return;
+
+      emit("add-column", num);
+
+      const unit = colLabel.value === "valor" ? "" : " D";
+      $buefy?.toast.open({
+        message: `Se agregó la columna ${colLabel.value} ${num.toFixed(
+          2
+        )}${unit}.`,
+        type: "is-success"
+      });
     }
   });
 };
 
-/* ========= Click handlers wrapper (solo logs extra) ========= */
+/* ========= Click handlers wrapper ========= */
 const handleUndoClick = () => {
   console.log("[Navtools] botón Deshacer");
   undo();
@@ -571,7 +763,9 @@ const handleSaveInternal = () => {
   );
 
   if (!props.dirty) {
-    console.log("[Navtools] handleSaveInternal → sin cambios, no emite");
+    console.log(
+      "[Navtools] handleSaveInternal → sin cambios, no emite"
+    );
     $buefy?.toast.open({
       message: "No hay cambios pendientes por guardar.",
       type: "is-info"
@@ -579,11 +773,15 @@ const handleSaveInternal = () => {
     return;
   }
   if (props.saving) {
-    console.log("[Navtools] handleSaveInternal → ya está guardando, return");
+    console.log(
+      "[Navtools] handleSaveInternal → ya está guardando, return"
+    );
     return;
   }
 
-  console.log("[Navtools] Abriendo diálogo de confirmación de guardado");
+  console.log(
+    "[Navtools] Abriendo diálogo de confirmación de guardado"
+  );
   $buefy?.dialog.confirm({
     title: "Guardar cambios",
     message: "Se guardarán los cambios realizados en esta planilla.",
@@ -592,7 +790,9 @@ const handleSaveInternal = () => {
     type: "is-primary",
     trapFocus: true,
     onConfirm: () => {
-      console.log("[Navtools] Confirm guardado aceptado → emit('save-request')");
+      console.log(
+        "[Navtools] Confirm guardado aceptado → emit('save-request')"
+      );
       emit("save-request");
     },
     onCancel: () => {
@@ -640,14 +840,18 @@ const handleKey = async (e) => {
 
 onMounted(() => {
   if (!isMobile) {
-    console.log("[Navtools] Registrando listener global de teclado");
+    console.log(
+      "[Navtools] Registrando listener global de teclado"
+    );
     window.addEventListener("keydown", handleKey);
   }
 });
 
 onBeforeUnmount(() => {
   if (!isMobile) {
-    console.log("[Navtools] Eliminando listener global de teclado");
+    console.log(
+      "[Navtools] Eliminando listener global de teclado"
+    );
     window.removeEventListener("keydown", handleKey);
   }
 });
@@ -711,7 +915,9 @@ const handleDiscard = () => {
     type: "is-danger",
     trapFocus: true,
     onConfirm: () => {
-      console.log("[Navtools] confirm discard → emit('discard-changes')");
+      console.log(
+        "[Navtools] confirm discard → emit('discard-changes')"
+      );
       emit("discard-changes");
     }
   });
@@ -723,8 +929,8 @@ const handleDiscard = () => {
 .ribbon {
   display: flex;
   flex-direction: column;
-  background-color: #ffffff;          /* blanco, sin morado */
-  border-bottom: 1px solid #e5e5e5;   /* remarco suave inferior */
+  background-color: #ffffff;
+  border-bottom: 1px solid #e5e5e5;
   margin-top: 0 !important;
 }
 
@@ -747,11 +953,11 @@ const handleDiscard = () => {
   width: 26px;
   height: 26px;
   border-radius: 6px;
-  background: #f5f5f5;       /* gris claro, no morado */
+  background: #f5f5f5;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #4a4a4a;            /* icono neutro */
+  color: #4a4a4a;
 }
 
 .sheet-icon i {
@@ -773,7 +979,7 @@ const handleDiscard = () => {
 .sheet-name {
   font-size: 12px;
   font-weight: 600;
-  color: #363636;            /* texto tipo Bulma */
+  color: #363636;
 }
 
 .sheet-meta__line {
@@ -809,12 +1015,15 @@ const handleDiscard = () => {
   padding-top: 0;
   padding-bottom: 0;
 }
+
 .ribbon-tabs ::v-deep(.tabs ul) {
   border-bottom: 1px solid #e5e5e5;
 }
+
 .ribbon-tabs ::v-deep(.tabs li a) {
   border-radius: 4px 4px 0 0;
 }
+
 .ribbon-tabs ::v-deep(.tabs li.is-active a) {
   background-color: #ffffff;
   color: #363636;
@@ -851,13 +1060,13 @@ const handleDiscard = () => {
   border-right: none;
 }
 
-/* ===== Botones (ghost / outline) ===== */
+/* ===== Botones ===== */
 .ribbon-btn {
   min-width: 96px;
   padding: 3px 6px;
   border-radius: 6px;
-  border: 1px solid #e0e0e0;    /* remarco gris */
-  background-color: #ffffff;    /* sin color de fondo fuerte */
+  border: 1px solid #e0e0e0;
+  background-color: #ffffff;
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -871,7 +1080,7 @@ const handleDiscard = () => {
   width: 18px;
   height: 18px;
   border-radius: 999px;
-  background: #f5f5f5;          /* gris, sin morado */
+  background: #f5f5f5;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -916,7 +1125,7 @@ const handleDiscard = () => {
   align-items: center;
   gap: 6px;
   padding: 4px 6px;
-  background-color: #fafafa;         /* gris claro, tipo Buefy */
+  background-color: #fafafa;
   border-top: 1px solid #e5e5e5;
   border-bottom: 1px solid #e5e5e5;
 }
@@ -960,9 +1169,9 @@ const handleDiscard = () => {
 .badge-tipo {
   padding: 2px 6px;
   border-radius: 999px;
-  background: #ffffff;             /* sin fondo morado */
+  background: #ffffff;
   border: 1px solid #dbdbdb;
-  color: #7957d5;                  /* solo el texto usa el primary */
+  color: #7957d5;
   font-size: 9px;
   font-weight: 600;
 }
@@ -976,16 +1185,19 @@ const handleDiscard = () => {
   align-items: center;
   gap: 4px;
 }
+
 .status-pill.clean {
   background: #f4fff7;
   color: #2e7d32;
   border: 1px solid rgba(46, 125, 50, 0.2);
 }
+
 .status-pill.dirty {
   background: #fffaf4;
   color: #bf6519;
   border: 1px solid rgba(191, 101, 25, 0.2);
 }
+
 .status-pill.saving {
   background: #f4f7ff;
   color: #1a73e8;
@@ -998,14 +1210,17 @@ const handleDiscard = () => {
     flex-direction: column;
     align-items: flex-start;
   }
+
   .ribbon-header__right {
     align-items: flex-start;
   }
+
   .ribbon-content {
     flex-wrap: nowrap;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
+
   .ribbon-group {
     flex-shrink: 0;
   }

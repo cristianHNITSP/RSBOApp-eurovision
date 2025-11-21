@@ -1,7 +1,7 @@
 <!-- src/components/ag-grid/templates/AgGridProgresivo.vue -->
 <template>
   <div class="is-flex is-flex-direction-column" style="height: 100%;">
-    <navtools className="p-4"
+    <navtools class="p-4"
       v-model="formulaValue"
       :dirty="dirty"
       :saving="saving"
@@ -70,8 +70,7 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 
 const props = defineProps({
   sheetId: { type: String, required: true },
-  // En monofocal/bifocal usa sphType si aplica:
-  sphType: { type: String, default: "sph-neg" },
+  sphType: { type: String, default: "sph-neg" }, // compatibilidad
   actor: { type: Object, default: null }
 });
 
@@ -87,6 +86,9 @@ const dirty = ref(false);
 const saving = ref(false);
 const lastSavedAt = ref(null);
 const sheetMeta = ref(null);
+
+/** Buffer de cambios (base_izq, base_der, add, eye) */
+const pendingChanges = ref(new Map());
 
 const themeCustom = themeQuartz
   .withPart(iconSetQuartzBold, colorSchemeLight)
@@ -119,7 +121,7 @@ const localeText = {
 const isNumeric = (v) =>
   /^-?\d+(\.\d+)?$/.test(String(v ?? "").trim());
 
-// 🔹 Actor normalizado: siempre { userId, name }
+// Actor normalizado
 const effectiveActor = computed(() => {
   const src =
     props.actor ||
@@ -131,7 +133,6 @@ const effectiveActor = computed(() => {
   const userId = src.userId || src.id || src._id || null;
   const name = src.name || src.email || "Usuario";
 
-  // Siempre mandamos estas dos propiedades para el backend
   return { userId, name };
 });
 
@@ -147,6 +148,7 @@ const material = computed(() => sheetMeta.value?.material || "");
 const tratamientos = computed(() => sheetMeta.value?.tratamientos || []);
 
 const norm = (n) => String(n).replace(".", "_");
+const denorm = (s) => Number(String(s).replace("_", "."));
 const addValues = ref([]);
 const eyes = ["OD", "OI"];
 
@@ -156,6 +158,28 @@ watch(dirty, (v) =>
 watch(saving, (v) =>
   console.log("[AgGridProgresivo] saving cambió →", v)
 );
+
+/** Marca un cambio en progresivo */
+function markCellChangedProgresivo({
+  add,
+  eye,
+  base_izq,
+  base_der,
+  existencias
+}) {
+  const a = Number(add);
+  const bi = Number(base_izq ?? 0);
+  const bd = Number(base_der ?? 0);
+  const key = `${bi}|${bd}|${a}|${eye}`;
+  pendingChanges.value.set(key, {
+    add: a,
+    eye,
+    base_izq: bi,
+    base_der: bd,
+    existencias: Number(existencias ?? 0)
+  });
+  dirty.value = true;
+}
 
 /* Columnas */
 const columns = computed(() => [
@@ -182,7 +206,11 @@ const columns = computed(() => [
         headerClass: [
           "ag-header-cell--compact",
           "ag-header-cell--pinned"
-        ]
+        ],
+        valueFormatter: (p) => {
+          const v = Number(p.value);
+          return Number.isFinite(v) ? v.toFixed(2) : p.value ?? "";
+        }
       }
     ]
   },
@@ -203,9 +231,17 @@ const columns = computed(() => [
         valueSetter: (p) => {
           const v = String(p.newValue ?? "").trim();
           const before = p.data[`add_${norm(add)}_${eye}`];
-          p.data[`add_${norm(add)}_${eye}`] = isNumeric(v)
-            ? Number(v)
-            : 0;
+          const newVal = isNumeric(v) ? Number(v) : 0;
+          p.data[`add_${norm(add)}_${eye}`] = newVal;
+
+          markCellChangedProgresivo({
+            add,
+            eye,
+            base_izq: p.data.base_izq ?? p.data.base,
+            base_der: p.data.base_der ?? p.data.base,
+            existencias: newVal
+          });
+
           dirty.value = true;
           console.log(
             "[AgGridProgresivo] valueSetter",
@@ -319,6 +355,7 @@ async function loadRows() {
     );
 
     dirty.value = false;
+    pendingChanges.value.clear();
     await nextTick();
   } catch (e) {
     console.error(
@@ -380,14 +417,38 @@ const onCellValueChanged = (p) => {
   ) {
     formulaValue.value = p.newValue;
   }
-  dirty.value = true;
+  if (p.colDef.field.startsWith("add_")) {
+    const meta = parseAddEyeFromField(p.colDef.field);
+    if (meta) {
+      markCellChangedProgresivo({
+        add: meta.add,
+        eye: meta.eye,
+        base_izq: p.data.base_izq ?? p.data.base,
+        base_der: p.data.base_der ?? p.data.base,
+        existencias: p.data[p.colDef.field]
+      });
+    }
+  } else {
+    dirty.value = true;
+  }
 };
+
+function parseAddEyeFromField(field) {
+  if (!field.startsWith("add_")) return null;
+  const tail = field.slice(4); // 1_50_OD
+  const parts = tail.split("_");
+  const eye = parts.pop(); // OD/OI
+  const numStr = parts.join("_");
+  const add = denorm(numStr);
+  if (Number.isNaN(add)) return null;
+  return { add, eye };
+}
 
 watch(formulaValue, (val) => {
   if (!activeCell || !gridApi.value) return;
   const field = activeCell.colDef.field;
   const raw = String(val ?? "").trim();
-  const newVal = isNumeric(raw) ? Number(raw) : raw;
+  const newVal = isNumeric(raw) ? Number(raw) : 0;
 
   console.log(
     "[AgGridProgresivo] formulaValue watch → update",
@@ -401,10 +462,26 @@ watch(formulaValue, (val) => {
     newVal
   );
 
+  const updatedRow = { ...activeCell.data, [field]: newVal };
   gridApi.value.applyTransaction({
-    update: [{ ...activeCell.data, [field]: newVal }]
+    update: [updatedRow]
   });
-  dirty.value = true;
+  if (activeCell.data) {
+    activeCell.data[field] = newVal;
+  }
+
+  const meta = parseAddEyeFromField(field);
+  if (meta) {
+    markCellChangedProgresivo({
+      add: meta.add,
+      eye: meta.eye,
+      base_izq: updatedRow.base_izq ?? updatedRow.base,
+      base_der: updatedRow.base_der ?? updatedRow.base,
+      existencias: newVal
+    });
+  } else {
+    dirty.value = true;
+  }
 });
 
 const onGridReady = (p) => {
@@ -412,7 +489,7 @@ const onGridReady = (p) => {
   gridApi.value = p.api;
 };
 
-/** 🔹 Guardamos SIEMPRE leyendo desde lo que tiene la grilla */
+/** Guardamos leyendo desde lo que tiene la grilla */
 function collectRowsFromGrid() {
   const rows = [];
   if (!gridApi.value) {
@@ -453,7 +530,7 @@ function collectRowsFromGrid() {
 }
 
 /* Navtools */
-const handleAddRow = (nuevoValor) => {
+const handleAddRow = async (nuevoValor) => {
   console.log(
     "[AgGridProgresivo] handleAddRow nuevoValor:",
     nuevoValor
@@ -479,11 +556,46 @@ const handleAddRow = (nuevoValor) => {
   });
 
   gridApi.value?.applyTransaction({ add: [row] });
-  dirty.value = true;
-  nextTick(() => resetSort());
+  await nextTick();
+  resetSort();
+
+  // Persistir inmediatamente todas las combinaciones (base nueva, cada add, OD/OI)
+  try {
+    const rowsToPersist = [];
+    addValues.value.forEach((add) => {
+      rowsToPersist.push({
+        add,
+        eye: "OD",
+        base_izq: bi,
+        base_der: bi,
+        existencias: 0
+      });
+      rowsToPersist.push({
+        add,
+        eye: "OI",
+        base_izq: bi,
+        base_der: bi,
+        existencias: 0
+      });
+    });
+
+    if (rowsToPersist.length) {
+      await saveChunk(props.sheetId, rowsToPersist, effectiveActor.value);
+      console.log(
+        "[AgGridProgresivo] Base nueva persistida en BD, filas:",
+        rowsToPersist.length
+      );
+      lastSavedAt.value = new Date();
+    }
+  } catch (e) {
+    console.error(
+      "[AgGridProgresivo] Error al persistir base nueva:",
+      e?.response?.data || e
+    );
+  }
 };
 
-const handleAddColumn = (nuevoValor) => {
+const handleAddColumn = async (nuevoValor) => {
   console.log(
     "[AgGridProgresivo] handleAddColumn nuevoValor:",
     nuevoValor
@@ -503,11 +615,47 @@ const handleAddColumn = (nuevoValor) => {
     r[`add_${norm(add)}_OD`] = 0;
     r[`add_${norm(add)}_OI`] = 0;
   });
-  nextTick(() => {
-    gridApi.value?.refreshHeader();
-    gridApi.value?.redrawRows();
-  });
-  dirty.value = true;
+  await nextTick();
+  gridApi.value?.refreshHeader();
+  gridApi.value?.redrawRows();
+
+  // Persistir inmediatamente todas las combinaciones (cada base, add nuevo, OD/OI)
+  try {
+    const rowsToPersist = [];
+    rowData.value.forEach((r) => {
+      const base_izq = Number(r.base_izq ?? r.base ?? 0);
+      const base_der = Number(r.base_der ?? r.base ?? 0);
+
+      rowsToPersist.push({
+        add,
+        eye: "OD",
+        base_izq,
+        base_der,
+        existencias: 0
+      });
+      rowsToPersist.push({
+        add,
+        eye: "OI",
+        base_izq,
+        base_der,
+        existencias: 0
+      });
+    });
+
+    if (rowsToPersist.length) {
+      await saveChunk(props.sheetId, rowsToPersist, effectiveActor.value);
+      console.log(
+        "[AgGridProgresivo] ADD nuevo persistido en BD, filas:",
+        rowsToPersist.length
+      );
+      lastSavedAt.value = new Date();
+    }
+  } catch (e) {
+    console.error(
+      "[AgGridProgresivo] Error al persistir ADD nuevo:",
+      e?.response?.data || e
+    );
+  }
 };
 
 /* Guardar */
@@ -516,10 +664,12 @@ async function handleSave() {
     "[AgGridProgresivo] handleSave llamado. dirty:",
     dirty.value,
     "saving:",
-    saving.value
+    saving.value,
+    "pendingChanges:",
+    pendingChanges.value.size
   );
-  if (!dirty.value) {
-    console.log("[AgGridProgresivo] handleSave → no dirty, return");
+  if (!dirty.value || pendingChanges.value.size === 0) {
+    console.log("[AgGridProgresivo] handleSave → nada que guardar");
     return;
   }
   if (!gridApi.value) {
@@ -529,9 +679,9 @@ async function handleSave() {
 
   saving.value = true;
   try {
-    const rows = collectRowsFromGrid();
+    const rows = Array.from(pendingChanges.value.values());
     console.log(
-      "[AgGridProgresivo] rows a enviar:",
+      "[AgGridProgresivo] rows a enviar (chunk):",
       rows.length,
       "ej row[0]:",
       rows[0]
@@ -539,8 +689,9 @@ async function handleSave() {
 
     await saveChunk(props.sheetId, rows, effectiveActor.value);
     dirty.value = false;
+    pendingChanges.value.clear();
     lastSavedAt.value = new Date();
-    await loadRows();
+    // No recargamos toda la hoja aquí
   } catch (e) {
     console.error(
       "[AgGridProgresivo] Error saveChunk:",
@@ -553,29 +704,32 @@ async function handleSave() {
 
 /* Filtros / orden para navtools */
 const clearFilters = () => {
-  if (!gridApi.value || typeof gridApi.value.setFilterModel !== "function") {
-    console.warn(
-      "[AgGridProgresivo] setFilterModel no disponible",
-      gridApi.value
-    );
-    return;
-  }
+  if (!gridApi.value) return;
+  const api = gridApi.value;
   console.log("[AgGridProgresivo] clearFilters");
-  gridApi.value.setFilterModel(null);
+  if (typeof api.setFilterModel === "function") {
+    api.setFilterModel(null);
+  } else if (typeof api.setGridOption === "function") {
+    api.setGridOption("filterModel", null);
+  }
 };
 
 const resetSort = () => {
-  if (!gridApi.value || typeof gridApi.value.setSortModel !== "function") {
-    console.warn(
-      "[AgGridProgresivo] setSortModel no disponible",
-      gridApi.value
-    );
-    return;
-  }
   console.log("[AgGridProgresivo] resetSort por base ASC");
-  gridApi.value.setSortModel([{ colId: "base", sort: "asc" }]);
-  gridApi.value.refreshClientSideRowModel("sort");
+
+  const api = gridApi.value;
+  if (!api) return;
+
+  if (typeof api.applyColumnState === "function") {
+    api.applyColumnState({
+      defaultState: { sort: null },
+      state: [{ colId: "base", sort: "asc" }],
+    });
+  } else if (typeof api.setSortModel === "function") {
+    api.setSortModel([{ colId: "base", sort: "asc" }]);
+  }
 };
+
 
 const handleToggleFilters = () => {
   console.log("[AgGridProgresivo] handleToggleFilters → clearFilters");
@@ -587,11 +741,13 @@ async function handleDiscard() {
   console.log("[AgGridProgresivo] handleDiscard");
   await loadRows();
   dirty.value = false;
+  pendingChanges.value.clear();
 }
 
 async function handleRefresh() {
   console.log("[AgGridProgresivo] handleRefresh");
   await loadAll();
+  pendingChanges.value.clear();
 }
 
 async function handleSeed() {
@@ -601,6 +757,7 @@ async function handleSeed() {
     await reseedSheet(props.sheetId, effectiveActor.value);
     await loadAll();
     lastSavedAt.value = new Date();
+    pendingChanges.value.clear();
   } catch (e) {
     console.error(
       "[AgGridProgresivo] Error reseed:",

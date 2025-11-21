@@ -1,54 +1,4 @@
 <!-- src/components/ag-grid/templates/AgGridBifocal.vue -->
-<template>
-  <div class="is-flex is-flex-direction-column" style="height: 100%;">
-    <navtools className="p-4"
-      v-model="formulaValue"
-      :dirty="dirty"
-      :saving="saving"
-      :total-rows="totalRows"
-      :sheet-name="sheetName"
-      :tipo-matriz="tipoMatriz"
-      :material="material"
-      :tratamientos="tratamientos"
-      :last-saved-at="lastSavedAt"
-      @add-row="handleAddRow"
-      @add-column="handleAddColumn"
-      @clear-filters="clearFilters"
-      @reset-sort="resetSort"
-      @toggle-filters="handleToggleFilters"
-      @save-request="handleSave"
-      @discard-changes="handleDiscard"
-      @refresh="handleRefresh"
-      @seed="handleSeed"
-      @export="handleExport"
-    />
-
-    <div
-      class="buefy-balham-light"
-      style="flex: 1 1 auto; display: flex; flex-direction: column; overflow: auto;"
-    >
-      <AgGridVue
-        ref="gridRef"
-        class="ag-grid-buefy"
-        :columnDefs="columns"
-        :rowData="rowData"
-        :defaultColDef="defaultColDef"
-        :getRowId="getRowId"
-        :animateRows="true"
-        :localeText="localeText"
-        :theme="themeCustom"
-        :rowHeight="30"
-        :headerHeight="32"
-        :suppressMovableColumns="true"
-        @cellClicked="onCellClicked"
-        @cellValueChanged="onCellValueChanged"
-        @grid-ready="onGridReady"
-        style="width: 100%; height: 100%;"
-      />
-    </div>
-  </div>
-</template>
-
 <script setup>
 import { ref, computed, watch, nextTick, onMounted } from "vue";
 import { AgGridVue } from "ag-grid-vue3";
@@ -69,10 +19,8 @@ import {
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-/* ===== Props ===== */
 const props = defineProps({
   sheetId: { type: String, required: true },
-  // En monofocal/bifocal usa sphType si aplica:
   sphType: { type: String, default: "sph-neg" },
   actor: { type: Object, default: null }
 });
@@ -85,7 +33,7 @@ console.log(
   props.sphType
 );
 
-/* ===== Tema / textos ===== */
+/* Tema / textos */
 const themeCustom = themeQuartz
   .withPart(iconSetQuartzBold, colorSchemeLight)
   .withParams({
@@ -114,9 +62,10 @@ const localeText = {
   loadingOoo: "Cargando..."
 };
 
-/* ===== Helpers ===== */
+/* Helpers */
 const to2 = (n) => Number(parseFloat(n).toFixed(2));
 const norm = (n) => String(to2(n)).replace(".", "_");
+const denorm = (s) => Number(String(s).replace("_", "."));
 const isNumeric = (v) => /^-?\d+(\.\d+)?$/.test(String(v ?? "").trim());
 const uniqSorted = (arr) => [...new Set(arr)].sort((a, b) => a - b);
 const frange = (start, end, step) => {
@@ -130,7 +79,7 @@ const frange = (start, end, step) => {
   return out;
 };
 
-// 🔹 Actor normalizado: siempre { userId, name }
+// Actor normalizado
 const effectiveActor = computed(() => {
   const src =
     props.actor ||
@@ -142,19 +91,23 @@ const effectiveActor = computed(() => {
   const userId = src.userId || src.id || src._id || null;
   const name = src.name || src.email || "Usuario";
 
-  // Siempre mandamos estas dos propiedades para el backend
   return { userId, name };
 });
-/* ===== Estado ===== */
+
+/* Estado */
 const gridApi = ref(null);
+const gridRef = ref(null);
 const rowData = ref([]);
-const addCols = ref([]); // ADD(+)
+const addCols = ref([]);
 const sheetTabs = ref([]);
 const basesPorSph = ref(new Map());
 const dirty = ref(false);
 const saving = ref(false);
 const lastSavedAt = ref(null);
 const sheetMeta = ref(null);
+
+/** Buffer de cambios (sph, add, eye) */
+const pendingChanges = ref(new Map());
 
 watch(dirty, (v) => {
   console.log("[AgGridBifocal] dirty cambió →", v);
@@ -171,8 +124,31 @@ const tipoMatriz = computed(() => sheetMeta.value?.tipo_matriz || "SPH_ADD");
 const material = computed(() => sheetMeta.value?.material || "");
 const tratamientos = computed(() => sheetMeta.value?.tratamientos || []);
 
-/* ===== Columnas (SPH | ADD(+): OD/OI) ===== */
-const makeLeaf = (field, header) => ({
+/** Registro de cambio de celda bifocal */
+function markCellChangedBifocal({
+  sph,
+  add,
+  eye,
+  base_izq,
+  base_der,
+  existencias
+}) {
+  const s = Number(sph);
+  const a = Number(add);
+  const key = `${s}|${a}|${eye}`;
+  pendingChanges.value.set(key, {
+    sph: s,
+    add: a,
+    eye,
+    base_izq: Number(base_izq ?? 0),
+    base_der: Number(base_der ?? 0),
+    existencias: Number(existencias ?? 0)
+  });
+  dirty.value = true;
+}
+
+/* Columnas */
+const makeLeaf = (field, header, add, eye) => ({
   field,
   headerName: header,
   editable: true,
@@ -186,8 +162,18 @@ const makeLeaf = (field, header) => ({
   valueSetter: (p) => {
     const v = String(p.newValue ?? "").trim();
     const before = p.data[p.colDef.field];
-    p.data[p.colDef.field] = isNumeric(v) ? Number(v) : 0;
-    dirty.value = true;
+    const newVal = isNumeric(v) ? Number(v) : 0;
+    p.data[p.colDef.field] = newVal;
+
+    markCellChangedBifocal({
+      sph: p.data.sph,
+      add,
+      eye,
+      base_izq: p.data.base_izq,
+      base_der: p.data.base_der,
+      existencias: newVal
+    });
+
     console.log(
       "[AgGridBifocal] valueSetter",
       p.colDef.field,
@@ -229,7 +215,11 @@ const columns = computed(() => {
           headerClass: [
             "ag-header-cell--compact",
             "ag-header-cell--pinned"
-          ]
+          ],
+          valueFormatter: (p) => {
+            const v = Number(p.value);
+            return Number.isFinite(v) ? v.toFixed(2) : p.value ?? "";
+          }
         }
       ]
     },
@@ -239,8 +229,8 @@ const columns = computed(() => {
         headerName: a.toFixed(2),
         marryChildren: true,
         children: [
-          makeLeaf(`add_${norm(a)}_OD`, "OD"),
-          makeLeaf(`add_${norm(a)}_OI`, "OI")
+          makeLeaf(`add_${norm(a)}_OD`, "OD", a, "OD"),
+          makeLeaf(`add_${norm(a)}_OI`, "OI", a, "OI")
         ]
       }))
     }
@@ -261,10 +251,27 @@ const defaultColDef = {
 
 const getRowId = (p) => p.data.sph.toString();
 
-/* ===== Carga desde API (tabs + items) ===== */
-const rangeForTab = (tabId) =>
+/* Rango SPH por tab (backend) o fallback */
+const rangeForTabFallback = (tabId) =>
   tabId === "sph-pos" ? { sphMin: 0, sphMax: 6 } : { sphMin: -6, sphMax: 0 };
 
+function getSphRangeFromTabsOrFallback(tabId) {
+  const fallback = rangeForTabFallback(tabId);
+  const tab = sheetTabs.value.find((t) => t.id === tabId);
+
+  if (!tab || !tab.ranges || !tab.ranges.sph) return fallback;
+
+  const rs = tab.ranges.sph;
+  const sphStart = Number(rs.start ?? fallback.sphMin);
+  const sphEnd = Number(rs.end ?? fallback.sphMax);
+
+  return {
+    sphMin: Math.min(sphStart, sphEnd),
+    sphMax: Math.max(sphStart, sphEnd)
+  };
+}
+
+/* Carga desde API (meta + tabs + items) */
 async function loadAll() {
   try {
     console.log(
@@ -283,7 +290,7 @@ async function loadAll() {
 
     const tab = sheetTabs.value.find((t) => t.id === props.sphType);
 
-    const { sphMin, sphMax } = rangeForTab(props.sphType);
+    const { sphMin, sphMax } = getSphRangeFromTabsOrFallback(props.sphType);
     console.log(
       "[AgGridBifocal] fetchItems rango SPH:",
       sphMin,
@@ -349,7 +356,7 @@ async function loadAll() {
         }
         sphList = uniqSorted(generated);
       } else {
-        const r = rangeForTab(props.sphType);
+        const r = rangeForTabFallback(props.sphType);
         sphList = uniqSorted(frange(r.sphMin, r.sphMax, 0.25));
       }
     }
@@ -380,6 +387,7 @@ async function loadAll() {
     );
 
     dirty.value = false;
+    pendingChanges.value.clear();
     await nextTick();
   } catch (e) {
     console.error(
@@ -405,16 +413,18 @@ watch(
   { deep: true }
 );
 
-/* ===== Guardado ===== */
+/* Guardado */
 async function handleSave() {
   console.log(
     "[AgGridBifocal] handleSave llamado. dirty:",
     dirty.value,
     "saving:",
-    saving.value
+    saving.value,
+    "pendingChanges:",
+    pendingChanges.value.size
   );
-  if (!dirty.value) {
-    console.log("[AgGridBifocal] handleSave → no dirty, return");
+  if (!dirty.value || pendingChanges.value.size === 0) {
+    console.log("[AgGridBifocal] handleSave → nada que guardar");
     return;
   }
   if (!gridApi.value) {
@@ -424,9 +434,9 @@ async function handleSave() {
 
   saving.value = true;
   try {
-    const rows = collectRowsFromGrid();
+    const rows = Array.from(pendingChanges.value.values());
     console.log(
-      "[AgGridBifocal] rows a enviar:",
+      "[AgGridBifocal] rows a enviar (chunk):",
       rows.length,
       "ej row[0]:",
       rows[0]
@@ -434,8 +444,9 @@ async function handleSave() {
 
     await saveChunk(props.sheetId, rows, effectiveActor.value);
     dirty.value = false;
+    pendingChanges.value.clear();
     lastSavedAt.value = new Date();
-    await loadAll();
+    // Ya no recargamos toda la hoja aquí
   } catch (e) {
     console.error(
       "[AgGridBifocal] Error saveChunk:",
@@ -446,7 +457,7 @@ async function handleSave() {
   }
 }
 
-/* ===== Edición rápida (barra fórmula) ===== */
+/* Edición rápida (barra fórmula) */
 const formulaValue = ref("");
 let activeCell = null;
 
@@ -487,14 +498,40 @@ const onCellValueChanged = (p) => {
   ) {
     formulaValue.value = p.newValue;
   }
-  dirty.value = true;
+  if (p.colDef.field.startsWith("add_")) {
+    const meta = parseAddEyeFromField(p.colDef.field);
+    if (meta) {
+      markCellChangedBifocal({
+        sph: p.data.sph,
+        add: meta.add,
+        eye: meta.eye,
+        base_izq: p.data.base_izq,
+        base_der: p.data.base_der,
+        existencias: p.data[p.colDef.field]
+      });
+    }
+  } else {
+    dirty.value = true;
+  }
 };
+
+function parseAddEyeFromField(field) {
+  if (!field.startsWith("add_")) return null;
+  // add_1_50_OD -> ["1","50","OD"]
+  const tail = field.slice(4);
+  const parts = tail.split("_");
+  const eye = parts.pop();
+  const numStr = parts.join("_");
+  const add = denorm(numStr);
+  if (Number.isNaN(add)) return null;
+  return { add, eye };
+}
 
 watch(formulaValue, (val) => {
   if (!activeCell || !gridApi.value) return;
   const field = activeCell.colDef.field;
   const raw = String(val ?? "").trim();
-  const newVal = isNumeric(raw) ? Number(raw) : raw;
+  const newVal = isNumeric(raw) ? Number(raw) : 0;
 
   console.log(
     "[AgGridBifocal] formulaValue watch → update",
@@ -506,18 +543,32 @@ watch(formulaValue, (val) => {
     newVal
   );
 
+  const updatedRow = { ...activeCell.data, [field]: newVal };
   gridApi.value.applyTransaction({
     update: [
-      {
-        ...activeCell.data,
-        [field]: newVal
-      }
+      updatedRow
     ]
   });
-  dirty.value = true;
+  if (activeCell.data) {
+    activeCell.data[field] = newVal;
+  }
+
+  const meta = parseAddEyeFromField(field);
+  if (meta) {
+    markCellChangedBifocal({
+      sph: updatedRow.sph,
+      add: meta.add,
+      eye: meta.eye,
+      base_izq: updatedRow.base_izq,
+      base_der: updatedRow.base_der,
+      existencias: newVal
+    });
+  } else {
+    dirty.value = true;
+  }
 });
 
-/* ===== Adders ===== */
+/* Adders */
 const handleAddRow = async (nuevoValor) => {
   console.log("[AgGridBifocal] handleAddRow nuevoValor:", nuevoValor);
   const sph = Number(nuevoValor);
@@ -547,7 +598,43 @@ const handleAddRow = async (nuevoValor) => {
   gridApi.value?.applyTransaction({ add: [row] });
   await nextTick();
   resetSort();
-  dirty.value = true;
+
+  // Persistir inmediatamente todas las combinaciones (sph nuevo, cada add, OD/OI)
+  try {
+    const rowsToPersist = [];
+    addCols.value.forEach((add) => {
+      rowsToPersist.push({
+        sph,
+        add,
+        eye: "OD",
+        base_izq: bases.base_izq,
+        base_der: bases.base_der,
+        existencias: 0
+      });
+      rowsToPersist.push({
+        sph,
+        add,
+        eye: "OI",
+        base_izq: bases.base_izq,
+        base_der: bases.base_der,
+        existencias: 0
+      });
+    });
+
+    if (rowsToPersist.length) {
+      await saveChunk(props.sheetId, rowsToPersist, effectiveActor.value);
+      console.log(
+        "[AgGridBifocal] SPH nuevo persistido en BD, filas:",
+        rowsToPersist.length
+      );
+      lastSavedAt.value = new Date();
+    }
+  } catch (e) {
+    console.error(
+      "[AgGridBifocal] Error al persistir SPH nuevo:",
+      e?.response?.data || e
+    );
+  }
 };
 
 const handleAddColumn = async (nuevoValor) => {
@@ -573,16 +660,55 @@ const handleAddColumn = async (nuevoValor) => {
   await nextTick();
   gridApi.value?.refreshHeader();
   gridApi.value?.redrawRows();
-  dirty.value = true;
+
+  // Persistir inmediatamente todas las combinaciones (cada sph, add nuevo, OD/OI)
+  try {
+    const rowsToPersist = [];
+    rowData.value.forEach((r) => {
+      const sph = Number(r.sph);
+      const base_izq = Number(r.base_izq ?? 0);
+      const base_der = Number(r.base_der ?? 0);
+
+      rowsToPersist.push({
+        sph,
+        add,
+        eye: "OD",
+        base_izq,
+        base_der,
+        existencias: 0
+      });
+      rowsToPersist.push({
+        sph,
+        add,
+        eye: "OI",
+        base_izq,
+        base_der,
+        existencias: 0
+      });
+    });
+
+    if (rowsToPersist.length) {
+      await saveChunk(props.sheetId, rowsToPersist, effectiveActor.value);
+      console.log(
+        "[AgGridBifocal] ADD nuevo persistido en BD, filas:",
+        rowsToPersist.length
+      );
+      lastSavedAt.value = new Date();
+    }
+  } catch (e) {
+    console.error(
+      "[AgGridBifocal] Error al persistir ADD nuevo:",
+      e?.response?.data || e
+    );
+  }
 };
 
-/* ===== Grid hooks ===== */
+/* Grid hooks */
 const onGridReady = (p) => {
   console.log("[AgGridBifocal] grid ready");
   gridApi.value = p.api;
 };
 
-/** 🔹 Guardamos leyendo SIEMPRE desde la grilla */
 function collectRowsFromGrid() {
   const rows = [];
   if (!gridApi.value) {
@@ -625,47 +751,50 @@ function collectRowsFromGrid() {
   return rows;
 }
 
-/* Filtros / orden para navtools */
+/* Filtros / orden */
 const clearFilters = () => {
-  if (!gridApi.value || typeof gridApi.value.setFilterModel !== "function") {
-    console.warn(
-      "[AgGridBifocal] setFilterModel no disponible",
-      gridApi.value
-    );
-    return;
-  }
+  if (!gridApi.value) return;
+  const api = gridApi.value;
   console.log("[AgGridBifocal] clearFilters");
-  gridApi.value.setFilterModel(null);
+  if (typeof api.setFilterModel === "function") {
+    api.setFilterModel(null);
+  }
 };
 
 const resetSort = () => {
-  if (!gridApi.value || typeof gridApi.value.setSortModel !== "function") {
-    console.warn(
-      "[AgGridBifocal] setSortModel no disponible",
-      gridApi.value
-    );
-    return;
-  }
   console.log("[AgGridBifocal] resetSort por sph ASC");
-  gridApi.value.setSortModel([{ colId: "sph", sort: "asc" }]);
-  gridApi.value.refreshClientSideRowModel("sort");
+
+  const api = gridApi.value;
+  if (!api) return;
+
+  if (typeof api.applyColumnState === "function") {
+    api.applyColumnState({
+      defaultState: { sort: null },
+      state: [{ colId: "sph", sort: "asc" }],
+    });
+  } else if (typeof api.setSortModel === "function") {
+    api.setSortModel([{ colId: "sph", sort: "asc" }]);
+  }
 };
+
 
 const handleToggleFilters = () => {
   console.log("[AgGridBifocal] handleToggleFilters → clearFilters");
   clearFilters();
 };
 
-/* Refresh / seed / export / discard */
+/* Otros handlers */
 async function handleDiscard() {
   console.log("[AgGridBifocal] handleDiscard");
   await loadAll();
   dirty.value = false;
+  pendingChanges.value.clear();
 }
 
 async function handleRefresh() {
   console.log("[AgGridBifocal] handleRefresh");
   await loadAll();
+  pendingChanges.value.clear();
 }
 
 async function handleSeed() {
@@ -675,6 +804,7 @@ async function handleSeed() {
     await reseedSheet(props.sheetId, effectiveActor.value);
     await loadAll();
     lastSavedAt.value = new Date();
+    pendingChanges.value.clear();
   } catch (e) {
     console.error(
       "[AgGridBifocal] Error reseed:",
@@ -701,6 +831,56 @@ function handleExport() {
   });
 }
 </script>
+
+<template>
+  <div class="is-flex is-flex-direction-column" style="height: 100%;">
+    <navtools class="p-4"
+      v-model="formulaValue"
+      :dirty="dirty"
+      :saving="saving"
+      :total-rows="totalRows"
+      :sheet-name="sheetName"
+      :tipo-matriz="tipoMatriz"
+      :material="material"
+      :tratamientos="tratamientos"
+      :last-saved-at="lastSavedAt"
+      @add-row="handleAddRow"
+      @add-column="handleAddColumn"
+      @clear-filters="clearFilters"
+      @reset-sort="resetSort"
+      @toggle-filters="handleToggleFilters"
+      @save-request="handleSave"
+      @discard-changes="handleDiscard"
+      @refresh="handleRefresh"
+      @seed="handleSeed"
+      @export="handleExport"
+    />
+
+    <div
+      class="buefy-balham-light"
+      style="flex: 1 1 auto; display: flex; flex-direction: column; overflow: auto;"
+    >
+      <AgGridVue
+        ref="gridRef"
+        class="ag-grid-buefy"
+        :columnDefs="columns"
+        :rowData="rowData"
+        :defaultColDef="defaultColDef"
+        :getRowId="getRowId"
+        :animateRows="true"
+        :localeText="localeText"
+        :theme="themeCustom"
+        :rowHeight="30"
+        :headerHeight="32"
+        :suppressMovableColumns="true"
+        @cellClicked="onCellClicked"
+        @cellValueChanged="onCellValueChanged"
+        @grid-ready="onGridReady"
+        style="width: 100%; height: 100%;"
+      />
+    </div>
+  </div>
+</template>
 
 <style scoped>
 .buefy-balham-light {

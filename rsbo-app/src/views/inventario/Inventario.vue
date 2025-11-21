@@ -54,6 +54,7 @@ async function cargarSheets() {
   loadingSheets.value = true;
   try {
     const { data } = await listSheets();
+
     const arr = (data?.data || []).map((s) => ({
       id: String(s._id),
       name: s.nombre,
@@ -61,7 +62,9 @@ async function cargarSheets() {
       baseKey: s.baseKey,
       material: s.material,
       tratamientos: s.tratamientos || [],
-      tabs: s.tabs || []
+      tabs: s.tabs || [],
+      // 👇 IMPORTANTÍSIMO: conservar meta del backend
+      meta: s.meta || { observaciones: "", notas: "" }
     }));
 
     // Inserta antes de "nueva" evitando duplicados
@@ -79,6 +82,7 @@ async function cargarSheets() {
     loadingSheets.value = false;
   }
 }
+
 onMounted(cargarSheets);
 
 // 👇 TabsManager ya hace el createSheet → aquí solo sincronizamos
@@ -93,13 +97,16 @@ function crearNuevaPlanilla({ payload, result, tabs }) {
     baseKey: s.baseKey,
     material: s.material,
     tratamientos: s.tratamientos || [],
-    tabs: tabs || []
+    tabs: tabs || [],
+    // 👇 también aquí
+    meta: s.meta || { observaciones: "", notas: "" }
   };
 
   const addIndex = dynamicSheets.findIndex((x) => x.id === "nueva");
   dynamicSheets.splice(addIndex >= 0 ? addIndex : dynamicSheets.length, 0, newSheet);
   activeSheet.value = newSheet.id;
 }
+
 
 function reordenarSheets({ oldIndex, newIndex }) {
   const last = dynamicSheets.length - 1;

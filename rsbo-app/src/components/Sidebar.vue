@@ -1,10 +1,6 @@
 <template>
   <div class="sidebar-wrapper">
-    <aside
-      class="sidebar"
-      :class="{ 'is-collapsed': isCollapsed }"
-      :style="{ width: isCollapsed ? '70px' : '240px' }"
-    >
+    <aside class="sidebar" :class="{ 'is-collapsed': isCollapsed }" :style="{ width: isCollapsed ? '70px' : '240px' }">
       <!-- HEADER -->
       <div class="sidebar-header">
         <!-- Logo + título -->
@@ -26,13 +22,8 @@
         </div>
 
         <!-- Toggle -->
-        <b-button
-          class="sidebar-toggle"
-          type="is-text"
-          rounded
-          @click="toggleSidebar"
-          :icon-right="isCollapsed ? 'arrow-right' : 'arrow-left'"
-        />
+        <b-button class="sidebar-toggle" type="is-text" rounded @click="toggleSidebar"
+          :icon-right="isCollapsed ? 'arrow-right' : 'arrow-left'" />
       </div>
 
       <!-- MENÚ -->
@@ -44,13 +35,9 @@
           </div>
 
           <!-- ITEM CON SUBMENU -->
-          <div
-            v-else-if="item.children"
-            class="menu-item has-submenu is-clickable"
-            :class="{ 'is-active': isChildActive(item.children) }"
-            @click="toggleSubmenu(item)"
-            :title="isCollapsed ? item.label : ''"
-          >
+          <div v-else-if="item.children" class="menu-item has-submenu is-clickable"
+            :class="{ 'is-active': isChildActive(item.children) }" @click="toggleSubmenu(item)"
+            :title="isCollapsed ? item.label : ''">
             <div class="menu-item-inner">
               <span class="menu-item-icon">
                 <b-icon :icon="item.icon" size="is-small" />
@@ -59,24 +46,13 @@
                 {{ item.label }}
               </span>
             </div>
-            <b-icon
-              v-if="!isCollapsed"
-              icon="angle-right"
-              size="is-small"
-              class="menu-item-chevron"
-              :class="{ 'is-open': activeSubmenu && activeSubmenu.label === item.label }"
-            />
+            <b-icon v-if="!isCollapsed" icon="angle-right" size="is-small" class="menu-item-chevron"
+              :class="{ 'is-open': activeSubmenu && activeSubmenu.label === item.label }" />
           </div>
 
           <!-- ITEM NORMAL -->
-          <router-link
-            v-else
-            :to="item.path"
-            class="menu-item"
-            active-class="is-active"
-            exact-active-class="is-exact-active"
-            :title="isCollapsed ? item.label : ''"
-          >
+          <router-link v-else :to="item.path" class="menu-item" active-class="is-active"
+            exact-active-class="is-exact-active" :title="isCollapsed ? item.label : ''">
             <div class="menu-item-inner">
               <span class="menu-item-icon">
                 <b-icon :icon="item.icon" size="is-small" />
@@ -86,12 +62,8 @@
               </span>
             </div>
 
-            <b-tag
-              v-if="item.badge && !isCollapsed"
-              class="menu-item-badge"
-              rounded
-              :type="item.badgeType || 'is-primary'"
-            >
+            <b-tag v-if="item.badge && !isCollapsed" class="menu-item-badge" rounded
+              :type="item.badgeType || 'is-primary'">
               {{ item.badge }}
             </b-tag>
           </router-link>
@@ -103,22 +75,9 @@
         <div class="sidebar-footer-inner" v-if="!loading">
           <div class="user-profile">
             <div class="user-avatar">
-              <b-skeleton
-                v-if="!avatarLoaded"
-                :width="32"
-                :height="32"
-                :animated="true"
-                style="border-radius:50%;"
-              />
-              <img
-                v-else
-                :key="avatarUrl"
-                class="is-rounded"
-                :src="avatarUrl"
-                alt="Avatar"
-                @load="onAvatarLoad"
-                @error="onAvatarError"
-              />
+              <b-skeleton v-if="!avatarLoaded" :width="32" :height="32" :animated="true" style="border-radius:50%;" />
+              <img v-else :key="avatarUrl" class="is-rounded" :src="avatarUrl" alt="Avatar" @load="onAvatarLoad"
+                @error="onAvatarError" />
             </div>
             <div class="user-info" v-if="!isCollapsed">
               <span class="user-name">{{ filteredUser.name }}</span>
@@ -130,12 +89,7 @@
     </aside>
 
     <!-- SUBMENU LATERAL -->
-    <aside
-      v-if="activeSubmenu"
-      ref="submenu"
-      class="submenu-panel"
-      :style="submenuStyles"
-    >
+    <aside v-if="activeSubmenu" ref="submenu" class="submenu-panel" :style="submenuStyles">
       <div class="submenu-header">
         <div class="submenu-header-main">
           <span class="submenu-pill">Módulo</span>
@@ -143,13 +97,7 @@
             {{ activeSubmenu.label }}
           </span>
         </div>
-        <b-button
-          type="is-text"
-          size="is-small"
-          icon-right="times"
-          class="submenu-close"
-          @click="closeSubmenu"
-        />
+        <b-button type="is-text" size="is-small" icon-right="times" class="submenu-close" @click="closeSubmenu" />
       </div>
 
       <div class="submenu-body">
@@ -157,13 +105,8 @@
           Selecciona una sección:
         </p>
         <nav class="submenu-list">
-          <a
-            v-for="(sub, index) in activeSubmenu.children"
-            :key="index"
-            class="submenu-item"
-            :class="{ 'is-active': isActive(sub.path) }"
-            @click="navigateTo(sub.path)"
-          >
+          <a v-for="(sub, index) in activeSubmenu.children" :key="index" class="submenu-item"
+            :class="{ 'is-active': isActive(sub.path) }" @click="navigateTo(sub.path)">
             <span class="submenu-item-bar"></span>
             <span class="submenu-item-icon">
               <b-icon :icon="sub.icon" size="is-small" />
@@ -177,11 +120,7 @@
     </aside>
 
     <!-- OVERLAY -->
-    <div
-      v-if="activeSubmenu"
-      class="submenu-overlay"
-      @click="closeSubmenu"
-    ></div>
+    <div v-if="activeSubmenu" class="submenu-overlay" @click="closeSubmenu"></div>
   </div>
 </template>
 
@@ -208,9 +147,9 @@ export default {
       menuItems: [
         { group: 'Principal' },
         { label: 'Dashboard', icon: 'tachometer-alt', path: '/layouts/home' },
-        { label: 'Analíticas', icon: 'chart-line', path: '/analytics', badge: 'Nuevo', badgeType: 'is-success' },
+        { label: 'Analíticas', icon: 'chart-line', path: '/layouts/analiticas', badge: 'Nuevo', badgeType: 'is-success' },
         { group: 'Gestión' },
-        { label: 'Usuarios', icon: 'users', path: '/users' },
+        { label: 'Usuarios', icon: 'users', path: '/layouts/usuarios' },
         {
           label: 'Inventario', icon: 'box-open', children: [
             { label: 'Inventario', icon: 'boxes', path: '/layouts/inventario' },
@@ -220,7 +159,7 @@ export default {
         { label: 'Pedidos', icon: 'shopping-cart', path: '/orders', badge: '3' },
         { group: 'Otros' },
         { label: 'Ajustes', icon: 'cog', path: '/layouts/config.panel' },
-        { label: 'Ayuda', icon: 'question-circle', path: '/help' }
+        { label: 'Ayuda', icon: 'question-circle', path: '/layouts/Ayuda' }
       ],
       avatarUrl: 'https://github.com/octocat.png',
       avatarLoaded: false

@@ -25,9 +25,9 @@ const actorFromBody = (req) => {
   const a = req?.body?.actor;
   return a && typeof a === 'object'
     ? {
-      userId: isDef(a.userId) ? String(a.userId) : null,
-      name: isDef(a.name) ? String(a.name) : null
-    }
+        userId: isDef(a.userId) ? String(a.userId) : null,
+        name: isDef(a.name) ? String(a.name) : null
+      }
     : null;
 };
 
@@ -55,8 +55,8 @@ const normNum = (v) =>
   v === null || v === undefined
     ? 'x'
     : (Number(v) < 0
-      ? `m${String(Math.abs(Number(v)).toFixed(2)).replace('.', 'd')}`
-      : String(Number(v).toFixed(2)).replace('.', 'd'));
+        ? `m${String(Math.abs(Number(v)).toFixed(2)).replace('.', 'd')}`
+        : String(Number(v).toFixed(2)).replace('.', 'd'));
 
 const normStr = (s) => (s || 'x');
 
@@ -177,49 +177,57 @@ const isMultipleOfStep = (value, step) => {
   return diff < 1e-6;
 };
 
-/* ===== Rangos por defecto por tipo (uso interno para seed/items/tabs) ===== */
+/* ===== Rangos mínimos por defecto por tipo (uso interno para seed/items/tabs)
+   Estos son los "rangos mínimos por defecto" para crear nuevas planillas
+   sin generar matrices gigantes:
+   - SPH:  -6.00 a +6.00
+   - BASE:  0.00 a +8.00
+   - CYL:  -6.00 a +6.00
+   - ADD:   0.00 a +6.00 (ADD sigue siendo solo positiva)
+   Se siguen respetando los PHYSICAL_LIMITS para validación.
+===== */
 
 const defaultRangesByTipo = {
   BASE: {
     base: {
-      start: PHYSICAL_LIMITS.BASE.min,
-      end: PHYSICAL_LIMITS.BASE.max,
+      start: 0,
+      end: 8,
       step: 1
     }
   },
   SPH_CYL: {
     sph: {
-      start: PHYSICAL_LIMITS.SPH.min,
-      end: PHYSICAL_LIMITS.SPH.max,
+      start: -6,
+      end: 6,
       step: 0.25
     },
     cyl: {
-      start: PHYSICAL_LIMITS.CYL.min,
-      end: PHYSICAL_LIMITS.CYL.max,
+      start: -6,
+      end: 6,
       step: 0.25
     }
   },
   SPH_ADD: {
     sph: {
-      start: PHYSICAL_LIMITS.SPH.min,
-      end: PHYSICAL_LIMITS.SPH.max,
+      start: -6,
+      end: 6,
       step: 0.25
     },
     add: {
-      start: PHYSICAL_LIMITS.ADD.min,
-      end: PHYSICAL_LIMITS.ADD.max,
+      start: 0,
+      end: 6,
       step: 0.25
     }
   },
   BASE_ADD: {
     base: {
-      start: PHYSICAL_LIMITS.BASE.min,
-      end: PHYSICAL_LIMITS.BASE.max,
+      start: 0,
+      end: 8,
       step: 1
     },
     add: {
-      start: PHYSICAL_LIMITS.ADD.min,
-      end: PHYSICAL_LIMITS.ADD.max,
+      start: 0,
+      end: 6,
       step: 0.25
     }
   }
@@ -1104,8 +1112,8 @@ router.post(
       console.error('POST /sheets error:', err);
       const details = err?.errors
         ? Object.fromEntries(
-          Object.entries(err.errors).map(([k, v]) => [k, v?.message || String(v)])
-        )
+            Object.entries(err.errors).map(([k, v]) => [k, v?.message || String(v)])
+          )
         : err?.message || 'unknown';
       res.status(500).json({ ok: false, message: 'Error al crear hoja', details });
     }
@@ -1350,7 +1358,7 @@ router.get(
         const doc = await MatrixSphCyl.findOne({ sheet: sheet._id });
 
         const defSph = defRanges.sph || { start: -6, end: 6 };
-        const defCyl = defRanges.cyl || { start: -6, end: 0 };
+        const defCyl = defRanges.cyl || { start: -6, end: 6 };
 
         const rawSphMin = isDef(req.query.sphMin)
           ? Number(req.query.sphMin)
@@ -1412,7 +1420,7 @@ router.get(
         const doc = await MatrixBifocal.findOne({ sheet: sheet._id });
 
         const defSph = defRanges.sph || { start: -6, end: 6 };
-        const defAdd = defRanges.add || { start: 1.0, end: 6.0 };
+        const defAdd = defRanges.add || { start: 0.0, end: 6.0 };
 
         const rawSphMin = isDef(req.query.sphMin)
           ? Number(req.query.sphMin)
@@ -1502,7 +1510,7 @@ router.get(
       if (sheet.tipo_matriz === 'BASE_ADD') {
         const doc = await MatrixProgresivo.findOne({ sheet: sheet._id });
 
-        const defAdd = defRanges.add || { start: 0.75, end: 6.0 };
+        const defAdd = defRanges.add || { start: 0.0, end: 6.0 };
 
         const rawAddMin = isDef(req.query.addMin)
           ? Number(req.query.addMin)

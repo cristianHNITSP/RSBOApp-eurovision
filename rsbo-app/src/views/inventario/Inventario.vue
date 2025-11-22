@@ -143,31 +143,21 @@ const resolverGridProps = (sheet, activeInternal) => {
 
 <template>
   <section class="section section-matriz-dioptrias">
+
+    <span class="inventario-pill">
+      <b-icon icon="life-ring" size="is-small" class="mr-1" />
+      Inventario
+    </span>
     <div class="columns is-multiline">
       <div class="column is-12">
-        <TabsManager
-          :initial-sheets="dynamicSheets"
-          :active-id="activeSheet"
-          :configuracion="configuracion"
-          :actor="user"
-          :loading-tabs="loadingSheets"
-          @update:active="activeSheet = $event"
-          @update:internal="activeInternalTab = $event"
-          @crear="crearNuevaPlanilla"
-          @reorder="reordenarSheets"
-        >
+        <TabsManager :initial-sheets="dynamicSheets" :active-id="activeSheet" :configuracion="configuracion"
+          :actor="user" :loading-tabs="loadingSheets" @update:active="activeSheet = $event"
+          @update:internal="activeInternalTab = $event" @crear="crearNuevaPlanilla" @reorder="reordenarSheets">
           <template #default="{ activeSheet: sheet, activeInternal }">
-            <div
-              v-if="sheet && sheet.id !== 'nueva'"
-              :key="sheet.id"
-              class="contenido-planilla animated-sheet"
-            >
+            <div v-if="sheet && sheet.id !== 'nueva'" :key="sheet.id" class="contenido-planilla animated-sheet">
               <div class="planilla-wrapper">
-                <component
-                  :is="resolverGrid(sheet.tipo_matriz)"
-                  v-bind="resolverGridProps(sheet, activeInternal)"
-                  :actor="user"         
-                />
+                <component :is="resolverGrid(sheet.tipo_matriz)" v-bind="resolverGridProps(sheet, activeInternal)"
+                  :actor="user" />
               </div>
             </div>
           </template>
@@ -181,26 +171,45 @@ const resolverGridProps = (sheet, activeInternal) => {
 .section-matriz-dioptrias {
   border-bottom: 1px solid #ccc;
   border-radius: 8px;
-  padding: 1rem;
+  padding: 1.5rem;
   background-color: #ffffff;
 }
+
+.inventario-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #4f46e5;
+  background: #eef2ff;
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+  margin-bottom: 1rem;
+}
+
 .contenido-planilla {
   width: 100%;
   height: 100%;
 }
+
 .planilla-wrapper {
   width: 100%;
   height: 600px;
 }
+
 .animated-sheet {
   animation: sheetFadeSlide 0.26s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
+
 @keyframes sheetFadeSlide {
   0% {
     opacity: 0;
     transform: translateY(10px) scale(0.98);
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
   }
+
   100% {
     opacity: 1;
     transform: translateY(0) scale(1);

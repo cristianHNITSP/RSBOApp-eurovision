@@ -1,5 +1,12 @@
 <template>
   <section class="section-config" v-motion-fade-visible-once>
+
+    <span class="config-pill">
+      <b-icon icon="life-ring" size="is-small" class="mr-1" />
+      Configuración
+    </span>
+
+
     <b-tabs v-model="activeTab" type="is-boxed" expanded animated>
       <!-- TAB PERFIL -->
       <b-tab-item label="Mi perfil" icon="user" value="profile">
@@ -29,7 +36,7 @@
 
 <script setup>
 import { ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router' 
+import { useRoute, useRouter } from 'vue-router'
 import MiUser from '../../views/config/options/MiUser.vue'
 
 // 🔹 Props que vienen del layout (por router-view): :user, :loading
@@ -100,5 +107,19 @@ watch(
   background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
   border-bottom: 1px solid #ccc;
+}
+
+.config-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #4f46e5;
+    background: #eef2ff;
+    padding: 0.2rem 0.45rem;
+    border-radius: 999px;
+    margin-bottom: 1rem;
 }
 </style>

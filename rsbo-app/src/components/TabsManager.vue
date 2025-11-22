@@ -36,9 +36,9 @@
     </div>
 
     <!-- CONTENIDO -->
-    <div :key="activeId" class="box plantillas-contenedor">
+    <div :key="activeId" class="plantillas-contenedor">
       <!-- NUEVA -->
-      <div v-if="activeId === 'nueva'">
+      <div class="box" v-if="activeId === 'nueva'">
         <form @submit.prevent="handleCrear">
           <!-- BASE -->
           <b-field label="Selecciona la Base">
@@ -749,6 +749,17 @@ const handleTabClick = (id) => {
 </script>
 
 <style scoped>
+
+.plantillas-contenedor{
+  background: #fff;
+  border: 1px solid rgba(113,77,210,0.12);
+  border-radius: 0 6px 6px 6px;
+  min-height: 140px;
+  box-shadow: 0 6px 18px rgba(113,77,210,0.04);
+  transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+
+}
+
 /* ===== Tabs ===== */
 .tabs-wrapper{ display:flex; flex-wrap:nowrap; overflow-x:auto; gap:.25rem; border-bottom:2px solid #dbdbdb; }
 .tab-item{

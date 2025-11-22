@@ -19,10 +19,23 @@ const routes = [
         meta: { requiresAuth: true },
       },
       {
+        path: 'analiticas',
+        name: 'Análiticas',
+        component: () => import('../views/dashboard/Analiticas.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
         path: 'inventario',
         name: 'Inventario',
         component: () => import('../views/inventario/Inventario.vue'),
         meta: { requiresAuth: true },
+      },
+
+      {
+        path: 'usuarios',
+        name: 'usuarios',
+        component: () => import('../views/gestion/Usuarios.vue'),
+        meta: { requiresAuth: true},
       },
       // CONFIG principal con tabs
       {
@@ -43,6 +56,12 @@ const routes = [
             tab: 'profile', // tab que activaremos en Config.vue
           },
         }),
+      },
+      {
+        path: 'ayuda',
+        name: 'Ayuda',
+        component: () => import('../views/Ayuda.vue'),
+        meta: { requiresAuth: true},
       },
     ],
   },

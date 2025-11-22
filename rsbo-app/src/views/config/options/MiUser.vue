@@ -49,7 +49,7 @@
     <div v-else class="columns is-multiline">
       <!-- Columna izquierda: Avatar, estadísticas y seguridad -->
       <div class="column is-4">
-        <div class="box position-relative">
+        <div class=" position-relative">
           <!-- Info básica -->
           <div class="section-info has-text-centered">
             <!-- Componente de avatar -->
@@ -192,7 +192,7 @@
 
       <!-- Columna derecha: Perfil -->
       <div class="column is-8">
-        <div class="box position-relative">
+        <div class=" position-relative">
           <!-- Iconos de edición perfil -->
           <div class="box-icons">
             <span

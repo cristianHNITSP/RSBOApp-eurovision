@@ -305,13 +305,13 @@ export default {
 
 <template>
     <div class="app-layout" style="background-color: white;">
-        <!-- 🔌 Aviso sin conexión -->
+        <!-- Aviso sin conexión   -->
         <b-notification v-if="isOffline" type="is-danger" aria-close-label="Cerrar notificación" has-icon
             class="has-text-centered" style="position: fixed; top: 0; width: 100%; z-index: 2000;">
             No hay conexión a internet. Por favor verifica tu red.
         </b-notification>
 
-        <!--Loading global -->
+        <!-- Aviso sin conexión (loading)  -->
         <b-loading v-model="showLoading" :is-full-page="true" :can-cancel="false" :is-fullscreen="true"
             aria-label="Cargando...">
             <b-icon pack="fas" icon="sync-alt" size="is-large" custom-class="fa-spin" />
@@ -335,12 +335,12 @@ export default {
                 'ignore-grid-mobile': isMobile && showPanel,
                 'visible-sidebar': isMobileSidebarVisible && isMobile && showPanel
             }" :style="{
-            marginLeft: isMobile
-                ? (isMobileSidebarVisible ? '70px' : '0px')
-                : (isSidebarCollapsed ? '70px' : '240px'),
-            marginRight: showPanel ? '285px' : '0px',
-            transition: 'margin-left 0.3s ease, margin-right 0.3s ease'
-        }">
+                marginLeft: isMobile
+                    ? (isMobileSidebarVisible ? '70px' : '0px')
+                    : (isSidebarCollapsed ? '70px' : '240px'),
+                marginRight: showPanel ? '285px' : '0px',
+                transition: 'margin-left 0.3s ease, margin-right 0.3s ease'
+            }">
                 <!--Header / Panel superior -->
                 <section class="dashboard-header" ref="motionRef">
                     <div class="dashboard-toolbar">

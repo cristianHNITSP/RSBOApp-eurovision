@@ -28,7 +28,7 @@
 #sudo docker compose --profile dev down
 
 #Ejecutar la semillas de auth-service
-#docker exec -it rsboapp-auth npm run seed-users
+#sudo docker exec -it rsboapp-auth npm run seed-users
 
 
 # ver logs -f es para seguir los actualizados
@@ -52,12 +52,15 @@ services:
       - ./backend/auth-service:/app
       - /app/node_modules
     env_file:
-      - ./backend/auth-service/.env   # cargar variables de entorno    
+      - ./backend/auth-service/.env
     environment:
       NODE_ENV: development
+      # 🔗 OJO: siempre apunta al mongo de ESTE compose
       MONGO_URI: "mongodb://root:${MONGO_PASSWORD}@mongo:27017/auth_db?authSource=admin"
     restart: always
     profiles: ["dev"]
+    networks:
+      - rsbo-net
 
   # 🚀 Inventory Service
   inventory-service:
@@ -74,12 +77,14 @@ services:
       - ./backend/inventory-service:/app
       - /app/node_modules
     env_file:
-      - ./backend/inventory-service/.env   # cargar variables de entorno  
+      - ./backend/inventory-service/.env
     environment:
       NODE_ENV: development
       MONGO_URI: "mongodb://root:${MONGO_PASSWORD}@mongo:27017/inventory_db?authSource=admin"
     restart: always
     profiles: ["dev"]
+    networks:
+      - rsbo-net
 
   # 🚀 Orders Service
   orders-service:
@@ -96,12 +101,14 @@ services:
       - ./backend/orders-service:/app
       - /app/node_modules
     env_file:
-      - ./backend/orders-service/.env   # cargar variables de entorno  
+      - ./backend/orders-service/.env
     environment:
       NODE_ENV: development
       MONGO_URI: "mongodb://root:${MONGO_PASSWORD}@mongo:27017/orders_db?authSource=admin"
     restart: always
     profiles: ["dev"]
+    networks:
+      - rsbo-net
 
   # 🚀 Notification Service
   notification-service:
@@ -118,12 +125,14 @@ services:
       - ./backend/notification-service:/app
       - /app/node_modules
     env_file:
-      - ./backend/notification-service/.env   # cargar variables de entorno      
+      - ./backend/notification-service/.env
     environment:
       NODE_ENV: development
       MONGO_URI: "mongodb://root:${MONGO_PASSWORD}@mongo:27017/notification_db?authSource=admin"
     restart: always
     profiles: ["dev"]
+    networks:
+      - rsbo-net
 
   # 🚪 Gateway
   gateway:
@@ -143,32 +152,37 @@ services:
       - ./backend/gateway:/app
       - /app/node_modules
     env_file:
-      - ./backend/gateway/.env   # cargar variables de entorno
+      - ./backend/gateway/.env
     environment:
       NODE_ENV: development
     restart: always
     profiles: ["dev"]
+    networks:
+      - rsbo-net
 
-  #MongoDB
+  #MongoDB RSBO
   mongo:
     image: mongo:6
     container_name: rsboapp-mongo
     ports:
-      - "27017:27017"
+      - "27017:27017" # Si tienes un Mongo local en 27017, puedes quitar esta línea
     volumes:
-      - mongo-data:/data/db
+      - rsbo-mongo-data:/data/db
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
     restart: always
+    networks:
+      - rsbo-net
 
-  #Mongo Express
+  #Mongo Express RSBO
   mongo-express:
     image: mongo-express
     container_name: rsboapp-mongo-express
     ports:
       - "127.0.0.1:8081:8081"
     environment:
+      # Aquí usamos la forma "SERVER" porque estamos en la misma red
       ME_CONFIG_MONGODB_SERVER: mongo
       ME_CONFIG_MONGODB_ADMINUSERNAME: root
       ME_CONFIG_MONGODB_ADMINPASSWORD: ${MONGO_PASSWORD}
@@ -178,6 +192,13 @@ services:
       - mongo
     restart: always
     profiles: ["dev"]
+    networks:
+      - rsbo-net
+
+networks:
+  rsbo-net:
+    driver: bridge
 
 volumes:
-  mongo-data:
+  rsbo-mongo-data:
+    driver: local

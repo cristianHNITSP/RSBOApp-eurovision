@@ -200,7 +200,7 @@
               :value="coveragePercent"
               size="is-small"
               type="is-primary"
-              show-value="false"
+              :show-value="false"
             />
             <b-skeleton v-else :width="'100%'" :height="8" animated class="mb-3" />
 
@@ -223,7 +223,7 @@
               :value="safeStockPercent"
               size="is-small"
               type="is-info"
-              show-value="false"
+              :show-value="false"
             />
             <b-skeleton v-else :width="'100%'" :height="8" animated class="mb-3" />
 

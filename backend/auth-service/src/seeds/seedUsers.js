@@ -1,4 +1,6 @@
+// backend/auth-service/seed/seed-users.js (o donde lo tengas)
 const mongoose = require('mongoose');
+const bcrypt = require('bcrypt');
 const User = require('../models/User');
 const Role = require('../models/Role');
 
@@ -14,9 +16,7 @@ async function seed() {
     });
     console.log('✅ Conectado a MongoDB');
 
-    // =========================================
-    // 1️⃣ Crear Roles con permisos
-    // =========================================
+    // 1️⃣ Roles
     const rolesData = [
       {
         name: 'administrador',
@@ -60,9 +60,7 @@ async function seed() {
       }
     }
 
-    // =========================================
-    // 2️⃣ Crear usuarios iniciales
-    // =========================================
+    // 2️⃣ Usuarios iniciales
     const adminRole = await Role.findOne({ name: 'administrador' });
     const modRole = await Role.findOne({ name: 'moderador' });
     const labRole = await Role.findOne({ name: 'laboratorio' });
@@ -106,11 +104,12 @@ async function seed() {
     for (const u of usersData) {
       const existingUser = await User.findOne({ email: u.email });
       if (!existingUser) {
-        // 🔹 Guardar contraseña tal cual, sin hash
+        const hashedPassword = await bcrypt.hash(u.password, 10);
+
         await User.create({
           name: u.name,
           email: u.email,
-          password: u.password, // <-- sin bcrypt
+          password: hashedPassword, // 👈 ahora sí hash
           role: u.role,
           tokens: [],
           isActive: true,

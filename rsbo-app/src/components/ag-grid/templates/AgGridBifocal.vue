@@ -1,4 +1,55 @@
 <!-- src/components/ag-grid/templates/AgGridBifocal.vue -->
+<template>
+  <div class="is-flex is-flex-direction-column" style="height: 100%;">
+    <navtools
+      class="p-4"
+      v-model="formulaValue"
+      :dirty="dirty"
+      :saving="saving"
+      :total-rows="totalRows"
+      :sheet-name="sheetName"
+      :tipo-matriz="tipoMatriz"
+      :material="material"
+      :tratamientos="tratamientos"
+      :last-saved-at="lastSavedAt"
+      @add-row="handleAddRow"
+      @add-column="handleAddColumn"
+      @clear-filters="clearFilters"
+      @reset-sort="resetSort"
+      @toggle-filters="handleToggleFilters"
+      @save-request="handleSave"
+      @discard-changes="handleDiscard"
+      @refresh="handleRefresh"
+      @seed="handleSeed"
+      @export="handleExport"
+    />
+
+    <div
+      class="buefy-balham-light grid-shell"
+      :class="{ 'grid-shell--switching': switchingView }"
+      style="flex: 1 1 auto; display: flex; flex-direction: column; overflow: auto;"
+    >
+      <AgGridVue
+        class="ag-grid-buefy"
+        :columnDefs="columns"
+        :rowData="rowData"
+        :defaultColDef="defaultColDef"
+        :getRowId="getRowId"
+        :animateRows="true"
+        :localeText="localeText"
+        :theme="themeCustom"
+        :rowHeight="30"
+        :headerHeight="32"
+        :suppressMovableColumns="true"
+        @cellClicked="onCellClicked"
+        @cellValueChanged="onCellValueChanged"
+        @grid-ready="onGridReady"
+        style="width: 100%; height: 100%;"
+      />
+    </div>
+  </div>
+</template>
+
 <script setup>
 import { ref, computed, watch, nextTick, onMounted } from "vue";
 import { AgGridVue } from "ag-grid-vue3";
@@ -10,30 +61,43 @@ import {
   colorSchemeLight
 } from "ag-grid-community";
 import navtools from "@/components/ag-grid/navtools.vue";
-import {
-  fetchItems,
-  saveChunk,
-  getSheet,
-  reseedSheet
-} from "@/services/inventory";
+import { fetchItems, saveChunk, getSheet, reseedSheet } from "@/services/inventory";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 const props = defineProps({
   sheetId: { type: String, required: true },
-  sphType: { type: String, default: "sph-neg" },
+  sphType: { type: String, default: "sph-neg" }, // sph-neg | sph-pos
   actor: { type: Object, default: null }
 });
 
-console.log(
-  "[AgGridBifocal] creado",
-  "sheetId:",
-  props.sheetId,
-  "sphType:",
-  props.sphType
-);
+/* ===================== ACK helpers ===================== */
+const ackOk = (ack, message = "Ok", status = 200) => {
+  if (typeof ack === "function") ack({ ok: true, status, message });
+};
+const ackErr = (ack, message = "Error", status = 400) => {
+  if (typeof ack === "function") ack({ ok: false, status, message });
+  else alert(message);
+};
+const msgFromErr = (e, fallback = "Error de servidor") =>
+  e?.response?.data?.message || e?.response?.data?.error || e?.message || fallback;
+const statusFromErr = (e) => e?.response?.status ?? 0;
+const normalizeAxiosOk = (res) => {
+  const status = res?.status ?? 200;
+  const body = res?.data ?? null;
+  if (body?.ok === false) return { ok: false, status, message: body?.message || "Operación rechazada" };
+  return { ok: true, status, message: body?.message || "Operación exitosa" };
+};
 
-/* Tema / textos */
+/* ===================== UI / Anim ===================== */
+const switchingView = ref(false);
+const raf = () =>
+  new Promise((resolve) => {
+    if (typeof requestAnimationFrame === "function") requestAnimationFrame(() => resolve());
+    else setTimeout(resolve, 0);
+  });
+
+/* ===================== Tema / locale ===================== */
 const themeCustom = themeQuartz
   .withPart(iconSetQuartzBold, colorSchemeLight)
   .withParams({
@@ -57,147 +121,198 @@ const themeCustom = themeQuartz
     oddRowBackgroundColor: "#fbfbff"
   });
 
-const localeText = {
-  noRowsToShow: "No hay filas para mostrar",
-  loadingOoo: "Cargando..."
+const localeText = { noRowsToShow: "No hay filas para mostrar", loadingOoo: "Cargando..." };
+
+/* ===================== Helpers numéricos ===================== */
+const isNumeric = (v) => /^-?\d+(\.\d+)?$/.test(String(v ?? "").trim());
+const to2 = (n) => {
+  const num = Number(n);
+  if (!Number.isFinite(num)) return 0;
+  return Number(num.toFixed(2));
+};
+const isQuarterStep = (value) => {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return false;
+  const scaled = num * 4;
+  return Math.abs(scaled - Math.round(scaled)) < 1e-6;
 };
 
-/* Helpers */
-const to2 = (n) => Number(parseFloat(n).toFixed(2));
 const norm = (n) => String(to2(n)).replace(".", "_");
 const denorm = (s) => Number(String(s).replace("_", "."));
-const isNumeric = (v) => /^-?\d+(\.\d+)?$/.test(String(v ?? "").trim());
 const uniqSorted = (arr) => [...new Set(arr)].sort((a, b) => a - b);
-const frange = (start, end, step) => {
+
+function sortSphForView(values) {
+  const dir = props.sphType === "sph-neg" ? "desc" : "asc";
+  return [...new Set(values)].sort((a, b) => (dir === "desc" ? b - a : a - b));
+}
+
+/** decimal-safe range builder (incluyente) */
+function buildAxisRange(start, end, step = 0.25) {
+  const s = Number(start);
+  const e = Number(end);
+  const st = Math.abs(Number(step) || 0.25);
+  if (!Number.isFinite(s) || !Number.isFinite(e) || !Number.isFinite(st) || st <= 0) return [];
+
+  const SCALE = 100;
+  const toInt = (x) => Math.round(Number(x) * SCALE);
+  const fromInt = (i) => Number((i / SCALE).toFixed(2));
+  const si = toInt(s);
+  const ei = toInt(e);
+  const di = Math.max(1, toInt(st));
+
   const out = [];
-  if (!step) return out;
-  if (start <= end) {
-    for (let v = start; v <= end + 1e-9; v += step) out.push(to2(v));
-  } else {
-    for (let v = start; v >= end - 1e-9; v -= step) out.push(to2(v));
+  if (si === ei) return [fromInt(si)];
+
+  const forward = si < ei;
+  for (let i = si; forward ? i <= ei : i >= ei; forward ? (i += di) : (i -= di)) {
+    out.push(fromInt(i));
+    if (out.length > 8000) break;
   }
   return out;
+}
+
+const fmtSigned = (n) => {
+  const num = Number(n);
+  if (!Number.isFinite(num)) return String(n ?? "");
+  const s = num.toFixed(2);
+  return num >= 0 ? `+${s}` : s;
 };
 
-// Actor normalizado
+/* ===================== Actor normalizado ===================== */
 const effectiveActor = computed(() => {
-  const src =
-    props.actor ||
-    (typeof window !== "undefined" ? window.__currentUser : null) ||
-    null;
-
+  const src = props.actor || (typeof window !== "undefined" ? window.__currentUser : null) || null;
   if (!src) return null;
-
   const userId = src.userId || src.id || src._id || null;
   const name = src.name || src.email || "Usuario";
-
   return { userId, name };
 });
 
-/* Estado */
+/* ===================== Estado grid ===================== */
 const gridApi = ref(null);
-const gridRef = ref(null);
 const rowData = ref([]);
 const addCols = ref([]);
 const sheetTabs = ref([]);
+const sheetMeta = ref(null);
+const physical = ref(null);
 const basesPorSph = ref(new Map());
+
 const dirty = ref(false);
 const saving = ref(false);
 const lastSavedAt = ref(null);
-const sheetMeta = ref(null);
 
 /** Buffer de cambios (sph, add, eye) */
 const pendingChanges = ref(new Map());
 
-watch(dirty, (v) => {
-  console.log("[AgGridBifocal] dirty cambió →", v);
-});
-watch(saving, (v) => {
-  console.log("[AgGridBifocal] saving cambió →", v);
-});
-
 const totalRows = computed(() => rowData.value.length);
-const sheetName = computed(
-  () => sheetMeta.value?.nombre || sheetMeta.value?.name || "Hoja bifocal"
-);
+const sheetName = computed(() => sheetMeta.value?.nombre || sheetMeta.value?.name || "Hoja bifocal");
 const tipoMatriz = computed(() => sheetMeta.value?.tipo_matriz || "SPH_ADD");
 const material = computed(() => sheetMeta.value?.material || "");
 const tratamientos = computed(() => sheetMeta.value?.tratamientos || []);
 
-/** Registro de cambio de celda bifocal */
-function markCellChangedBifocal({
-  sph,
-  add,
-  eye,
-  base_izq,
-  base_der,
-  existencias
-}) {
-  const s = Number(sph);
-  const a = Number(add);
-  const key = `${s}|${a}|${eye}`;
+/* ===================== Límites físicos (source of truth) ===================== */
+const PHYS = computed(() => {
+  const p = physical.value || {};
+  return {
+    SPH: p.SPH || { min: -40, max: 40 },
+    ADD: p.ADD || { min: 0, max: 8 }
+  };
+});
+
+function inPhysSph(v) {
+  const n = to2(v);
+  return Number.isFinite(n) && n >= PHYS.value.SPH.min && n <= PHYS.value.SPH.max;
+}
+function inPhysAdd(v) {
+  const n = to2(v);
+  return Number.isFinite(n) && n >= PHYS.value.ADD.min && n <= PHYS.value.ADD.max;
+}
+
+/* ===================== Reglas SPH: plantilla vs fetch ===================== */
+function getTabRanges() {
+  const defaults =
+    props.sphType === "sph-pos"
+      ? { start: 0, end: 6, step: 0.25 }
+      : { start: 0, end: -6, step: 0.25 };
+
+  const tab = (sheetTabs.value || []).find((t) => t?.id === props.sphType);
+  const r = tab?.ranges || {};
+  const sphR = r.sph || {};
+
+  const rawStart = Number(sphR.start ?? defaults.start);
+  const rawEnd = Number(sphR.end ?? defaults.end);
+  const rawStep = Math.abs(Number(sphR.step ?? defaults.step)) || 0.25;
+
+  const displayStart = props.sphType === "sph-neg" ? Math.max(rawStart, rawEnd) : Math.min(rawStart, rawEnd);
+  const displayEnd = props.sphType === "sph-neg" ? Math.min(rawStart, rawEnd) : Math.max(rawStart, rawEnd);
+
+  return { displayStart, displayEnd, step: rawStep, tab };
+}
+
+function buildFetchQueryForView() {
+  const sphMin = props.sphType === "sph-neg" ? PHYS.value.SPH.min : 0;
+  const sphMax = props.sphType === "sph-neg" ? 0 : PHYS.value.SPH.max;
+  return { sphMin, sphMax, addMin: PHYS.value.ADD.min, addMax: PHYS.value.ADD.max, eyes: "OD,OI" };
+}
+
+/* ===================== Cambio de celda ===================== */
+function markCellChangedBifocal({ sph, add, eye, base_izq, base_der, existencias }) {
+  const s = to2(sph);
+  const a = to2(add);
+  const e = String(eye).toUpperCase();
+  const key = `${s}|${a}|${e}`;
+
   pendingChanges.value.set(key, {
     sph: s,
     add: a,
-    eye,
-    base_izq: Number(base_izq ?? 0),
-    base_der: Number(base_der ?? 0),
+    eye: e,
+    base_izq: to2(base_izq ?? 0),
+    base_der: to2(base_der ?? 0),
     existencias: Number(existencias ?? 0)
   });
+
   dirty.value = true;
 }
 
-/* Columnas */
-const makeLeaf = (field, header, add, eye) => ({
-  field,
-  headerName: header,
-  editable: true,
-  filter: "agNumberColumnFilter",
-  width: 96,
-  minWidth: 80,
-  maxWidth: 110,
-  resizable: true,
-  cellClass: ["ag-cell--compact", "ag-cell--numeric"],
-  headerClass: ["ag-header-cell--compact"],
-  valueSetter: (p) => {
-    const v = String(p.newValue ?? "").trim();
-    const before = p.data[p.colDef.field];
-    const newVal = isNumeric(v) ? Number(v) : 0;
-    p.data[p.colDef.field] = newVal;
+/* ===================== Columnas ===================== */
+function makeLeaf(field, header, add, eye) {
+  return {
+    field,
+    headerName: header,
+    editable: true,
+    filter: "agNumberColumnFilter",
+    minWidth: 90,
+    maxWidth: 120,
+    resizable: true,
+    cellClass: ["ag-cell--compact", "ag-cell--numeric"],
+    headerClass: ["ag-header-cell--compact"],
+    valueSetter: (p) => {
+      const raw = String(p.newValue ?? "").trim();
+      const newVal = isNumeric(raw) ? Number(raw) : 0;
+      p.data[p.colDef.field] = newVal;
 
-    markCellChangedBifocal({
-      sph: p.data.sph,
-      add,
-      eye,
-      base_izq: p.data.base_izq,
-      base_der: p.data.base_der,
-      existencias: newVal
-    });
+      markCellChangedBifocal({
+        sph: p.data.sph,
+        add,
+        eye,
+        base_izq: p.data.base_izq,
+        base_der: p.data.base_der,
+        existencias: newVal
+      });
 
-    console.log(
-      "[AgGridBifocal] valueSetter",
-      p.colDef.field,
-      "sph=",
-      p.data.sph,
-      "old=",
-      before,
-      "new=",
-      p.data[p.colDef.field]
-    );
-    return true;
-  }
-});
+      return true;
+    }
+  };
+}
 
 const columns = computed(() => {
   const neg = props.sphType === "sph-neg";
-
   return [
     {
       headerName: neg ? "SPH (-)" : "SPH (+)",
       children: [
         {
           field: "sph",
-          headerName: neg ? "SPH -" : "SPH +",
+          headerName: "SPH",
           pinned: "left",
           width: 90,
           minWidth: 86,
@@ -205,17 +320,10 @@ const columns = computed(() => {
           resizable: false,
           editable: false,
           sortable: true,
-          comparator: (a, b) => a - b,
+          comparator: (a, b) => Number(a) - Number(b),
           filter: "agNumberColumnFilter",
-          cellClass: [
-            "ag-cell--compact",
-            "ag-cell--numeric",
-            "ag-cell--pinned"
-          ],
-          headerClass: [
-            "ag-header-cell--compact",
-            "ag-header-cell--pinned"
-          ],
+          cellClass: ["ag-cell--compact", "ag-cell--numeric", "ag-cell--pinned"],
+          headerClass: ["ag-header-cell--compact", "ag-header-cell--pinned"],
           valueFormatter: (p) => {
             const v = Number(p.value);
             return Number.isFinite(v) ? v.toFixed(2) : p.value ?? "";
@@ -224,14 +332,11 @@ const columns = computed(() => {
       ]
     },
     {
-      headerName: "ADD +",
+      headerName: "ADD (+)",
       children: addCols.value.map((a) => ({
-        headerName: a.toFixed(2),
+        headerName: fmtSigned(a),
         marryChildren: true,
-        children: [
-          makeLeaf(`add_${norm(a)}_OD`, "OD", a, "OD"),
-          makeLeaf(`add_${norm(a)}_OI`, "OI", a, "OI")
-        ]
+        children: [makeLeaf(`add_${norm(a)}_OD`, "OD", a, "OD"), makeLeaf(`add_${norm(a)}_OI`, "OI", a, "OI")]
       }))
     }
   ];
@@ -249,253 +354,127 @@ const defaultColDef = {
   headerClass: "ag-header-cell--compact"
 };
 
-const getRowId = (p) => p.data.sph.toString();
+const getRowId = (p) => String(p.data.sph);
 
-/* Rango SPH por tab (backend) o fallback */
-const rangeForTabFallback = (tabId) =>
-  tabId === "sph-pos" ? { sphMin: 0, sphMax: 6 } : { sphMin: -6, sphMax: 0 };
-
-function getSphRangeFromTabsOrFallback(tabId) {
-  const fallback = rangeForTabFallback(tabId);
-  const tab = sheetTabs.value.find((t) => t.id === tabId);
-
-  if (!tab || !tab.ranges || !tab.ranges.sph) return fallback;
-
-  const rs = tab.ranges.sph;
-  const sphStart = Number(rs.start ?? fallback.sphMin);
-  const sphEnd = Number(rs.end ?? fallback.sphMax);
-
-  return {
-    sphMin: Math.min(sphStart, sphEnd),
-    sphMax: Math.max(sphStart, sphEnd)
-  };
+/* ===================== Load (meta / rows) ===================== */
+async function loadSheetMeta() {
+  const { data } = await getSheet(props.sheetId);
+  const payload = data?.data || data;
+  sheetMeta.value = payload?.sheet || null;
+  sheetTabs.value = Array.isArray(payload?.tabs) ? payload.tabs : [];
+  physical.value = payload?.physicalLimits || null;
 }
 
-/* Carga desde API (meta + tabs + items) */
-async function loadAll() {
-  try {
-    console.log(
-      "[AgGridBifocal] loadAll",
-      "sheetId:",
-      props.sheetId,
-      "sphType:",
-      props.sphType
-    );
-    const { data } = await getSheet(props.sheetId);
-    const metaData = data?.data || data;
-    sheetMeta.value = metaData?.sheet || null;
-    sheetTabs.value = metaData?.tabs || [];
-    console.log("[AgGridBifocal] sheetMeta:", sheetMeta.value);
-    console.log("[AgGridBifocal] tabs:", sheetTabs.value);
+async function loadRows() {
+  const tabCfg = getTabRanges();
+  const qFetch = buildFetchQueryForView();
 
-    const tab = sheetTabs.value.find((t) => t.id === props.sphType);
+  const { data: itemsRes } = await fetchItems(props.sheetId, qFetch);
+  const itemsRaw = itemsRes?.data || [];
 
-    const { sphMin, sphMax } = getSphRangeFromTabsOrFallback(props.sphType);
-    console.log(
-      "[AgGridBifocal] fetchItems rango SPH:",
-      sphMin,
-      "→",
-      sphMax
-    );
-    const { data: itemsRes } = await fetchItems(props.sheetId, {
-      sphMin,
-      sphMax,
-      eyes: "OD,OI"
-    });
-    const items = itemsRes?.data || [];
-    console.log("[AgGridBifocal] items recibidos:", items.length);
+  const items = itemsRaw
+    .map((i) => ({ ...i, sph: to2(i.sph), add: to2(i.add), existencias: Number(i.existencias ?? 0) }))
+    .filter((i) => inPhysSph(i.sph) && inPhysAdd(i.add));
 
-    const addsFromData = uniqSorted(
-      items.map((i) => to2(i.add)).filter((v) => !Number.isNaN(v))
-    );
-    const addsFromTab = Array.isArray(tab?.ranges?.addCols)
-      ? tab.ranges.addCols.map(to2).sort((a, b) => a - b)
-      : [];
-    addCols.value = addsFromData.length ? addsFromData : addsFromTab;
-    console.log(
-      "[AgGridBifocal] ADDs (data):",
-      addsFromData,
-      "| (tab):",
-      addsFromTab
-    );
+  const tab = tabCfg.tab;
 
-    basesPorSph.value = new Map();
-    for (const it of items) {
-      const sph = to2(it.sph);
-      if (!basesPorSph.value.has(sph)) {
-        basesPorSph.value.set(sph, {
-          base_izq: to2(it.base_izq ?? 0),
-          base_der: to2(it.base_der ?? 0)
-        });
-      }
+  const addsFromTab = Array.isArray(tab?.ranges?.addCols)
+    ? tab.ranges.addCols.map(to2).filter(inPhysAdd)
+    : [];
+  const addsFromData = items.map((i) => to2(i.add)).filter(inPhysAdd);
+  addCols.value = uniqSorted([...addsFromTab, ...addsFromData]);
+
+  basesPorSph.value = new Map();
+  for (const it of items) {
+    const sph = to2(it.sph);
+    if (!basesPorSph.value.has(sph)) {
+      basesPorSph.value.set(sph, { base_izq: to2(it.base_izq ?? 0), base_der: to2(it.base_der ?? 0) });
     }
-
-    const map = new Map(
-      items.map((i) => [
-        `${to2(i.sph)}|${to2(i.add)}|${String(i.eye).toUpperCase()}`,
-        Number(i.existencias ?? 0)
-      ])
-    );
-
-    let sphList = uniqSorted(items.map((i) => to2(i.sph)));
-    if (!sphList.length) {
-      const rg = tab?.ranges?.sph;
-      if (
-        rg &&
-        typeof rg.start === "number" &&
-        typeof rg.end === "number" &&
-        typeof rg.step === "number"
-      ) {
-        const generated = frange(rg.start, rg.end, rg.step);
-        if (
-          !generated.includes(0) &&
-          ((rg.start <= 0 && rg.end >= 0) ||
-            (rg.start >= 0 && rg.end <= 0))
-        ) {
-          generated.push(0);
-        }
-        sphList = uniqSorted(generated);
-      } else {
-        const r = rangeForTabFallback(props.sphType);
-        sphList = uniqSorted(frange(r.sphMin, r.sphMax, 0.25));
-      }
-    }
-    console.log("[AgGridBifocal] sphList final:", sphList);
-
-    rowData.value = sphList.map((sph) => {
-      const bases = basesPorSph.value.get(sph) || {
-        base_izq: 0,
-        base_der: 0
-      };
-      const row = {
-        sph,
-        base_izq: bases.base_izq,
-        base_der: bases.base_der
-      };
-      addCols.value.forEach((add) => {
-        row[`add_${norm(add)}_OD`] =
-          map.get(`${sph}|${add}|OD`) ?? 0;
-        row[`add_${norm(add)}_OI`] =
-          map.get(`${sph}|${add}|OI`) ?? 0;
-      });
-      return row;
-    });
-
-    console.log(
-      "[AgGridBifocal] filas construidas:",
-      rowData.value.length
-    );
-
-    dirty.value = false;
-    pendingChanges.value.clear();
-    await nextTick();
-  } catch (e) {
-    console.error(
-      "[AgGridBifocal] Error loadAll:",
-      e?.response?.data || e
-    );
   }
+
+  const key = (sph, add, eye) => `${to2(sph)}|${to2(add)}|${String(eye).toUpperCase()}`;
+  const map = new Map(items.map((i) => [key(i.sph, i.add, i.eye), Number(i.existencias ?? 0)]));
+
+  let sphAxis = buildAxisRange(tabCfg.displayStart, tabCfg.displayEnd, tabCfg.step).map(to2);
+  const sphFromData = items.map((i) => to2(i.sph)).filter(inPhysSph);
+
+  const inView = (n) => (props.sphType === "sph-neg" ? n <= 0 : n >= 0);
+  const sphFinal = sortSphForView([...sphAxis, ...sphFromData].filter(inView));
+
+  if (!sphFinal.length) {
+    const fallback = props.sphType === "sph-pos" ? buildAxisRange(0, 6, 0.25) : buildAxisRange(0, -6, 0.25);
+    sphAxis = fallback.map(to2);
+  }
+
+  const axis = sphFinal.length ? sphFinal : sphAxis;
+
+  rowData.value = axis.map((sph) => {
+    const bases = basesPorSph.value.get(to2(sph)) || { base_izq: 0, base_der: 0 };
+    const row = { sph: to2(sph), base_izq: bases.base_izq, base_der: bases.base_der };
+
+    addCols.value.forEach((add) => {
+      row[`add_${norm(add)}_OD`] = map.get(key(sph, add, "OD")) ?? 0;
+      row[`add_${norm(add)}_OI`] = map.get(key(sph, add, "OI")) ?? 0;
+    });
+
+    return row;
+  });
+
+  dirty.value = false;
+  pendingChanges.value.clear();
+  await nextTick();
+  resetSort();
+}
+
+async function switchViewReload() {
+  switchingView.value = true;
+  await raf();
+  try {
+    await loadRows();
+  } finally {
+    await raf();
+    switchingView.value = false;
+  }
+}
+
+async function loadAll() {
+  await loadSheetMeta();
+  await switchViewReload();
 }
 
 onMounted(loadAll);
+
 watch(
   () => [props.sheetId, props.sphType],
-  () => {
-    console.log(
-      "[AgGridBifocal] props cambiaron → loadAll",
-      "sheetId:",
-      props.sheetId,
-      "sphType:",
-      props.sphType
-    );
-    loadAll();
-  },
-  { deep: true }
+  async () => {
+    pendingChanges.value.clear();
+    dirty.value = false;
+    await loadAll();
+  }
 );
 
-/* Guardado */
-async function handleSave() {
-  console.log(
-    "[AgGridBifocal] handleSave llamado. dirty:",
-    dirty.value,
-    "saving:",
-    saving.value,
-    "pendingChanges:",
-    pendingChanges.value.size
-  );
-  if (!dirty.value || pendingChanges.value.size === 0) {
-    console.log("[AgGridBifocal] handleSave → nada que guardar");
-    return;
-  }
-  if (!gridApi.value) {
-    console.warn("[AgGridBifocal] handleSave → sin gridApi, no se puede recolectar filas");
-    return;
-  }
-
-  saving.value = true;
-  try {
-    const rows = Array.from(pendingChanges.value.values());
-    console.log(
-      "[AgGridBifocal] rows a enviar (chunk):",
-      rows.length,
-      "ej row[0]:",
-      rows[0]
-    );
-
-    await saveChunk(props.sheetId, rows, effectiveActor.value);
-    dirty.value = false;
-    pendingChanges.value.clear();
-    lastSavedAt.value = new Date();
-    // Ya no recargamos toda la hoja aquí
-  } catch (e) {
-    console.error(
-      "[AgGridBifocal] Error saveChunk:",
-      e?.response?.data || e
-    );
-  } finally {
-    saving.value = false;
-  }
-}
-
-/* Edición rápida (barra fórmula) */
+/* ===================== Fórmula / edición rápida ===================== */
 const formulaValue = ref("");
 let activeCell = null;
+
+function parseAddEyeFromField(field) {
+  if (!field.startsWith("add_")) return null;
+  const tail = field.slice(4);
+  const parts = tail.split("_");
+  const eye = parts.pop();
+  const numStr = parts.join("_");
+  const add = denorm(numStr);
+  if (Number.isNaN(add)) return null;
+  return { add, eye };
+}
 
 const onCellClicked = (p) => {
   activeCell = p;
   formulaValue.value = p.value;
-  console.log(
-    "[AgGridBifocal] cellClicked",
-    "rowIndex=",
-    p.rowIndex,
-    "field=",
-    p.colDef.field,
-    "sph=",
-    p.data?.sph,
-    "value=",
-    p.value
-  );
 };
 
 const onCellValueChanged = (p) => {
-  console.log(
-    "[AgGridBifocal] cellValueChanged",
-    "rowIndex=",
-    p.rowIndex,
-    "field=",
-    p.colDef.field,
-    "sph=",
-    p.data?.sph,
-    "old=",
-    p.oldValue,
-    "new=",
-    p.newValue
-  );
-  if (
-    activeCell &&
-    activeCell.rowIndex === p.rowIndex &&
-    activeCell.colDef.field === p.colDef.field
-  ) {
+  if (activeCell && activeCell.rowIndex === p.rowIndex && activeCell.colDef.field === p.colDef.field) {
     formulaValue.value = p.newValue;
   }
   if (p.colDef.field.startsWith("add_")) {
@@ -515,43 +494,17 @@ const onCellValueChanged = (p) => {
   }
 };
 
-function parseAddEyeFromField(field) {
-  if (!field.startsWith("add_")) return null;
-  // add_1_50_OD -> ["1","50","OD"]
-  const tail = field.slice(4);
-  const parts = tail.split("_");
-  const eye = parts.pop();
-  const numStr = parts.join("_");
-  const add = denorm(numStr);
-  if (Number.isNaN(add)) return null;
-  return { add, eye };
-}
-
 watch(formulaValue, (val) => {
   if (!activeCell || !gridApi.value) return;
+
   const field = activeCell.colDef.field;
   const raw = String(val ?? "").trim();
   const newVal = isNumeric(raw) ? Number(raw) : 0;
 
-  console.log(
-    "[AgGridBifocal] formulaValue watch → update",
-    "sph=",
-    activeCell.data?.sph,
-    "field=",
-    field,
-    "newVal=",
-    newVal
-  );
-
   const updatedRow = { ...activeCell.data, [field]: newVal };
-  gridApi.value.applyTransaction({
-    update: [
-      updatedRow
-    ]
-  });
-  if (activeCell.data) {
-    activeCell.data[field] = newVal;
-  }
+  gridApi.value.applyTransaction({ update: [updatedRow] });
+
+  if (activeCell.data) activeCell.data[field] = newVal;
 
   const meta = parseAddEyeFromField(field);
   if (meta) {
@@ -568,28 +521,28 @@ watch(formulaValue, (val) => {
   }
 });
 
-/* Adders */
-const handleAddRow = async (nuevoValor) => {
-  console.log("[AgGridBifocal] handleAddRow nuevoValor:", nuevoValor);
-  const sph = Number(nuevoValor);
-  if (Number.isNaN(sph)) {
-    alert("Ingresa un SPH numérico");
-    return;
-  }
-  if (rowData.value.some((r) => r.sph === sph)) {
-    alert(`SPH ${sph} ya existe`);
-    return;
-  }
+/* ===================== Grid hooks ===================== */
+const onGridReady = (p) => {
+  gridApi.value = p.api;
+  nextTick(() => resetSort());
+};
 
-  const bases = basesPorSph.value.get(sph) || {
-    base_izq: 0,
-    base_der: 0
-  };
-  const row = {
-    sph,
-    base_izq: bases.base_izq,
-    base_der: bases.base_der
-  };
+/* ===================== Add row/col (con ACK) ===================== */
+const handleAddRow = async (nuevoValor, ack) => {
+  const sph = to2(nuevoValor);
+
+  if (!Number.isFinite(sph)) return ackErr(ack, "Ingresa un SPH numérico", 400);
+  if (!inPhysSph(sph)) return ackErr(ack, `SPH fuera de límites físicos (${PHYS.value.SPH.min} a ${PHYS.value.SPH.max})`, 400);
+  if (!isQuarterStep(sph)) return ackErr(ack, "SPH debe ser múltiplo de 0.25 (…00, …25, …50, …75)", 400);
+  if (rowData.value.some((r) => to2(r.sph) === sph)) return ackErr(ack, `SPH ${sph.toFixed(2)} ya existe`, 409);
+
+  const isNegView = props.sphType === "sph-neg";
+  if (isNegView && sph > 0) return ackErr(ack, "Vista SPH (-): SPH debe ser 0 o negativo", 400);
+  if (!isNegView && sph < 0) return ackErr(ack, "Vista SPH (+): SPH debe ser 0 o positivo", 400);
+
+  const bases = basesPorSph.value.get(sph) || { base_izq: 0, base_der: 0 };
+
+  const row = { sph, base_izq: bases.base_izq, base_der: bases.base_der };
   addCols.value.forEach((add) => {
     row[`add_${norm(add)}_OD`] = 0;
     row[`add_${norm(add)}_OI`] = 0;
@@ -599,288 +552,172 @@ const handleAddRow = async (nuevoValor) => {
   await nextTick();
   resetSort();
 
-  // Persistir inmediatamente todas las combinaciones (sph nuevo, cada add, OD/OI)
   try {
     const rowsToPersist = [];
     addCols.value.forEach((add) => {
-      rowsToPersist.push({
-        sph,
-        add,
-        eye: "OD",
-        base_izq: bases.base_izq,
-        base_der: bases.base_der,
-        existencias: 0
-      });
-      rowsToPersist.push({
-        sph,
-        add,
-        eye: "OI",
-        base_izq: bases.base_izq,
-        base_der: bases.base_der,
-        existencias: 0
-      });
+      rowsToPersist.push({ sph, add, eye: "OD", base_izq: bases.base_izq, base_der: bases.base_der, existencias: 0 });
+      rowsToPersist.push({ sph, add, eye: "OI", base_izq: bases.base_izq, base_der: bases.base_der, existencias: 0 });
     });
 
-    if (rowsToPersist.length) {
-      await saveChunk(props.sheetId, rowsToPersist, effectiveActor.value);
-      console.log(
-        "[AgGridBifocal] SPH nuevo persistido en BD, filas:",
-        rowsToPersist.length
-      );
-      lastSavedAt.value = new Date();
+    if (!rowsToPersist.length) {
+      ackOk(ack, "Fila agregada (sin columnas ADD aún).", 200);
+      return;
     }
+
+    const res = await saveChunk(props.sheetId, rowsToPersist, effectiveActor.value);
+    const ok = normalizeAxiosOk(res);
+    if (!ok.ok) return ackErr(ack, ok.message || "No se pudo agregar la fila", ok.status);
+
+    ackOk(ack, ok.message || `Fila agregada: SPH ${fmtSigned(sph)}`, ok.status);
+
+    lastSavedAt.value = new Date();
+    await switchViewReload();
   } catch (e) {
-    console.error(
-      "[AgGridBifocal] Error al persistir SPH nuevo:",
-      e?.response?.data || e
-    );
+    console.error("[AgGridBifocal] Error al persistir SPH nuevo:", e?.response?.data || e);
+    ackErr(ack, msgFromErr(e, "Error al guardar el nuevo SPH"), statusFromErr(e));
   }
 };
 
-const handleAddColumn = async (nuevoValor) => {
-  console.log(
-    "[AgGridBifocal] handleAddColumn nuevoValor:",
-    nuevoValor
-  );
-  const add = Number(nuevoValor);
-  if (Number.isNaN(add)) {
-    alert("Ingresa ADD numérico");
-    return;
-  }
-  if (addCols.value.includes(add)) {
-    alert(`ADD ${add} ya existe`);
-    return;
-  }
+const handleAddColumn = async (nuevoValor, ack) => {
+  const add = to2(nuevoValor);
+
+  if (!Number.isFinite(add)) return ackErr(ack, "Ingresa ADD numérico", 400);
+  if (!inPhysAdd(add)) return ackErr(ack, `ADD fuera de límites físicos (${PHYS.value.ADD.min} a ${PHYS.value.ADD.max})`, 400);
+  if (!isQuarterStep(add)) return ackErr(ack, "ADD debe ser múltiplo de 0.25 (…00, …25, …50, …75)", 400);
+  if (addCols.value.includes(add)) return ackErr(ack, `ADD ${fmtSigned(add)} ya existe`, 409);
 
   addCols.value = uniqSorted([...addCols.value, add]);
   rowData.value.forEach((r) => {
     r[`add_${norm(add)}_OD`] = 0;
     r[`add_${norm(add)}_OI`] = 0;
   });
+
   await nextTick();
   gridApi.value?.refreshHeader();
   gridApi.value?.redrawRows();
 
-  // Persistir inmediatamente todas las combinaciones (cada sph, add nuevo, OD/OI)
   try {
     const rowsToPersist = [];
     rowData.value.forEach((r) => {
-      const sph = Number(r.sph);
-      const base_izq = Number(r.base_izq ?? 0);
-      const base_der = Number(r.base_der ?? 0);
-
-      rowsToPersist.push({
-        sph,
-        add,
-        eye: "OD",
-        base_izq,
-        base_der,
-        existencias: 0
-      });
-      rowsToPersist.push({
-        sph,
-        add,
-        eye: "OI",
-        base_izq,
-        base_der,
-        existencias: 0
-      });
+      const sph = to2(r.sph);
+      const base_izq = to2(r.base_izq ?? 0);
+      const base_der = to2(r.base_der ?? 0);
+      rowsToPersist.push({ sph, add, eye: "OD", base_izq, base_der, existencias: 0 });
+      rowsToPersist.push({ sph, add, eye: "OI", base_izq, base_der, existencias: 0 });
     });
 
-    if (rowsToPersist.length) {
-      await saveChunk(props.sheetId, rowsToPersist, effectiveActor.value);
-      console.log(
-        "[AgGridBifocal] ADD nuevo persistido en BD, filas:",
-        rowsToPersist.length
-      );
-      lastSavedAt.value = new Date();
+    if (!rowsToPersist.length) {
+      ackOk(ack, "Columna agregada.", 200);
+      return;
     }
+
+    const res = await saveChunk(props.sheetId, rowsToPersist, effectiveActor.value);
+    const ok = normalizeAxiosOk(res);
+    if (!ok.ok) return ackErr(ack, ok.message || "No se pudo agregar la columna", ok.status);
+
+    ackOk(ack, ok.message || `Columna ADD agregada: ${fmtSigned(add)}`, ok.status);
+
+    lastSavedAt.value = new Date();
+    await switchViewReload();
   } catch (e) {
-    console.error(
-      "[AgGridBifocal] Error al persistir ADD nuevo:",
-      e?.response?.data || e
-    );
+    console.error("[AgGridBifocal] Error al persistir ADD nuevo:", e?.response?.data || e);
+    ackErr(ack, msgFromErr(e, "Error al guardar el nuevo ADD"), statusFromErr(e));
   }
 };
 
-/* Grid hooks */
-const onGridReady = (p) => {
-  console.log("[AgGridBifocal] grid ready");
-  gridApi.value = p.api;
-};
-
-function collectRowsFromGrid() {
-  const rows = [];
-  if (!gridApi.value) {
-    console.warn("[AgGridBifocal] collectRowsFromGrid sin gridApi");
-    return rows;
+/* ===================== Save / refresh / discard / seed / export ===================== */
+async function handleSave(ack) {
+  if (!dirty.value || pendingChanges.value.size === 0) {
+    ackOk(ack, "No hay cambios por guardar.", 200);
+    return;
   }
 
-  gridApi.value.forEachNode((node) => {
-    const r = node.data;
-    if (!r) return;
+  saving.value = true;
+  try {
+    const rows = Array.from(pendingChanges.value.values());
+    const res = await saveChunk(props.sheetId, rows, effectiveActor.value);
+    const ok = normalizeAxiosOk(res);
+    if (!ok.ok) return ackErr(ack, ok.message || "No se pudo guardar", ok.status);
 
-    const sph = Number(r.sph);
-    const base_izq = Number(r.base_izq ?? 0);
-    const base_der = Number(r.base_der ?? 0);
+    dirty.value = false;
+    pendingChanges.value.clear();
+    lastSavedAt.value = new Date();
 
-    addCols.value.forEach((add) => {
-      const fieldOD = `add_${norm(add)}_OD`;
-      const fieldOI = `add_${norm(add)}_OI`;
+    ackOk(ack, ok.message || "Cambios guardados.", ok.status);
 
-      rows.push({
-        sph,
-        add,
-        eye: "OD",
-        base_izq,
-        base_der,
-        existencias: Number(r[fieldOD] ?? 0)
-      });
-
-      rows.push({
-        sph,
-        add,
-        eye: "OI",
-        base_izq,
-        base_der,
-        existencias: Number(r[fieldOI] ?? 0)
-      });
-    });
-  });
-
-  return rows;
+    await switchViewReload();
+  } catch (e) {
+    console.error("[AgGridBifocal] Error saveChunk:", e?.response?.data || e);
+    ackErr(ack, msgFromErr(e, "Error al guardar cambios"), statusFromErr(e));
+  } finally {
+    saving.value = false;
+  }
 }
 
-/* Filtros / orden */
-const clearFilters = () => {
-  if (!gridApi.value) return;
-  const api = gridApi.value;
-  console.log("[AgGridBifocal] clearFilters");
-  if (typeof api.setFilterModel === "function") {
-    api.setFilterModel(null);
-  }
-};
-
-const resetSort = () => {
-  console.log("[AgGridBifocal] resetSort por sph ASC");
-
-  const api = gridApi.value;
-  if (!api) return;
-
-  if (typeof api.applyColumnState === "function") {
-    api.applyColumnState({
-      defaultState: { sort: null },
-      state: [{ colId: "sph", sort: "asc" }],
-    });
-  } else if (typeof api.setSortModel === "function") {
-    api.setSortModel([{ colId: "sph", sort: "asc" }]);
-  }
-};
-
-
-const handleToggleFilters = () => {
-  console.log("[AgGridBifocal] handleToggleFilters → clearFilters");
-  clearFilters();
-};
-
-/* Otros handlers */
 async function handleDiscard() {
-  console.log("[AgGridBifocal] handleDiscard");
-  await loadAll();
-  dirty.value = false;
   pendingChanges.value.clear();
+  dirty.value = false;
+  await switchViewReload();
 }
 
 async function handleRefresh() {
-  console.log("[AgGridBifocal] handleRefresh");
-  await loadAll();
   pendingChanges.value.clear();
+  await loadSheetMeta();
+  await switchViewReload();
 }
 
-async function handleSeed() {
+async function handleSeed(ack) {
   try {
-    console.log("[AgGridBifocal] handleSeed");
     saving.value = true;
-    await reseedSheet(props.sheetId, effectiveActor.value);
-    await loadAll();
+    const res = await reseedSheet(props.sheetId, effectiveActor.value);
+    const ok = normalizeAxiosOk(res);
+    if (!ok.ok) return ackErr(ack, ok.message || "No se pudo hacer seed", ok.status);
+
+    await loadSheetMeta();
+    await switchViewReload();
     lastSavedAt.value = new Date();
     pendingChanges.value.clear();
+    dirty.value = false;
+    ackOk(ack, ok.message || "Seed generado.", ok.status);
   } catch (e) {
-    console.error(
-      "[AgGridBifocal] Error reseed:",
-      e?.response?.data || e
-    );
+    console.error("[AgGridBifocal] Error reseed:", e?.response?.data || e);
+    ackErr(ack, msgFromErr(e, "Error al generar seed"), statusFromErr(e));
   } finally {
     saving.value = false;
   }
 }
 
 function handleExport() {
-  if (!gridApi.value || typeof gridApi.value.exportDataAsCsv !== "function") {
-    console.warn(
-      "[AgGridBifocal] exportDataAsCsv no disponible",
-      gridApi.value
-    );
-    return;
-  }
+  if (!gridApi.value || typeof gridApi.value.exportDataAsCsv !== "function") return;
   const nameSlug = sheetName.value.replace(/\s+/g, "_");
   const posNeg = props.sphType === "sph-pos" ? "pos" : "neg";
-  console.log("[AgGridBifocal] handleExport", nameSlug, posNeg);
-  gridApi.value.exportDataAsCsv({
-    fileName: `${nameSlug || "bifocal"}_${posNeg}.csv`
-  });
+  gridApi.value.exportDataAsCsv({ fileName: `${nameSlug || "bifocal"}_${posNeg}.csv` });
 }
+
+/* ===================== Filters / sort ===================== */
+const clearFilters = () => {
+  if (!gridApi.value) return;
+  const api = gridApi.value;
+  if (typeof api.setFilterModel === "function") api.setFilterModel(null);
+  else if (typeof api.setGridOption === "function") api.setGridOption("filterModel", null);
+};
+
+const resetSort = () => {
+  const api = gridApi.value;
+  if (!api) return;
+  const dir = props.sphType === "sph-neg" ? "desc" : "asc"; // 0 arriba en ambas
+  if (typeof api.applyColumnState === "function") {
+    api.applyColumnState({
+      defaultState: { sort: null },
+      state: [{ colId: "sph", sort: dir }]
+    });
+  } else if (typeof api.setSortModel === "function") {
+    api.setSortModel([{ colId: "sph", sort: dir }]);
+  }
+};
+
+const handleToggleFilters = () => clearFilters();
 </script>
-
-<template>
-  <div class="is-flex is-flex-direction-column" style="height: 100%;">
-    <navtools class="p-4"
-      v-model="formulaValue"
-      :dirty="dirty"
-      :saving="saving"
-      :total-rows="totalRows"
-      :sheet-name="sheetName"
-      :tipo-matriz="tipoMatriz"
-      :material="material"
-      :tratamientos="tratamientos"
-      :last-saved-at="lastSavedAt"
-      @add-row="handleAddRow"
-      @add-column="handleAddColumn"
-      @clear-filters="clearFilters"
-      @reset-sort="resetSort"
-      @toggle-filters="handleToggleFilters"
-      @save-request="handleSave"
-      @discard-changes="handleDiscard"
-      @refresh="handleRefresh"
-      @seed="handleSeed"
-      @export="handleExport"
-    />
-
-    <div
-      class="buefy-balham-light"
-      style="flex: 1 1 auto; display: flex; flex-direction: column; overflow: auto;"
-    >
-      <AgGridVue
-        ref="gridRef"
-        class="ag-grid-buefy"
-        :columnDefs="columns"
-        :rowData="rowData"
-        :defaultColDef="defaultColDef"
-        :getRowId="getRowId"
-        :animateRows="true"
-        :localeText="localeText"
-        :theme="themeCustom"
-        :rowHeight="30"
-        :headerHeight="32"
-        :suppressMovableColumns="true"
-        @cellClicked="onCellClicked"
-        @cellValueChanged="onCellValueChanged"
-        @grid-ready="onGridReady"
-        style="width: 100%; height: 100%;"
-      />
-    </div>
-  </div>
-</template>
 
 <style scoped>
 .buefy-balham-light {
@@ -888,6 +725,25 @@ function handleExport() {
   background-color: #ffffff;
   border-radius: 0.75rem;
   box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.03);
+}
+
+.grid-shell {
+  transition: opacity 160ms ease,
+    transform 200ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    filter 160ms ease;
+  will-change: opacity, transform, filter;
+}
+.grid-shell--switching {
+  opacity: 0;
+  transform: translate3d(0, 8px, 0) scale(0.992);
+  filter: blur(1.2px);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .grid-shell {
+    transition: none !important;
+  }
 }
 
 .ag-grid-buefy .ag-header-cell.ag-header-cell--compact {

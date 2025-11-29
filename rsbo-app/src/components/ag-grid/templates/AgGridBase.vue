@@ -1,7 +1,8 @@
 <!-- src/components/ag-grid/templates/AgGridBase.vue -->
 <template>
   <div class="is-flex is-flex-direction-column" style="height: 100%;">
-    <navtools class="p-4"
+    <navtools
+      class="p-4"
       v-model="formulaValue"
       :dirty="dirty"
       :saving="saving"
@@ -12,7 +13,6 @@
       :tratamientos="tratamientos"
       :last-saved-at="lastSavedAt"
       @add-row="handleAddRow"
-      @add-column="handleAddColumn"
       @clear-filters="clearFilters"
       @reset-sort="resetSort"
       @toggle-filters="handleToggleFilters"
@@ -23,12 +23,13 @@
       @export="handleExport"
     />
 
+    <!-- ✅ Fade suave en cambio de vista -->
     <div
-      class="buefy-balham-light"
-      style="flex: 1 1 auto; display: flex; flex-direction: column; overflow: auto;"
+      class="buefy-balham-light grid-shell"
+      :class="{ 'grid-shell--switching': switchingView }"
+      style="flex: 1 1 auto; display:flex; flex-direction:column; overflow:auto;"
     >
       <AgGridVue
-        ref="gridRef"
         class="ag-grid-buefy"
         :columnDefs="columns"
         :rowData="rowData"
@@ -60,38 +61,60 @@ import {
   colorSchemeLight
 } from "ag-grid-community";
 import navtools from "@/components/ag-grid/navtools.vue";
-import {
-  fetchItems,
-  saveChunk,
-  reseedSheet,
-  getSheet
-} from "@/services/inventory";
+import { fetchItems, saveChunk, reseedSheet, getSheet } from "@/services/inventory";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 const props = defineProps({
   sheetId: { type: String, required: true },
-  sphType: { type: String, default: "sph-neg" },
+  sphType: { type: String, default: "base-pos" }, // base-neg | base-pos
   actor: { type: Object, default: null }
 });
 
-console.log("[AgGridBase] creado para sheetId:", props.sheetId);
+/* ===================== ACK helpers ===================== */
+const ackOk = (ack, message = "Ok", status = 200) => {
+  if (typeof ack === "function") ack({ ok: true, status, message });
+};
+const ackErr = (ack, message = "Error", status = 400) => {
+  if (typeof ack === "function") ack({ ok: false, status, message });
+  else alert(message);
+};
+const msgFromErr = (e, fallback = "Error de servidor") =>
+  e?.response?.data?.message || e?.response?.data?.error || e?.message || fallback;
+const statusFromErr = (e) => e?.response?.status ?? 0;
+const normalizeAxiosOk = (res) => {
+  const status = res?.status ?? 200;
+  const body = res?.data ?? null;
+  if (body?.ok === false) return { ok: false, status, message: body?.message || "Operación rechazada" };
+  return { ok: true, status, message: body?.message || "Operación exitosa" };
+};
+
+/* ===================== Helpers numéricos ===================== */
+const numOr = (v, dflt) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : dflt;
+};
 
 const gridApi = ref(null);
-const gridRef = ref(null);
 const rowData = ref([]);
 const dirty = ref(false);
 const saving = ref(false);
 const lastSavedAt = ref(null);
-const sheetMeta = ref(null);
 
-/** Buffer de cambios pendientes a guardar (solo filas modificadas) */
+const sheetMeta = ref(null);
+const sheetTabs = ref([]);
+const physicalLimits = ref(null);
+
 const pendingChanges = ref(new Map());
 
-const isNumeric = (v) =>
-  /^-?\d+(\.\d+)?$/.test(String(v ?? "").trim());
+/** ✅ transición suave al cambiar vista */
+const switchingView = ref(false);
+const raf = () =>
+  new Promise((resolve) => {
+    if (typeof requestAnimationFrame === "function") requestAnimationFrame(() => resolve());
+    else setTimeout(resolve, 0);
+  });
 
-/* Tema */
 const themeCustom = themeQuartz
   .withPart(iconSetQuartzBold, colorSchemeLight)
   .withParams({
@@ -115,95 +138,131 @@ const themeCustom = themeQuartz
     oddRowBackgroundColor: "#fbfbff"
   });
 
-const localeText = {
-  noRowsToShow: "No hay filas para mostrar",
-  loadingOoo: "Cargando..."
+const localeText = { noRowsToShow: "No hay filas para mostrar", loadingOoo: "Cargando..." };
+
+const isNumeric = (v) => /^-?\d+(\.\d+)?$/.test(String(v ?? "").trim());
+const to2 = (n) => {
+  const num = Number(n);
+  if (!Number.isFinite(num)) return 0;
+  return Number(num.toFixed(2));
+};
+const isQuarterStep = (value) => {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return false;
+  const scaled = num * 4;
+  return Math.abs(scaled - Math.round(scaled)) < 1e-6;
+};
+const frange = (start, end, step) => {
+  const out = [];
+  const s = Number(start);
+  const e = Number(end);
+  const st = Number(step);
+  if (!Number.isFinite(s) || !Number.isFinite(e) || !Number.isFinite(st) || st === 0) return out;
+  const eps = 1e-9;
+  if (s <= e) for (let v = s; v <= e + eps; v += st) out.push(to2(v));
+  else for (let v = s; v >= e - eps; v -= st) out.push(to2(v));
+  return out;
+};
+const fmtSigned = (n) => {
+  const num = Number(n);
+  if (!Number.isFinite(num)) return String(n ?? "");
+  const s = num.toFixed(2);
+  return num >= 0 ? `+${s}` : s;
 };
 
-// Actor normalizado
+/* ======== LÍMITES FÍSICOS DESDE BACKEND ======== */
+const phys = computed(() => {
+  const pl = physicalLimits.value || {};
+  const baseMin = numOr(pl?.BASE?.min, -40);
+  const baseMax = numOr(pl?.BASE?.max, 40);
+  return { baseMin, baseMax };
+});
+
+const baseViewId = computed(() => {
+  const t = String(props.sphType || "").toLowerCase();
+  return t.includes("neg") ? "base-neg" : "base-pos";
+});
+
+/**
+ * ✅ Requisito: “tanto en positivo como en negativo debe empezar arriba el cero”
+ * - Para MOSTRAR: base-neg incluye 0 (<=0) y luego negativos
+ * - Para AGREGAR: base-neg sigue siendo estrictamente negativo (<0) para evitar duplicar 0
+ */
+const baseFilterDisplay = computed(() => {
+  return baseViewId.value === "base-neg" ? (n) => Number(n) <= 0 : (n) => Number(n) >= 0;
+});
+const baseFilterNewRow = computed(() => {
+  return baseViewId.value === "base-neg" ? (n) => Number(n) < 0 : (n) => Number(n) >= 0;
+});
+
+/** Orden: base-neg DESC (0, -0.25, -0.50...) | base-pos ASC (0, 0.25, 0.50...) */
+const sortDirForView = computed(() => (baseViewId.value === "base-neg" ? "desc" : "asc"));
+const sortBasesForView = (arr) =>
+  arr.sort((a, b) => (sortDirForView.value === "desc" ? b - a : a - b));
+
 const effectiveActor = computed(() => {
-  const src =
-    props.actor ||
-    (typeof window !== "undefined" ? window.__currentUser : null) ||
-    null;
-
+  const src = props.actor || (typeof window !== "undefined" ? window.__currentUser : null) || null;
   if (!src) return null;
-
   const userId = src.userId || src.id || src._id || null;
   const name = src.name || src.email || "Usuario";
-
   return { userId, name };
 });
 
 const totalRows = computed(() => rowData.value.length);
-const sheetName = computed(
-  () => sheetMeta.value?.nombre || sheetMeta.value?.name || "Hoja monofocal (Base)"
-);
+const sheetName = computed(() => sheetMeta.value?.nombre || sheetMeta.value?.name || "Hoja BASE");
 const tipoMatriz = computed(() => sheetMeta.value?.tipo_matriz || "BASE");
 const material = computed(() => sheetMeta.value?.material || "");
 const tratamientos = computed(() => sheetMeta.value?.tratamientos || []);
 
-/** Marca una fila como modificada en el buffer */
-function markRowChanged(base, existencias) {
-  const b = Number(base);
-  const key = String(b);
-  pendingChanges.value.set(key, {
-    base: b,
-    existencias: Number(existencias ?? 0)
-  });
+function markChanged({ base, existencias }) {
+  const b = to2(base);
+  pendingChanges.value.set(String(b), { base: b, existencias: Number(existencias ?? 0) });
   dirty.value = true;
 }
 
-/* Columnas */
 const columns = computed(() => [
   {
-    headerName: "BASE (°)",
-    field: "base",
-    pinned: "left",
-    width: 96,
-    minWidth: 90,
-    maxWidth: 105,
-    resizable: false,
-    editable: false,
-    sortable: true,
-    comparator: (a, b) => a - b,
-    filter: "agNumberColumnFilter",
-    cellClass: ["ag-cell--compact", "ag-cell--numeric", "ag-cell--pinned"],
-    headerClass: ["ag-header-cell--compact", "ag-header-cell--pinned"],
-    valueFormatter: (p) => {
-      const v = Number(p.value);
-      return Number.isFinite(v) ? v.toFixed(2) : p.value ?? "";
-    }
+    headerName: "BASE",
+    children: [
+      {
+        field: "base",
+        headerName: "Base",
+        pinned: "left",
+        width: 140,
+        minWidth: 130,
+        maxWidth: 170,
+        editable: false,
+        sortable: true,
+        comparator: (a, b) => Number(a) - Number(b),
+        filter: "agNumberColumnFilter",
+        resizable: false,
+        cellClass: ["ag-cell--compact", "ag-cell--numeric", "ag-cell--pinned"],
+        headerClass: ["ag-header-cell--compact", "ag-header-cell--pinned"],
+        valueFormatter: (p) => fmtSigned(p.value)
+      }
+    ]
   },
   {
-    headerName: "Existencias",
-    field: "existencias",
-    editable: true,
-    filter: "agNumberColumnFilter",
-    width: 120,
-    minWidth: 110,
-    maxWidth: 140,
-    resizable: true,
-    cellClass: ["ag-cell--compact", "ag-cell--numeric"],
-    headerClass: ["ag-header-cell--compact"],
-    valueSetter: (p) => {
-      const v = String(p.newValue ?? "").trim();
-      const before = p.data.existencias;
-      const newVal = isNumeric(v) ? Number(v) : 0;
-
-      p.data.existencias = newVal;
-      markRowChanged(p.data.base, newVal);
-
-      console.log(
-        "[AgGridBase] valueSetter existencias base=",
-        p.data.base,
-        "old=",
-        before,
-        "new=",
-        p.data.existencias
-      );
-      return true;
-    }
+    headerName: "EXISTENCIAS",
+    children: [
+      {
+        field: "existencias",
+        headerName: "Stock",
+        editable: true,
+        minWidth: 110,
+        maxWidth: 140,
+        filter: "agNumberColumnFilter",
+        cellClass: ["ag-cell--compact", "ag-cell--numeric"],
+        headerClass: ["ag-header-cell--compact"],
+        valueSetter: (p) => {
+          const raw = String(p.newValue ?? "").trim();
+          const newVal = isNumeric(raw) ? Number(raw) : 0;
+          p.data.existencias = newVal;
+          markChanged({ base: p.data.base, existencias: newVal });
+          return true;
+        }
+      }
+    ]
   }
 ]);
 
@@ -214,269 +273,268 @@ const defaultColDef = {
   floatingFilter: true,
   editable: true,
   minWidth: 90,
-  maxWidth: 160,
+  maxWidth: 150,
   cellClass: "ag-cell--compact",
   headerClass: "ag-header-cell--compact"
 };
 
-const getRowId = (p) => p.data.base?.toString();
+const getRowId = (p) => String(to2(p.data.base));
 
-/* Carga */
 async function loadSheetMeta() {
   try {
-    console.log("[AgGridBase] loadSheetMeta");
     const { data } = await getSheet(props.sheetId);
     const payload = data?.data || data;
+
     sheetMeta.value = payload?.sheet || null;
-    console.log("[AgGridBase] sheetMeta:", sheetMeta.value);
+    sheetTabs.value = Array.isArray(payload?.tabs) ? payload.tabs : [];
+    physicalLimits.value = payload?.physicalLimits || payload?.physical_limits || null;
   } catch (e) {
     console.error("[AgGridBase] Error getSheet:", e?.response?.data || e);
   }
 }
 
-async function loadRows() {
-  try {
-    console.log("[AgGridBase] loadRows");
-    const { data } = await fetchItems(props.sheetId);
-    rowData.value = (data?.data || [])
-      .map((it) => ({
-        base: Number(it.base),
-        existencias: Number(it.existencias ?? 0)
-      }))
-      .sort((a, b) => a.base - b.base);
-    console.log("[AgGridBase] loadRows resultado filas:", rowData.value.length);
-    pendingChanges.value.clear();
-  } catch (e) {
-    console.error("[AgGridBase] Error fetchItems:", e?.response?.data || e);
+/** ✅ base-neg pide hasta 0 (incluye 0 para que quede arriba) */
+function buildItemsQueryForView() {
+  const P = phys.value;
+  if (baseViewId.value === "base-neg") {
+    return { baseMin: P.baseMin, baseMax: 0 };
   }
+  return { baseMin: 0, baseMax: P.baseMax };
+}
+
+async function loadRows() {
+  const P = phys.value;
+
+  const tab =
+    sheetTabs.value.find((t) => t?.id === baseViewId.value) ||
+    sheetTabs.value[0] ||
+    null;
+
+  const defBaseRange = tab?.ranges?.base || null;
+  const defBasesAll = defBaseRange
+    ? frange(defBaseRange.start, defBaseRange.end, defBaseRange.step ?? 0.25)
+    : [];
+
+  // ✅ display filter (neg incluye 0) + clamp físico
+  const defBases = defBasesAll
+    .map(to2)
+    .filter((b) => b >= P.baseMin && b <= P.baseMax)
+    .filter((b) => baseFilterDisplay.value(b));
+
+  const { data } = await fetchItems(props.sheetId, buildItemsQueryForView());
+  const items = data?.data || [];
+
+  const itemBases = items
+    .map((i) => to2(i.base))
+    .filter((b) => b >= P.baseMin && b <= P.baseMax)
+    .filter((b) => baseFilterDisplay.value(b));
+
+  const baseList = sortBasesForView([...new Set([...defBases, ...itemBases])]);
+
+  const map = new Map(items.map((i) => [String(to2(i.base)), Number(i.existencias ?? 0)]));
+
+  rowData.value = baseList.map((b) => ({ base: b, existencias: map.get(String(b)) ?? 0 }));
+
+  dirty.value = false;
+  pendingChanges.value.clear();
+  await nextTick();
+  resetSort();
 }
 
 async function loadAll() {
-  console.log("[AgGridBase] loadAll");
-  await Promise.all([loadSheetMeta(), loadRows()]);
-  dirty.value = false;
+  await loadSheetMeta();
+  await switchViewReload();
+}
+
+async function switchViewReload() {
+  switchingView.value = true;
+  await raf(); // deja aplicar clase
+  try {
+    await loadRows();
+  } catch (e) {
+    console.error("[AgGridBase] Error fetchItems:", e?.response?.data || e);
+  } finally {
+    await raf();
+    switchingView.value = false;
+  }
 }
 
 onMounted(loadAll);
 
-/* Edición rápida */
+/** ✅ cambio de vista sin remount, con fade */
+watch(
+  () => props.sphType,
+  async () => {
+    pendingChanges.value.clear();
+    dirty.value = false;
+    await switchViewReload();
+  }
+);
+
 const formulaValue = ref("");
 let activeCell = null;
 
 const onCellClicked = (p) => {
   activeCell = p;
   formulaValue.value = p.value;
-  console.log("[AgGridBase] cellClicked base=", p.data?.base, "value=", p.value);
 };
 
 const onCellValueChanged = (p) => {
-  console.log(
-    "[AgGridBase] cellValueChanged base=",
-    p.data?.base,
-    "old=",
-    p.oldValue,
-    "new=",
-    p.newValue
-  );
-  if (
-    activeCell &&
-    activeCell.rowIndex === p.rowIndex &&
-    activeCell.colDef.field === p.colDef.field
-  ) {
+  if (activeCell && activeCell.rowIndex === p.rowIndex && activeCell.colDef.field === p.colDef.field) {
     formulaValue.value = p.newValue;
   }
   if (p.colDef.field === "existencias") {
-    markRowChanged(p.data.base, p.data.existencias);
-  } else {
-    dirty.value = true;
+    markChanged({ base: p.data.base, existencias: p.data.existencias });
   }
 };
 
 watch(formulaValue, (val) => {
   if (!activeCell || !gridApi.value) return;
   const field = activeCell.colDef.field;
+  if (field !== "existencias") return;
+
   const raw = String(val ?? "").trim();
   const newVal = isNumeric(raw) ? Number(raw) : 0;
 
-  console.log(
-    "[AgGridBase] formulaValue watch → update",
-    "base=",
-    activeCell.data?.base,
-    "field=",
-    field,
-    "newVal=",
-    newVal
-  );
-
   const updatedRow = { ...activeCell.data, [field]: newVal };
-  gridApi.value.applyTransaction({
-    update: [updatedRow]
-  });
-  if (activeCell.data) {
-    activeCell.data[field] = newVal;
-  }
+  gridApi.value.applyTransaction({ update: [updatedRow] });
 
-  if (field === "existencias") {
-    markRowChanged(updatedRow.base, updatedRow.existencias);
-  } else {
-    dirty.value = true;
-  }
+  if (activeCell.data) activeCell.data[field] = newVal;
+  markChanged({ base: updatedRow.base, existencias: newVal });
 });
 
 const onGridReady = (p) => {
-  console.log("[AgGridBase] grid ready");
   gridApi.value = p.api;
 };
 
-/* Navtools */
-const handleAddRow = async (nuevoValor) => {
-  console.log("[AgGridBase] handleAddRow nuevoValor:", nuevoValor);
-  const v = Number(nuevoValor);
-  if (Number.isNaN(v)) {
-    alert("Ingresa una base numérica");
-    return;
+/* ===================== NAVTOOLS handlers (con ACK) ===================== */
+const handleAddRow = async (nuevoValor, ack) => {
+  const P = phys.value;
+  const base = to2(nuevoValor);
+
+  if (!Number.isFinite(base)) return ackErr(ack, "Ingresa BASE numérica", 400);
+  if (!isQuarterStep(base)) return ackErr(ack, "BASE debe ser múltiplo de 0.25 (…00, …25, …50, …75)", 400);
+  if (base < P.baseMin || base > P.baseMax) return ackErr(ack, `BASE fuera de límites (${P.baseMin} a ${P.baseMax})`, 400);
+
+  // ✅ para agregar: neg estricta (evita duplicar 0)
+  if (!baseFilterNewRow.value(base)) {
+    return ackErr(
+      ack,
+      baseViewId.value === "base-neg"
+        ? "Esta vista es BASE (-): la BASE debe ser negativa (ej: -0.25)"
+        : "Esta vista es BASE (+): la BASE debe ser 0 o positiva",
+      400
+    );
   }
-  if (rowData.value.some((r) => r.base === v)) {
-    alert(`Base ${v} ya existe`);
-    return;
-  }
 
-  const newRow = { base: v, existencias: 0 };
+  const exists = rowData.value.some((r) => to2(r.base) === base);
+  if (exists) return ackErr(ack, `BASE ${fmtSigned(base)} ya existe`, 409);
 
-  gridApi.value?.applyTransaction({
-    add: [newRow]
-  });
-
+  // UI primero
+  const row = { base, existencias: 0 };
+  gridApi.value?.applyTransaction({ add: [row] });
   await nextTick();
   resetSort();
 
-  // Persistir inmediatamente la nueva base (existencias 0)
+  // Persistencia real
   try {
-    await saveChunk(props.sheetId, [newRow], effectiveActor.value);
-    console.log("[AgGridBase] Fila nueva persistida en BD");
+    const res = await saveChunk(props.sheetId, [{ base, existencias: 0 }], effectiveActor.value);
+    const ok = normalizeAxiosOk(res);
+    if (!ok.ok) return ackErr(ack, ok.message || "No se pudo agregar la fila", ok.status);
+
+    ackOk(ack, ok.message || `Fila agregada: BASE ${fmtSigned(base)}`, ok.status);
+
     lastSavedAt.value = new Date();
+    await switchViewReload();
   } catch (e) {
-    console.error("[AgGridBase] Error al persistir fila nueva:", e?.response?.data || e);
+    console.error("[AgGridBase] Error persistiendo base nueva:", e?.response?.data || e);
+    ackErr(ack, msgFromErr(e, "Error al guardar la nueva BASE"), statusFromErr(e));
   }
 };
 
-const handleAddColumn = () =>
-  alert("Esta hoja no admite columnas dinámicas.");
-
-/* Filtros / orden */
-const clearFilters = () => {
-  if (!gridApi.value) return;
-  const api = gridApi.value;
-  console.log("[AgGridBase] clearFilters");
-  if (typeof api.setFilterModel === "function") {
-    api.setFilterModel(null);
-  } else if (typeof api.setGridOption === "function") {
-    api.setGridOption("filterModel", null);
-  }
-};
-
-const resetSort = () => {
-  console.log("[AgGridBase] resetSort por base ASC");
-
-  const api = gridApi.value;
-  if (!api) return;
-
-  // SOLO ajustar el sort del grid, NO tocar rowData.value
-  if (typeof api.applyColumnState === "function") {
-    api.applyColumnState({
-      defaultState: { sort: null },
-      state: [{ colId: "base", sort: "asc" }],
-    });
-  } else if (typeof api.setSortModel === "function") {
-    api.setSortModel([{ colId: "base", sort: "asc" }]);
-  }
-};
-
-
-const handleToggleFilters = () => {
-  console.log("[AgGridBase] handleToggleFilters → clearFilters");
-  clearFilters();
-};
-
-/* Guardar / refresh / seed / export */
-async function handleSave() {
-  console.log(
-    "[AgGridBase] handleSave llamado. dirty:",
-    dirty.value,
-    "saving:",
-    saving.value,
-    "pendingChanges:",
-    pendingChanges.value.size
-  );
+async function handleSave(ack) {
   if (!dirty.value || pendingChanges.value.size === 0) {
-    console.log("[AgGridBase] handleSave → nada que guardar");
+    ackOk(ack, "No hay cambios por guardar.", 200);
     return;
   }
-  if (!gridApi.value) {
-    console.warn("[AgGridBase] handleSave → sin gridApi");
-    return;
-  }
-
   saving.value = true;
   try {
     const rows = Array.from(pendingChanges.value.values());
-    console.log(
-      "[AgGridBase] handleSave enviando rows (chunk):",
-      rows.length,
-      "ejemplo row[0]:",
-      rows[0]
-    );
-    await saveChunk(props.sheetId, rows, effectiveActor.value);
+    const res = await saveChunk(props.sheetId, rows, effectiveActor.value);
+    const ok = normalizeAxiosOk(res);
+    if (!ok.ok) return ackErr(ack, ok.message || "No se pudo guardar", ok.status);
+
     dirty.value = false;
     pendingChanges.value.clear();
     lastSavedAt.value = new Date();
-    // Ya no recargamos toda la hoja aquí
+
+    ackOk(ack, ok.message || "Cambios guardados.", ok.status);
+
+    await switchViewReload();
   } catch (e) {
     console.error("[AgGridBase] Error saveChunk:", e?.response?.data || e);
+    ackErr(ack, msgFromErr(e, "Error al guardar cambios"), statusFromErr(e));
   } finally {
     saving.value = false;
   }
 }
 
+const clearFilters = () => {
+  if (!gridApi.value) return;
+  const api = gridApi.value;
+  if (typeof api.setFilterModel === "function") api.setFilterModel(null);
+  else if (typeof api.setGridOption === "function") api.setGridOption("filterModel", null);
+};
+
+const resetSort = () => {
+  const api = gridApi.value;
+  if (!api) return;
+  const dir = sortDirForView.value; // ✅ asc/desc según vista
+  if (typeof api.applyColumnState === "function") {
+    api.applyColumnState({ defaultState: { sort: null }, state: [{ colId: "base", sort: dir }] });
+  } else if (typeof api.setSortModel === "function") {
+    api.setSortModel([{ colId: "base", sort: dir }]);
+  }
+};
+
+const handleToggleFilters = () => clearFilters();
+
 async function handleDiscard() {
-  console.log("[AgGridBase] handleDiscard");
-  await loadRows();
+  await switchViewReload();
   dirty.value = false;
   pendingChanges.value.clear();
 }
 
 async function handleRefresh() {
-  console.log("[AgGridBase] handleRefresh");
-  await loadAll();
+  await loadSheetMeta();
+  await switchViewReload();
   pendingChanges.value.clear();
 }
 
-async function handleSeed() {
+async function handleSeed(ack) {
   try {
-    console.log("[AgGridBase] handleSeed");
     saving.value = true;
-    await reseedSheet(props.sheetId, effectiveActor.value);
-    await loadRows();
-    dirty.value = false;
-    pendingChanges.value.clear();
+    const res = await reseedSheet(props.sheetId, effectiveActor.value);
+    const ok = normalizeAxiosOk(res);
+    if (!ok.ok) return ackErr(ack, ok.message || "No se pudo hacer seed", ok.status);
+
+    await loadSheetMeta();
+    await switchViewReload();
     lastSavedAt.value = new Date();
+    pendingChanges.value.clear();
+    ackOk(ack, ok.message || "Seed generado.", ok.status);
   } catch (e) {
     console.error("[AgGridBase] Error reseed:", e?.response?.data || e);
+    ackErr(ack, msgFromErr(e, "Error al generar seed"), statusFromErr(e));
   } finally {
     saving.value = false;
   }
 }
 
 function handleExport() {
-  if (!gridApi.value || typeof gridApi.value.exportDataAsCsv !== "function") {
-    console.warn("[AgGridBase] exportDataAsCsv no disponible", gridApi.value);
-    return;
-  }
+  if (!gridApi.value || typeof gridApi.value.exportDataAsCsv !== "function") return;
   const nameSlug = sheetName.value.replace(/\s+/g, "_");
-  console.log("[AgGridBase] handleExport file:", nameSlug);
-  gridApi.value.exportDataAsCsv({
-    fileName: `${nameSlug || "base"}.csv`
-  });
+  gridApi.value.exportDataAsCsv({ fileName: `${nameSlug || "base"}.csv` });
 }
 </script>
 
@@ -486,6 +544,24 @@ function handleExport() {
   background-color: #ffffff;
   border-radius: 0.75rem;
   box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.03);
+}
+
+/* ✅ transición suave al cambiar vista */
+.grid-shell {
+  transition: opacity 160ms ease, transform 200ms cubic-bezier(0.22, 0.61, 0.36, 1), filter 160ms ease;
+  will-change: opacity, transform, filter;
+}
+.grid-shell--switching {
+  opacity: 0;
+  transform: translate3d(0, 8px, 0) scale(0.992);
+  filter: blur(1.2px);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .grid-shell {
+    transition: none !important;
+  }
 }
 
 .ag-grid-buefy .ag-header-cell.ag-header-cell--compact {

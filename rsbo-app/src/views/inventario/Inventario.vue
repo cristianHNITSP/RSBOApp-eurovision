@@ -1,3 +1,4 @@
+<!-- (Tu vista donde renderizas TabsManager y el grid dinámico) -->
 <script setup>
 import { reactive, ref, onMounted } from "vue";
 import TabsManager from "@/components/TabsManager.vue";
@@ -9,7 +10,6 @@ import AgGridProgresivo from "@/components/ag-grid/templates/AgGridProgresivo.vu
 
 import { listSheets } from "@/services/inventory";
 
-// ⬇️ recibe user (la cookie de sesión; contiene el actor)
 const props = defineProps({
   user: { type: Object, required: false, default: null }
 });
@@ -18,7 +18,6 @@ const dynamicSheets = reactive([{ id: "nueva", name: "+ Agregar" }]);
 const activeSheet = ref("nueva");
 const activeInternalTab = ref(null);
 
-// 🔹 estado de carga para skeletons de tabs
 const loadingSheets = ref(true);
 
 const configuracion = {
@@ -57,17 +56,16 @@ async function cargarSheets() {
 
     const arr = (data?.data || []).map((s) => ({
       id: String(s._id),
+      sku: s.sku,
       name: s.nombre,
       tipo_matriz: s.tipo_matriz,
       baseKey: s.baseKey,
       material: s.material,
       tratamientos: s.tratamientos || [],
       tabs: s.tabs || [],
-      // 👇 IMPORTANTÍSIMO: conservar meta del backend
       meta: s.meta || { observaciones: "", notas: "" }
     }));
 
-    // Inserta antes de "nueva" evitando duplicados
     const addIndex = dynamicSheets.findIndex((s) => s.id === "nueva");
     const existentes = new Set(dynamicSheets.map((s) => s.id));
     const aInsertar = arr.filter((s) => !existentes.has(s.id));
@@ -85,7 +83,6 @@ async function cargarSheets() {
 
 onMounted(cargarSheets);
 
-// 👇 TabsManager ya hace el createSheet → aquí solo sincronizamos
 function crearNuevaPlanilla({ payload, result, tabs }) {
   const s = result;
   if (!s) return;
@@ -98,7 +95,6 @@ function crearNuevaPlanilla({ payload, result, tabs }) {
     material: s.material,
     tratamientos: s.tratamientos || [],
     tabs: tabs || [],
-    // 👇 también aquí
     meta: s.meta || { observaciones: "", notas: "" }
   };
 
@@ -106,7 +102,6 @@ function crearNuevaPlanilla({ payload, result, tabs }) {
   dynamicSheets.splice(addIndex >= 0 ? addIndex : dynamicSheets.length, 0, newSheet);
   activeSheet.value = newSheet.id;
 }
-
 
 function reordenarSheets({ oldIndex, newIndex }) {
   const last = dynamicSheets.length - 1;
@@ -134,32 +129,57 @@ const resolverGrid = (tipo) => {
 const resolverGridProps = (sheet, activeInternal) => {
   if (!sheet) return {};
   const base = { sheetId: sheet.id };
+
   if (sheet.tipo_matriz === "SPH_ADD" || sheet.tipo_matriz === "SPH_CYL") {
     return { ...base, sphType: activeInternal || "sph-neg" };
   }
+
+  if (sheet.tipo_matriz === "BASE" || sheet.tipo_matriz === "BASE_ADD") {
+    return { ...base, sphType: activeInternal || "base-neg" };
+  }
+
   return base;
 };
 </script>
 
 <template>
   <section class="section section-matriz-dioptrias">
-
     <span class="inventario-pill">
       <b-icon icon="life-ring" size="is-small" class="mr-1" />
       Inventario
     </span>
+
     <div class="columns is-multiline">
       <div class="column is-12">
-        <TabsManager :initial-sheets="dynamicSheets" :active-id="activeSheet" :configuracion="configuracion"
-          :actor="user" :loading-tabs="loadingSheets" @update:active="activeSheet = $event"
-          @update:internal="activeInternalTab = $event" @crear="crearNuevaPlanilla" @reorder="reordenarSheets">
+        <TabsManager
+          :initial-sheets="dynamicSheets"
+          :active-id="activeSheet"
+          :configuracion="configuracion"
+          :actor="user"
+          :loading-tabs="loadingSheets"
+          @update:active="activeSheet = $event"
+          @update:internal="activeInternalTab = $event"
+          @crear="crearNuevaPlanilla"
+          @reorder="reordenarSheets"
+        >
           <template #default="{ activeSheet: sheet, activeInternal }">
-            <div v-if="sheet && sheet.id !== 'nueva'" :key="sheet.id" class="contenido-planilla animated-sheet">
-              <div class="planilla-wrapper">
-                <component :is="resolverGrid(sheet.tipo_matriz)" v-bind="resolverGridProps(sheet, activeInternal)"
-                  :actor="user" />
+            <!-- ✅ Transición suave al cambiar de PLANILLA / TIPO (no por vista interna) -->
+            <Transition name="sheet" mode="out-in" appear>
+              <div
+                v-if="sheet && sheet.id !== 'nueva'"
+                :key="`${sheet.id}:${sheet.tipo_matriz}`"
+                class="contenido-planilla"
+              >
+                <div class="planilla-wrapper">
+                  <!-- ✅ Ya NO se remontea por activeInternal (evita lo brusco) -->
+                  <component
+                    :is="resolverGrid(sheet.tipo_matriz)"
+                    v-bind="resolverGridProps(sheet, activeInternal)"
+                    :actor="user"
+                  />
+                </div>
               </div>
-            </div>
+            </Transition>
           </template>
         </TabsManager>
       </div>
@@ -197,23 +217,46 @@ const resolverGridProps = (sheet, activeInternal) => {
 .planilla-wrapper {
   width: 100%;
   height: 600px;
+  position: relative;
+  contain: paint;
 }
 
-.animated-sheet {
-  animation: sheetFadeSlide 0.26s cubic-bezier(0.22, 0.61, 0.36, 1);
+/* ✅ Transición (sheet change) */
+.sheet-enter-active,
+.sheet-leave-active {
+  transition: opacity 180ms ease, transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    filter 220ms ease;
+  will-change: transform, opacity, filter;
 }
 
-@keyframes sheetFadeSlide {
-  0% {
-    opacity: 0;
-    transform: translateY(10px) scale(0.98);
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
-  }
+.sheet-enter-from {
+  opacity: 0;
+  transform: translate3d(0, 10px, 0) scale(0.985);
+  filter: blur(2px);
+}
 
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.06);
+.sheet-enter-to {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+  filter: blur(0);
+}
+
+.sheet-leave-from {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+  filter: blur(0);
+}
+
+.sheet-leave-to {
+  opacity: 0;
+  transform: translate3d(0, -6px, 0) scale(0.99);
+  filter: blur(1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet-enter-active,
+  .sheet-leave-active {
+    transition: none !important;
   }
 }
 </style>

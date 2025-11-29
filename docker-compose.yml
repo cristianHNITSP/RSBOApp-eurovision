@@ -32,8 +32,8 @@
 
 
 # ver logs -f es para seguir los actualizados
-# docker logs -f rsboapp-inventory
-# docker logs rsboapp-inventory
+# sudo docker logs -f rsboapp-inventory
+# sudo docker logs rsboapp-inventory
 
 
 services:

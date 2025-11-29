@@ -4,7 +4,7 @@
     <div ref="tabsContainer" class="tabs-wrapper">
       <!-- Skeleton de tabs mientras se cargan las planillas -->
       <template v-if="loadingTabs">
-        <div v-for="n in 3" :key="'sk-'+n" class="tab-item skeleton-tab">
+        <div v-for="n in 3" :key="'sk-' + n" class="tab-item skeleton-tab">
           <span class="skeleton-bar"></span>
         </div>
       </template>
@@ -15,21 +15,38 @@
           v-for="planilla in sheets"
           :key="planilla.id"
           :data-id="planilla.id"
-          :class="['tab-item', { 'tab-agregar': planilla.id === 'nueva', active: planilla.id === activeId }]"
+          :class="[
+            'tab-item',
+            { 'tab-agregar': planilla.id === 'nueva', active: planilla.id === activeId }
+          ]"
           @click="handleTabClick(planilla.id)"
         >
           <template v-if="planilla.id === 'nueva'">
             <i class="fas fa-plus"></i>
           </template>
+
           <template v-else>
-            <span class="tab-label" :title="planilla.name">{{ planilla.name }}</span>
+            <!-- ✅ Texto (nombre + sku) -->
+            <div class="tab-text">
+              <span class="tab-label" :title="planilla.name">{{ planilla.name }}</span>
+
+              <span v-if="planilla.sku" class="tab-sku" :title="planilla.sku">
+                {{ planilla.sku }}
+              </span>
+              <span v-else class="tab-sku tab-sku--empty" title="Sin SKU (pendiente de backfill)">
+                SIN-SKU
+              </span>
+            </div>
+
             <!-- 3 puntos (abre modal; no deforma layout) -->
             <button
               class="tab-menu-btn"
               title="Más acciones"
               aria-label="Más acciones"
               @click.stop="openActions(planilla)"
-            >⋮</button>
+            >
+              ⋮
+            </button>
           </template>
         </div>
       </template>
@@ -64,7 +81,10 @@
                   <li
                     v-for="mat in allMaterials"
                     :key="mat"
-                    :class="[{ 'is-active': selectedMaterial === mat }, { 'is-disabled': !isMaterialAllowed(mat) }]"
+                    :class="[
+                      { 'is-active': selectedMaterial === mat },
+                      { 'is-disabled': !isMaterialAllowed(mat) }
+                    ]"
                     :aria-disabled="!isMaterialAllowed(mat)"
                   >
                     <!-- Incompatible → tooltip + bloqueo -->
@@ -112,7 +132,13 @@
                     type="is-dark"
                   >
                     <div class="tratamiento-item is-disabled">
-                      <b-checkbox :model-value="false" :native-value="trat" size="is-small" type="is-primary" disabled>
+                      <b-checkbox
+                        :model-value="false"
+                        :native-value="trat"
+                        size="is-small"
+                        type="is-primary"
+                        disabled
+                      >
                         {{ trat }} <i class="fas fa-lock ml-1"></i>
                       </b-checkbox>
                     </div>
@@ -137,7 +163,11 @@
           <transition-group name="tag-list" tag="div" class="tags mb-3">
             <span v-for="(tag, i) in selectedTratamientos" :key="tag" class="tag is-info is-light is-rounded">
               {{ tag }}
-              <button class="delete is-small" @click.prevent="removeTratamiento(i)" aria-label="Eliminar tratamiento"></button>
+              <button
+                class="delete is-small"
+                @click.prevent="removeTratamiento(i)"
+                aria-label="Eliminar tratamiento"
+              ></button>
             </span>
           </transition-group>
 
@@ -192,17 +222,26 @@
         <!-- Header opaco -->
         <header class="modal-card-head rsbo-actions-head">
           <div class="pill-row">
-            <span class="pill strong">{{ selectedSheet?.name || 'Planilla' }}</span>
+            <span class="pill strong">{{ selectedSheet?.name || "Planilla" }}</span>
+
+            <!-- ✅ SKU visible -->
+            <span class="pill" v-if="selectedSheet?.sku">SKU: {{ selectedSheet.sku }}</span>
+
             <span class="pill">Tipo: {{ tipoHuman(selectedSheet?.tipo_matriz) }}</span>
             <span class="pill" v-if="selectedSheet?.material">Material: {{ selectedSheet.material }}</span>
             <span class="pill" v-if="selectedSheet?.tratamientos?.length">
-              Tratamientos: {{ selectedSheet.tratamientos.join(' + ') }}
+              Tratamientos: {{ selectedSheet.tratamientos.join(" + ") }}
             </span>
           </div>
           <button class="delete" aria-label="close" @click="isActionsOpen = false"></button>
         </header>
 
         <section class="modal-card-body rsbo-actions-body">
+          <!-- SKU visible (solo lectura) -->
+          <b-field label="SKU" class="mb-3">
+            <b-input :value="selectedSheet?.sku || ''" disabled expanded />
+          </b-field>
+
           <!-- ABRIR -->
           <div class="action-card primary">
             <div class="action-icon primary"><i class="far fa-table"></i></div>
@@ -230,7 +269,9 @@
                   :disabled="!renameName || renameName === selectedSheet?.name"
                   :loading="renaming"
                   @click="confirmRename"
-                >Guardar</b-button>
+                >
+                  Guardar
+                </b-button>
               </div>
             </div>
           </div>
@@ -246,32 +287,18 @@
 
               <div class="meta-grid">
                 <b-field label="Observaciones">
-                  <b-input
-                    v-model.trim="metaForm.observaciones"
-                    type="textarea"
-                    rows="2"
-                    maxlength="500"
-                  />
+                  <b-input v-model.trim="metaForm.observaciones" type="textarea" rows="2" maxlength="500" />
                 </b-field>
 
                 <b-field label="Notas">
-                  <b-input
-                    v-model.trim="metaForm.notas"
-                    type="textarea"
-                    rows="2"
-                    maxlength="500"
-                  />
+                  <b-input v-model.trim="metaForm.notas" type="textarea" rows="2" maxlength="500" />
                 </b-field>
               </div>
 
               <div class="buttons is-right mt-2 meta-actions-row">
                 <div class="meta-status-wrapper">
                   <transition name="fade-status">
-                    <div
-                      v-if="metaStatus !== 'idle'"
-                      class="meta-status"
-                      :class="metaStatus"
-                    >
+                    <div v-if="metaStatus !== 'idle'" class="meta-status" :class="metaStatus">
                       <span v-if="metaStatus === 'saving'" class="dot-pulse"></span>
                       <i v-else-if="metaStatus === 'saved'" class="far fa-check-circle"></i>
                       <i v-else-if="metaStatus === 'error'" class="far fa-exclamation-triangle"></i>
@@ -300,7 +327,6 @@
             <div class="action-content">
               <div class="action-title">Enviar a papelera</div>
 
-              <!-- bloque compacto y de ancho fijo -->
               <div class="confirm-space">
                 <div v-show="confirmingDelete" class="confirm-inline">
                   <span class="confirm-text">
@@ -342,7 +368,6 @@ const props = defineProps({
   activeId: { type: String, required: true },
   configuracion: { type: Object, required: true },
   actor: { type: Object, default: null },
-  // 🔹 flag de loading para skeletons de tabs
   loadingTabs: { type: Boolean, default: false }
 });
 
@@ -355,31 +380,71 @@ const emit = defineEmits([
   "renamed"
 ]);
 
+/* ===================== ✅ NORMALIZADOR (FIX SKU NULL) ===================== */
+/**
+ * El backend puede mandar:
+ * - id o _id
+ * - name o nombre
+ * - sku o SKU
+ * Si el front esperaba `id/name` y venía `_id/nombre`, se pierde `sku` en el modelo local.
+ * Esto lo vuelve 100% consistente.
+ */
+const normalizeSheet = (s) => {
+  if (!s) return null;
+  const id = String(s.id ?? s._id ?? "");
+  const name = String(s.name ?? s.nombre ?? "");
+  const skuRaw = s.sku ?? s.SKU ?? null;
+
+  return {
+    ...s,
+    id,
+    name,
+    sku: skuRaw ? String(skuRaw) : null,
+    tratamientos: Array.isArray(s.tratamientos) ? s.tratamientos : [],
+    meta: s.meta && typeof s.meta === "object" ? s.meta : { observaciones: "", notas: "" },
+    tabs: Array.isArray(s.tabs) ? s.tabs : []
+  };
+};
+
+const mapSheets = (arr) =>
+  (Array.isArray(arr) ? arr : [])
+    .map(normalizeSheet)
+    .filter(Boolean);
+
 /* ===== Tabs ===== */
-const sheets = ref([...props.initialSheets]);
+const sheets = ref(mapSheets(props.initialSheets));
 watch(
   () => props.initialSheets,
-  v => (sheets.value = [...v]),
-  { deep: true }
+  (v) => (sheets.value = mapSheets(v)),
+  { deep: true, immediate: true }
 );
 
 const activeId = computed(() => props.activeId);
-const activeSheetObj = computed(() => sheets.value.find(s => s.id === activeId.value));
+const activeSheetObj = computed(() => sheets.value.find((s) => s.id === activeId.value));
 
 /* ===== Tabs internas ===== */
 const activeInternalTab = ref(null);
 const internalTabs = computed(() => {
   const t = activeSheetObj.value?.tipo_matriz;
   if (!t) return [];
+
   if (t === "SPH_ADD" || t === "SPH_CYL") {
     return [
       { id: "sph-neg", label: "SPH (-)" },
       { id: "sph-pos", label: "SPH (+)" }
     ];
   }
-  if (t === "BASE_ADD") return [{ id: "base-add", label: "BASE / ADD +" }];
+
+  if (t === "BASE" || t === "BASE_ADD") {
+    return [
+      { id: "base-neg", label: "BASE (-)" },
+      { id: "base-pos", label: "BASE (+)" }
+    ];
+  }
+
   return [];
 });
+
 watch(
   internalTabs,
   (tabs) => {
@@ -412,6 +477,7 @@ watch([selectedBase, selectedMaterial, selectedTratamientos], () => {
   const tratamientosLabel = selectedTratamientos.value.join(" + ");
   newSheetName.value = [baseLabel, materialLabel, tratamientosLabel].filter(Boolean).join(" | ");
 });
+
 const selectBase = (base) => {
   selectedBase.value = base;
   selectedMaterial.value = null;
@@ -433,6 +499,7 @@ const isTratamientoAllowed = (trat) => {
   return b && b.tratamientos.includes(trat);
 };
 const removeTratamiento = (i) => selectedTratamientos.value.splice(i, 1);
+
 const canCreate = computed(
   () =>
     !!selectedBase.value &&
@@ -442,12 +509,8 @@ const canCreate = computed(
 );
 
 /* Feedback helpers */
-const hasAnyAllowedMaterial = computed(() =>
-  allMaterials.some((m) => isMaterialAllowed(m))
-);
-const hasAnyAllowedTratamiento = computed(() =>
-  allTratamientos.some((t) => isTratamientoAllowed(t))
-);
+const hasAnyAllowedMaterial = computed(() => allMaterials.some((m) => isMaterialAllowed(m)));
+const hasAnyAllowedTratamiento = computed(() => allTratamientos.some((t) => isTratamientoAllowed(t)));
 const baseLabel = computed(() => {
   const b = selectedBase.value && props.configuracion.bases[selectedBase.value];
   return b ? b.label : "";
@@ -502,22 +565,11 @@ const handleCrear = async () => {
     const tabs = data?.data?.tabs || [];
     if (!s) throw new Error("Sin hoja en respuesta");
 
-    const newTab = {
-      id: String(s._id),
-      name: s.nombre,
-      tipo_matriz: s.tipo_matriz,
-      baseKey: s.baseKey,
-      material: s.material,
-      tratamientos: s.tratamientos || [],
-      meta: s.meta || { observaciones: "", notas: "" },
-      tabs
-    };
+    // ✅ pasa por normalizador: asegura id/name/sku aunque el back venga con _id/nombre
+    const newTab = normalizeSheet({ ...s, tabs });
+
     const addIndex = sheets.value.findIndex((x) => x.id === "nueva");
-    sheets.value.splice(
-      addIndex >= 0 ? addIndex : sheets.value.length,
-      0,
-      newTab
-    );
+    sheets.value.splice(addIndex >= 0 ? addIndex : sheets.value.length, 0, newTab);
 
     emit("update:active", newTab.id);
     emit("crear", { payload, result: s, tabs });
@@ -551,10 +603,7 @@ onMounted(() => {
       const relatedEl = evt.related;
       if (relatedEl && relatedEl.classList.contains("tab-agregar")) {
         evt.dragged.classList.add("shake", "shake-color");
-        setTimeout(
-          () => evt.dragged.classList.remove("shake", "shake-color"),
-          300
-        );
+        setTimeout(() => evt.dragged.classList.remove("shake", "shake-color"), 300);
         return false;
       }
       return true;
@@ -565,11 +614,13 @@ onMounted(() => {
       const maxIndex = sheets.value.length - 1;
       const oldIndex = evt.oldIndex;
       let newIndex = evt.newIndex;
+
       if (newIndex >= maxIndex) {
         evt.from.insertBefore(evt.item, evt.from.children[oldIndex]);
         return;
       }
       if (oldIndex === newIndex) return;
+
       const moved = sheets.value.splice(oldIndex, 1)[0];
       sheets.value.splice(newIndex, 0, moved);
       emit("reorder", { oldIndex, newIndex });
@@ -586,13 +637,8 @@ const confirmingDelete = ref(false);
 const deleting = ref(false);
 
 /* Meta: notas y observaciones */
-const metaForm = ref({
-  observaciones: "",
-  notas: ""
-});
+const metaForm = ref({ observaciones: "", notas: "" });
 const savingMeta = ref(false);
-
-// estado visual de sincronización
 const metaStatus = ref("idle"); // 'idle' | 'saving' | 'saved' | 'error'
 const metaStatusMessage = ref("");
 const metaGlow = ref(false);
@@ -632,29 +678,22 @@ const confirmSaveMeta = async () => {
     const tabs = data?.data?.tabs;
 
     if (updated) {
+      const norm = normalizeSheet(updated);
       const idx = sheets.value.findIndex((s) => s.id === id);
-      const newMeta = updated.meta || metaPayload;
-      const newTabs =
-        tabs ||
-        (idx >= 0 ? sheets.value[idx].tabs : selectedSheet.value?.tabs || []);
+      const newTabs = tabs || (idx >= 0 ? sheets.value[idx].tabs : selectedSheet.value?.tabs || []);
 
-      // MUTAR el objeto, no reemplazarlo
       if (idx >= 0) {
-        sheets.value[idx].meta = newMeta;
-        sheets.value[idx].tabs = newTabs;
+        sheets.value[idx] = normalizeSheet({ ...sheets.value[idx], ...norm, tabs: newTabs });
       }
 
       if (selectedSheet.value) {
-        selectedSheet.value.meta = newMeta;
-        selectedSheet.value.tabs = newTabs;
+        selectedSheet.value = normalizeSheet({ ...selectedSheet.value, ...norm, tabs: newTabs });
       }
 
       metaStatus.value = "saved";
       metaStatusMessage.value = "Notas sincronizadas correctamente";
       metaGlow.value = true;
-      setTimeout(() => {
-        metaGlow.value = false;
-      }, 900);
+      setTimeout(() => (metaGlow.value = false), 900);
       setTimeout(() => {
         metaStatus.value = "idle";
         metaStatusMessage.value = "";
@@ -681,10 +720,10 @@ const tipoHuman = (t) =>
   }[t] || t);
 
 const openActions = (sheet) => {
-  selectedSheet.value = sheet;
-  renameName.value = sheet.name || "";
+  selectedSheet.value = normalizeSheet(sheet);
+  renameName.value = selectedSheet.value?.name || "";
   confirmingDelete.value = false;
-  loadMetaFromSheet(sheet);
+  loadMetaFromSheet(selectedSheet.value);
   isActionsOpen.value = true;
 };
 
@@ -705,9 +744,11 @@ const confirmRename = async () => {
     });
     const updated = data?.data?.sheet;
     if (updated) {
+      const norm = normalizeSheet(updated);
       const idx = sheets.value.findIndex((s) => s.id === id);
-      if (idx >= 0) sheets.value[idx].name = updated.nombre;
-      emit("renamed", { id, nombre: updated.nombre });
+      if (idx >= 0) sheets.value[idx] = normalizeSheet({ ...sheets.value[idx], ...norm });
+
+      emit("renamed", { id, nombre: norm.name });
     }
   } catch (e) {
     console.error("rename error:", e?.response?.data || e);
@@ -722,15 +763,19 @@ const softDelete = async () => {
   try {
     const id = selectedSheet.value.id;
     await moveSheetToTrash(id, actorRef.value || undefined);
+
     const idx = sheets.value.findIndex((s) => s.id === id);
     if (idx >= 0) sheets.value.splice(idx, 1);
+
     if (activeId.value === id) {
       const next =
         sheets.value[idx] ||
         sheets.value[idx - 1] ||
-        sheets.value.find((s) => s.id !== "nueva") || { id: "nueva" };
-      emit("update:active", next.id);
+        sheets.value.find((s) => s.id !== "nueva") ||
+        { id: "nueva" };
+      emit("update:active", String(next.id));
     }
+
     emit("deleted", { id });
     isActionsOpen.value = false;
   } catch (e) {
@@ -749,229 +794,477 @@ const handleTabClick = (id) => {
 </script>
 
 <style scoped>
-
-.plantillas-contenedor{
+.plantillas-contenedor {
   background: #fff;
-  border: 1px solid rgba(113,77,210,0.12);
+  border: 1px solid rgba(113, 77, 210, 0.12);
   border-radius: 0 6px 6px 6px;
   min-height: 140px;
-  box-shadow: 0 6px 18px rgba(113,77,210,0.04);
-  transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
-
+  box-shadow: 0 6px 18px rgba(113, 77, 210, 0.04);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
 }
 
 /* ===== Tabs ===== */
-.tabs-wrapper{ display:flex; flex-wrap:nowrap; overflow-x:auto; gap:.25rem; border-bottom:2px solid #dbdbdb; }
-.tab-item{
-  position:relative; display:inline-flex; align-items:center; max-width:240px;
-  padding:.35rem 1.6rem .35rem .75rem; font-size:.85rem; border-radius:4px 4px 0 0;
-  cursor:pointer; background:#f5f5f5; color:#4a4a4a; user-select:none; border:1px solid #dbdbdb;
-  transition: background-color .3s, color .3s, box-shadow .2s;
+.tabs-wrapper {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: 0.25rem;
+  border-bottom: 2px solid #dbdbdb;
 }
-.tab-item.active{ background-color:var(--rsbo-primary,#714DD2); color:#fff; box-shadow:0 4px 10px rgba(0,0,0,.08); }
-.tab-agregar{ cursor:pointer !important; background:#494949; color:#fff; }
-.tab-label{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding-right:.5rem; }
-.tab-menu-btn{
-  position:absolute; right:4px; top:50%; transform:translateY(-50%);
-  border:none; background:transparent; line-height:1; cursor:pointer; font-size:18px;
-  width:22px; height:22px; display:inline-flex; align-items:center; justify-content:center;
-  border-radius:4px; opacity:.8;
+
+.tab-item {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  max-width: 260px;
+  padding: 0.35rem 1.6rem 0.35rem 0.75rem;
+  font-size: 0.85rem;
+  border-radius: 4px 4px 0 0;
+  cursor: pointer;
+  background: #f5f5f5;
+  color: #4a4a4a;
+  user-select: none;
+  border: 1px solid #dbdbdb;
+  transition: background-color 0.3s, color 0.3s, box-shadow 0.2s;
 }
-.tab-menu-btn:hover{ opacity:1; background:rgba(0,0,0,.06); }
+
+.tab-item.active {
+  background-color: var(--rsbo-primary, #714dd2);
+  color: #fff;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+}
+
+.tab-agregar {
+  cursor: pointer !important;
+  background: #494949;
+  color: #fff;
+}
+
+.tab-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding-right: 0.5rem;
+  line-height: 1.05;
+}
+
+.tab-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tab-sku {
+  margin-top: 2px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #7a7a7a;
+  opacity: 0.95;
+}
+
+.tab-item.active .tab-sku {
+  color: rgba(255, 255, 255, 0.92);
+  opacity: 0.95;
+}
+
+.tab-sku--empty {
+  opacity: 0.5;
+  font-weight: 600;
+}
+
+/* menu */
+.tab-menu-btn {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  line-height: 1;
+  cursor: pointer;
+  font-size: 18px;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  opacity: 0.8;
+}
+
+.tab-menu-btn:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.06);
+}
 
 /* 🔹 Skeleton para tabs */
-.skeleton-tab{
-  background:transparent;
-  border-color:transparent;
-  cursor:default;
+.skeleton-tab {
+  background: transparent;
+  border-color: transparent;
+  cursor: default;
 }
-.skeleton-bar{
-  display:block;
-  width:110px;
-  height:0.8rem;
-  border-radius:999px;
-  background:linear-gradient(90deg,#eee 0%,#f5f5f5 50%,#eee 100%);
-  background-size:200% 100%;
-  animation:skeleton-shimmer 1.4s ease-in-out infinite;
+
+.skeleton-bar {
+  display: block;
+  width: 110px;
+  height: 0.8rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #eee 0%, #f5f5f5 50%, #eee 100%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
 }
-@keyframes skeleton-shimmer{
-  0%{background-position:200% 0;}
-  100%{background-position:-200% 0;}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 /* ===== Tabs internas ===== */
-.sheet-tab{ padding:.25rem .75rem; font-size:.85rem; background:transparent; border:1px solid transparent; border-bottom:none; border-radius:4px 4px 0 0; margin-right:2px; cursor:pointer; transition:all .2s; }
-.sheet-tabs{ display:flex; height:34px; align-items:center; border-bottom:1px solid #dbdbdb; background:#f5f5f5; padding-left:.25rem; border-radius:0 0 4px 4px; }
-.sheet-tab.active{ background:#fff; border-color:#dbdbdb #dbdbdb #fff; }
-.sheet-tab:hover:not(.active){ background:#e8e8e8; }
+.sheet-tab {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.85rem;
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 4px 4px 0 0;
+  margin-right: 2px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.sheet-tabs {
+  display: flex;
+  height: 34px;
+  align-items: center;
+  border-bottom: 1px solid #dbdbdb;
+  background: #f5f5f5;
+  padding-left: 0.25rem;
+  border-radius: 0 0 4px 4px;
+}
+
+.sheet-tab.active {
+  background: #fff;
+  border-color: #dbdbdb #dbdbdb #fff;
+}
+
+.sheet-tab:hover:not(.active) {
+  background: #e8e8e8;
+}
 
 /* ===== Animaciones ===== */
-@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-3px)}40%,80%{transform:translateX(3px)}}
-.shake{animation:shake .3s;}
-.tabs-wrapper .tab-item.shake-color{ background:red; color:#fff; }
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20%,
+  60% {
+    transform: translateX(-3px);
+  }
+  40%,
+  80% {
+    transform: translateX(3px);
+  }
+}
 
-.fade-slide-enter-active,.fade-slide-leave-active{ transition:all .4s cubic-bezier(.55,0,.1,1); }
-.fade-slide-enter-from,.fade-slide-leave-to{ opacity:0; transform:translateY(-10px); }
-.tag-list-enter-active,.tag-list-leave-active{ transition:all .3s ease; }
-.tag-list-enter-from,.tag-list-leave-to{ opacity:0; transform:scale(.8); }
+.shake {
+  animation: shake 0.3s;
+}
+
+.tabs-wrapper .tab-item.shake-color {
+  background: red;
+  color: #fff;
+}
+
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: all 0.4s cubic-bezier(0.55, 0, 0.1, 1);
+}
+
+.fade-slide-enter-from,
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+.tag-list-enter-active,
+.tag-list-leave-active {
+  transition: all 0.3s ease;
+}
+
+.tag-list-enter-from,
+.tag-list-leave-to {
+  opacity: 0;
+  transform: scale(0.8);
+}
 
 /* ===== Feedback de incompatibles ===== */
-.tabs-opciones ul li.is-disabled{ opacity:.45; cursor:not-allowed; filter:grayscale(.25); }
-.tabs-opciones ul li.is-disabled a{ text-decoration:line-through; }
-.tratamiento-item.is-disabled{ opacity:.45; cursor:not-allowed; }
-.tratamiento-item.is-disabled :deep(input[type="checkbox"]){ cursor:not-allowed !important; }
+.tabs-opciones ul li.is-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(0.25);
+}
+
+.tabs-opciones ul li.is-disabled a {
+  text-decoration: line-through;
+}
+
+.tratamiento-item.is-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.tratamiento-item.is-disabled :deep(input[type="checkbox"]) {
+  cursor: not-allowed !important;
+}
 
 /* ===== Modal ===== */
-.rsbo-actions-card{ width:100%; border-radius:14px; overflow:hidden; }
-.rsbo-actions-head{
-  background:#fff;
-  border-bottom:1px solid #eee;
-  box-shadow:0 2px 8px rgba(0,0,0,.03);
+.rsbo-actions-card {
+  width: 100%;
+  border-radius: 14px;
+  overflow: hidden;
 }
-.pill-row{ display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; }
-.pill{
-  display:inline-flex; align-items:center; gap:.4rem; padding:.35rem .6rem; border-radius:999px;
-  font-weight:600; font-size:.8rem; background:#fff; border:1px solid rgba(0,0,0,.08); color:#3c3c3c;
-}
-.pill.strong{ background:rgba(142,0,210,.08); color:var(--rsbo-primary,#8e00d2); border-color:rgba(142,0,210,.25); }
 
-.rsbo-actions-body{ padding:1rem 1.25rem; min-height:320px; }
+.rsbo-actions-head {
+  background: #fff;
+  border-bottom: 1px solid #eee;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
 
-.action-card{
-  display:flex; gap:1rem; align-items:flex-start; padding:1rem; background:#fff;
-  border:1px solid rgba(0,0,0,.08); border-radius:14px; box-shadow:0 8px 20px rgba(0,0,0,.04); margin-bottom:1rem;
-  transition: box-shadow .25s ease, border-color .25s ease, transform .18s ease;
+.pill-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
 }
-.action-card.primary{ border-color: rgba(142,0,210,.25); }
-.action-icon{
-  width:42px; height:42px; flex:0 0 42px; display:flex; align-items:center; justify-content:center;
-  border-radius:12px; background:rgba(142,0,210,.08); color:var(--rsbo-primary,#8e00d2);
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.8rem;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  color: #3c3c3c;
 }
-.action-icon.danger{ background:rgba(192,57,43,.08); color:#c0392b; }
-.action-content{ flex:1; min-width:0; }
-.action-title{ font-weight:800; font-size:1rem; margin-bottom:.15rem; }
-.action-desc{ opacity:.85; font-size:.9rem; }
+
+.pill.strong {
+  background: rgba(142, 0, 210, 0.08);
+  color: var(--rsbo-primary, #8e00d2);
+  border-color: rgba(142, 0, 210, 0.25);
+}
+
+.rsbo-actions-body {
+  padding: 1rem 1.25rem;
+  min-height: 320px;
+}
+
+.action-card {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  padding: 1rem;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 14px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.04);
+  margin-bottom: 1rem;
+  transition: box-shadow 0.25s ease, border-color 0.25s ease, transform 0.18s ease;
+}
+
+.action-card.primary {
+  border-color: rgba(142, 0, 210, 0.25);
+}
+
+.action-icon {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: rgba(142, 0, 210, 0.08);
+  color: var(--rsbo-primary, #8e00d2);
+}
+
+.action-icon.danger {
+  background: rgba(192, 57, 43, 0.08);
+  color: #c0392b;
+}
+
+.action-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.action-title {
+  font-weight: 800;
+  font-size: 1rem;
+  margin-bottom: 0.15rem;
+}
+
+.action-desc {
+  opacity: 0.85;
+  font-size: 0.9rem;
+}
 
 /* Meta */
-.meta-grid{
-  display:flex;
-  flex-direction:column;
-  gap:.5rem;
+.meta-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
-.meta-actions-row{
-  display:flex;
-  align-items:center;
-  gap:.5rem;
+.meta-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.meta-status-wrapper{
-  flex:1;
-  min-height:24px;
+.meta-status-wrapper {
+  flex: 1;
+  min-height: 24px;
 }
 
-.meta-status{
-  display:inline-flex;
-  align-items:center;
-  gap:.35rem;
-  padding:.25rem .55rem;
-  border-radius:999px;
-  font-size:.75rem;
-  border:1px solid transparent;
-  background:#f5f5f5;
-  color:#555;
-}
-.meta-status.saving{
-  border-color:rgba(0,123,255,.2);
-  background:rgba(0,123,255,.06);
-}
-.meta-status.saved{
-  border-color:rgba(40,167,69,.3);
-  background:rgba(40,167,69,.06);
-  color:#1f6f38;
-}
-.meta-status.error{
-  border-color:rgba(220,53,69,.3);
-  background:rgba(220,53,69,.06);
-  color:#b0212f;
-}
-.meta-status-text{
-  white-space:nowrap;
+.meta-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  border: 1px solid transparent;
+  background: #f5f5f5;
+  color: #555;
 }
 
-/* Puntitos "conectando…" */
-.dot-pulse{
-  position:relative;
-  width:5px;
-  height:5px;
-  border-radius:50%;
-  background:currentColor;
-  box-shadow:0 0 0 currentColor;
-  animation:dotPulse 1s infinite linear;
-}
-@keyframes dotPulse{
-  0%{ box-shadow: 0 0 0 0 currentColor; opacity:1; }
-  70%{ box-shadow: 0 0 0 6px rgba(0,0,0,0); opacity:.6; }
-  100%{ box-shadow: 0 0 0 0 rgba(0,0,0,0); opacity:.4; }
+.meta-status.saving {
+  border-color: rgba(0, 123, 255, 0.2);
+  background: rgba(0, 123, 255, 0.06);
 }
 
-/* Glow al guardar meta */
-.meta-glow{
-  box-shadow:0 0 0 1px rgba(40,167,69,.2), 0 0 18px rgba(40,167,69,.25);
-  transform:translateY(-1px);
+.meta-status.saved {
+  border-color: rgba(40, 167, 69, 0.3);
+  background: rgba(40, 167, 69, 0.06);
+  color: #1f6f38;
 }
 
-/* Fade del status */
+.meta-status.error {
+  border-color: rgba(220, 53, 69, 0.3);
+  background: rgba(220, 53, 69, 0.06);
+  color: #b0212f;
+}
+
+.meta-status-text {
+  white-space: nowrap;
+}
+
+.dot-pulse {
+  position: relative;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 currentColor;
+  animation: dotPulse 1s infinite linear;
+}
+
+@keyframes dotPulse {
+  0% {
+    box-shadow: 0 0 0 0 currentColor;
+    opacity: 1;
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(0, 0, 0, 0);
+    opacity: 0.6;
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+    opacity: 0.4;
+  }
+}
+
+.meta-glow {
+  box-shadow: 0 0 0 1px rgba(40, 167, 69, 0.2), 0 0 18px rgba(40, 167, 69, 0.25);
+  transform: translateY(-1px);
+}
+
 .fade-status-enter-active,
-.fade-status-leave-active{
-  transition:opacity .25s ease, transform .25s ease;
+.fade-status-leave-active {
+  transition: opacity 0.25s ease, transform 0.25s ease;
 }
+
 .fade-status-enter-from,
-.fade-status-leave-to{
-  opacity:0;
-  transform:translateY(3px);
+.fade-status-leave-to {
+  opacity: 0;
+  transform: translateY(3px);
 }
 
-/* Rangos */
-.range-grid{
-  margin-top:.5rem;
-}
-.range-row{
-  display:flex;
-  flex-wrap:wrap;
-  gap:.75rem;
-}
-.range-row .field{
-  flex:1 1 90px;
-}
-.range-section-title{
-  display:block;
-  margin-top:.5rem;
-  font-size:.8rem;
-  text-transform:uppercase;
-  letter-spacing:.04em;
-  opacity:.8;
+/* Confirmación */
+.confirm-space {
+  min-height: 56px;
 }
 
-/* Confirmación: bloque compacto sin “saltar” de tamaño */
-.confirm-space{ min-height:56px; }
-.confirm-inline{
-  display:flex; align-items:center; gap:.75rem;
-  padding:.5rem .75rem;
-  background:#fff5f5;
-  border:1px solid #f5c6cb;
-  border-radius:10px;
+.confirm-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: #fff5f5;
+  border: 1px solid #f5c6cb;
+  border-radius: 10px;
 }
-.confirm-text{ flex:1 1 auto; white-space:normal; word-break:break-word; overflow-wrap:anywhere; }
-.truncate{ max-width:260px; display:inline-block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
-.audit-row{ display:flex; justify-content:flex-start; }
-.audit-btn{
-  border:none; background:#f5f5f5; color:#666; padding:.55rem .8rem; border-radius:10px;
-  display:inline-flex; gap:.5rem; align-items:center; cursor:not-allowed;
+.confirm-text {
+  flex: 1 1 auto;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
-.rsbo-actions-foot{ justify-content:flex-end; }
 
-/* ancho fijo del modal: evita cambios visuales */
-.rsbo-sheet-actions-modal .modal-card{ width:100%; max-width:760px; }
+.truncate {
+  max-width: 260px;
+  display: inline-block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.audit-row {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.audit-btn {
+  border: none;
+  background: #f5f5f5;
+  color: #666;
+  padding: 0.55rem 0.8rem;
+  border-radius: 10px;
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+  cursor: not-allowed;
+}
+
+.rsbo-actions-foot {
+  justify-content: flex-end;
+}
+
+.rsbo-sheet-actions-modal .modal-card {
+  width: 100%;
+  max-width: 760px;
+}
 </style>

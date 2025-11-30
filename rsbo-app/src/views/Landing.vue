@@ -1,701 +1,1285 @@
+<!-- src/views/LandingView.vue -->
 <template>
-  <div>
-    <div class="landing-panel is-flex is-flex-direction-column">
-      <div class="background-animated" ref="floatingContainer" style="flex-grow: 1;">
-        <!-- Sección Hero -->
-        <section class="hero animate-fade-up" :style="heroStyle">
-          <div class="hero-body is-flex is-justify-content-center is-align-items-center">
-            <div class="box has-text-centered p-6" :style="boxStyle">
-              <figure class="mb-4 logo-float" style="width: 200px;">
-                <img :src="logoImg" alt="Logo" style="width: 100%;" />
-              </figure>
-              <h1 class="title is-3 has-text-primary">Bienvenido a Laboratorio Eurovisión</h1>
-              <p class="subtitle is-5 has-text-grey-dark mt-3">
-                Una plataforma avanzada para gestión de pedidos ópticos.
+  <div class="landing" ref="landingRoot">
+    <!-- Fondo animado -->
+    <div class="background-animated" ref="floatingContainer" aria-hidden="true"></div>
+
+    <!-- Topbar -->
+    <header class="landing-topbar">
+      <div class="landing-topbar__inner container">
+        <div class="brand" role="button" tabindex="0" @click="scrollToTop" @keyup.enter="scrollToTop">
+          <img :src="logoImg" alt="Laboratorio Eurovisión" class="brand__logo" />
+          <div class="brand__text">
+            <p class="brand__name">Laboratorio Eurovisión</p>
+            <p class="brand__tag">Gestión óptica · Inventario y pedidos</p>
+          </div>
+        </div>
+
+        <div class="topbar-actions">
+          <span class="pill pill--info">
+            <b-icon icon="lock" size="is-small" class="mr-1" />
+            Acceso interno
+          </span>
+
+          <b-button type="is-primary" size="is-small" icon-left="user" class="btn-cta" @click="openLogin">
+            Iniciar sesión
+          </b-button>
+        </div>
+      </div>
+    </header>
+
+    <!-- CONTENT -->
+    <main class="landing-content">
+      <!-- HERO -->
+      <section class="hero hero-euro">
+        <div class="container">
+          <div class="columns is-vcentered is-variable is-7">
+            <div class="column is-12-tablet is-6-desktop">
+              <div class="pill-row animate-fade-up">
+                <span class="pill pill--primary">
+                  <b-icon icon="check-circle" size="is-small" class="mr-1" />
+                  Control centralizado
+                </span>
+                <span class="pill pill--light">
+                  <b-icon icon="chart-bar" size="is-small" class="mr-1" />
+                  Métricas en tiempo real
+                </span>
+                <span class="pill pill--light">
+                  <b-icon icon="shield-alt" size="is-small" class="mr-1" />
+                  Permisos por rol
+                </span>
+              </div>
+
+              <h1 class="hero-title animate-fade-up">
+                Controla pedidos, planillas y usuarios<br />
+                <span class="hero-title__accent">sin fricción</span>.
+              </h1>
+
+              <p class="hero-subtitle animate-fade-up">
+                Plataforma interna del laboratorio: inventario por combinatorias (ESFERICA/CILINDRICA/ADICION/BASE),
+                usuarios por roles y trazabilidad de cambios.
               </p>
 
-              <!-- Botón para abrir el panel de inicio de sesión -->
-              <div>
-                <button class="button is-primary is-medium login-btn animate-pulse"
-                        @click="showLoginPanel = true">
-                  <b-icon icon="user" class="mr-2"></b-icon>
-                  Iniciar Sesión
-                </button>
+              <div class="hero-actions animate-fade-up">
+                <b-button type="is-primary" size="is-medium" icon-left="sign-in-alt" class="btn-hero" @click="openLogin">
+                  Iniciar sesión
+                </b-button>
+
+                <a class="btn-ghost" href="#features">
+                  <b-icon icon="info-circle" size="is-small" class="mr-1" />
+                  Ver módulos
+                </a>
+
+                <a class="btn-ghost" href="#como">
+                  <b-icon icon="play-circle" size="is-small" class="mr-1" />
+                  ¿Cómo funciona?
+                </a>
               </div>
+
+              <p class="hero-note animate-fade-up">
+                <b-icon icon="exclamation-circle" size="is-small" class="mr-1" />
+                Acceso solo para personal autorizado. Las cuentas se administran dentro del sistema.
+              </p>
             </div>
-          </div>
-        </section>
 
-        <!-- Panel flotante de inicio de sesión con transición -->
-        <transition name="modal-fade">
-          <div v-if="showLoginPanel" class="modal is-active">
-            <div class="modal-background" @click="showLoginPanel = false"></div>
-            <div class="modal-card login-modal">
-              <header class="modal-card-head">
-                <p class="modal-card-title has-text-centered">Iniciar Sesión</p>
-                <button class="delete" aria-label="close" @click="showLoginPanel = false"></button>
-              </header>
-              <section class="modal-card-body">
-                <!-- Correo -->
-                <div class="field">
-                  <label class="label">Correo electrónico</label>
-                  <div class="control has-icons-left">
-                    <input class="input" type="email" name="email" v-model="credentials.username"
-                           autocomplete="email">
-                    <span class="icon is-small is-left">
-                      <b-icon icon="envelope"></b-icon>
-                    </span>
+            <div class="column is-12-tablet is-6-desktop">
+              <!-- Preview -->
+              <div class="preview-card animate-fade-up" role="presentation">
+                <div class="preview-card__head">
+                  <span class="pill pill--primary pill--sm">
+                    <b-icon icon="layer-group" size="is-small" class="mr-1" />
+                    Panel general
+                  </span>
+                  <span class="pill pill--light pill--sm">
+                    <b-icon icon="sync-alt" size="is-small" class="mr-1" />
+                    Actualizado
+                  </span>
+                </div>
+
+                <div class="preview-card__body">
+                  <div class="columns is-mobile is-multiline is-variable is-2">
+                    <div class="column is-6">
+                      <div class="mini-stat">
+                        <p class="mini-stat__k">Planillas</p>
+                        <p class="mini-stat__v">BASE · SPH/CYL · ADD</p>
+                      </div>
+                    </div>
+                    <div class="column is-6">
+                      <div class="mini-stat">
+                        <p class="mini-stat__k">Usuarios</p>
+                        <p class="mini-stat__v">Roles y permisos</p>
+                      </div>
+                    </div>
+
+                    <div class="column is-12">
+                      <div class="mini-list">
+                        <div class="mini-list__row">
+                          <span class="dot dot--ok"></span>
+                          <span>Inventario por rangos y pasos</span>
+                        </div>
+                        <div class="mini-list__row">
+                          <span class="dot dot--warn"></span>
+                          <span>Validación de límites físicos</span>
+                        </div>
+                        <div class="mini-list__row">
+                          <span class="dot dot--info"></span>
+                          <span>Logs de cambios (auditoría)</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="column is-12">
+                      <div class="preview-card__cta">
+                        <b-button type="is-light" size="is-small" icon-left="user" @click="openLogin">
+                          Acceder
+                        </b-button>
+                        <span class="is-size-7 has-text-grey">Tip: Usa un correo facil de recordar.</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                <!-- Contraseña con toggle -->
-                <div class="field">
-                  <label class="label">Contraseña</label>
-                  <div class="control has-icons-left has-icons-right">
-                    <input class="input" 
-                           :type="showPassword ? 'text' : 'password'" 
-                           name="password"
-                           placeholder="Ingresa tu contraseña" 
-                           v-model="credentials.password"
-                           autocomplete="current-password">
-                    <span class="icon is-small is-left">
-                      <b-icon icon="lock"></b-icon>
-                    </span>
-                    <span class="icon is-small is-right" 
-                          style="cursor:pointer"
-                          @click="showPassword = !showPassword">
-                      <b-icon :icon="showPassword ? 'eye-slash' : 'eye'"></b-icon>
-                    </span>
-                  </div>
-                </div>
-
-                <!-- Recordar correo -->
-                <div class="field">
-                  <div class="control">
-                    <label class="checkbox">
-                      <input type="checkbox" v-model="rememberUsername">
-                      Recordar correo electrónico
-                    </label>
-                  </div>
-                </div>
-              </section>
-              <footer class="modal-card-foot is-justify-content-center">
-                <button class="button is-primary" @click="loginUser">
-                  Iniciar Sesión
-                </button>
-                <button class="button" @click="showLoginPanel = false">
-                  Cancelar
-                </button>
-              </footer>
-            </div>
-          </div>
-        </transition>
-
-        <!-- Sección Features -->
-        <section class="section features-section">
-          <div class="container">
-            <div class="columns is-multiline is-variable is-5 is-centered">
-              <div v-for="(feature, index) in features" :key="index"
-                   class="column is-12-mobile is-6-tablet is-4-desktop animate-fade-up mb-4">
-                <div class="box has-text-centered p-3 is-flex is-flex-direction-column is-align-items-center">
-                  <b-icon :icon="feature.icon" pack="far" size="is-large"
-                          class="has-text-primary mb-2" />
-                  <h3 class="title is-5 mb-2">{{ feature.title }}</h3>
-                  <p class="subtitle is-6 has-text-grey mt-1">{{ feature.description }}</p>
+                <div class="preview-card__foot">
+                  <span class="pill pill--light pill--sm">
+                    <b-icon icon="life-ring" size="is-small" class="mr-1" />
+                    Centro de ayuda integrado
+                  </span>
                 </div>
               </div>
             </div>
           </div>
-        </section>
-      </div>
+        </div>
 
-      <!-- Sección Steps -->
-      <section class="section has-background-light animate-fade-up step-section">
+        <!-- glows -->
+        <div class="hero-glow hero-glow--a" aria-hidden="true"></div>
+        <div class="hero-glow hero-glow--b" aria-hidden="true"></div>
+      </section>
+
+      <!-- FEATURES -->
+      <section id="features" class="section section-soft">
         <div class="container">
-          <h2 class="title has-text-centered is-4 mb-6">¿Cómo funciona?</h2>
-          <b-steps type="is-primary" label-position="bottom" size="is-medium" :has-navigation="false"
-                   :animated="true">
-            <b-step-item v-for="(step, i) in steps" :key="i" :label="step.title" class="animate-fade-up">
-              <p class="has-text-centered mt-4">{{ step.description }}</p>
-            </b-step-item>
-          </b-steps>
+          <header class="section-head">
+            <span class="pill pill--primary">
+              <b-icon icon="stars" size="is-small" class="mr-1" />
+              Módulos principales
+            </span>
+            <h2 class="section-title">Todo lo esencial, bien organizado</h2>
+            <p class="section-subtitle">
+              UI ligera (Bulma + Buefy) con componentes consistentes y transiciones suaves.
+            </p>
+          </header>
+
+          <div class="columns is-multiline is-variable is-5">
+            <div class="column is-12-mobile is-6-tablet is-3-desktop">
+              <article class="feature-card animate-fade-up">
+                <div class="feature-card__icon">
+                  <b-icon icon="th" size="is-medium" />
+                </div>
+                <h3 class="feature-card__title">Inventario</h3>
+                <p class="feature-card__text">
+                  Planillas por tipo (BASE, SPH/CYL, SPH/ADD, etc.) con vistas y validación.
+                </p>
+              </article>
+            </div>
+
+            <div class="column is-12-mobile is-6-tablet is-3-desktop">
+              <article class="feature-card animate-fade-up">
+                <div class="feature-card__icon">
+                  <b-icon icon="users" size="is-medium" />
+                </div>
+                <h3 class="feature-card__title">Usuarios</h3>
+                <p class="feature-card__text">
+                  Roles, permisos, control de accesos y administración interna.
+                </p>
+              </article>
+            </div>
+
+            <div class="column is-12-mobile is-6-tablet is-3-desktop">
+              <article class="feature-card animate-fade-up">
+                <div class="feature-card__icon">
+                  <b-icon icon="clipboard-check" size="is-medium" />
+                </div>
+                <h3 class="feature-card__title">Trazabilidad</h3>
+                <p class="feature-card__text">
+                  Cambios auditables: quién, qué y cuándo. Ideal para control y revisión.
+                </p>
+              </article>
+            </div>
+
+            <div class="column is-12-mobile is-6-tablet is-3-desktop">
+              <article class="feature-card animate-fade-up">
+                <div class="feature-card__icon">
+                  <b-icon icon="life-ring" size="is-medium" />
+                </div>
+                <h3 class="feature-card__title">Centro de ayuda</h3>
+                <p class="feature-card__text">
+                  Guías, buscador, FAQ y solución rápida cuando “no guarda” o “no aparece”.
+                </p>
+              </article>
+            </div>
+          </div>
         </div>
       </section>
 
-      <!-- Footer -->
-      <footer class="footer has-background-gradient">
-        <div class="content has-text-centered">
-          <p class="mb-3">
-            <strong class="has-text-light">Laboratorio Eurovisión</strong> © {{ new Date().getFullYear() }}
-            – Todos los derechos reservados.
-          </p>
-          <div class="social-icons is-flex is-justify-content-center is-align-items-center">
-            <a href="#" aria-label="Facebook" class="icon is-large mx-3 social-link">
-              <b-icon pack="fab" icon="facebook-f" size="is-medium" />
-            </a>
-            <a href="#" aria-label="Twitter" class="icon is-large mx-3 social-link">
-              <b-icon pack="fab" icon="twitter" size="is-medium" />
-            </a>
-            <a href="#" aria-label="Instagram" class="icon is-large mx-3 social-link">
-              <b-icon pack="fab" icon="instagram" size="is-medium" />
-            </a>
-            <a href="#" aria-label="LinkedIn" class="icon is-large mx-3 social-link">
-              <b-icon pack="fab" icon="linkedin-in" size="is-medium" />
-            </a>
+      <!-- COMO FUNCIONA (REEMPLAZA EL b-steps “gigante”) -->
+      <section id="como" class="section">
+        <div class="container">
+          <header class="section-head">
+            <span class="pill pill--light">
+              <b-icon icon="play-circle" size="is-small" class="mr-1" />
+              ¿Cómo funciona?
+            </span>
+            <h2 class="section-title">Un flujo simple (y consistente)</h2>
+            <p class="section-subtitle">Acceso → planillas → control. Sin rodeos.</p>
+          </header>
+
+          <div class="columns is-multiline is-variable is-5">
+            <div class="column is-12-tablet is-4-desktop">
+              <div class="step-card animate-fade-up">
+                <div class="step-card__n">
+                  <b-icon icon="sign-in-alt" size="is-small" />
+                </div>
+                <div class="step-card__body">
+                  <p class="step-card__t">Paso 1</p>
+                  <p class="step-card__d">Inicia sesión con tu cuenta del laboratorio.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="column is-12-tablet is-4-desktop">
+              <div class="step-card animate-fade-up">
+                <div class="step-card__n">
+                  <b-icon icon="th" size="is-small" />
+                </div>
+                <div class="step-card__body">
+                  <p class="step-card__t">Paso 2</p>
+                  <p class="step-card__d">Trabaja planillas, rangos y stock con validación.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="column is-12-tablet is-4-desktop">
+              <div class="step-card animate-fade-up">
+                <div class="step-card__n">
+                  <b-icon icon="clipboard-check" size="is-small" />
+                </div>
+                <div class="step-card__body">
+                  <p class="step-card__t">Paso 3</p>
+                  <p class="step-card__d">Consulta auditoría y administra usuarios por rol.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="cta-strip animate-fade-up">
+            <div class="cta-strip__left">
+              <p class="cta-strip__t">¿Listo para entrar?</p>
+              <p class="cta-strip__d">Accede al sistema interno con tu cuenta del laboratorio.</p>
+            </div>
+            <div class="cta-strip__right">
+              <b-button type="is-primary" icon-left="sign-in-alt" @click="openLogin">
+                Iniciar sesión
+              </b-button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- FOOTER -->
+      <footer class="landing-footer">
+        <div class="container">
+          <div class="footer-inner">
+        <div class="footer-brand">
+          <img :src="logoImg" alt="Laboratorio Eurovisión" class="footer-logo" style="object-fit: cover; width: 34px; height: 34px;" />
+          <div>
+            <p class="footer-name">Laboratorio Eurovisión</p>
+            <p class="footer-copy">© {{ year }} · Todos los derechos reservados</p>
+          </div>
+        </div>
+
+        <div class="footer-links">
+          <a href="#features" class="footer-link">Módulos</a>
+          <a href="#como" class="footer-link">Cómo funciona</a>
+          <button class="footer-link button is-text" type="button" @click="openLogin">Acceder</button>
+        </div>
           </div>
         </div>
       </footer>
-    </div>
+    </main>
+
+    <!-- LOGIN MODAL (BUEFY) -->
+    <b-modal
+      v-model="showLoginPanel"
+      has-modal-card
+      trap-focus
+      :destroy-on-hide="true"
+      animation="zoom-in"
+      aria-role="dialog"
+      aria-modal
+      :width="560"
+      @after-enter="focusEmail"
+    >
+      <div class="modal-card login-modal">
+        <header class="modal-card-head login-modal__head">
+          <div>
+            <p class="modal-card-title login-modal__title">Iniciar sesión</p>
+            <p class="login-modal__sub">Acceso interno · Laboratorio Eurovisión</p>
+          </div>
+          <button class="delete" aria-label="close" @click="showLoginPanel = false"></button>
+        </header>
+
+        <section class="modal-card-body login-modal__body">
+          <div class="login-badge">
+            <span class="pill pill--light pill--sm">
+              <b-icon icon="shield-alt" size="is-small" class="mr-1" />
+              Sesión segura
+            </span>
+            <span class="pill pill--light pill--sm">
+              <b-icon icon="clock" size="is-small" class="mr-1" />
+              Expira automáticamente
+            </span>
+          </div>
+
+          <b-field label="Correo electrónico" label-position="on-border">
+            <b-input
+              ref="emailInput"
+              v-model="credentials.username"
+              type="email"
+              autocomplete="email"
+              icon="envelope"
+              placeholder="tu.correo@empresa.com"
+              @keyup.enter="loginUser"
+            />
+          </b-field>
+
+          <b-field label="Contraseña" label-position="on-border">
+            <b-input
+              v-model="credentials.password"
+              :type="showPassword ? 'text' : 'password'"
+              autocomplete="current-password"
+              icon="lock"
+              placeholder="••••••••"
+              password-reveal
+              @keyup.enter="loginUser"
+            />
+          </b-field>
+
+          <div class="login-tools">
+            <b-checkbox v-model="rememberUsername" size="is-small">
+              Recordar correo
+            </b-checkbox>
+
+            <button class="button is-text is-small" type="button" @click="showPassword = !showPassword">
+              <span class="icon is-small">
+                <i class="fas" :class="showPassword ? 'fa-eye-slash' : 'fa-eye'"></i>
+              </span>
+              <span>{{ showPassword ? "Ocultar" : "Mostrar" }}</span>
+            </button>
+          </div>
+
+          <div class="login-hint">
+            <b-icon icon="info-circle" size="is-small" class="mr-1" />
+            Si olvidaste tu acceso, contacta al administrador del sistema.
+          </div>
+        </section>
+
+        <footer class="modal-card-foot login-modal__foot">
+          <b-button @click="showLoginPanel = false" :disabled="isLoggingIn">Cancelar</b-button>
+          <b-button
+            type="is-primary"
+            :loading="isLoggingIn"
+            :disabled="!canSubmit"
+            icon-left="sign-in-alt"
+            @click="loginUser"
+          >
+            Entrar
+          </b-button>
+        </footer>
+      </div>
+    </b-modal>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, getCurrentInstance, onMounted, onBeforeUnmount } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { useIntersectionObserver } from '@/composables/useIntersectionObserver'
-import { useAuthService } from '@/services/authService.js'
-import logoImg from '@/assets/img/logo-euro.png'
+import { computed, getCurrentInstance, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { useIntersectionObserver } from "@/composables/useIntersectionObserver";
+import { useAuthService } from "@/services/authService.js";
+import logoImg from "@/assets/img/logo-euro.png";
 
-useIntersectionObserver('.animate-fade-up')
+useIntersectionObserver(".animate-fade-up");
 
-const internalInstance = getCurrentInstance()
-const $buefy = internalInstance.appContext.config.globalProperties.$buefy
+const inst = getCurrentInstance();
+const $buefy = inst?.appContext?.config?.globalProperties?.$buefy;
 
-const route = useRoute()
-const router = useRouter()
+const route = useRoute();
+const router = useRouter();
 
-// Login Modal
-const showLoginPanel = ref(false)
-const showPassword = ref(false) // <-- toggle password
-const credentials = reactive({ username: '', password: '' })
-const rememberUsername = ref(false)
+/* =========================
+ * LOGIN (FUNCIONAL + PERSISTE CORREO)
+ * ========================= */
+const showLoginPanel = ref(false);
+const showPassword = ref(false);
+const rememberUsername = ref(false);
+const isLoggingIn = ref(false);
+const emailInput = ref(null);
 
-const { handleLogin } = useAuthService($buefy)
+const credentials = reactive({ username: "", password: "" });
+const { handleLogin } = useAuthService($buefy);
 
-const loginUser = () => {
-  handleLogin(credentials, showLoginPanel)
-  if (rememberUsername.value) {
-    localStorage.setItem('savedUsername', credentials.username)
-  } else {
-    localStorage.removeItem('savedUsername')
+const SAVED_USERNAME_KEY = "euro.savedUsername";
+
+const canSubmit = computed(() => {
+  const u = String(credentials.username || "").trim();
+  const p = String(credentials.password || "").trim();
+  return u.length > 4 && p.length > 0 && !isLoggingIn.value;
+});
+
+function openLogin() {
+  showLoginPanel.value = true;
+}
+
+function focusEmail() {
+  // intenta foco en input al abrir modal
+  nextTick(() => {
+    const el = emailInput.value;
+    // b-input expone .focus() en algunos builds; si no, fallback al input interno
+    if (el?.focus) return el.focus();
+    const inp = el?.$el?.querySelector?.("input");
+    inp?.focus?.();
+  });
+}
+
+async function loginUser() {
+  if (!canSubmit.value) return;
+
+  isLoggingIn.value = true;
+  try {
+    // Mantiene tu lógica existente: tu authService maneja tokens/toasts/redirects
+    await Promise.resolve(handleLogin(credentials, showLoginPanel));
+
+    // Persistencia de correo (no dependas de logout, ni de clear)
+    if (rememberUsername.value) {
+      const u = String(credentials.username || "").trim();
+      if (u) localStorage.setItem(SAVED_USERNAME_KEY, u);
+    } else {
+      localStorage.removeItem(SAVED_USERNAME_KEY);
+    }
+
+    credentials.password = "";
+  } finally {
+    isLoggingIn.value = false;
   }
-  credentials.password = ''
 }
 
-// Mapa de razones de auth → configuración del toast
+/**
+ * Persistencia “en vivo”:
+ * - si marcas recordar, guarda al escribir
+ * - si desmarcas, borra
+ */
+watch(rememberUsername, (on) => {
+  if (!on) {
+    localStorage.removeItem(SAVED_USERNAME_KEY);
+    return;
+  }
+  const u = String(credentials.username || "").trim();
+  if (u) localStorage.setItem(SAVED_USERNAME_KEY, u);
+});
+
+watch(
+  () => credentials.username,
+  (u) => {
+    if (!rememberUsername.value) return;
+    const cleaned = String(u || "").trim();
+    if (cleaned) localStorage.setItem(SAVED_USERNAME_KEY, cleaned);
+  }
+);
+
+/* =========================
+ * AUTH REASON -> TOAST + ABRIR MODAL
+ * ========================= */
 const AUTH_REASON_TO_TOAST = {
-  'no-token': {
-    message: 'No has iniciado sesión. Por favor inicia sesión para continuar.',
-    type: 'is-warning',
-  },
-  'token-expired': {
-    message: 'Tu sesión expiró. Vuelve a iniciar sesión para continuar.',
-    type: 'is-warning',
-  },
-  'invalid-token': {
-    message: 'Sesión inválida. Por favor inicia sesión nuevamente.',
-    type: 'is-danger',
-  },
-}
+  "no-token": { message: "No has iniciado sesión. Por favor inicia sesión para continuar.", type: "is-warning" },
+  "token-expired": { message: "Tu sesión expiró. Vuelve a iniciar sesión para continuar.", type: "is-warning" },
+  "invalid-token": { message: "Sesión inválida. Por favor inicia sesión nuevamente.", type: "is-danger" },
+};
 
-// Cargar usuario guardado + manejar authReason
 onMounted(() => {
   // Restaurar usuario recordado
-  const saved = localStorage.getItem('savedUsername')
+  const saved = localStorage.getItem(SAVED_USERNAME_KEY);
   if (saved) {
-    credentials.username = saved
-    rememberUsername.value = true
+    credentials.username = saved;
+    rememberUsername.value = true;
   }
 
-  // Leer razón de autenticación de la query (?authReason=...)
-  const authReason = route.query.authReason
-
+  // Query authReason en redirect
+  const authReason = route.query.authReason;
   if (authReason) {
-    const fallbackToast = {
-      message: 'No has iniciado sesión o tu sesión no es válida.',
-      type: 'is-danger',
-    }
+    const toastConfig =
+      AUTH_REASON_TO_TOAST[authReason] || { message: "No has iniciado sesión o tu sesión no es válida.", type: "is-danger" };
 
-    const toastConfig = AUTH_REASON_TO_TOAST[authReason] || fallbackToast
+    $buefy?.toast?.open?.({ message: toastConfig.message, type: toastConfig.type, duration: 4000 });
+    showLoginPanel.value = true;
 
-    $buefy.toast.open({
-      message: toastConfig.message,
-      type: toastConfig.type,
-      duration: 4000,
-    })
-
-    // Abrir automáticamente el modal de login si venimos de un redirect por auth
-    showLoginPanel.value = true
-
-    // Limpiar la query para que no se repita el toast al recargar
-    router.replace({
-      query: {
-        ...route.query,
-        authReason: undefined,
-      },
-    })
+    router.replace({ query: { ...route.query, authReason: undefined } });
   }
 
-  // Evento global opcional para mostrar toast de sesión expirada
+  // Toast global opcional
   const showToast = (event) => {
-    const detail = event?.detail
-    // Permite mandar { message, type } o solo un string
-    const message = typeof detail === 'object' && detail?.message
-      ? detail.message
-      : (detail || 'Tu sesión expiró. Vuelve a iniciar sesión.')
-    const type = typeof detail === 'object' && detail?.type
-      ? detail.type
-      : 'is-danger'
+    const detail = event?.detail;
+    const message = typeof detail === "object" && detail?.message ? detail.message : detail || "Tu sesión expiró. Vuelve a iniciar sesión.";
+    const type = typeof detail === "object" && detail?.type ? detail.type : "is-danger";
+    $buefy?.toast?.open?.({ message, type, duration: 3000 });
+  };
 
-    $buefy.toast.open({
-      message,
-      type,
-      duration: 3000,
-    })
+  window.addEventListener("show-toast-session-expired", showToast);
+  onBeforeUnmount(() => window.removeEventListener("show-toast-session-expired", showToast));
+});
+
+/* =========================
+ * UX HELPERS + SCROLL (FIX)
+ * ========================= */
+const year = computed(() => new Date().getFullYear());
+const landingRoot = ref(null);
+
+function scrollToTop() {
+  // IMPORTANTE: como .landing tiene overflow-y:auto, scrolleamos el contenedor
+  const el = landingRoot.value;
+  if (el && typeof el.scrollTo === "function") {
+    el.scrollTo({ top: 0, behavior: "smooth" });
+    return;
+  }
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+/* =========================
+ * FONDO ANIMADO (ICONOS FLOTANTES)
+ * ========================= */
+const floatingContainer = ref(null);
+const icons = ref([]);
+let cycleInterval = null;
+
+const MAX_ICONS = 14;
+const MIN_DISTANCE = 12;
+
+const iconTypes = [
+  { icon: "glasses", size: "fa-2x" },
+  { icon: "eye", size: "fa-2x" },
+  { icon: "search", size: "fa-2x" },
+];
+
+const animations = [
+  { name: "floatUpDown", duration: 1.2 },
+  { name: "floatLeftRight", duration: 1.0 },
+  { name: "floatRotate", duration: 1.4 },
+];
+
+let nextId = 0;
+
+function createIconElement(id) {
+  const iconType = iconTypes[id % iconTypes.length];
+  const anim = animations[id % animations.length];
+
+  const el = document.createElement("i");
+  el.classList.add("fas", `fa-${iconType.icon}`, "floating-icon", iconType.size);
+
+  el.style.position = "absolute";
+  el.style.animationName = anim.name;
+  el.style.animationDuration = `${anim.duration}s`;
+  el.style.animationTimingFunction = "ease-in-out";
+  el.style.animationIterationCount = "infinite";
+  el.style.animationDirection = Math.random() < 0.5 ? "normal" : "reverse";
+  el.style.opacity = "0";
+  el.style.pointerEvents = "none";
+  el.style.userSelect = "none";
+
+  return el;
+}
+
+function isPositionValid(top, left, currentEl) {
+  for (const icon of icons.value) {
+    if (icon === currentEl) continue;
+    const t = parseFloat(icon.dataset.top);
+    const l = parseFloat(icon.dataset.left);
+    const dist = Math.sqrt((t - top) ** 2 + (l - left) ** 2);
+    if (dist < MIN_DISTANCE) return false;
+  }
+  return true;
+}
+
+function setPosition(el) {
+  let top, left, attempts = 0;
+  do {
+    top = Math.random() * 80 + 10;
+    left = Math.random() * 80 + 10;
+    attempts++;
+  } while (!isPositionValid(top, left, el) && attempts < 50);
+
+  el.style.top = `${top}%`;
+  el.style.left = `${left}%`;
+  el.dataset.top = String(top);
+  el.dataset.left = String(left);
+}
+
+function initIcons() {
+  const container = floatingContainer.value;
+  if (!container) return;
+
+  for (let i = 0; i < MAX_ICONS; i++) {
+    const el = createIconElement(i);
+    setPosition(el);
+    container.appendChild(el);
+    icons.value.push(el);
+
+    setTimeout(() => {
+      el.style.transition = "opacity 900ms ease-in-out";
+      el.style.opacity = "0.10";
+    }, 30);
   }
 
-  window.addEventListener('show-toast-session-expired', showToast)
-  onBeforeUnmount(() => window.removeEventListener('show-toast-session-expired', showToast))
-})
-
-// Estilos y contenido
-const heroStyle = {
-  backgroundSize: 'cover',
-  backgroundPosition: 'center',
-  backgroundRepeat: 'no-repeat',
-  minHeight: '40vh',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
+  nextId = MAX_ICONS;
 }
 
-const boxStyle = {
-  maxWidth: '700px',
-  width: '100%',
-  padding: '2rem',
-  background: 'rgba(255, 255, 255, 0.85)',
-  borderRadius: '0.75rem',
-  backdropFilter: 'blur(10px)',
-  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
+function cycleIcons() {
+  const container = floatingContainer.value;
+  if (!container) return;
+
+  const icon = icons.value.shift();
+  if (!icon) return;
+
+  icon.style.transition = "opacity 700ms ease-in-out";
+  icon.style.opacity = "0";
+
+  setTimeout(() => {
+    setPosition(icon);
+
+    const anim = animations[nextId % animations.length];
+    icon.style.animationName = anim.name;
+    icon.style.animationDuration = `${anim.duration}s`;
+    icon.style.animationDirection = Math.random() < 0.5 ? "normal" : "reverse";
+
+    icon.style.transition = "opacity 900ms ease-in-out";
+    icon.style.opacity = "0.10";
+
+    icons.value.push(icon);
+  }, 720);
+
+  nextId = (nextId + 1) % 1000000;
 }
 
-const features = [
-  { icon: 'check-circle', title: 'Pedidos precisos', description: 'Control total sobre los pedidos ópticos.' },
-  { icon: 'clock', title: 'Eficiencia', description: 'Procesos rápidos y automáticos.' },
-  { icon: 'chart-bar', title: 'Estadísticas', description: 'Visualización en tiempo real del rendimiento.' },
-]
+onMounted(() => {
+  initIcons();
+  cycleInterval = window.setInterval(cycleIcons, 1600);
+});
 
-const steps = [
-  { title: 'Paso 1', description: 'Solicita tu cuenta con laboratorio eurovisión.' },
-  { title: 'Paso 2', description: 'Agrega tus productos y comienza a recibir pedidos.' },
-  { title: 'Paso 3', description: 'Consulta estadísticas y mantén el control.' },
-]
-</script>
-
-<script>
-export default {
-  data() {
-    return {
-      maxIcons: 15,
-      icons: [],
-      cycleInterval: null,
-      iconTypes: [
-        { icon: 'glasses', size: 'fa-3x' },
-        { icon: 'eye', size: 'fa-3x' },
-      ],
-      animations: [
-        { name: 'floatUpDown', duration: 1 },
-        { name: 'floatLeftRight', duration: 0.9 },
-        { name: 'floatRotate', duration: 1.2 },
-      ],
-      minDistance: 12,
-      nextId: 0,
-    };
-  },
-  methods: {
-    createIconElement(id) {
-      const iconType = this.iconTypes[id % this.iconTypes.length];
-      const animation = this.animations[id % this.animations.length];
-      const el = document.createElement('i');
-      el.classList.add('fas', `fa-${iconType.icon}`, 'floating-icon', iconType.size);
-      el.style.position = 'absolute';
-      el.style.animationName = animation.name;
-      el.style.animationDuration = `${animation.duration}s`;
-      el.style.animationTimingFunction = 'ease-in-out';
-      el.style.animationIterationCount = 'infinite';
-      el.style.animationDirection = Math.random() < 0.5 ? 'normal' : 'reverse';
-      el.style.opacity = 0;
-      el.style.color = '#6366f1';
-      el.style.pointerEvents = 'none';
-      el.style.userSelect = 'none';
-      return el;
-    },
-    setPosition(el) {
-      let top, left, attempts = 0;
-      do {
-        top = Math.random() * 80 + 10;
-        left = Math.random() * 80 + 10;
-        attempts++;
-      } while (!this.isPositionValid(top, left, el) && attempts < 50);
-      el.style.top = `${top}%`;
-      el.style.left = `${left}%`;
-      el.dataset.top = top;
-      el.dataset.left = left;
-    },
-    isPositionValid(top, left, currentEl) {
-      for (const icon of this.icons) {
-        if (icon === currentEl) continue;
-        const t = parseFloat(icon.dataset.top);
-        const l = parseFloat(icon.dataset.left);
-        const dist = Math.sqrt((t - top) ** 2 + (l - left) ** 2);
-        if (dist < this.minDistance) return false;
-      }
-      return true;
-    },
-    initIcons() {
-      const container = this.$refs.floatingContainer;
-      if (!container) return;
-      for (let i = 0; i < this.maxIcons; i++) {
-        const el = this.createIconElement(i);
-        this.setPosition(el);
-        container.appendChild(el);
-        this.icons.push(el);
-        setTimeout(() => {
-          el.style.transition = 'opacity 1s ease-in-out';
-          el.style.opacity = 0.12;
-        }, 50);
-      }
-      this.nextId = this.maxIcons;
-    },
-    cycleIcons() {
-      const container = this.$refs.floatingContainer;
-      if (!container) return;
-      const icon = this.icons.shift();
-      if (!icon) return;
-      icon.style.transition = 'opacity 0.8s ease-in-out';
-      icon.style.opacity = 0;
-      setTimeout(() => {
-        this.setPosition(icon);
-        icon.style.animationName = this.animations[this.nextId % this.animations.length].name;
-        icon.style.animationDuration = `${this.animations[this.nextId % this.animations.length].duration}s`;
-        icon.style.animationDirection = Math.random() < 0.5 ? 'normal' : 'reverse';
-        icon.style.transition = 'opacity 1s ease-in-out';
-        icon.style.opacity = 0.12;
-        this.icons.push(icon);
-      }, 800);
-      this.nextId = (this.nextId + 1) % 1000000;
-    }
-  },
-  mounted() {
-    this.initIcons();
-    this.cycleInterval = setInterval(this.cycleIcons, 1500);
-  },
-  beforeDestroy() {
-    if (this.cycleInterval) clearInterval(this.cycleInterval);
-  }
-}
+onBeforeUnmount(() => {
+  if (cycleInterval) window.clearInterval(cycleInterval);
+  const container = floatingContainer.value;
+  if (container) container.innerHTML = "";
+  icons.value = [];
+});
 </script>
 
 <style scoped>
-.login-btn {
-    border-radius: 50px;
-    padding: 1.25rem 2.5rem;
-    font-weight: 600;
-    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
-    transition: all 0.3s ease;
+/* =========================
+ * IMPORTANTE: FIX SCROLL VERTICAL
+ * - antes “llenábamos” el landing y luego le poníamos overflow hidden, eso mata el scroll
+ * - aquí: el landing es el scrollbar principal, y el fondo es absoluto
+ * ========================= */
+.landing {
+  --primary: #4f46e5;
+  --border: rgba(148, 163, 184, 0.22);
+  --shadow: 0 14px 36px rgba(15, 23, 42, 0.06);
+  --shadow-2: 0 18px 48px rgba(15, 23, 42, 0.10);
+
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+
+  position: relative;
+  background:
+    radial-gradient(circle at 0 0, rgba(79, 70, 229, 0.12), transparent 55%),
+    radial-gradient(circle at 100% 10%, rgba(236, 72, 153, 0.10), transparent 55%),
+    radial-gradient(circle at 60% 100%, rgba(249, 115, 22, 0.10), transparent 55%),
+    #ffffff;
 }
 
-.login-btn:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+/* fondo animado */
+.background-animated {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  user-select: none;
+  z-index: 0;
 }
 
-.login-modal {
-    max-width: 450px;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+/* contenido por encima del fondo */
+.landing-content {
+  position: relative;
+  z-index: 1;
 }
 
-.modal-card-head {
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
-    color: white;
-    border-bottom: none;
-}
-
-.modal-card-title {
-    color: white;
-}
-
-.animate-pulse {
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0% {
-        box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7);
-    }
-
-    70% {
-        box-shadow: 0 0 0 10px rgba(99, 102, 241, 0);
-    }
-
-    100% {
-        box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
-    }
-}
-
-/* Animaciones modal modernas */
-.modal-fade-enter-active {
-    animation: modalFadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-.modal-fade-leave-active {
-    animation: modalFadeOut 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-@keyframes modalFadeIn {
-    0% {
-        opacity: 0;
-        transform: scale(0.95);
-    }
-
-    100% {
-        opacity: 1;
-        transform: scale(1);
-    }
-}
-
-@keyframes modalFadeOut {
-    0% {
-        opacity: 1;
-        transform: scale(1);
-    }
-
-    100% {
-        opacity: 0;
-        transform: scale(0.95);
-    }
-}
-</style>
-
-<style>
-/* Animación general */
-/* Animación controlada con clase visible (tus originales) */
-.animate-fade-up {
-    opacity: 0;
-    transform: translateY(40px);
-    transition: all 0.8s ease;
-}
-
-.animate-fade-up.visible {
-    opacity: 1;
-    transform: translateY(0);
-}
-
-/* Animación con keyframes para carga única (uso alternativo) */
-@keyframes fadeUpLoad {
-    0% {
-        opacity: 0;
-        transform: translateY(40px) scale(0.95);
-    }
-
-    100% {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
-}
-
-/* Clase alternativa para animación con keyframes (no choca con .animate-fade-up) */
-.animate-fade-up-anim {
-    animation: fadeUpLoad 0.8s ease forwards;
-}
-
-/* Hero box con sombra, hover y transición */
-.hero .box {
-    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
-    transition: box-shadow 0.3s ease, transform 0.3s ease;
-    border-radius: 1rem;
-    background: rgba(255, 255, 255, 0.9);
-}
-
-.hero .box:hover {
-    box-shadow: 0 12px 25px rgba(0, 0, 0, 0.2);
-    transform: translateY(-5px);
-}
-
-/* Features cards estilos */
-.features-section .box {
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
-    transition: box-shadow 0.3s ease, transform 0.3s ease;
-    border-radius: 0.75rem;
-    background: #fff;
-    cursor: pointer;
-    will-change: transform;
-}
-
-.features-section .box:hover {
-    box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3);
-    /* azul violeta */
-    transform: translateY(-8px) scale(1.05);
-}
-
-/* Iconos con efecto color y transición */
-.features-section b-icon {
-    transition: color 0.3s ease;
-}
-
-.features-section .box:hover b-icon {
-    color: #6366f1;
-    /* azul violeta vivo */
-}
-
-/* Delay animación en features con cascada usando la clase con keyframes */
-.features-section .column {
-    opacity: 0;
-    transform: translateY(40px) scale(0.95);
-    animation: fadeUpLoad 0.7s ease forwards;
-}
-
-.features-section .column:nth-child(1) {
-    animation-delay: 0.15s;
-}
-
-.features-section .column:nth-child(2) {
-    animation-delay: 0.3s;
-}
-
-.features-section .column:nth-child(3) {
-    animation-delay: 0.45s;
-}
-
-.features-section .column:nth-child(4) {
-    animation-delay: 0.6s;
-}
-
-.features-section .column:nth-child(5) {
-    animation-delay: 0.75s;
-}
-
-.features-section .column:nth-child(6) {
-    animation-delay: 0.9s;
-}
-</style>
-
-<style>
-.has-background-gradient {
-    background: linear-gradient(135deg, #6366f1, #4f46e5);
-    color: #fff;
-}
-
-.footer .content p {
-    font-size: 1rem;
-}
-
-.social-icons .social-link {
-    cursor: pointer;
-
-    color: #d1d5db;
-    /* gris claro */
-    transition: color 0.3s ease;
-}
-
-.social-icons .social-link:hover {
-    color: #c7d2fe;
-    /* azul claro suave */
-    transform: scale(1.1);
-}
-</style>
-
-<style>
-@keyframes swing {
-    0% {
-        transform: rotate(0deg);
-    }
-
-    25% {
-        transform: rotate(5deg);
-    }
-
-    50% {
-        transform: rotate(0deg);
-    }
-
-    75% {
-        transform: rotate(-5deg);
-    }
-
-    100% {
-        transform: rotate(0deg);
-    }
-}
-
-.logo-float img {
-    animation: swing 3s ease-in-out infinite;
-    transform-origin: 50% 90%;
-    /* pivote en la base */
-}
-</style>
-
-<style scoped>
 .floating-icon {
-    color: #6366f1;
-    user-select: none;
-    pointer-events: none;
-    position: absolute;
-    opacity: 0.12;
-    animation-timing-function: ease-in-out;
-    animation-iteration-count: infinite;
-    transition: opacity 1s ease-in-out;
+  color: rgba(79, 70, 229, 0.55);
+  filter: blur(0.2px);
 }
 
+/* TOPBAR */
+.landing-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.72);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.20);
+}
+
+.landing-topbar__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 0.75rem;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.brand__logo {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  object-fit: cover;
+  box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.35);
+}
+
+.brand__name {
+  font-weight: 900;
+  font-size: 0.95rem;
+  color: #111827;
+  margin: 0;
+  line-height: 1.05;
+}
+.brand__tag {
+  margin: 0.1rem 0 0;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+/* HERO */
+.hero-euro {
+  position: relative;
+  padding: 3.5rem 0 1.5rem;
+}
+
+.hero-title {
+  font-weight: 900;
+  font-size: 2.25rem;
+  line-height: 1.05;
+  color: #0f172a;
+  margin-top: 0.75rem;
+}
+
+.hero-title__accent {
+  background: linear-gradient(90deg, #4f46e5, #9a6dff, #ec4899);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.hero-subtitle {
+  margin-top: 0.85rem;
+  font-size: 1rem;
+  color: #4b5563;
+  max-width: 54ch;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 1.1rem;
+  align-items: center;
+}
+
+.btn-hero {
+  border-radius: 14px !important;
+  box-shadow: 0 16px 32px rgba(79, 70, 229, 0.18);
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.55rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.30);
+  background: rgba(255, 255, 255, 0.75);
+  color: #111827;
+  font-size: 0.85rem;
+  transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+}
+
+.btn-ghost:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 18px rgba(15, 23, 42, 0.08);
+  background: #ffffff;
+}
+
+.hero-note {
+  margin-top: 1rem;
+  font-size: 0.82rem;
+  color: #6b7280;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* pills */
+.pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  padding: 0.22rem 0.55rem;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(255, 255, 255, 0.70);
+  color: #111827;
+}
+.pill--primary {
+  color: #4f46e5;
+  background: #eef2ff;
+  border-color: rgba(79, 70, 229, 0.18);
+}
+.pill--info {
+  color: #0f172a;
+  background: rgba(15, 23, 42, 0.06);
+  border-color: rgba(148, 163, 184, 0.22);
+}
+.pill--light {
+  color: #4f46e5;
+  background: rgba(79, 70, 229, 0.06);
+  border-color: rgba(79, 70, 229, 0.12);
+}
+.pill--sm {
+  font-size: 0.68rem;
+  padding: 0.18rem 0.5rem;
+}
+
+.btn-cta {
+  border-radius: 12px !important;
+}
+
+/* preview card */
+.preview-card {
+  border-radius: 16px;
+  box-shadow: var(--shadow-2);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(10px);
+  overflow: hidden;
+}
+
+.preview-card__head,
+.preview-card__foot {
+  padding: 0.85rem 0.95rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  align-items: center;
+  background: radial-gradient(circle at 0 0, rgba(79, 70, 229, 0.10), transparent 55%), rgba(255, 255, 255, 0.8);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+}
+.preview-card__foot {
+  border-top: 1px solid rgba(148, 163, 184, 0.16);
+  border-bottom: none;
+}
+
+.preview-card__body {
+  padding: 0.95rem;
+}
+
+.mini-stat {
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 14px;
+  padding: 0.7rem 0.75rem;
+  background: #fafafa;
+}
+.mini-stat__k {
+  margin: 0;
+  font-size: 0.72rem;
+  color: #6b7280;
+  font-weight: 800;
+}
+.mini-stat__v {
+  margin: 0.15rem 0 0;
+  font-size: 0.86rem;
+  color: #111827;
+  font-weight: 900;
+}
+
+.mini-list {
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.mini-list__row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.85rem;
+  color: #374151;
+}
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.25);
+}
+.dot--ok {
+  background: #10b981;
+}
+.dot--warn {
+  background: #f59e0b;
+}
+.dot--info {
+  background: #60a5fa;
+}
+
+.preview-card__cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-top: 0.25rem;
+}
+
+/* sections */
+.section-soft {
+  border-top: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.section-head {
+  margin-bottom: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.section-title {
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: #111827;
+  margin: 0.15rem 0 0;
+}
+.section-subtitle {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.9rem;
+  max-width: 70ch;
+}
+
+/* feature cards */
+.feature-card {
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  box-shadow: var(--shadow);
+  padding: 1rem;
+  height: 100%;
+  transition: transform 140ms ease, box-shadow 140ms ease;
+}
+.feature-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.10);
+}
+.feature-card__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  color: var(--primary);
+  background: #eef2ff;
+  border: 1px solid rgba(79, 70, 229, 0.18);
+}
+.feature-card__title {
+  margin: 0.65rem 0 0;
+  font-size: 0.95rem;
+  font-weight: 900;
+  color: #111827;
+}
+.feature-card__text {
+  margin: 0.35rem 0 0;
+  font-size: 0.86rem;
+  color: #4b5563;
+  line-height: 1.25;
+}
+
+/* COMO FUNCIONA (cards compactas) */
+.step-card {
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: #ffffff;
+  box-shadow: var(--shadow);
+  padding: 0.95rem;
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  height: 100%;
+}
+.step-card__n {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  color: #4f46e5;
+  background: #eef2ff;
+  border: 1px solid rgba(79, 70, 229, 0.18);
+}
+.step-card__t {
+  margin: 0;
+  font-weight: 900;
+  color: #111827;
+}
+.step-card__d {
+  margin: 0.2rem 0 0;
+  color: #4b5563;
+  font-size: 0.88rem;
+  line-height: 1.25;
+}
+
+.cta-strip {
+  margin-top: 1.2rem;
+  border-radius: 16px;
+  border: 1px solid rgba(79, 70, 229, 0.18);
+  background: radial-gradient(circle at 0 0, rgba(79, 70, 229, 0.10), transparent 60%), #ffffff;
+  box-shadow: var(--shadow);
+  padding: 0.95rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.cta-strip__t {
+  margin: 0;
+  font-weight: 900;
+  color: #111827;
+}
+.cta-strip__d {
+  margin: 0.15rem 0 0;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+@media (max-width: 768px) {
+  .cta-strip {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* footer */
+.landing-footer {
+  border-top: 1px solid rgba(148, 163, 184, 0.18);
+  padding: 1.25rem 0;
+  background: rgba(255, 255, 255, 0.65);
+}
+.footer-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.footer-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+.footer-logo {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.35);
+}
+.footer-name {
+  margin: 0;
+  font-weight: 900;
+  color: #111827;
+}
+.footer-copy {
+  margin: 0.1rem 0 0;
+  color: #6b7280;
+  font-size: 0.8rem;
+}
+.footer-links {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.footer-link {
+  color: #4f46e5;
+  font-weight: 800;
+  font-size: 0.85rem;
+}
+
+/* glows */
+.hero-glow {
+  position: absolute;
+  width: 420px;
+  height: 420px;
+  border-radius: 999px;
+  filter: blur(48px);
+  opacity: 0.35;
+  pointer-events: none;
+}
+.hero-glow--a {
+  top: -180px;
+  right: -140px;
+  background: radial-gradient(circle, rgba(79, 70, 229, 0.75), transparent 60%);
+}
+.hero-glow--b {
+  bottom: -220px;
+  left: -160px;
+  background: radial-gradient(circle, rgba(236, 72, 153, 0.55), transparent 60%);
+}
+
+/* login modal */
+.login-modal {
+  border-radius: 16px;
+  overflow: hidden;
+}
+.login-modal__head {
+  background: linear-gradient(135deg, #4f46e5, #9a6dff, #ec4899);
+  border-bottom: none;
+}
+.login-modal__title {
+  color: #fff;
+  font-weight: 900;
+}
+.login-modal__sub {
+  margin: 0.15rem 0 0;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.login-modal__body {
+  background: radial-gradient(circle at 0 0, rgba(79, 70, 229, 0.08), transparent 55%), #ffffff;
+}
+.login-badge {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+.login-tools {
+  margin-top: 0.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.login-hint {
+  margin-top: 0.75rem;
+  font-size: 0.8rem;
+  color: #6b7280;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  background: #f5f3ff;
+  border: 1px solid #e9d5ff;
+  padding: 0.55rem 0.65rem;
+  border-radius: 12px;
+}
+.login-modal__foot {
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+/* animate-fade-up */
+.animate-fade-up {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: all 0.55s ease;
+}
+.animate-fade-up.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* keyframes */
 @keyframes floatUpDown {
-
-    0%,
-    100% {
-        transform: translateY(0) rotate(0deg);
-    }
-
-    50% {
-        transform: translateY(-30px) rotate(10deg);
-    }
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-22px) rotate(10deg);
+  }
 }
-
 @keyframes floatLeftRight {
-
-    0%,
-    100% {
-        transform: translateX(0) rotate(0deg);
-    }
-
-    50% {
-        transform: translateX(80px) rotate(-10deg);
-    }
-
-    /* movimiento más amplio */
+  0%,
+  100% {
+    transform: translateX(0) rotate(0deg);
+  }
+  50% {
+    transform: translateX(70px) rotate(-10deg);
+  }
 }
-
 @keyframes floatRotate {
+  0%,
+  100% {
+    transform: rotate(0) translateY(0);
+  }
+  50% {
+    transform: rotate(360deg) translateY(-12px);
+  }
+}
 
-    0%,
-    100% {
-        transform: rotate(0deg) translateY(0);
-    }
+@media (max-width: 768px) {
+  .hero-title {
+    font-size: 1.85rem;
+  }
+  .landing-topbar__inner {
+    padding: 0.75rem 0.6rem;
+  }
+}
 
-    50% {
-        transform: rotate(360deg) translateY(-15px);
-    }
+@media (prefers-reduced-motion: reduce) {
+  .floating-icon,
+  .animate-fade-up,
+  .feature-card,
+  .btn-ghost {
+    transition: none !important;
+    animation: none !important;
+  }
 }
 </style>
 
-<style scoped>
-.landing-panel {
-    height: 100vh;
-    /* ocupar toda la altura visible */
-    overflow-y: auto;
-    /* scroll vertical solo aquí */
-}
-</style>

@@ -31,6 +31,12 @@ const routes = [
         component: () => import("../views/inventario/Inventario.vue"),
         meta: { requiresAuth: true },
       },
+      {
+        path: "laboratorio",
+        name: "Laboratorio",
+        component: () => import("../views/inventario/Laboratorio.vue"),
+        meta: { requiresAuth: true },
+      },
 
       {
         path: "usuarios",

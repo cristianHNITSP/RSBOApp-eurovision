@@ -144,7 +144,7 @@ const resolverGridProps = (sheet, activeInternal) => {
 </script>
 
 <template>
-  <section class="section section-matriz-dioptrias">
+  <section class="section section-matriz-dioptrias" v-motion-fade-visible-once>
     <span class="inventario-pill">
       <b-icon icon="life-ring" size="is-small" class="mr-1" />
       Inventario

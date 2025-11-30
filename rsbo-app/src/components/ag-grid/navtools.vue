@@ -1,4 +1,4 @@
-<!-- src/components/ag-grid/navtools.vue -->
+z<!-- src/components/ag-grid/navtools.vue -->
 <template>
   <section class="navtools">
     <!-- HEADER: META + ESTADO -->
@@ -187,10 +187,18 @@
         placeholder="Selecciona una celda"
         size="is-small"
         class="formula-input"
+        @input="handleFxInput"
         @keyup.enter="applyChange"
         @blur="applyChange"
       />
-      <b-button size="is-small" :rounded="true" type="is-primary" icon-left="check" class="formula-apply-button" @click="applyChange">
+      <b-button
+        size="is-small"
+        :rounded="true"
+        type="is-primary"
+        icon-left="check"
+        class="formula-apply-button"
+        @click="applyChange"
+      >
         Aplicar
       </b-button>
     </div>
@@ -267,14 +275,202 @@ const emit = defineEmits([
   'reset-sort',
   'save-request',
   'discard-changes',
-  'export'
+  'export',
+  // ✅ NUEVO: solo se emiten cuando el usuario escribe / confirma en la barra FX
+  'fx-input',
+  'fx-commit'
 ])
 
 const activeTab = ref(0)
 const localValue = ref(props.modelValue ?? '')
 
+// ✅ Flag: evita "autoguardado" por blur si no escribiste realmente
+const fxDirty = ref(false)
+
 const internalInstance = getCurrentInstance()
 const $buefy = internalInstance?.appContext?.config?.globalProperties?.$buefy
+
+/* ===================== SAFE UI ERROR HANDLING ===================== */
+/**
+ * Objetivo:
+ * - NO exponer: tokens, credenciales, URIs, headers, stacktraces, paths, dumps.
+ * - Mostrar mensajes seguros y categorías útiles (validación / sesión / permisos / red / servidor).
+ */
+
+const stripHtml = (s) => String(s ?? '').replace(/<[^>]*>/g, '')
+const collapseWs = (s) => String(s ?? '').replace(/\s+/g, ' ').trim()
+
+const looksLikeStackTrace = (s) => {
+  const t = String(s ?? '')
+  return (
+    /(\bat\s+.+\([^)]+\)\b)/.test(t) ||
+    /([A-Za-z]:\\|\/).+\.(js|ts|jsx|tsx|json|yml|yaml):\d+:\d+/.test(t) ||
+    /\b(node:internal|webpack|vite|chunk)\b/i.test(t)
+  )
+}
+
+const containsSensitive = (s) => {
+  const t = String(s ?? '')
+  if (!t) return false
+
+  const patterns = [
+    /\bAuthorization:\s*Bearer\s+[A-Za-z0-9\-_\.]+\b/i,
+    /\bBearer\s+[A-Za-z0-9\-_\.]+\b/i,
+    /\beyJ[A-Za-z0-9\-_]+?\.[A-Za-z0-9\-_]+?\.[A-Za-z0-9\-_]+\b/, // JWT
+    /\bmongodb(\+srv)?:\/\/[^\s]+/i,
+    /\/\/[^/\s:]+:[^@\s]+@/i, // user:pass@
+    /\b(api[_-]?key|token|secret|password|passwd|pwd)\b\s*[:=]\s*["']?[^"'\s]+/i,
+    /\bPRIVATE KEY\b|\bBEGIN (RSA|EC|OPENSSH) PRIVATE KEY\b/i,
+    /\bAKIA[0-9A-Z]{16}\b/, // AWS access key-ish
+  ]
+
+  return patterns.some((re) => re.test(t))
+}
+
+const sanitizeUserText = (raw, { maxLen = 140 } = {}) => {
+  if (raw == null) return ''
+  let s = collapseWs(stripHtml(raw))
+
+  // si trae data sensible o stacktrace: no lo mostramos
+  if (!s) return ''
+  if (containsSensitive(s) || looksLikeStackTrace(s)) return ''
+
+  // recorte bonito
+  if (s.length > maxLen) s = s.slice(0, maxLen - 1).trimEnd() + '…'
+  return s
+}
+
+const guessCategory = (status, rawMsg) => {
+  const msg = String(rawMsg ?? '').toLowerCase()
+
+  // Red
+  if (
+    msg.includes('network error') ||
+    msg.includes('failed to fetch') ||
+    msg.includes('econnrefused') ||
+    msg.includes('timeout') ||
+    msg.includes('etimedout')
+  ) return 'network'
+
+  // Auth / permisos
+  if (status === 401) return 'auth'
+  if (status === 403) return 'forbidden'
+
+  // Validación / negocio
+  if (status === 400 || status === 422) return 'validation'
+  if (status === 404) return 'notfound'
+  if (status === 409) return 'conflict'
+  if (status === 429) return 'ratelimit'
+
+  // Firmas comunes backend
+  if (msg.includes('e11000') || msg.includes('duplicate key')) return 'conflict'
+  if (msg.includes('casterror') || msg.includes('validationerror')) return 'validation'
+
+  // Servidor
+  if (typeof status === 'number' && status >= 500) return 'server'
+
+  return 'generic'
+}
+
+const categoryToPublicMessage = (category) => {
+  switch (category) {
+    case 'network':
+      return 'No se pudo conectar con el servidor. Revisa tu red o intenta de nuevo.'
+    case 'auth':
+      return 'Tu sesión expiró. Vuelve a iniciar sesión.'
+    case 'forbidden':
+      return 'No tienes permisos para realizar esta acción.'
+    case 'validation':
+      return 'Hay datos inválidos o fuera de rango. Revisa los valores e intenta de nuevo.'
+    case 'notfound':
+      return 'No se encontró el recurso solicitado.'
+    case 'conflict':
+      return 'Conflicto: ese registro/valor ya existe o está en uso.'
+    case 'ratelimit':
+      return 'Demasiadas solicitudes. Intenta nuevamente en unos segundos.'
+    case 'server':
+      return 'Error interno del servidor. Intenta más tarde.'
+    default:
+      return 'Ocurrió un error al procesar la operación. Intenta de nuevo.'
+  }
+}
+
+/**
+ * Normaliza cualquier cosa que venga del padre (ack, error, axios shape),
+ * y devuelve un objeto seguro para UI.
+ */
+const normalizeAck = (ack, { successFallback = 'Listo.', errorFallback = 'Ocurrió un error.' } = {}) => {
+  if (!ack) return null
+
+  // si viene string
+  if (typeof ack === 'string') {
+    const safe = sanitizeUserText(ack)
+    return { ok: false, status: null, message: safe || errorFallback, _raw: ack }
+  }
+
+  // Error instance
+  if (ack instanceof Error) {
+    const status = ack?.response?.status ?? ack?.status ?? null
+    const rawMsg = ack?.response?.data?.message ?? ack?.message ?? String(ack)
+    const category = guessCategory(status, rawMsg)
+    const safeMsg = sanitizeUserText(rawMsg)
+    return {
+      ok: false,
+      status,
+      message: safeMsg || categoryToPublicMessage(category),
+      _raw: rawMsg
+    }
+  }
+
+  // axios-style / custom
+  const status =
+    ack?.status ??
+    ack?.statusCode ??
+    ack?.response?.status ??
+    ack?.response?.statusCode ??
+    null
+
+  const ok =
+    ack?.ok === true ? true :
+    ack?.ok === false ? false :
+    typeof status === 'number' ? status < 400 :
+    null
+
+  const rawMsg =
+    ack?.message ??
+    ack?.response?.data?.message ??
+    ack?.response?.data?.error ??
+    ack?.error ??
+    ''
+
+  // si ok==true, permitimos un texto seguro (pero sanitizado). Si no hay, fallback.
+  if (ok === true) {
+    const safe = sanitizeUserText(rawMsg)
+    return { ok: true, status, message: safe || successFallback, _raw: rawMsg }
+  }
+
+  // si ok==false o indeterminado, evitamos exponer detalles sensibles
+  const category = guessCategory(status, rawMsg)
+  const safe = sanitizeUserText(rawMsg)
+  const publicMsg = safe || categoryToPublicMessage(category) || errorFallback
+
+  return { ok: ok === null ? false : ok, status, message: publicMsg, _raw: rawMsg }
+}
+
+const safeToast = (message, type = 'is-info') => {
+  try {
+    $buefy?.toast.open({ message: sanitizeUserText(message, { maxLen: 180 }) || 'Listo.', type })
+  } catch {
+    // NO console.error con mensaje crudo (podría traer credenciales)
+    console.warn('[navtools] toast failed')
+  }
+}
+
+const toastFromAck = (ack, { successFallback, errorFallback } = {}) => {
+  const n = normalizeAck(ack, { successFallback, errorFallback })
+  if (!n) return
+  safeToast(n.message, n.ok ? 'is-success' : 'is-danger')
+}
 
 /* ===================== Backend ACK (estado real) ===================== */
 const opPending = ref(false)
@@ -293,19 +489,11 @@ const serverBadge = computed(() => {
 })
 
 const markServerOk = (text = 'Operación exitosa', status = null) => {
-  lastServer.value = { kind: 'ok', text, status, at: new Date() }
+  lastServer.value = { kind: 'ok', text: sanitizeUserText(text) || 'Operación exitosa', status, at: new Date() }
 }
 const markServerErr = (text = 'Error', status = null) => {
-  lastServer.value = { kind: 'error', text, status, at: new Date() }
-}
-
-const toastFromAck = (ack, { successFallback, errorFallback } = {}) => {
-  if (!ack) return
-  if (ack.ok === true) {
-    $buefy?.toast.open({ message: ack.message || successFallback || 'Listo.', type: 'is-success' })
-  } else if (ack.ok === false) {
-    $buefy?.toast.open({ message: ack.message || errorFallback || 'Ocurrió un error.', type: 'is-danger' })
-  }
+  // ⚠️ nunca mostramos el texto crudo si venía sucio
+  lastServer.value = { kind: 'error', text: sanitizeUserText(text) || 'Ocurrió un error', status, at: new Date() }
 }
 
 /**
@@ -314,7 +502,7 @@ const toastFromAck = (ack, { successFallback, errorFallback } = {}) => {
  * Si el padre no llama ack, esto NO asume éxito (solo muestra mensaje neutro).
  */
 const emitWithAck = (eventName, ...args) => {
-  const ACK_TIMEOUT_MS = 1500
+  const ACK_TIMEOUT_MS = 2000
   return new Promise((resolve) => {
     let done = false
     const ack = (payload) => {
@@ -345,6 +533,10 @@ const dismissDirtyFloat = () => {
 watch(
   () => props.modelValue,
   (val, oldVal) => {
+    // cuando el padre cambia el valor (por selección de celda u otros),
+    // esto NO debe "commit" nada: reseteamos bandera de edición local.
+    fxDirty.value = false
+
     if (!props.dirty) return
     if (props.saving) return
     if (oldVal === undefined) return
@@ -388,6 +580,9 @@ const isApplyingHistory = ref(false)
 const canUndo = computed(() => undoStack.value.length > 0)
 const canRedo = computed(() => redoStack.value.length > 0)
 
+// ⚠️ Nota: esto sigue escuchando modelValue (que cambia al seleccionar celda).
+// Tu bug principal no era este; el bug era que se editaba al seleccionar.
+// Si luego quieres, hacemos undo/redo por "cellKey" para que sea perfecto.
 watch(
   () => props.modelValue,
   (val, oldVal) => {
@@ -400,11 +595,31 @@ watch(
   }
 )
 
+/* ===================== FX (solo usuario escribe) ===================== */
+const handleFxInput = (val) => {
+  fxDirty.value = true
+  emit('fx-input', val ?? localValue.value)
+}
+
 const applyChange = () => {
-  const raw = String(localValue.value ?? '').trim()
-  if (raw === '') emit('update:modelValue', 0)
-  else if (/^-?\d+(\.\d+)?$/.test(raw)) emit('update:modelValue', Number(raw))
-  else emit('update:modelValue', raw)
+  // ✅ Si no se escribió nada, NO hacemos nada (evita commits por blur/click)
+  if (!fxDirty.value) return
+  fxDirty.value = false
+
+  const rawText = String(localValue.value ?? '')
+  const raw = rawText.trim()
+
+  // emitimos para el padre (si le sirve guardar el estado)
+  let next
+  if (raw === '') next = 0
+  else if (/^-?\d+(\.\d+)?$/.test(raw)) next = Number(raw)
+  else next = stripHtml(raw)
+
+  // evita spam de update por mismos valores
+  if (next !== props.modelValue) emit('update:modelValue', next)
+
+  // ✅ commit explícito para que el grid aplique SOLO cuando hubo escritura real
+  emit('fx-commit', rawText)
 }
 
 const undo = () => {
@@ -441,9 +656,8 @@ const copyToClipboard = async (text) => {
       document.execCommand('copy')
       document.body.removeChild(textarea)
     }
-  } catch (err) {
-    console.error('Error copiando:', err)
-    $buefy?.toast.open({ message: 'El navegador bloqueó el acceso al portapapeles.', type: 'is-danger' })
+  } catch {
+    safeToast('El navegador bloqueó el acceso al portapapeles.', 'is-danger')
   }
 }
 
@@ -464,26 +678,25 @@ const pasteFromClipboard = async () => {
       textarea.addEventListener('paste', handler, { once: true })
       document.execCommand('paste')
     })
-  } catch (err) {
-    console.error('Error pegando:', err)
-    $buefy?.toast.open({ message: 'El navegador bloqueó el acceso al portapapeles.', type: 'is-danger' })
+  } catch {
+    safeToast('El navegador bloqueó el acceso al portapapeles.', 'is-danger')
     return ''
   }
 }
 
 const copyCell = async () => {
-  if (localValue.value !== '' && localValue.value != null) await copyToClipboard(localValue.value.toString())
+  if (localValue.value !== '' && localValue.value != null) await copyToClipboard(String(localValue.value))
 }
 const cutCell = async () => {
   if (localValue.value !== '' && localValue.value != null) {
-    await copyToClipboard(localValue.value.toString())
+    await copyToClipboard(String(localValue.value))
     emit('update:modelValue', 0)
   }
 }
 const pasteCell = async () => {
   const pasted = await pasteFromClipboard()
   if (!pasted) return
-  const str = pasted.trim()
+  const str = collapseWs(stripHtml(pasted))
   if (/^-?\d+(\.\d+)?$/.test(str)) emit('update:modelValue', Number(str))
   else emit('update:modelValue', str)
 }
@@ -579,7 +792,7 @@ const ensureQuarterStepOrToast = (value, kind) => {
   const lbl = kind === 'row' ? rowLabel.value : colLabel.value
 
   if (!Number.isFinite(num)) {
-    $buefy?.toast.open({ message: `Ingresa un valor numérico válido${lbl === 'valor' ? '' : ` para ${lbl}`}.`, type: 'is-danger' })
+    safeToast(`Ingresa un valor numérico válido${lbl === 'valor' ? '' : ` para ${lbl}`}.`, 'is-danger')
     return false
   }
 
@@ -587,19 +800,17 @@ const ensureQuarterStepOrToast = (value, kind) => {
   if (dim && PHYSICAL_LIMITS[dim]) {
     const { min, max } = PHYSICAL_LIMITS[dim]
     if (num < min || num > max) {
-      $buefy?.toast.open({ message: `${dim} debe estar entre ${min.toFixed(2)} y ${max.toFixed(2)} D.`, type: 'is-danger' })
+      safeToast(`${dim} debe estar entre ${min.toFixed(2)} y ${max.toFixed(2)} D.`, 'is-danger')
       return false
     }
   }
 
   if (!isQuarterStep(num)) {
     const what = lbl === 'valor' ? '' : ` de ${lbl}`
-    $buefy?.toast.open({
-      message:
-        `El valor${what} debe ser múltiplo de 0.25 D (…00, …25, …50, …75). ` +
-        `Ejemplos: -6.00, -5.75, -5.50, +0.00, +0.25, +0.50.`,
-      type: 'is-danger'
-    })
+    safeToast(
+      `El valor${what} debe ser múltiplo de 0.25 D (…00, …25, …50, …75). Ejemplos: -6.00, -5.75, -5.50, +0.00, +0.25, +0.50.`,
+      'is-danger'
+    )
     return false
   }
 
@@ -623,27 +834,30 @@ const openAddRowModal = () => {
       if (!ensureQuarterStepOrToast(num, 'row')) return
 
       opPending.value = true
-      $buefy?.toast.open({ message: `Solicitando agregar fila ${rowLabel.value} ${fmtSigned(num)}…`, type: 'is-info' })
+      safeToast(`Solicitando agregar fila ${rowLabel.value} ${fmtSigned(num)}…`, 'is-info')
 
       const ack = await emitWithAck('add-row', num)
-
       opPending.value = false
 
-      // ✅ si hay ACK, respeta ok/error
-      if (ack?.ok === true) {
-        markServerOk(ack.message || `Fila agregada (${rowLabel.value} ${fmtSigned(num)})`, ack.status ?? null)
-        toastFromAck(ack, { successFallback: `Se agregó la fila ${rowLabel.value} ${fmtSigned(num)}.` })
-        return
-      }
-      if (ack?.ok === false) {
-        markServerErr(ack.message || 'No se pudo agregar la fila.', ack.status ?? null)
-        toastFromAck(ack, { errorFallback: 'No se pudo agregar la fila.' })
+      const n = normalizeAck(ack, {
+        successFallback: `Se agregó la fila ${rowLabel.value} ${fmtSigned(num)}.`,
+        errorFallback: 'No se pudo agregar la fila.'
+      })
+
+      if (n?.ok === true) {
+        markServerOk(n.message, n.status ?? null)
+        toastFromAck(n, { successFallback: n.message })
         return
       }
 
-      // 🟡 sin ACK: NO asume éxito
+      if (n?.ok === false) {
+        markServerErr(n.message, n.status ?? null)
+        toastFromAck(n, { errorFallback: n.message })
+        return
+      }
+
       markServerOk('Solicitud enviada', null)
-      $buefy?.toast.open({ message: 'Solicitud enviada. Si no ves cambios, revisa el log del backend.', type: 'is-warning' })
+      safeToast('Solicitud enviada. Si no ves cambios, revisa el log del backend.', 'is-warning')
     }
   })
 }
@@ -666,25 +880,30 @@ const openAddColumnModal = () => {
       if (!ensureQuarterStepOrToast(num, 'col')) return
 
       opPending.value = true
-      $buefy?.toast.open({ message: `Solicitando agregar columna ${colLabel.value} ${fmtSigned(num)}…`, type: 'is-info' })
+      safeToast(`Solicitando agregar columna ${colLabel.value} ${fmtSigned(num)}…`, 'is-info')
 
       const ack = await emitWithAck('add-column', num)
-
       opPending.value = false
 
-      if (ack?.ok === true) {
-        markServerOk(ack.message || `Columna agregada (${colLabel.value} ${fmtSigned(num)})`, ack.status ?? null)
-        toastFromAck(ack, { successFallback: `Se agregó la columna ${colLabel.value} ${fmtSigned(num)}.` })
+      const n = normalizeAck(ack, {
+        successFallback: `Se agregó la columna ${colLabel.value} ${fmtSigned(num)}.`,
+        errorFallback: 'No se pudo agregar la columna.'
+      })
+
+      if (n?.ok === true) {
+        markServerOk(n.message, n.status ?? null)
+        toastFromAck(n, { successFallback: n.message })
         return
       }
-      if (ack?.ok === false) {
-        markServerErr(ack.message || 'No se pudo agregar la columna.', ack.status ?? null)
-        toastFromAck(ack, { errorFallback: 'No se pudo agregar la columna.' })
+
+      if (n?.ok === false) {
+        markServerErr(n.message, n.status ?? null)
+        toastFromAck(n, { errorFallback: n.message })
         return
       }
 
       markServerOk('Solicitud enviada', null)
-      $buefy?.toast.open({ message: 'Solicitud enviada. Si no ves cambios, revisa el log del backend.', type: 'is-warning' })
+      safeToast('Solicitud enviada. Si no ves cambios, revisa el log del backend.', 'is-warning')
     }
   })
 }
@@ -695,7 +914,7 @@ const isMobile =
 
 const handleSaveInternal = () => {
   if (!props.dirty) {
-    $buefy?.toast.open({ message: 'No hay cambios pendientes por guardar.', type: 'is-info' })
+    safeToast('No hay cambios pendientes por guardar.', 'is-info')
     return
   }
   if (props.saving || opPending.value) return
@@ -709,26 +928,29 @@ const handleSaveInternal = () => {
     trapFocus: true,
     onConfirm: async () => {
       opPending.value = true
-      $buefy?.toast.open({ message: 'Enviando guardado al servidor…', type: 'is-info' })
+      safeToast('Enviando guardado al servidor…', 'is-info')
 
       const ack = await emitWithAck('save-request')
-
       opPending.value = false
 
-      if (ack?.ok === true) {
-        markServerOk(ack.message || 'Guardado exitoso', ack.status ?? null)
-        toastFromAck(ack, { successFallback: 'Cambios guardados correctamente.' })
+      const n = normalizeAck(ack, {
+        successFallback: 'Cambios guardados correctamente.',
+        errorFallback: 'No se pudieron guardar los cambios.'
+      })
+
+      if (n?.ok === true) {
+        markServerOk(n.message, n.status ?? null)
+        toastFromAck(n, { successFallback: n.message })
         return
       }
-      if (ack?.ok === false) {
-        markServerErr(ack.message || 'Error al guardar', ack.status ?? null)
-        toastFromAck(ack, { errorFallback: 'No se pudieron guardar los cambios.' })
+      if (n?.ok === false) {
+        markServerErr(n.message, n.status ?? null)
+        toastFromAck(n, { errorFallback: n.message })
         return
       }
 
-      // sin ACK: NO canta éxito
       markServerOk('Guardado solicitado', null)
-      $buefy?.toast.open({ message: 'Guardado solicitado. Si falla, revisa el backend (HTTP/validaciones).', type: 'is-warning' })
+      safeToast('Guardado solicitado. Si falla, revisa el backend (HTTP/validaciones).', 'is-warning')
     }
   })
 }
@@ -777,7 +999,7 @@ const lastSavedLabel = computed(() => {
 
 const handleDiscard = () => {
   if (!props.dirty) {
-    $buefy?.toast.open({ message: 'No hay cambios locales para descartar.', type: 'is-info' })
+    safeToast('No hay cambios locales para descartar.', 'is-info')
     return
   }
   $buefy?.dialog.confirm({
@@ -793,6 +1015,7 @@ const handleDiscard = () => {
 </script>
 
 <style scoped>
+/* ... (TU CSS original sin cambios) ... */
 .navtools { width: 100%; max-width: 100%; }
 
 .navtools-header {

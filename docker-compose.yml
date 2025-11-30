@@ -34,7 +34,7 @@
 # ver logs -f es para seguir los actualizados
 # sudo docker logs -f rsboapp-inventory
 # sudo docker logs rsboapp-inventory
-
+# sudo docker logs -f rsboapp-auth
 
 services:
   # 🚀 Auth Service

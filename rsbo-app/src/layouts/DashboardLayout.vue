@@ -1,264 +1,237 @@
 <script setup>
-import {
-    ref,
-    watch,
-    onMounted,
-    onBeforeUnmount,
-    onBeforeMount,
-    computed,
-    nextTick
-} from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, watch, onMounted, onBeforeUnmount, onBeforeMount, computed, nextTick } from "vue";
+import { useRoute } from "vue-router";
 
-import Sidebar from '../components/Sidebar.vue'
-import NotificationPanel from '../components/NotificationPanel.vue'
+import Sidebar from "../components/Sidebar.vue";
+import NotificationPanel from "../components/NotificationPanel.vue";
 
-import { useSidebarState } from '../composables/useSidebarState'
-import { useMotionEffects } from '../composables/useMotionEffects'
-import { useNotifications } from '../composables/useNotificationsState'
+import { useSidebarState } from "../composables/useSidebarState";
+import { useMotionEffects } from "../composables/useMotionEffects";
+import { useNotifications } from "../composables/useNotificationsState";
 
-// ---- Sidebar & motion ----
-const { isSidebarCollapsed, toggleSidebar, setSidebarState } = useSidebarState()
-const { motionRef, animateSidebarShift } = useMotionEffects()
+/* =========================
+   Helpers perf
+   ========================= */
+function rafThrottle(fn) {
+  let rafId = 0;
+  return (...args) => {
+    if (rafId) return;
+    rafId = requestAnimationFrame(() => {
+      rafId = 0;
+      fn(...args);
+    });
+  };
+}
 
-// ---- Notificaciones ----
-const { showPanel, openPanel, closePanel } = useNotifications()
-const unreadNotifications = ref(0)
+/* =========================
+   Sidebar & motion
+   ========================= */
+const { isSidebarCollapsed, setSidebarState } = useSidebarState();
+const { motionRef, animateSidebarShift } = useMotionEffects();
 
-// ---- Breadcrumb dinámico ----
-const route = useRoute()
-const currentRouteName = computed(() => {
-    return route.meta.breadcrumb || route.name || 'Dashboard'
-})
+/* =========================
+   Notificaciones
+   ========================= */
+const { showPanel, openPanel, closePanel } = useNotifications();
+const unreadNotifications = ref(0);
 
-const pageTitle = computed(() => {
-    return 'Panel de Control'
-})
+/* =========================
+   Breadcrumb / título
+   ========================= */
+const route = useRoute();
+const currentRouteName = computed(() => route.meta.breadcrumb || route.name || "Dashboard");
+const pageTitle = computed(() => "Panel de Control");
 
-// ---- Modo oscuro ----
-const isDark = ref(document.documentElement.getAttribute('data-theme') === 'dark')
+/* =========================
+   Dark mode
+   ========================= */
+const isDark = ref(document.documentElement.getAttribute("data-theme") === "dark");
 
 function toggleDarkMode() {
-    const html = document.documentElement
-    if (html.getAttribute('data-theme') === 'dark') {
-        html.setAttribute('data-theme', 'light')
-        html.style.colorScheme = 'light'
-        localStorage.setItem('dark-mode', 'false')
-        isDark.value = false
-    } else {
-        html.setAttribute('data-theme', 'dark')
-        html.style.colorScheme = 'dark'
-        localStorage.setItem('dark-mode', 'true')
-        isDark.value = true
-    }
+  const html = document.documentElement;
+  const next = html.getAttribute("data-theme") !== "dark" ? "dark" : "light";
+  html.setAttribute("data-theme", next);
+  html.style.colorScheme = next;
+  localStorage.setItem("dark-mode", next === "dark" ? "true" : "false");
+  isDark.value = next === "dark";
 }
 
-// ---- Control de la altura del viewport en móviles ----
-const viewportHeight = ref(window.innerHeight)
+/* =========================
+   Font size (1 paso)
+   ========================= */
+const FONT_SIZE_KEY = "user-font-size";
+const sizes = { xs: "85%", sm: "92.5%", md: "100%", lg: "112.5%" };
 
-function updateViewportHeight() {
-    viewportHeight.value = window.innerHeight
-    document.documentElement.style.setProperty('--vh', `${viewportHeight.value * 0.01}px`)
-}
-
-onMounted(() => {
-    updateViewportHeight()
-    window.addEventListener('resize', updateViewportHeight)
-})
-
-onBeforeUnmount(() => {
-    window.removeEventListener('resize', updateViewportHeight)
-})
-
-// ---- Watch sidebar colapsada ----
-watch(isSidebarCollapsed, (newVal) => {
-    animateSidebarShift(newVal)
-
-    // Solo cerrar el panel si estamos expandiendo la sidebar
-    if (!newVal) {
-        closePanel()
-    }
-})
-
-// ---- Tamaño de fuente con persistencia ----
-const FONT_SIZE_KEY = 'user-font-size'
-const defaultFontSize = 'md'
-
-const sizes = {
-    xs: '85%',
-    sm: '92.5%',
-    md: '100%',
-    lg: '112.5%'
-}
-
-// Aplicar tamaño antes de montar para evitar salto visual
-function applyFontSizeImmediately() {
-    const savedSize = localStorage.getItem(FONT_SIZE_KEY)
-    const sizeToApply = savedSize && sizes[savedSize] ? savedSize : defaultFontSize
-    document.documentElement.style.fontSize = sizes[sizeToApply]
-}
-
-// Ejecutar antes de onMounted
-applyFontSizeImmediately()
-
-const fontSize = ref(defaultFontSize)
+const fontSize = ref("md");
+(function applyFontSizeImmediately() {
+  const saved = localStorage.getItem(FONT_SIZE_KEY);
+  const size = saved && sizes[saved] ? saved : "md";
+  fontSize.value = size;
+  document.documentElement.style.fontSize = sizes[size];
+})();
 
 function setFontSize(size) {
-    fontSize.value = size
-    document.documentElement.style.fontSize = sizes[size] || sizes[defaultFontSize]
-    localStorage.setItem(FONT_SIZE_KEY, size)
+  const next = sizes[size] ? size : "md";
+  fontSize.value = next;
+  document.documentElement.style.fontSize = sizes[next];
+  localStorage.setItem(FONT_SIZE_KEY, next);
 }
 
-onMounted(() => {
-    const savedSize = localStorage.getItem(FONT_SIZE_KEY)
-    if (savedSize && sizes[savedSize]) {
-        fontSize.value = savedSize
-    } else {
-        fontSize.value = defaultFontSize
-    }
-    setFontSize(fontSize.value)
-})
-
-// ---- Estado de conexión ----
-const isOffline = ref(!navigator.onLine)
-const showLoading = ref(false)
+/* =========================
+   Online / Offline
+   ========================= */
+const isOffline = ref(!navigator.onLine);
+const showLoading = ref(false);
 
 function updateOnlineStatus() {
-    if (navigator.onLine) {
-        isOffline.value = false
-        showLoading.value = false
-    } else {
-        isOffline.value = true
-        showLoading.value = true
-    }
+  const online = navigator.onLine;
+  isOffline.value = !online;
+  showLoading.value = !online;
 }
 
-onMounted(() => {
-    window.addEventListener('online', updateOnlineStatus)
-    window.addEventListener('offline', updateOnlineStatus)
-    updateOnlineStatus()
-})
+/* =========================
+   Mobile detection (matchMedia)
+   ========================= */
+const mql = window.matchMedia("(max-width: 768px)");
+const isMobile = ref(mql.matches);
 
-onBeforeUnmount(() => {
-    window.removeEventListener('online', updateOnlineStatus)
-    window.removeEventListener('offline', updateOnlineStatus)
-})
-
-// ---- Lógica de sidebar móvil ----
-const isMobileSidebarVisible = ref(true)
-const sidebarmobile = ref(null)
-const windowWidth = ref(window.innerWidth)
-const isMobile = computed(() => windowWidth.value <= 768)
-
-// Leer estado guardado para móviles
-const savedSidebarState = localStorage.getItem('mobileSidebarVisible')
-if (savedSidebarState !== null) {
-    isMobileSidebarVisible.value = savedSidebarState === 'true'
+function onMediaChange(e) {
+  isMobile.value = !!e.matches;
 }
+
+/* =========================
+   Viewport vh + resize
+   (1 solo listener, throttled)
+   ========================= */
+function setVhVar() {
+  document.documentElement.style.setProperty("--vh", `${window.innerHeight * 0.01}px`);
+}
+
+const onResize = rafThrottle(() => {
+  setVhVar();
+  // (no hacemos windowWidth reactive; mobile lo define matchMedia)
+});
+
+/* =========================
+   Sidebar móvil (persistencia)
+   ========================= */
+const sidebarmobile = ref(null);
+const isMobileSidebarVisible = ref(true);
+
+const savedSidebarState = localStorage.getItem("mobileSidebarVisible");
+if (savedSidebarState !== null) isMobileSidebarVisible.value = savedSidebarState === "true";
 
 onBeforeMount(() => {
-    if (isMobile.value) {
-        updateMainClass(isMobileSidebarVisible.value)
-    } else {
-        updateMainClass(true) // en escritorio: siempre visible
-    }
-})
-
-function toggleMobileSidebar() {
-    if (isMobileSidebarVisible.value) {
-        hideSidebarMobile()
-    } else {
-        isMobileSidebarVisible.value = true
-        localStorage.setItem('mobileSidebarVisible', 'true')
-        nextTick(() => {
-            showSidebarMobile()
-            updateMainClass(true)
-        })
-    }
-}
+  // En desktop, siempre visible
+  if (!isMobile.value) {
+    isMobileSidebarVisible.value = true;
+    localStorage.setItem("mobileSidebarVisible", "true");
+  }
+});
 
 function showSidebarMobile() {
-    const el = sidebarmobile.value?.$el
-    if (!el) return
+  const el = sidebarmobile.value?.$el;
+  if (!el) return;
 
-    el.classList.remove('mobileSidebtraction-leave-active')
-    el.classList.add('mobileSidebtraction-enter-active')
+  el.classList.remove("mobileSidebtraction-leave-active");
+  el.classList.add("mobileSidebtraction-enter-active");
 
-    el.addEventListener(
-        'animationend',
-        () => {
-            el.classList.remove('mobileSidebtraction-enter-active')
-        },
-        { once: true }
-    )
+  el.addEventListener(
+    "animationend",
+    () => el.classList.remove("mobileSidebtraction-enter-active"),
+    { once: true }
+  );
 }
 
 function hideSidebarMobile() {
-    const el = sidebarmobile.value?.$el
-    if (!el) return
+  const el = sidebarmobile.value?.$el;
+  if (!el) return;
 
-    el.classList.remove('mobileSidebtraction-enter-active')
-    el.classList.add('mobileSidebtraction-leave-active')
+  el.classList.remove("mobileSidebtraction-enter-active");
+  el.classList.add("mobileSidebtraction-leave-active");
 
-    el.addEventListener(
-        'animationend',
-        () => {
-            el.classList.remove('mobileSidebtraction-leave-active')
-            isMobileSidebarVisible.value = false
-            localStorage.setItem('mobileSidebarVisible', 'false')
-            updateMainClass(false)
-        },
-        { once: true }
-    )
+  el.addEventListener(
+    "animationend",
+    () => {
+      el.classList.remove("mobileSidebtraction-leave-active");
+      isMobileSidebarVisible.value = false;
+      localStorage.setItem("mobileSidebarVisible", "false");
+    },
+    { once: true }
+  );
 }
 
-// Manejar margin-left dinámico por tamaño de pantalla y colapso
-function updateMainClass(sidebarVisible) {
-    const mainEl = document.querySelector('main.main-content')
-    if (!mainEl) return
+function toggleMobileSidebar() {
+  if (!isMobile.value) return;
 
-    const collapsed = localStorage.getItem('sidebar-collapsed') === 'true'
-
-    if (windowWidth.value <= 768) {
-        if (sidebarVisible) {
-            mainEl.classList.add('main-sidebar-visible')
-            mainEl.classList.remove('main-sidebar-hidden')
-        } else {
-            mainEl.classList.add('main-sidebar-hidden')
-            mainEl.classList.remove('main-sidebar-visible')
-        }
-    } else {
-        if (collapsed) {
-            mainEl.classList.add('main-sidebar-hidden')
-            mainEl.classList.remove('main-sidebar-visible')
-        } else {
-            mainEl.classList.add('main-sidebar-visible')
-            mainEl.classList.remove('main-sidebar-hidden')
-        }
-    }
+  if (isMobileSidebarVisible.value) {
+    hideSidebarMobile();
+  } else {
+    isMobileSidebarVisible.value = true;
+    localStorage.setItem("mobileSidebarVisible", "true");
+    nextTick(showSidebarMobile);
+  }
 }
 
-function handleResize() {
-    windowWidth.value = window.innerWidth
-    const isNowMobile = windowWidth.value <= 768
+/* Cuando cambias a desktop: fuerza visible (evita estados raros) */
+watch(isMobile, (nowMobile) => {
+  if (!nowMobile) {
+    isMobileSidebarVisible.value = true;
+    localStorage.setItem("mobileSidebarVisible", "true");
+  }
+});
 
-    if (!isNowMobile) {
-        isMobileSidebarVisible.value = true
-        updateMainClass(true)
-    } else {
-        updateMainClass(isMobileSidebarVisible.value)
-    }
+/* Sidebar collapse: animación + cerrar notifs */
+watch(isSidebarCollapsed, (newVal) => {
+  animateSidebarShift(newVal);
+  if (!newVal) closePanel();
+});
+
+/* =========================
+   Clases del main
+   ========================= */
+const mainClasses = computed(() => ({
+  "is-sidebar-narrow": !!isSidebarCollapsed.value,
+  "is-sidebar-wide": !isSidebarCollapsed.value,
+  "is-notifications-open": !!showPanel.value,
+  "is-mobile": !!isMobile.value,
+  "is-mobile-sidebar-open": !!(isMobile.value && isMobileSidebarVisible.value),
+}));
+
+function closePanelFromOverlay() {
+  if (isMobile.value && showPanel.value) closePanel();
 }
 
+/* =========================
+   Mount / Unmount (1 sola vez)
+   ========================= */
 onMounted(() => {
-    window.addEventListener('resize', handleResize)
-    handleResize()
-})
+  setVhVar();
+
+  // resize (1)
+  window.addEventListener("resize", onResize, { passive: true });
+
+  // online/offline (2)
+  window.addEventListener("online", updateOnlineStatus, { passive: true });
+  window.addEventListener("offline", updateOnlineStatus, { passive: true });
+  updateOnlineStatus();
+
+  // matchMedia (3)
+  if (mql.addEventListener) mql.addEventListener("change", onMediaChange);
+  else mql.addListener(onMediaChange);
+});
 
 onBeforeUnmount(() => {
-    window.removeEventListener('resize', handleResize)
-})
+  window.removeEventListener("resize", onResize);
+
+  window.removeEventListener("online", updateOnlineStatus);
+  window.removeEventListener("offline", updateOnlineStatus);
+
+  if (mql.removeEventListener) mql.removeEventListener("change", onMediaChange);
+  else mql.removeListener(onMediaChange);
+});
 </script>
+
 
 <script>
 import { useAuth } from '@/services/useAuth'
@@ -744,7 +717,6 @@ export default {
         transform: translateX(0);
         opacity: 1;
     }
-
     100% {
         transform: translateX(-110%);
         opacity: 0;

@@ -22,6 +22,8 @@
       @refresh="handleRefresh"
       @seed="handleSeed"
       @export="handleExport"
+      @fx-input="onFxInput"
+      @fx-commit="onFxCommit"
     />
 
     <div
@@ -475,25 +477,47 @@ const onCellValueChanged = (p) => {
   }
 };
 
-watch(formulaValue, (val) => {
+/**
+ * ✅ Base-style: FX input no “guarda”, FX commit sí “guarda”
+ * - Monofocal: solo permite cyl_*
+ */
+function applyFxToGrid(val, { commit = false } = {}) {
   if (!activeCell || !gridApi.value) return;
 
-  const field = activeCell.colDef.field;
+  const field = activeCell.colDef?.field;
+  if (!field || !field.startsWith("cyl_")) return;
+
+  const cDisp = parseCylFromField(field);
+  if (cDisp === null || Number.isNaN(cDisp)) return;
+
   const raw = String(val ?? "").trim();
   const newVal = isNumeric(raw) ? Number(raw) : 0;
 
-  const updatedRow = { ...activeCell.data, [field]: newVal };
-  gridApi.value.applyTransaction({ update: [updatedRow] });
-
+  // live preview (sin ensuciar ni pending)
   if (activeCell.data) activeCell.data[field] = newVal;
 
-  if (field.startsWith("cyl_")) {
-    const cDisp = parseCylFromField(field);
-    if (!Number.isNaN(cDisp)) markCellChangedMonofocal(updatedRow.sph, cDisp, newVal);
-  } else {
-    dirty.value = true;
+  if (!commit) {
+    gridApi.value.refreshCells?.({
+      rowNodes: activeCell.node ? [activeCell.node] : undefined,
+      columns: [field],
+      force: true
+    });
+    return;
   }
-});
+
+  const updatedRow = { ...(activeCell.data || {}), [field]: newVal };
+  gridApi.value.applyTransaction({ update: [updatedRow] });
+
+  markCellChangedMonofocal(updatedRow.sph, cDisp, newVal);
+
+  gridApi.value.flashCells?.({
+    rowNodes: activeCell.node ? [activeCell.node] : undefined,
+    columns: [field]
+  });
+}
+
+const onFxInput = (val) => applyFxToGrid(val, { commit: false });
+const onFxCommit = (val) => applyFxToGrid(val, { commit: true });
 
 /* ===================== Grid hooks ===================== */
 const onGridReady = (p) => {

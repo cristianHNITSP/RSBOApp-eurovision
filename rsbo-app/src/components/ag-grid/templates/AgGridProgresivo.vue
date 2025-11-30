@@ -22,6 +22,8 @@
       @refresh="handleRefresh"
       @seed="handleSeed"
       @export="handleExport"
+      @fx-input="onFxInput"
+      @fx-commit="onFxCommit"
     />
 
     <div
@@ -477,28 +479,52 @@ const onCellValueChanged = (p) => {
   }
 };
 
-watch(formulaValue, (val) => {
+/**
+ * ✅ Base-style: FX input no “guarda”, FX commit sí “guarda”
+ * - Progresivo: solo permite add_*
+ */
+function applyFxToGrid(val, { commit = false } = {}) {
   if (!activeCell || !gridApi.value) return;
-  const field = activeCell.colDef.field;
+
+  const field = activeCell.colDef?.field;
+  if (!field || !field.startsWith("add_")) return;
+
+  const meta = parseAddEyeFromField(field);
+  if (!meta) return;
+
   const raw = String(val ?? "").trim();
   const newVal = isNumeric(raw) ? Number(raw) : 0;
 
-  const updatedRow = { ...activeCell.data, [field]: newVal };
-  gridApi.value.applyTransaction({ update: [updatedRow] });
-
   if (activeCell.data) activeCell.data[field] = newVal;
 
-  const meta = parseAddEyeFromField(field);
-  if (meta) {
-    markCellChangedProgresivo({
-      add: meta.add,
-      eye: meta.eye,
-      base_izq: updatedRow.base_izq ?? updatedRow.base,
-      base_der: updatedRow.base_der ?? updatedRow.base,
-      existencias: newVal
+  if (!commit) {
+    gridApi.value.refreshCells?.({
+      rowNodes: activeCell.node ? [activeCell.node] : undefined,
+      columns: [field],
+      force: true
     });
+    return;
   }
-});
+
+  const updatedRow = { ...(activeCell.data || {}), [field]: newVal };
+  gridApi.value.applyTransaction({ update: [updatedRow] });
+
+  markCellChangedProgresivo({
+    add: meta.add,
+    eye: meta.eye,
+    base_izq: updatedRow.base_izq ?? updatedRow.base,
+    base_der: updatedRow.base_der ?? updatedRow.base,
+    existencias: newVal
+  });
+
+  gridApi.value.flashCells?.({
+    rowNodes: activeCell.node ? [activeCell.node] : undefined,
+    columns: [field]
+  });
+}
+
+const onFxInput = (val) => applyFxToGrid(val, { commit: false });
+const onFxCommit = (val) => applyFxToGrid(val, { commit: true });
 
 const onGridReady = (p) => {
   gridApi.value = p.api;

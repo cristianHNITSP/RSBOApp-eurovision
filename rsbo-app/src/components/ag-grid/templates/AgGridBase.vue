@@ -21,6 +21,8 @@
       @refresh="handleRefresh"
       @seed="handleSeed"
       @export="handleExport"
+      @fx-input="onFxInput"
+      @fx-commit="onFxCommit"
     />
 
     <!-- ✅ Fade suave en cambio de vista -->
@@ -146,18 +148,12 @@ const to2 = (n) => {
   if (!Number.isFinite(num)) return 0;
   return Number(num.toFixed(2));
 };
-const isQuarterStep = (value) => {
-  const num = Number(value);
-  if (!Number.isFinite(num)) return false;
-  const scaled = num * 4;
-  return Math.abs(scaled - Math.round(scaled)) < 1e-6;
-};
 const frange = (start, end, step) => {
   const out = [];
   const s = Number(start);
   const e = Number(end);
-  const st = Number(step);
-  if (!Number.isFinite(s) || !Number.isFinite(e) || !Number.isFinite(st) || st === 0) return out;
+  const st = Math.abs(Number(step));
+  if (!Number.isFinite(s) || !Number.isFinite(e) || !Number.isFinite(st) || st <= 0) return out;
   const eps = 1e-9;
   if (s <= e) for (let v = s; v <= e + eps; v += st) out.push(to2(v));
   else for (let v = s; v >= e - eps; v -= st) out.push(to2(v));
@@ -170,12 +166,24 @@ const fmtSigned = (n) => {
   return num >= 0 ? `+${s}` : s;
 };
 
+const isMultipleOfStep = (value, step) => {
+  const v = Number(value);
+  const st = Number(step);
+  if (!Number.isFinite(v) || !Number.isFinite(st) || st <= 0) return false;
+  const abs = Math.abs(v);
+  const mult = Math.round(abs / st);
+  return Math.abs(mult * st - abs) < 1e-6;
+};
+
+/** ✅ BASE va en 0.50 */
+const BASE_STEP = 0.50;
+
 /* ======== LÍMITES FÍSICOS DESDE BACKEND ======== */
 const phys = computed(() => {
   const pl = physicalLimits.value || {};
   const baseMin = numOr(pl?.BASE?.min, -40);
   const baseMax = numOr(pl?.BASE?.max, 40);
-  return { baseMin, baseMax };
+  return { baseMin: to2(baseMin), baseMax: to2(baseMax) };
 });
 
 const baseViewId = computed(() => {
@@ -184,21 +192,18 @@ const baseViewId = computed(() => {
 });
 
 /**
- * ✅ Requisito: “tanto en positivo como en negativo debe empezar arriba el cero”
- * - Para MOSTRAR: base-neg incluye 0 (<=0) y luego negativos
- * - Para AGREGAR: base-neg sigue siendo estrictamente negativo (<0) para evitar duplicar 0
+ * ✅ 0 arriba en ambas vistas
+ * - MOSTRAR: neg incluye 0 (<=0), pos incluye 0 (>=0)
+ * - AGREGAR: neg es estrictamente <0 para no duplicar 0
  */
-const baseFilterDisplay = computed(() => {
-  return baseViewId.value === "base-neg" ? (n) => Number(n) <= 0 : (n) => Number(n) >= 0;
-});
-const baseFilterNewRow = computed(() => {
-  return baseViewId.value === "base-neg" ? (n) => Number(n) < 0 : (n) => Number(n) >= 0;
-});
+const baseFilterDisplay = computed(() =>
+  baseViewId.value === "base-neg" ? (n) => Number(n) <= 0 : (n) => Number(n) >= 0
+);
+const baseFilterNewRow = computed(() =>
+  baseViewId.value === "base-neg" ? (n) => Number(n) < 0 : (n) => Number(n) >= 0
+);
 
-/** Orden: base-neg DESC (0, -0.25, -0.50...) | base-pos ASC (0, 0.25, 0.50...) */
 const sortDirForView = computed(() => (baseViewId.value === "base-neg" ? "desc" : "asc"));
-const sortBasesForView = (arr) =>
-  arr.sort((a, b) => (sortDirForView.value === "desc" ? b - a : a - b));
 
 const effectiveActor = computed(() => {
   const src = props.actor || (typeof window !== "undefined" ? window.__currentUser : null) || null;
@@ -293,47 +298,85 @@ async function loadSheetMeta() {
   }
 }
 
-/** ✅ base-neg pide hasta 0 (incluye 0 para que quede arriba) */
+/**
+ * ✅ Determina el rango “a mostrar” por vista:
+ * - usa tabs del backend (meta.ranges)
+ * - fallback a seed mínima
+ * - clamp por físicos
+ */
+function getViewRange() {
+  const P = phys.value;
+
+  const tab =
+    sheetTabs.value.find((t) => t?.id === baseViewId.value) ||
+    sheetTabs.value.find((t) => String(t?.id || "").includes("base")) ||
+    null;
+
+  const r = tab?.ranges?.base && typeof tab.ranges.base === "object" ? tab.ranges.base : null;
+
+  const rawA = r ? Number(r.start) : NaN;
+  const rawB = r ? Number(r.end) : NaN;
+
+  let min = Number.isFinite(rawA) && Number.isFinite(rawB) ? Math.min(rawA, rawB) : NaN;
+  let max = Number.isFinite(rawA) && Number.isFinite(rawB) ? Math.max(rawA, rawB) : NaN;
+
+  if (!Number.isFinite(min) || !Number.isFinite(max)) {
+    min = 0;
+    max = 8;
+  }
+
+  min = to2(Math.max(P.baseMin, min));
+  max = to2(Math.min(P.baseMax, max));
+
+  if (baseViewId.value === "base-neg") {
+    const viewMin = to2(Math.min(min, 0, -BASE_STEP)); // asegura vista neg existente
+    return { viewMin, viewMax: 0 };
+  }
+  const viewMax = to2(Math.max(max, 0));
+  return { viewMin: 0, viewMax };
+}
+
+/** Pedimos items por límites físicos, filtramos por vista al render */
 function buildItemsQueryForView() {
   const P = phys.value;
-  if (baseViewId.value === "base-neg") {
-    return { baseMin: P.baseMin, baseMax: 0 };
-  }
+  if (baseViewId.value === "base-neg") return { baseMin: P.baseMin, baseMax: 0 };
   return { baseMin: 0, baseMax: P.baseMax };
 }
 
 async function loadRows() {
   const P = phys.value;
+  const { viewMin, viewMax } = getViewRange();
 
-  const tab =
-    sheetTabs.value.find((t) => t?.id === baseViewId.value) ||
-    sheetTabs.value[0] ||
-    null;
-
-  const defBaseRange = tab?.ranges?.base || null;
-  const defBasesAll = defBaseRange
-    ? frange(defBaseRange.start, defBaseRange.end, defBaseRange.step ?? 0.25)
-    : [];
-
-  // ✅ display filter (neg incluye 0) + clamp físico
-  const defBases = defBasesAll
-    .map(to2)
-    .filter((b) => b >= P.baseMin && b <= P.baseMax)
-    .filter((b) => baseFilterDisplay.value(b));
+  // ✅ seed visible (BASE_STEP = 0.50)
+  const seedBases =
+    baseViewId.value === "base-neg"
+      ? frange(0, viewMin, BASE_STEP)
+      : frange(0, viewMax, BASE_STEP);
 
   const { data } = await fetchItems(props.sheetId, buildItemsQueryForView());
   const items = data?.data || [];
 
   const itemBases = items
     .map((i) => to2(i.base))
+    .filter((b) => b >= P.baseMin && b <= P.baseMax);
+
+  const merged = [...seedBases, ...itemBases]
+    .map(to2)
     .filter((b) => b >= P.baseMin && b <= P.baseMax)
     .filter((b) => baseFilterDisplay.value(b));
 
-  const baseList = sortBasesForView([...new Set([...defBases, ...itemBases])]);
+  const baseListUnique = [...new Set(merged)];
+
+  baseListUnique.sort((a, b) =>
+    sortDirForView.value === "desc" ? b - a : a - b
+  );
 
   const map = new Map(items.map((i) => [String(to2(i.base)), Number(i.existencias ?? 0)]));
 
-  rowData.value = baseList.map((b) => ({ base: b, existencias: map.get(String(b)) ?? 0 }));
+  rowData.value = baseListUnique.map((b) => ({
+    base: b,
+    existencias: map.get(String(b)) ?? 0
+  }));
 
   dirty.value = false;
   pendingChanges.value.clear();
@@ -348,7 +391,7 @@ async function loadAll() {
 
 async function switchViewReload() {
   switchingView.value = true;
-  await raf(); // deja aplicar clase
+  await raf();
   try {
     await loadRows();
   } catch (e) {
@@ -361,7 +404,6 @@ async function switchViewReload() {
 
 onMounted(loadAll);
 
-/** ✅ cambio de vista sin remount, con fade */
 watch(
   () => props.sphType,
   async () => {
@@ -371,6 +413,7 @@ watch(
   }
 );
 
+/* ===================== edición rápida (formula bar) ===================== */
 const formulaValue = ref("");
 let activeCell = null;
 
@@ -388,20 +431,34 @@ const onCellValueChanged = (p) => {
   }
 };
 
-watch(formulaValue, (val) => {
+// ✅ APLICAR FX SOLO CUANDO EL USUARIO ESCRIBE / CONFIRMA
+const applyFxToGrid = (val, { commit = false } = {}) => {
   if (!activeCell || !gridApi.value) return;
+
   const field = activeCell.colDef.field;
-  if (field !== "existencias") return;
+  if (field !== "existencias") return; // solo stock
 
   const raw = String(val ?? "").trim();
+
+  // live: no forzamos 0 mientras escribe (evita "salto" a 0 con '' o '-')
+  if (!commit) {
+    if (raw === "") return;
+    if (!isNumeric(raw)) return;
+  }
+
   const newVal = isNumeric(raw) ? Number(raw) : 0;
+  const current = Number(activeCell.data?.[field] ?? 0);
+  if (!commit && current === newVal) return;
 
   const updatedRow = { ...activeCell.data, [field]: newVal };
   gridApi.value.applyTransaction({ update: [updatedRow] });
 
   if (activeCell.data) activeCell.data[field] = newVal;
   markChanged({ base: updatedRow.base, existencias: newVal });
-});
+};
+
+const onFxInput = (val) => applyFxToGrid(val, { commit: false });
+const onFxCommit = (val) => applyFxToGrid(val, { commit: true });
 
 const onGridReady = (p) => {
   gridApi.value = p.api;
@@ -413,15 +470,25 @@ const handleAddRow = async (nuevoValor, ack) => {
   const base = to2(nuevoValor);
 
   if (!Number.isFinite(base)) return ackErr(ack, "Ingresa BASE numérica", 400);
-  if (!isQuarterStep(base)) return ackErr(ack, "BASE debe ser múltiplo de 0.25 (…00, …25, …50, …75)", 400);
-  if (base < P.baseMin || base > P.baseMax) return ackErr(ack, `BASE fuera de límites (${P.baseMin} a ${P.baseMax})`, 400);
 
-  // ✅ para agregar: neg estricta (evita duplicar 0)
+  // ✅ BASE es paso 0.50
+  if (!isMultipleOfStep(base, BASE_STEP)) {
+    return ackErr(
+      ack,
+      `BASE debe ser múltiplo de ${BASE_STEP.toFixed(2)} (…00, …50). Ej: -1.00, -0.50, +0.00, +0.50, +1.00`,
+      400
+    );
+  }
+
+  if (base < P.baseMin || base > P.baseMax) {
+    return ackErr(ack, `BASE fuera de límites (${P.baseMin} a ${P.baseMax})`, 400);
+  }
+
   if (!baseFilterNewRow.value(base)) {
     return ackErr(
       ack,
       baseViewId.value === "base-neg"
-        ? "Esta vista es BASE (-): la BASE debe ser negativa (ej: -0.25)"
+        ? "Esta vista es BASE (-): la BASE debe ser negativa (ej: -0.50)"
         : "Esta vista es BASE (+): la BASE debe ser 0 o positiva",
       400
     );
@@ -430,25 +497,28 @@ const handleAddRow = async (nuevoValor, ack) => {
   const exists = rowData.value.some((r) => to2(r.base) === base);
   if (exists) return ackErr(ack, `BASE ${fmtSigned(base)} ya existe`, 409);
 
-  // UI primero
+  // UI optimista
   const row = { base, existencias: 0 };
   gridApi.value?.applyTransaction({ add: [row] });
   await nextTick();
   resetSort();
 
-  // Persistencia real
   try {
+    // ✅ Persistir: IMPORTANTE que el backend acepte crear celdas con existencias=0
     const res = await saveChunk(props.sheetId, [{ base, existencias: 0 }], effectiveActor.value);
     const ok = normalizeAxiosOk(res);
-    if (!ok.ok) return ackErr(ack, ok.message || "No se pudo agregar la fila", ok.status);
+    if (!ok.ok) throw new Error(ok.message || "No se pudo agregar la fila");
 
     ackOk(ack, ok.message || `Fila agregada: BASE ${fmtSigned(base)}`, ok.status);
-
     lastSavedAt.value = new Date();
-    await switchViewReload();
+
+    await loadSheetMeta();     // refresca meta/tabs (rangos extendidos)
+    await switchViewReload();  // vuelve a pedir items (ya debería venir -1, 8.5, etc)
   } catch (e) {
-    console.error("[AgGridBase] Error persistiendo base nueva:", e?.response?.data || e);
-    ackErr(ack, msgFromErr(e, "Error al guardar la nueva BASE"), statusFromErr(e));
+    // rollback UI (si falla)
+    gridApi.value?.applyTransaction({ remove: [row] });
+    await nextTick();
+    ackErr(ack, msgFromErr(e, "Error al guardar la nueva BASE"), statusFromErr(e) || 500);
   }
 };
 
@@ -470,6 +540,7 @@ async function handleSave(ack) {
 
     ackOk(ack, ok.message || "Cambios guardados.", ok.status);
 
+    await loadSheetMeta();
     await switchViewReload();
   } catch (e) {
     console.error("[AgGridBase] Error saveChunk:", e?.response?.data || e);
@@ -489,7 +560,7 @@ const clearFilters = () => {
 const resetSort = () => {
   const api = gridApi.value;
   if (!api) return;
-  const dir = sortDirForView.value; // ✅ asc/desc según vista
+  const dir = sortDirForView.value;
   if (typeof api.applyColumnState === "function") {
     api.applyColumnState({ defaultState: { sort: null }, state: [{ colId: "base", sort: dir }] });
   } else if (typeof api.setSortModel === "function") {

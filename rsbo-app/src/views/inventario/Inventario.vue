@@ -89,6 +89,7 @@ function crearNuevaPlanilla({ payload, result, tabs }) {
 
   const newSheet = {
     id: String(s._id),
+    sku: s.sku,
     name: s.nombre,
     tipo_matriz: s.tipo_matriz,
     baseKey: s.baseKey,

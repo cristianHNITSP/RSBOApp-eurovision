@@ -22,6 +22,8 @@
       @refresh="handleRefresh"
       @seed="handleSeed"
       @export="handleExport"
+      @fx-input="onFxInput"
+      @fx-commit="onFxCommit"
     />
 
     <div
@@ -494,32 +496,56 @@ const onCellValueChanged = (p) => {
   }
 };
 
-watch(formulaValue, (val) => {
+/**
+ * ✅ Base-style: FX input no “guarda”, FX commit sí “guarda”
+ * - Bifocal: solo permite add_*
+ */
+function applyFxToGrid(val, { commit = false } = {}) {
   if (!activeCell || !gridApi.value) return;
 
-  const field = activeCell.colDef.field;
+  const field = activeCell.colDef?.field;
+  if (!field || !field.startsWith("add_")) return;
+
+  const meta = parseAddEyeFromField(field);
+  if (!meta) return;
+
   const raw = String(val ?? "").trim();
   const newVal = isNumeric(raw) ? Number(raw) : 0;
 
-  const updatedRow = { ...activeCell.data, [field]: newVal };
-  gridApi.value.applyTransaction({ update: [updatedRow] });
-
+  // live preview (sin ensuciar ni pending)
   if (activeCell.data) activeCell.data[field] = newVal;
 
-  const meta = parseAddEyeFromField(field);
-  if (meta) {
-    markCellChangedBifocal({
-      sph: updatedRow.sph,
-      add: meta.add,
-      eye: meta.eye,
-      base_izq: updatedRow.base_izq,
-      base_der: updatedRow.base_der,
-      existencias: newVal
+  if (!commit) {
+    // repaint rápido sin transacción
+    gridApi.value.refreshCells?.({
+      rowNodes: activeCell.node ? [activeCell.node] : undefined,
+      columns: [field],
+      force: true
     });
-  } else {
-    dirty.value = true;
+    return;
   }
-});
+
+  // commit: transacción + pending change
+  const updatedRow = { ...(activeCell.data || {}), [field]: newVal };
+  gridApi.value.applyTransaction({ update: [updatedRow] });
+
+  markCellChangedBifocal({
+    sph: updatedRow.sph,
+    add: meta.add,
+    eye: meta.eye,
+    base_izq: updatedRow.base_izq,
+    base_der: updatedRow.base_der,
+    existencias: newVal
+  });
+
+  gridApi.value.flashCells?.({
+    rowNodes: activeCell.node ? [activeCell.node] : undefined,
+    columns: [field]
+  });
+}
+
+const onFxInput = (val) => applyFxToGrid(val, { commit: false });
+const onFxCommit = (val) => applyFxToGrid(val, { commit: true });
 
 /* ===================== Grid hooks ===================== */
 const onGridReady = (p) => {

@@ -176,16 +176,30 @@
             <b-input v-model="newSheetName" disabled expanded />
           </b-field>
 
-          <b-button
-            type="is-primary"
-            native-type="submit"
-            size="is-small"
-            :disabled="!canCreate || creatingSheet"
-            :loading="creatingSheet"
-          >
-            <span v-if="!creatingSheet">Crear Planilla</span>
-            <span v-else>Creando planilla…</span>
-          </b-button>
+          <div class="create-actions">
+            <b-button
+              type="is-primary"
+              native-type="submit"
+              size="is-small"
+              :disabled="!canCreate || creatingSheet"
+              :loading="creatingSheet"
+            >
+              <span v-if="!creatingSheet">Crear Planilla</span>
+              <span v-else>Creando…</span>
+            </b-button>
+
+            <!-- ✅ Status pill de crear -->
+            <div class="create-status" aria-live="polite" role="status">
+              <transition name="fade-status">
+                <div v-if="createStatus !== 'idle'" class="meta-status" :class="createStatus">
+                  <span v-if="createStatus === 'saving'" class="dot-pulse"></span>
+                  <i v-else-if="createStatus === 'saved'" class="far fa-check-circle"></i>
+                  <i v-else-if="createStatus === 'error'" class="far fa-exclamation-triangle"></i>
+                  <span class="meta-status-text">{{ createStatusMessage }}</span>
+                </div>
+              </transition>
+            </div>
+          </div>
         </form>
       </div>
 
@@ -233,7 +247,16 @@
               Tratamientos: {{ selectedSheet.tratamientos.join(" + ") }}
             </span>
           </div>
-          <button class="delete" aria-label="close" @click="isActionsOpen = false"></button>
+
+          <!-- ✅ Evita cerrar mientras hay sync (renaming/meta/trash) -->
+          <button
+            class="delete"
+            :class="{ 'is-disabled': anySaving }"
+            :disabled="anySaving"
+            aria-label="close"
+            :title="anySaving ? 'Hay cambios en proceso…' : 'Cerrar'"
+            @click="isActionsOpen = false"
+          ></button>
         </header>
 
         <section class="modal-card-body rsbo-actions-body">
@@ -249,29 +272,52 @@
               <div class="action-title">Abrir planilla</div>
               <div class="action-desc">Ir a la planilla y gestionarla.</div>
               <div class="mt-2">
-                <b-button type="is-primary" @click="openSheet">Abrir</b-button>
+                <b-button type="is-primary" :disabled="anySaving" @click="openSheet">
+                  Abrir
+                </b-button>
               </div>
             </div>
           </div>
 
-          <!-- RENOMBRAR -->
-          <div class="action-card">
+          <!-- RENOMBRAR (✅ feedback completo) -->
+          <div class="action-card" :class="{ 'rename-glow': renameGlow }">
             <div class="action-icon"><i class="far fa-edit"></i></div>
             <div class="action-content">
               <div class="action-title">Renombrar</div>
               <div class="action-desc">Cambiar el nombre visible de la planilla</div>
+
               <div class="rename-row">
                 <b-field label="Nuevo nombre" class="rename-field">
-                  <b-input v-model.trim="renameName" placeholder="Escribe el nuevo nombre" maxlength="80" />
+                  <b-input
+                    v-model.trim="renameName"
+                    placeholder="Escribe el nuevo nombre"
+                    maxlength="80"
+                    :disabled="renaming"
+                  />
                 </b-field>
-                <b-button
-                  type="is-primary"
-                  :disabled="!renameName || renameName === selectedSheet?.name"
-                  :loading="renaming"
-                  @click="confirmRename"
-                >
-                  Guardar
-                </b-button>
+
+                <div class="rename-actions">
+                  <div class="rename-status-wrapper" aria-live="polite" role="status">
+                    <transition name="fade-status">
+                      <div v-if="renameStatus !== 'idle'" class="meta-status" :class="renameStatus">
+                        <span v-if="renameStatus === 'saving'" class="dot-pulse"></span>
+                        <i v-else-if="renameStatus === 'saved'" class="far fa-check-circle"></i>
+                        <i v-else-if="renameStatus === 'error'" class="far fa-exclamation-triangle"></i>
+                        <span class="meta-status-text">{{ renameStatusMessage }}</span>
+                      </div>
+                    </transition>
+                  </div>
+
+                  <b-button
+                    type="is-primary"
+                    :disabled="!canRename || renaming"
+                    :loading="renaming"
+                    @click="confirmRename"
+                  >
+                    <span v-if="!renaming">Guardar</span>
+                    <span v-else>Guardando…</span>
+                  </b-button>
+                </div>
               </div>
             </div>
           </div>
@@ -287,16 +333,28 @@
 
               <div class="meta-grid">
                 <b-field label="Observaciones">
-                  <b-input v-model.trim="metaForm.observaciones" type="textarea" rows="2" maxlength="500" />
+                  <b-input
+                    v-model.trim="metaForm.observaciones"
+                    type="textarea"
+                    rows="2"
+                    maxlength="500"
+                    :disabled="savingMeta"
+                  />
                 </b-field>
 
                 <b-field label="Notas">
-                  <b-input v-model.trim="metaForm.notas" type="textarea" rows="2" maxlength="500" />
+                  <b-input
+                    v-model.trim="metaForm.notas"
+                    type="textarea"
+                    rows="2"
+                    maxlength="500"
+                    :disabled="savingMeta"
+                  />
                 </b-field>
               </div>
 
               <div class="buttons is-right mt-2 meta-actions-row">
-                <div class="meta-status-wrapper">
+                <div class="meta-status-wrapper" aria-live="polite" role="status">
                   <transition name="fade-status">
                     <div v-if="metaStatus !== 'idle'" class="meta-status" :class="metaStatus">
                       <span v-if="metaStatus === 'saving'" class="dot-pulse"></span>
@@ -311,7 +369,7 @@
                   type="is-primary"
                   size="is-small"
                   :loading="savingMeta"
-                  :disabled="!canSaveMeta"
+                  :disabled="!canSaveMeta || savingMeta"
                   @click="confirmSaveMeta"
                 >
                   <span v-if="!savingMeta">Guardar notas</span>
@@ -332,14 +390,32 @@
                   <span class="confirm-text">
                     ¿Enviar <strong class="truncate">{{ selectedSheet?.name }}</strong> a la papelera?
                   </span>
+
                   <div class="buttons are-small ml-2">
-                    <b-button @click="confirmingDelete = false">Cancelar</b-button>
-                    <b-button type="is-danger" :loading="deleting" @click="softDelete">Sí, enviar</b-button>
+                    <b-button :disabled="deleting" @click="confirmingDelete = false">Cancelar</b-button>
+                    <b-button type="is-danger" :loading="deleting" :disabled="deleting" @click="softDelete">
+                      <span v-if="!deleting">Sí, enviar</span>
+                      <span v-else>Enviando…</span>
+                    </b-button>
                   </div>
                 </div>
 
                 <div class="mt-2" v-show="!confirmingDelete">
-                  <b-button type="is-danger" outlined @click="confirmingDelete = true">Enviar a papelera</b-button>
+                  <b-button type="is-danger" outlined :disabled="anySaving" @click="confirmingDelete = true">
+                    Enviar a papelera
+                  </b-button>
+                </div>
+
+                <!-- ✅ Status pill de papelera -->
+                <div class="mt-2" aria-live="polite" role="status">
+                  <transition name="fade-status">
+                    <div v-if="trashStatus !== 'idle'" class="meta-status" :class="trashStatus">
+                      <span v-if="trashStatus === 'saving'" class="dot-pulse"></span>
+                      <i v-else-if="trashStatus === 'saved'" class="far fa-check-circle"></i>
+                      <i v-else-if="trashStatus === 'error'" class="far fa-exclamation-triangle"></i>
+                      <span class="meta-status-text">{{ trashStatusMessage }}</span>
+                    </div>
+                  </transition>
                 </div>
               </div>
             </div>
@@ -351,7 +427,10 @@
         </section>
 
         <footer class="modal-card-foot rsbo-actions-foot">
-          <b-button @click="isActionsOpen = false">Cerrar</b-button>
+          <b-button :disabled="anySaving" @click="isActionsOpen = false">
+            <span v-if="!anySaving">Cerrar</span>
+            <span v-else>Procesando…</span>
+          </b-button>
         </footer>
       </div>
     </b-modal>
@@ -381,14 +460,6 @@ const emit = defineEmits([
 ]);
 
 /* ===================== ✅ NORMALIZADOR (FIX SKU NULL) ===================== */
-/**
- * El backend puede mandar:
- * - id o _id
- * - name o nombre
- * - sku o SKU
- * Si el front esperaba `id/name` y venía `_id/nombre`, se pierde `sku` en el modelo local.
- * Esto lo vuelve 100% consistente.
- */
 const normalizeSheet = (s) => {
   if (!s) return null;
   const id = String(s.id ?? s._id ?? "");
@@ -406,10 +477,7 @@ const normalizeSheet = (s) => {
   };
 };
 
-const mapSheets = (arr) =>
-  (Array.isArray(arr) ? arr : [])
-    .map(normalizeSheet)
-    .filter(Boolean);
+const mapSheets = (arr) => (Array.isArray(arr) ? arr : []).map(normalizeSheet).filter(Boolean);
 
 /* ===== Tabs ===== */
 const sheets = ref(mapSheets(props.initialSheets));
@@ -454,9 +522,24 @@ watch(
   },
   { immediate: true }
 );
+
 const handleInternalTabClick = (id) => {
   activeInternalTab.value = id;
   emit("update:internal", id);
+};
+
+/* ===================== ✅ Helpers de feedback ===================== */
+const errMsg = (e, fallback) => e?.response?.data?.message || e?.message || fallback;
+
+const pulseStatus = ({ statusRef, messageRef, status, message, resetMs = 1800 }) => {
+  statusRef.value = status;
+  messageRef.value = message;
+  if (status === "saved") {
+    setTimeout(() => {
+      statusRef.value = "idle";
+      messageRef.value = "";
+    }, resetMs);
+  }
 };
 
 /* ===== Crear ===== */
@@ -465,6 +548,14 @@ const selectedMaterial = ref(null);
 const selectedTratamientos = ref([]);
 const newSheetName = ref("");
 const creatingSheet = ref(false);
+
+/* ✅ Status crear */
+const createStatus = ref("idle"); // 'idle' | 'saving' | 'saved' | 'error'
+const createStatusMessage = ref("");
+const resetCreateStatus = () => {
+  createStatus.value = "idle";
+  createStatusMessage.value = "";
+};
 
 const allMaterials = ["Polycarbonato", "CR-39", "1.56", "1.61", "1.74"];
 const allTratamientos = ["Antirreflejo", "Fotocromático", "Tinte Gris", "Blue Light", "Endurecido"];
@@ -483,21 +574,25 @@ const selectBase = (base) => {
   selectedMaterial.value = null;
   selectedTratamientos.value = [];
 };
+
 const selectMaterial = (mat) => {
   if (!isMaterialAllowed(mat)) return;
   selectedMaterial.value = mat;
   selectedTratamientos.value = [];
 };
+
 const isMaterialAllowed = (mat) => {
   if (!selectedBase.value) return false;
   const b = props.configuracion.bases[selectedBase.value];
   return b && b.materiales.includes(mat);
 };
+
 const isTratamientoAllowed = (trat) => {
   if (!selectedBase.value) return false;
   const b = props.configuracion.bases[selectedBase.value];
   return b && b.tratamientos.includes(trat);
 };
+
 const removeTratamiento = (i) => selectedTratamientos.value.splice(i, 1);
 
 const canCreate = computed(
@@ -505,7 +600,8 @@ const canCreate = computed(
     !!selectedBase.value &&
     !!selectedMaterial.value &&
     selectedTratamientos.value.length > 0 &&
-    !!newSheetName.value
+    !!newSheetName.value &&
+    !creatingSheet.value
 );
 
 /* Feedback helpers */
@@ -530,20 +626,19 @@ const mapBaseToTipoMatriz = (baseKey) => {
 
 /* Actor */
 const actorRef = computed(() => {
-  const src =
-    props.actor ||
-    (typeof window !== "undefined" ? window.__currentUser : null) ||
-    null;
-  return src && (src.id || src.userId)
-    ? { userId: src.id || src.userId, name: src.name }
-    : null;
+  const src = props.actor || (typeof window !== "undefined" ? window.__currentUser : null) || null;
+  return src && (src.id || src.userId) ? { userId: src.id || src.userId, name: src.name } : null;
 });
 
 /* Crear */
 const handleCrear = async () => {
-  if (!canCreate.value) return;
+  if (!canCreate.value || creatingSheet.value) return;
+
   creatingSheet.value = true;
+  createStatus.value = "saving";
+  createStatusMessage.value = "Validando selección…";
   await nextTick();
+
   try {
     const baseCfg = props.configuracion.bases[selectedBase.value];
     const tipo_matriz = mapBaseToTipoMatriz(selectedBase.value);
@@ -560,12 +655,19 @@ const handleCrear = async () => {
       actor: actorRef.value || undefined
     };
 
+    console.log("[createSheet] payload =>", payload);
+
+    createStatusMessage.value = "Conectando con el servidor…";
+    await nextTick();
+
+    createStatusMessage.value = "Subiendo planilla…";
     const { data } = await createSheet(payload);
+
+    createStatusMessage.value = "Aplicando respuesta y tabs…";
     const s = data?.data?.sheet;
     const tabs = data?.data?.tabs || [];
     if (!s) throw new Error("Sin hoja en respuesta");
 
-    // ✅ pasa por normalizador: asegura id/name/sku aunque el back venga con _id/nombre
     const newTab = normalizeSheet({ ...s, tabs });
 
     const addIndex = sheets.value.findIndex((x) => x.id === "nueva");
@@ -579,9 +681,15 @@ const handleCrear = async () => {
     selectedMaterial.value = null;
     selectedTratamientos.value = [];
     newSheetName.value = "";
-  } catch (err) {
-    console.error("Error al crear planilla:", err?.response?.data || err);
-    alert("No se pudo crear la planilla");
+
+    createStatus.value = "saved";
+    createStatusMessage.value = "Planilla creada correctamente";
+    setTimeout(() => resetCreateStatus(), 1800);
+  } catch (e) {
+    console.error("Error al crear planilla:", e?.response?.data || e);
+    createStatus.value = "error";
+    createStatusMessage.value = errMsg(e, "No se pudo crear la planilla");
+    setTimeout(() => resetCreateStatus(), 2600);
   } finally {
     creatingSheet.value = false;
   }
@@ -636,6 +744,23 @@ const renaming = ref(false);
 const confirmingDelete = ref(false);
 const deleting = ref(false);
 
+/* ✅ Rename feedback */
+const renameStatus = ref("idle"); // 'idle' | 'saving' | 'saved' | 'error'
+const renameStatusMessage = ref("");
+const renameGlow = ref(false);
+
+const resetRenameStatus = () => {
+  renameStatus.value = "idle";
+  renameStatusMessage.value = "";
+  renameGlow.value = false;
+};
+
+const canRename = computed(() => {
+  const current = (selectedSheet.value?.name || "").trim();
+  const next = (renameName.value || "").trim();
+  return !!selectedSheet.value && !renaming.value && next.length > 0 && next !== current;
+});
+
 /* Meta: notas y observaciones */
 const metaForm = ref({ observaciones: "", notas: "" });
 const savingMeta = ref(false);
@@ -643,7 +768,17 @@ const metaStatus = ref("idle"); // 'idle' | 'saving' | 'saved' | 'error'
 const metaStatusMessage = ref("");
 const metaGlow = ref(false);
 
-const canSaveMeta = computed(() => !!selectedSheet.value);
+const canSaveMeta = computed(() => !!selectedSheet.value && !savingMeta.value);
+
+/* ✅ Trash feedback */
+const trashStatus = ref("idle"); // 'idle' | 'saving' | 'saved' | 'error'
+const trashStatusMessage = ref("");
+const resetTrashStatus = () => {
+  trashStatus.value = "idle";
+  trashStatusMessage.value = "";
+};
+
+const anySaving = computed(() => creatingSheet.value || renaming.value || savingMeta.value || deleting.value);
 
 const loadMetaFromSheet = (sheet) => {
   const meta = sheet?.meta || {};
@@ -657,22 +792,29 @@ const loadMetaFromSheet = (sheet) => {
 };
 
 const confirmSaveMeta = async () => {
-  if (!selectedSheet.value) return;
+  if (!selectedSheet.value || savingMeta.value) return;
+
   savingMeta.value = true;
   metaStatus.value = "saving";
   metaStatusMessage.value = "Conectando con el servidor…";
 
   try {
     const { id } = selectedSheet.value;
+
     const metaPayload = {
       observaciones: metaForm.value.observaciones || "",
       notas: metaForm.value.notas || ""
     };
 
+    console.log("[updateSheet meta] id =>", id, "payload =>", metaPayload);
+
+    metaStatusMessage.value = "Sincronizando notas…";
     const { data } = await updateSheet(id, {
       meta: metaPayload,
       actor: actorRef.value || undefined
     });
+
+    if (!data || data.ok === false) throw new Error(data?.message || "El servidor rechazó el cambio");
 
     const updated = data?.data?.sheet;
     const tabs = data?.data?.tabs;
@@ -699,13 +841,16 @@ const confirmSaveMeta = async () => {
         metaStatusMessage.value = "";
       }, 1800);
     } else {
-      metaStatus.value = "error";
-      metaStatusMessage.value = "No se pudo actualizar la planilla";
+      throw new Error("No se pudo actualizar la planilla");
     }
   } catch (e) {
     console.error("update meta error:", e?.response?.data || e);
     metaStatus.value = "error";
-    metaStatusMessage.value = "Error al guardar notas";
+    metaStatusMessage.value = errMsg(e, "Error al guardar notas");
+    setTimeout(() => {
+      metaStatus.value = "idle";
+      metaStatusMessage.value = "";
+    }, 2400);
   } finally {
     savingMeta.value = false;
   }
@@ -723,6 +868,11 @@ const openActions = (sheet) => {
   selectedSheet.value = normalizeSheet(sheet);
   renameName.value = selectedSheet.value?.name || "";
   confirmingDelete.value = false;
+
+  // ✅ reseteos de UI para que nunca “se queden pegados”
+  resetRenameStatus();
+  resetTrashStatus();
+
   loadMetaFromSheet(selectedSheet.value);
   isActionsOpen.value = true;
 };
@@ -734,36 +884,79 @@ const openSheet = () => {
 };
 
 const confirmRename = async () => {
-  if (!renameName.value || renameName.value === selectedSheet.value.name) return;
+  const nextName = (renameName.value || "").trim();
+  if (!selectedSheet.value || renaming.value) return;
+
+  const currentName = (selectedSheet.value.name || "").trim();
+  if (!nextName || nextName === currentName) return;
+
   renaming.value = true;
+  renameStatus.value = "saving";
+  renameStatusMessage.value = "Conectando con el servidor…";
+  renameGlow.value = false;
+
   try {
     const { id } = selectedSheet.value;
+
+    console.log("[updateSheet rename] id =>", id, "nombre =>", nextName);
+
+    renameStatusMessage.value = "Enviando nuevo nombre…";
     const { data } = await updateSheet(id, {
-      nombre: renameName.value,
+      nombre: nextName,
       actor: actorRef.value || undefined
     });
-    const updated = data?.data?.sheet;
-    if (updated) {
-      const norm = normalizeSheet(updated);
-      const idx = sheets.value.findIndex((s) => s.id === id);
-      if (idx >= 0) sheets.value[idx] = normalizeSheet({ ...sheets.value[idx], ...norm });
 
-      emit("renamed", { id, nombre: norm.name });
+    if (!data || data.ok === false) throw new Error(data?.message || "El servidor rechazó el cambio");
+
+    const updated = data?.data?.sheet;
+    if (!updated) throw new Error("Respuesta inválida: falta data.sheet");
+
+    renameStatusMessage.value = "Aplicando cambios…";
+    const norm = normalizeSheet(updated);
+
+    const idx = sheets.value.findIndex((s) => s.id === id);
+    if (idx >= 0) {
+      sheets.value[idx] = normalizeSheet({ ...sheets.value[idx], ...norm });
     }
+
+    selectedSheet.value = normalizeSheet({ ...selectedSheet.value, ...norm });
+
+    // ✅ sincroniza el input con el nombre confirmado por server
+    renameName.value = norm.name;
+
+    emit("renamed", { id, nombre: norm.name });
+
+    renameStatus.value = "saved";
+    renameStatusMessage.value = "Nombre actualizado";
+    renameGlow.value = true;
+
+    setTimeout(() => (renameGlow.value = false), 900);
+    setTimeout(() => resetRenameStatus(), 1800);
   } catch (e) {
     console.error("rename error:", e?.response?.data || e);
-    alert("No se pudo renombrar");
+    renameStatus.value = "error";
+    renameStatusMessage.value = errMsg(e, "No se pudo renombrar");
+    setTimeout(() => resetRenameStatus(), 2300);
   } finally {
     renaming.value = false;
   }
 };
 
 const softDelete = async () => {
+  if (!selectedSheet.value || deleting.value) return;
+
   deleting.value = true;
+  trashStatus.value = "saving";
+  trashStatusMessage.value = "Conectando con el servidor…";
+
   try {
     const id = selectedSheet.value.id;
+    console.log("[moveSheetToTrash] id =>", id, "actor =>", actorRef.value);
+
+    trashStatusMessage.value = "Enviando a papelera…";
     await moveSheetToTrash(id, actorRef.value || undefined);
 
+    trashStatusMessage.value = "Actualizando lista…";
     const idx = sheets.value.findIndex((s) => s.id === id);
     if (idx >= 0) sheets.value.splice(idx, 1);
 
@@ -777,10 +970,18 @@ const softDelete = async () => {
     }
 
     emit("deleted", { id });
-    isActionsOpen.value = false;
+
+    trashStatus.value = "saved";
+    trashStatusMessage.value = "Enviado a papelera";
+    setTimeout(() => {
+      resetTrashStatus();
+      isActionsOpen.value = false;
+    }, 900);
   } catch (e) {
     console.error("trash (soft) error:", e?.response?.data || e);
-    alert("No se pudo enviar a la papelera");
+    trashStatus.value = "error";
+    trashStatusMessage.value = errMsg(e, "No se pudo enviar a la papelera");
+    setTimeout(() => resetTrashStatus(), 2600);
   } finally {
     deleting.value = false;
     confirmingDelete.value = false;
@@ -801,6 +1002,19 @@ const handleTabClick = (id) => {
   min-height: 140px;
   box-shadow: 0 6px 18px rgba(113, 77, 210, 0.04);
   transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+/* ===== Crear: layout feedback ===== */
+.create-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.create-status {
+  min-height: 24px;
+  display: flex;
+  align-items: center;
 }
 
 /* ===== Tabs ===== */
@@ -1212,6 +1426,24 @@ const handleTabClick = (id) => {
   transform: translateY(3px);
 }
 
+/* ✅ Rename layout + glow */
+.rename-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.rename-status-wrapper {
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+}
+
+.rename-glow {
+  box-shadow: 0 0 0 1px rgba(40, 167, 69, 0.2), 0 0 18px rgba(40, 167, 69, 0.22);
+  transform: translateY(-1px);
+}
+
 /* Confirmación */
 .confirm-space {
   min-height: 56px;
@@ -1266,5 +1498,11 @@ const handleTabClick = (id) => {
 .rsbo-sheet-actions-modal .modal-card {
   width: 100%;
   max-width: 760px;
+}
+
+/* close button disabled */
+.delete.is-disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 </style>

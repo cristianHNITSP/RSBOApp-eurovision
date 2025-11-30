@@ -852,7 +852,7 @@ const validateChunkRows = (tipo, rows) => {
         errors.push({ path: `${path}.base`, msg: "base numérica requerida" });
       } else if (baseVal < PHYSICAL_LIMITS.BASE.min || baseVal > PHYSICAL_LIMITS.BASE.max) {
         errors.push({ path: `${path}.base`, msg: `base fuera de límites (${PHYSICAL_LIMITS.BASE.min}..${PHYSICAL_LIMITS.BASE.max})` });
-      } else if (!isMultipleOfStep(baseVal, 0.25)) {
+      } else if (!isMultipleOfStep(baseVal, 0.50)) {
         errors.push({ path: `${path}.base`, msg: "base debe ir en pasos de 0.25 D" });
       }
     }
@@ -966,16 +966,22 @@ const applyChunkBase = async (sheet, rows, actor) => {
     const existencias = Number(row.existencias ?? 0);
     const k = keyBase(base);
 
-    const current = doc.cells.get(k) || {
-      existencias: 0,
-      sku: makeSku(sheet._id, "BASE", { base }),
-      codebar: null,
-      createdBy: actor,
-      updatedBy: actor,
-    };
+    const existed = doc.cells.has(k);
+
+    const current = existed
+      ? doc.cells.get(k)
+      : {
+          existencias: 0,
+          sku: makeSku(sheet._id, "BASE", { base }),
+          codebar: null,
+          createdBy: actor,
+          updatedBy: actor,
+        };
 
     const prev = Number(current.existencias ?? 0);
-    if (prev === existencias && current.sku && (existencias === 0 || current.codebar)) continue;
+
+    // ✅ SOLO “NO-OP” si ya existía en DB y no cambió nada
+    if (existed && prev === existencias && current.sku && (existencias === 0 || current.codebar)) continue;
 
     current.existencias = existencias;
     if (!current.sku) current.sku = makeSku(sheet._id, "BASE", { base });
@@ -992,6 +998,7 @@ const applyChunkBase = async (sheet, rows, actor) => {
   await doc.save();
   return { updated };
 };
+
 
 const applyChunkSphCyl = async (sheet, rows, actor) => {
   const doc = await MatrixSphCyl.findOneAndUpdate(
@@ -1359,6 +1366,55 @@ router.patch(
     }
   }
 );
+
+// ✅ Enviar a papelera (soft-delete) => PATCH /sheets/:sheetId/trash
+router.patch(
+  "/sheets/:sheetId/trash",
+  param("sheetId").isMongoId(),
+  body("actor").optional().isObject(),
+  handleValidation,
+  async (req, res) => {
+    const actor = actorFromBody(req);
+    try {
+      const sheet = await InventorySheet.findById(req.params.sheetId);
+      if (!sheet) return res.status(404).json({ ok: false, message: "Sheet no existe" });
+
+      // si ya estaba en papelera, responde ok (idempotente)
+      if (sheet.isDeleted) {
+        return res.json({
+          ok: true,
+          message: "Hoja ya estaba en papelera",
+          data: { sheet, tabs: buildTabsForTipo(sheet), physicalLimits: PHYSICAL_LIMITS },
+        });
+      }
+
+      sheet.isDeleted = true;
+      sheet.deletedAt = new Date();
+      sheet.deletedBy = actor;
+      sheet.updatedBy = actor;
+      sheet.updatedAt = new Date();
+      await sheet.save();
+
+      await InventoryChangeLog.create({
+        sheet: sheet._id,
+        tipo_matriz: sheet.tipo_matriz,
+        type: "SHEET_TRASH",
+        details: { isDeleted: true },
+        actor,
+      });
+
+      return res.json({
+        ok: true,
+        message: "Hoja enviada a papelera",
+        data: { sheet, tabs: buildTabsForTipo(sheet), physicalLimits: PHYSICAL_LIMITS },
+      });
+    } catch (err) {
+      console.error("PATCH /sheets/:sheetId/trash error:", err);
+      return res.status(500).json({ ok: false, message: "Error al enviar a papelera" });
+    }
+  }
+);
+
 
 router.delete(
   "/sheets/:sheetId",

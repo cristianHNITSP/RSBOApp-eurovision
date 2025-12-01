@@ -211,23 +211,54 @@ function confirmSelection() {
   background: rgba(15, 23, 42, 0.55);
   backdrop-filter: blur(3px);
 }
+
+/* ✅ asegura que la tarjeta tenga base sólida */
 .avatar-modal-card {
   border-radius: 14px;
   overflow: hidden;
   box-shadow: 0 28px 70px rgba(0, 0, 0, 0.35);
   animation: pop-in 160ms ease-out;
+  background: #fff;
 }
+
 @keyframes pop-in {
   from { opacity: 0; transform: translateY(8px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+/* ✅ FIX: header no transparente (y compatible con Bulma/Buefy) */
+.avatar-modal :deep(.modal-card-head),
 .avatar-modal-head {
-  background: linear-gradient(120deg, rgba(121, 87, 213, 0.1), rgba(249, 115, 22, 0.08), rgba(236, 72, 153, 0.08));
+  background: #ffffff !important;
   border-bottom: 1px solid rgba(148, 163, 184, 0.35);
+  position: relative;
+  z-index: 2;
 }
+
+/* gradiente suave sin “lavar” el header */
+.avatar-modal-head::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    120deg,
+    rgba(121, 87, 213, 0.10),
+    rgba(249, 115, 22, 0.06),
+    rgba(236, 72, 153, 0.06)
+  );
+  pointer-events: none;
+  z-index: -1;
+}
+
 .head-left .modal-card-title { font-weight: 800; color: #111827; letter-spacing: -0.01em; }
 .head-left .subtitle { margin-top: 0.15rem; font-size: 0.85rem; color: #6b7280; }
+
+/* (opcional pero recomendado) fuerza fondos sólidos en secciones del modal */
+.avatar-modal :deep(.modal-card),
+.avatar-modal :deep(.modal-card-body),
+.avatar-modal :deep(.modal-card-foot) {
+  background-color: #fff;
+}
 
 /* ===== Tabs ===== */
 .avatar-tabs :deep(.tabs) { margin-bottom: 0.75rem; }
@@ -312,3 +343,4 @@ function confirmSelection() {
 .preview-ring img { width: 100%; height: 100%; border-radius: 999px; object-fit: cover; background: #fff; display: block; }
 .actions { display: inline-flex; gap: 10px; }
 </style>
+``

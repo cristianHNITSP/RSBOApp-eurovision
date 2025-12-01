@@ -162,7 +162,7 @@ services:
     volumes:
       - rsbo-mongo-data:/data/db
     env_file:
-      - ./.env.prod
+      - .env.prod
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}

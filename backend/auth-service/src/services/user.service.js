@@ -1,3 +1,4 @@
+// services/user.service.js
 const User = require("../models/User");
 const Role = require("../models/Role");
 const DOMPurify = require("isomorphic-dompurify");
@@ -80,7 +81,6 @@ async function listUsers(query) {
 
   const [items, total, totalUsers, activeUsers, trashUsers] = await Promise.all([
     User.find(filter)
-      // ✅ SOLO EXCLUSIÓN (NO mezclar)
       .select("-password -tokens")
       .populate("role", "name description permissions")
       .sort(sort)
@@ -96,64 +96,7 @@ async function listUsers(query) {
   const normalized = (items || []).map((u) => ({
     ...u,
     roleDoc: u.role || null,
-    tokensCount: 0, // ✅ como tokens no viajan, evita romper UI (luego lo mejoramos)
-  }));
-
-  return {
-    items: normalized,
-    total,
-    page,
-    limit,
-    stats: { totalUsers, activeUsers, trashUsers },
-  };
-}async function listUsers(query) {
-  const page = toInt(query.page, 1);
-  const limit = Math.min(50, toInt(query.limit, 10));
-  const skip = (page - 1) * limit;
-
-  const q = String(query.q || "").trim();
-  const role = query.role && query.role !== "all" ? String(query.role) : null;
-  const status = String(query.status || "all"); // all|active|inactive|trash
-  const sortBy = String(query.sortBy || "name");
-  const sortDir = String(query.sortDir || "asc") === "desc" ? -1 : 1;
-
-  const filter = {};
-
-  if (status === "trash") filter.deletedAt = { $ne: null };
-  else filter.deletedAt = null;
-
-  if (status === "active") filter.isActive = true;
-  if (status === "inactive") filter.isActive = false;
-
-  if (role) filter.role = role;
-
-  if (q) {
-    const rx = new RegExp(escapeRegex(q), "i");
-    filter.$or = [{ name: rx }, { email: rx }];
-  }
-
-  const allowedSort = new Set(["name", "email", "createdAt", "lastLogin"]);
-  const sort = allowedSort.has(sortBy) ? { [sortBy]: sortDir } : { name: 1 };
-
-  const [items, total, totalUsers, activeUsers, trashUsers] = await Promise.all([
-    User.find(filter)
-      // ✅ SOLO EXCLUSIÓN (NO mezclar)
-      .select("-password -tokens")
-      .populate("role", "name description permissions")
-      .sort(sort)
-      .skip(skip)
-      .limit(limit)
-      .lean(),
-    User.countDocuments(filter),
-    User.countDocuments({ deletedAt: null }),
-    User.countDocuments({ deletedAt: null, isActive: true }),
-    User.countDocuments({ deletedAt: { $ne: null } }),
-  ]);
-
-  const normalized = (items || []).map((u) => ({
-    ...u,
-    roleDoc: u.role || null,
-    tokensCount: 0, // ✅ como tokens no viajan, evita romper UI (luego lo mejoramos)
+    tokensCount: 0,
   }));
 
   return {
@@ -240,7 +183,9 @@ async function updateUser(userId, data) {
 
   if (name !== undefined) user.name = name;
   if (email !== undefined) user.email = email;
-  if (isActive !== undefined) user.isActive = isActive;
+
+  // ✅ regla dura extra: si por alguna razón tuviera deletedAt, jamás permitir isActive=true
+  if (isActive !== undefined) user.isActive = user.deletedAt ? false : isActive;
 
   user.profile = user.profile || {};
   if (phone !== undefined) user.profile.phone = phone;
@@ -273,7 +218,8 @@ async function updatePassword(userId, password) {
 }
 
 async function deleteUser(userId) {
-  const user = await User.findById(userId);
+  // ✅ importante: si tokens está select:false, así sí lo traes
+  const user = await User.findById(userId).select("+tokens");
   if (!user || user.deletedAt) {
     const error = new Error("Usuario no encontrado");
     error.statusCode = 404;
@@ -286,6 +232,7 @@ async function deleteUser(userId) {
     throw error;
   }
 
+  // ✅ tu schema ya hace: deletedAt=Date y isActive=false
   await user.softDelete();
   return { message: "Usuario enviado a papelera" };
 }
@@ -300,6 +247,7 @@ async function restoreUser(userId) {
 
   if (!user.deletedAt) return { message: "El usuario ya está activo" };
 
+  // ✅ tu schema ya hace: deletedAt=null y isActive=true
   await user.restore();
   return { message: "Usuario restaurado correctamente" };
 }

@@ -1,33 +1,40 @@
 // gateway/index.js
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const axios = require('axios');
-const http = require('http');
-const { WebSocketServer } = require('ws');
+require("dotenv").config();
+const express = require("express");
+const cors = require("cors");
+const axios = require("axios");
+const http = require("http");
+const { WebSocketServer } = require("ws");
 
 const app = express();
+
+// 👇 Importante si algún día pones reverse proxy TLS (Nginx/Caddy)
+// y para que req.secure / x-forwarded-proto tenga sentido.
+app.set("trust proxy", 1);
 
 // ✅ Lista de orígenes permitidos
 const allowedOrigins = [
   process.env.FRONTEND_URL_DEV,
-  'http://192.168.0.87:5173',
-  'http://172.18.0.1:5173',
-  process.env.FRONTEND_URL_PROD
-];
+  "http://192.168.0.87:5173",
+  "http://172.18.0.1:5173",
+  process.env.FRONTEND_URL_PROD,
+].filter(Boolean);
 
 // CORS
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      console.warn(`❌ CORS bloqueado para origen no permitido: ${origin}`);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true // 👈 habilita cookies cross-origin
-}));
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Permite requests sin origin (curl, healthchecks, etc.)
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        console.warn(`❌ CORS bloqueado para origen no permitido: ${origin}`);
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true, // 👈 habilita cookies
+  })
+);
 
 app.use(express.json());
 
@@ -40,68 +47,93 @@ const SERVICES = {
   notification: process.env.NOTIFICATION_SERVICE_URL,
 };
 
+// ✅ Helpers
+const isHttpsRequest = (req) => {
+  const xfProto = (req.headers["x-forwarded-proto"] || "").toString();
+  return xfProto === "https" || req.secure === true;
+};
+
+const rewriteSetCookieForHttp = (setCookieArr) => {
+  // En HTTP NO se puede usar Secure, y SameSite=None requiere Secure,
+  // así que lo bajamos a Lax.
+  return setCookieArr.map((c) => {
+    c = c.replace(/;\s*Secure/gi, "");
+    c = c.replace(/;\s*SameSite=None/gi, "; SameSite=Lax");
+    if (!/;\s*SameSite=/i.test(c)) c += "; SameSite=Lax";
+    return c;
+  });
+};
+
 // 🔸 Proxy genérico con cookies
 const proxyRequest = (serviceUrl) => async (req, res) => {
   try {
+    if (!serviceUrl) {
+      return res.status(500).json({
+        error: "Service URL no configurada en variables de entorno",
+        path: req.originalUrl,
+      });
+    }
+
     const targetUrl = `${serviceUrl}${req.originalUrl}`;
     console.log(`🔁 Proxying ${req.method} ${req.originalUrl} -> ${targetUrl}`);
 
     // 📥 Log de cookies recibidas del cliente
-    console.log('📥 Cookies recibidas del navegador:', req.headers.cookie);
+    console.log("📥 Cookies recibidas del navegador:", req.headers.cookie || "(none)");
 
     const response = await axios({
       method: req.method,
       url: targetUrl,
       data: req.body,
+      // Importante: forward de headers + cookies
       headers: {
         ...req.headers,
-        host: undefined,
-        cookie: req.headers.cookie || ''
+        host: undefined, // evita conflictos
+        cookie: req.headers.cookie || "",
       },
-      validateStatus: (status) => status >= 200 && status < 400, // <— acepta 304
-      withCredentials: true
+      // ✅ NO hacer throw por 401/403/etc; queremos devolver tal cual al cliente
+      validateStatus: () => true,
+      // Nota: withCredentials en axios aplica más en browser; aquí sirve para consistencia
+      withCredentials: true,
     });
 
     // 📤 Log de cookies enviadas por el microservicio
-    console.log('📤 Cookies enviadas por el microservicio:', response.headers['set-cookie']);
+    const setCookie = response.headers["set-cookie"];
+    console.log("📤 Cookies enviadas por el microservicio:", setCookie || "(none)");
 
-    // Después de recibir respuesta del microservicio
-    const setCookie = response.headers['set-cookie'];
-    if (setCookie) {
-      const fixedCookies = setCookie.map(c => {
-        if (process.env.NODE_ENV !== 'production') {
-          c = c.replace(/; Secure/gi, '');
-          c = c.replace(/; SameSite=[^;]+/gi, '; SameSite=Lax');
-        }
-        return c;
-      });
-      res.setHeader('Set-Cookie', fixedCookies);
+    // ✅ Reescritura de cookies según si el cliente llegó por HTTPS real o HTTP
+    if (setCookie?.length) {
+      const https = isHttpsRequest(req);
+      const fixedCookies = https ? setCookie : rewriteSetCookieForHttp(setCookie);
+      res.setHeader("Set-Cookie", fixedCookies);
     }
 
-
-    res.status(response.status).send(response.data);
+    // ✅ Forward de status + body
+    // (Puedes también forward de headers específicos si te interesa)
+    return res.status(response.status).send(response.data);
   } catch (err) {
-    console.error('❌ Proxy error:', err.response?.data || err.message);
-    res.status(err.response?.status || 500).send(err.response?.data || { error: err.message });
+    const status = err.response?.status || 500;
+    const data = err.response?.data || { error: err.message };
+    console.error("❌ Proxy error:", data);
+    return res.status(status).send(data);
   }
 };
 
 // 🔹 Rutas proxy
-app.use('/api/access', proxyRequest(SERVICES.auth));
-app.use('/api/users', proxyRequest(SERVICES.users));
-app.use('/api/inventory', proxyRequest(SERVICES.inventory));
-app.use('/api/orders', proxyRequest(SERVICES.orders));
-app.use('/api/notification', proxyRequest(SERVICES.notification));
+app.use("/api/access", proxyRequest(SERVICES.auth));
+app.use("/api/users", proxyRequest(SERVICES.users));
+app.use("/api/inventory", proxyRequest(SERVICES.inventory));
+app.use("/api/orders", proxyRequest(SERVICES.orders));
+app.use("/api/notification", proxyRequest(SERVICES.notification));
 
 // 🔹 Ruta principal
-app.get('/', (req, res) => res.send('🚀 RSBO Gateway funcionando'));
+app.get("/", (_req, res) => res.send("🚀 RSBO Gateway funcionando"));
 
 // 🔹 Healthcheck (público bajo /api porque el front expone /api)
-app.get('/api/health', (_req, res) => {
+app.get("/api/health", (_req, res) => {
   res.status(200).json({
     ok: true,
-    service: 'gateway',
-    time: new Date().toISOString()
+    service: "gateway",
+    time: new Date().toISOString(),
   });
 });
 
@@ -109,11 +141,11 @@ app.get('/api/health', (_req, res) => {
 const PORT = process.env.PORT || 3000;
 const server = http.createServer(app);
 
-const wss = new WebSocketServer({ server, path: '/ws' });
-wss.on('connection', (ws) => {
-  console.log('🔌 Cliente WebSocket conectado al Gateway');
-  ws.send(JSON.stringify({ type: 'welcome', message: 'WebSocket Gateway conectado ✅' }));
-  ws.on('close', () => console.log('❌ Cliente WebSocket desconectado del Gateway'));
+const wss = new WebSocketServer({ server, path: "/ws" });
+wss.on("connection", (ws) => {
+  console.log("🔌 Cliente WebSocket conectado al Gateway");
+  ws.send(JSON.stringify({ type: "welcome", message: "WebSocket Gateway conectado ✅" }));
+  ws.on("close", () => console.log("❌ Cliente WebSocket desconectado del Gateway"));
 });
 
 server.listen(PORT, () => console.log(`🟢 Gateway corriendo en puerto ${PORT}`));

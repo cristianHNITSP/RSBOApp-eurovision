@@ -96,6 +96,15 @@ app.use('/api/notification', proxyRequest(SERVICES.notification));
 // 🔹 Ruta principal
 app.get('/', (req, res) => res.send('🚀 RSBO Gateway funcionando'));
 
+// 🔹 Healthcheck (público bajo /api porque el front expone /api)
+app.get('/api/health', (_req, res) => {
+  res.status(200).json({
+    ok: true,
+    service: 'gateway',
+    time: new Date().toISOString()
+  });
+});
+
 // 🔹 WebSocket
 const PORT = process.env.PORT || 3000;
 const server = http.createServer(app);

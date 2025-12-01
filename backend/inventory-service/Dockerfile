@@ -5,12 +5,12 @@ WORKDIR /app
 # Copiar archivos de dependencias
 COPY package*.json ./
 
-ARG NODE_ENV=development
+ARG NODE_ENV=production
 ENV NODE_ENV=$NODE_ENV
 
 # Instalar dependencias según entorno
 RUN if [ "$NODE_ENV" = "production" ]; then \
-      npm ci --omit=dev; \
+      npm install --omit=dev; \
     else \
       npm install; \
     fi

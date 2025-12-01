@@ -223,6 +223,7 @@
     </div>
 
     <!-- MODAL ACCIONES -->
+         <teleport to="body">
     <b-modal
       v-model="isActionsOpen"
       has-modal-card
@@ -434,6 +435,7 @@
         </footer>
       </div>
     </b-modal>
+    </teleport>
   </div>
 </template>
 

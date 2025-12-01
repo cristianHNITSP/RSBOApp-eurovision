@@ -32,7 +32,14 @@
               <p class="modal-card-title">Selecciona un avatar</p>
               <p class="subtitle">Elige uno y presiona “Seleccionar”.</p>
             </div>
-            <button class="delete" aria-label="close" @click="closeModal"></button>
+
+            <!-- ✅ FIX: siempre al extremo derecho -->
+            <button
+              class="delete avatar-close"
+              aria-label="close"
+              type="button"
+              @click="closeModal"
+            ></button>
           </header>
 
           <section class="modal-card-body avatar-modal-body">
@@ -91,11 +98,11 @@ import { ref, watch, computed } from "vue";
 import { avatarCategories } from "@/services/myUserCRUD"; // ✅ AJUSTA si tu ruta real es otra
 
 const props = defineProps({
-  modelValue: { type: String, default: "" },     // valor real (puede ser vacío)
-  placeholder: { type: String, default: "" },    // fallback
+  modelValue: { type: String, default: "" },
+  placeholder: { type: String, default: "" },
   editMode: { type: Boolean, default: false },
-  size: { type: Number, default: 84 },           // ✅ tamaño del trigger (px)
-  showCameraOverlay: { type: Boolean, default: true }
+  size: { type: Number, default: 84 },
+  showCameraOverlay: { type: Boolean, default: true },
 });
 
 const emit = defineEmits(["update:modelValue"]);
@@ -113,7 +120,7 @@ const avatarCategoriesSafe = computed(() => {
 
 const pickerVars = computed(() => {
   const s = Math.max(28, Number(props.size) || 84);
-  const pad = Math.max(2, Math.round(s * 0.04)); // se ve bien en 32/44/56/84
+  const pad = Math.max(2, Math.round(s * 0.04));
   return { "--av-size": `${s}px`, "--av-pad": `${pad}px` };
 });
 
@@ -164,8 +171,14 @@ function confirmSelection() {
   user-select: none;
   transition: transform 160ms ease, opacity 160ms ease, filter 160ms ease;
 }
-.avatar-trigger:active { transform: translateY(1px); }
-.avatar-trigger.is-disabled { cursor: not-allowed; opacity: 0.55; filter: grayscale(0.2); }
+.avatar-trigger:active {
+  transform: translateY(1px);
+}
+.avatar-trigger.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  filter: grayscale(0.2);
+}
 
 .avatar-ring {
   width: var(--av-size);
@@ -204,15 +217,17 @@ function confirmSelection() {
   opacity: 0;
   transition: opacity 130ms ease;
 }
-.avatar-trigger:not(.is-disabled):hover .avatar-overlay { opacity: 1; }
+.avatar-trigger:not(.is-disabled):hover .avatar-overlay {
+  opacity: 1;
+}
 
-/* ===== Modal card ===== */
+/* ===== Modal ===== */
 .avatar-modal :deep(.modal-background) {
   background: rgba(15, 23, 42, 0.55);
   backdrop-filter: blur(3px);
 }
 
-/* ✅ asegura que la tarjeta tenga base sólida */
+/* tarjeta */
 .avatar-modal-card {
   border-radius: 14px;
   overflow: hidden;
@@ -222,27 +237,42 @@ function confirmSelection() {
 }
 
 @keyframes pop-in {
-  from { opacity: 0; transform: translateY(8px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
-/* ✅ FIX: header no transparente (y compatible con Bulma/Buefy) */
+/* ✅ header sólido + layout correcto */
 .avatar-modal :deep(.modal-card-head),
 .avatar-modal-head {
   background: #ffffff !important;
   border-bottom: 1px solid rgba(148, 163, 184, 0.35);
   position: relative;
   z-index: 2;
+
+  /* ✅ asegura que el texto ocupe y el botón no se meta */
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 12px;
+
+  /* ✅ espacio reservado para el botón absoluto */
+  padding-right: 56px;
 }
 
-/* gradiente suave sin “lavar” el header */
+/* gradiente suave */
 .avatar-modal-head::before {
   content: "";
   position: absolute;
   inset: 0;
   background: linear-gradient(
     120deg,
-    rgba(121, 87, 213, 0.10),
+    rgba(121, 87, 213, 0.1),
     rgba(249, 115, 22, 0.06),
     rgba(236, 72, 153, 0.06)
   );
@@ -250,10 +280,31 @@ function confirmSelection() {
   z-index: -1;
 }
 
-.head-left .modal-card-title { font-weight: 800; color: #111827; letter-spacing: -0.01em; }
-.head-left .subtitle { margin-top: 0.15rem; font-size: 0.85rem; color: #6b7280; }
+.head-left {
+  flex: 1;
+  min-width: 0;
+}
 
-/* (opcional pero recomendado) fuerza fondos sólidos en secciones del modal */
+.head-left .modal-card-title {
+  font-weight: 800;
+  color: #111827;
+  letter-spacing: -0.01em;
+}
+.head-left .subtitle {
+  margin-top: 0.15rem;
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+/* ✅ boton cerrar literalmente al final arriba-derecha */
+.avatar-close {
+  position: absolute !important;
+  top: 14px;
+  right: 14px;
+  margin: 0 !important;
+}
+
+/* fondos sólidos en secciones */
 .avatar-modal :deep(.modal-card),
 .avatar-modal :deep(.modal-card-body),
 .avatar-modal :deep(.modal-card-foot) {
@@ -261,8 +312,12 @@ function confirmSelection() {
 }
 
 /* ===== Tabs ===== */
-.avatar-tabs :deep(.tabs) { margin-bottom: 0.75rem; }
-.avatar-tabs :deep(.tabs ul) { border-bottom: 1px solid rgba(148, 163, 184, 0.35); }
+.avatar-tabs :deep(.tabs) {
+  margin-bottom: 0.75rem;
+}
+.avatar-tabs :deep(.tabs ul) {
+  border-bottom: 1px solid rgba(148, 163, 184, 0.35);
+}
 .avatar-tabs :deep(.tabs li a) {
   font-weight: 700;
   font-size: 0.9rem;
@@ -270,18 +325,32 @@ function confirmSelection() {
   transition: color 140ms ease, transform 140ms ease, background-color 140ms ease;
   border-radius: 10px 10px 0 0;
 }
-.avatar-tabs :deep(.tabs li.is-active a) { color: #6d28d9; background: rgba(109, 40, 217, 0.06); }
-.avatar-tabs :deep(.tabs li a:hover) { color: #4f46e5; transform: translateY(-1px); }
+.avatar-tabs :deep(.tabs li.is-active a) {
+  color: #6d28d9;
+  background: rgba(109, 40, 217, 0.06);
+}
+.avatar-tabs :deep(.tabs li a:hover) {
+  color: #4f46e5;
+  transform: translateY(-1px);
+}
 
-/* ===== Grid opciones ===== */
+/* ===== Grid ===== */
 .avatar-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
   padding: 8px 6px 2px;
 }
-@media (max-width: 820px) { .avatar-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (max-width: 560px) { .avatar-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 820px) {
+  .avatar-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 560px) {
+  .avatar-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
 
 .avatar-option {
   position: relative;
@@ -305,9 +374,17 @@ function confirmSelection() {
   outline: 2px solid transparent;
   transition: outline-color 140ms ease, box-shadow 140ms ease;
 }
-.avatar-option:hover { transform: scale(1.05); }
-.avatar-option:hover img { box-shadow: 0 14px 32px rgba(15, 23, 42, 0.16); outline-color: rgba(99, 102, 241, 0.35); }
-.avatar-option.is-selected img { outline-color: rgba(109, 40, 217, 0.65); box-shadow: 0 18px 36px rgba(109, 40, 217, 0.18); }
+.avatar-option:hover {
+  transform: scale(1.05);
+}
+.avatar-option:hover img {
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.16);
+  outline-color: rgba(99, 102, 241, 0.35);
+}
+.avatar-option.is-selected img {
+  outline-color: rgba(109, 40, 217, 0.65);
+  box-shadow: 0 18px 36px rgba(109, 40, 217, 0.18);
+}
 
 .badge {
   position: absolute;
@@ -324,7 +401,16 @@ function confirmSelection() {
   transform: scale(0.92);
   animation: badge-in 140ms ease-out;
 }
-@keyframes badge-in { from { transform: scale(0.6); opacity: 0; } to { transform: scale(0.92); opacity: 1; } }
+@keyframes badge-in {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  to {
+    transform: scale(0.92);
+    opacity: 1;
+  }
+}
 
 /* ===== Footer ===== */
 .avatar-modal-foot {
@@ -334,13 +420,33 @@ function confirmSelection() {
   gap: 12px;
   border-top: 1px solid rgba(148, 163, 184, 0.35);
 }
-.preview { display: inline-flex; align-items: center; gap: 10px; }
-.preview-label { font-size: 0.85rem; font-weight: 700; color: #6b7280; }
+.preview {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.preview-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #6b7280;
+}
 .preview-ring {
-  width: 44px; height: 44px; border-radius: 999px; padding: 2px;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  padding: 2px;
   background: linear-gradient(135deg, #7957d5, #f97316, #ec4899);
 }
-.preview-ring img { width: 100%; height: 100%; border-radius: 999px; object-fit: cover; background: #fff; display: block; }
-.actions { display: inline-flex; gap: 10px; }
+.preview-ring img {
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  object-fit: cover;
+  background: #fff;
+  display: block;
+}
+.actions {
+  display: inline-flex;
+  gap: 10px;
+}
 </style>
-``

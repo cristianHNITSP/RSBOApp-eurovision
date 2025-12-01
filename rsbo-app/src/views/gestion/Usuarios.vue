@@ -4,13 +4,9 @@
     <div v-if="selectedUser" class="selected-user-banner">
       <div class="selected-user-banner__left">
         <!-- ✅ AvatarPicker (banner) -->
-        <AvatarPicker
-          :modelValue="selectedUser.profile?.avatar || ''"
-          :placeholder="FALLBACK_AVATAR"
-          :editMode="canEditAvatar(selectedUser)"
-          :size="44"
-          @update:modelValue="(val) => onAvatarPicked(selectedUser, val)"
-        />
+        <AvatarPicker :modelValue="selectedUser.profile?.avatar || ''" :placeholder="FALLBACK_AVATAR"
+          :editMode="canEditAvatar(selectedUser)" :size="44"
+          @update:modelValue="(val) => onAvatarPicked(selectedUser, val)" />
 
         <div class="selected-user-banner__text">
           <div class="selected-user-banner__name-row">
@@ -38,16 +34,12 @@
       <div class="selected-user-banner__right">
         <div class="chip chip--light">{{ formatDateTime(selectedUser.lastLogin) }}</div>
 
-        <div
-          class="chip"
-          :class="
-            selectedUser.deletedAt
-              ? 'chip--status-inactive'
-              : selectedUser.isActive
-                ? 'chip--status-active'
-                : 'chip--status-inactive'
-          "
-        >
+        <div class="chip" :class="selectedUser.deletedAt
+          ? 'chip--status-inactive'
+          : selectedUser.isActive
+            ? 'chip--status-active'
+            : 'chip--status-inactive'
+          ">
           {{ selectedUser.deletedAt ? "Eliminado" : selectedUser.isActive ? "Activo" : "Inactivo" }}
         </div>
 
@@ -69,34 +61,18 @@
         </div>
 
         <div class="selected-user-actions__right">
-          <b-button
-            size="is-small"
-            type="is-light"
-            icon-left="pencil-outline"
-            :disabled="selectedUser.isMe || !!selectedUser.deletedAt"
-            @click="openEdit(selectedUser)"
-          >
+          <b-button size="is-small" type="is-light" icon-left="pencil-outline"
+            :disabled="selectedUser.isMe || !!selectedUser.deletedAt" @click="openEdit(selectedUser)">
             Editar
           </b-button>
 
-          <b-button
-            size="is-small"
-            type="is-light"
-            icon-left="lock-reset"
-            :disabled="selectedUser.isMe || !!selectedUser.deletedAt"
-            @click="openPassword(selectedUser)"
-          >
+          <b-button size="is-small" type="is-light" icon-left="lock-reset"
+            :disabled="selectedUser.isMe || !!selectedUser.deletedAt" @click="openPassword(selectedUser)">
             Contraseña
           </b-button>
 
-          <b-button
-            v-if="!selectedUser.deletedAt"
-            size="is-small"
-            type="is-warning"
-            icon-left="trash-can-outline"
-            :disabled="selectedUser.isMe"
-            @click="confirmSoftDelete(selectedUser)"
-          >
+          <b-button v-if="!selectedUser.deletedAt" size="is-small" type="is-warning" icon-left="trash-can-outline"
+            :disabled="selectedUser.isMe" @click="confirmSoftDelete(selectedUser)">
             Papelera
           </b-button>
 
@@ -154,38 +130,17 @@
     </div>
 
     <!-- TABLA -->
-    <b-table
-      :data="users"
-      detailed
-      detail-key="_id"
-      :show-detail-icon="true"
-      sticky-header
-      :height="360"
-      hoverable
-      focusable
-      paginated
-      backend-pagination
-      backend-sorting
-      :total="total"
-      :per-page="perPage"
-      :current-page="currentPage"
-      @page-change="onPageChange"
-      @sort="onSort"
-      v-model:selected="selectedUser"
-      :row-class="rowClass"
-      :loading="loading"
-    >
+    <b-table :data="users" detailed detail-key="_id" :show-detail-icon="true" sticky-header :height="360" hoverable
+      focusable paginated backend-pagination backend-sorting :total="total" :per-page="perPage"
+      :current-page="currentPage" @page-change="onPageChange" @sort="onSort" v-model:selected="selectedUser"
+      :row-class="rowClass" :loading="loading">
       <b-table-column field="name" label="Usuario" sortable v-slot="props">
         <div class="user-cell" @click="selectRow(props.row)">
           <!-- ✅ AvatarPicker (fila) -->
           <div class="user-cell__avatar-wrap">
-            <AvatarPicker
-              :modelValue="props.row.profile?.avatar || ''"
-              :placeholder="FALLBACK_AVATAR"
-              :editMode="canEditAvatar(props.row)"
-              :size="32"
-              @update:modelValue="(val) => onAvatarPicked(props.row, val)"
-            />
+            <AvatarPicker :modelValue="props.row.profile?.avatar || ''" :placeholder="FALLBACK_AVATAR"
+              :editMode="canEditAvatar(props.row)" :size="32"
+              @update:modelValue="(val) => onAvatarPicked(props.row, val)" />
           </div>
 
           <div class="user-cell__meta">
@@ -202,13 +157,17 @@
               <b-tag v-if="props.row.deletedAt" type="is-warning" size="is-small">Papelera</b-tag>
             </div>
 
-            <p class="user-cell__bio">{{ props.row.profile?.bio }}</p>
+
+            <span class="tag is-light is-size-7">
+
+              {{ props.row.profile?.bio }}
+            </span>
           </div>
         </div>
       </b-table-column>
 
       <b-table-column field="email" label="Correo" sortable v-slot="props">
-        <span class="user-email">
+        <span class="tag is-light is-size-7">
           <b-icon pack="mdi" icon="email-outline" size="is-small" class="mr-1" />
           {{ props.row.email }}
         </span>
@@ -261,13 +220,8 @@
               <p class="user-detail__helper">Provienen del backend (del rol).</p>
 
               <div class="user-detail__permissions">
-                <b-tag
-                  v-for="perm in props.row.rolePermissions"
-                  :key="perm"
-                  size="is-small"
-                  type="is-light"
-                  class="user-detail__perm-tag"
-                >
+                <b-tag v-for="perm in props.row.rolePermissions" :key="perm" size="is-small" type="is-light"
+                  class="user-detail__perm-tag">
                   {{ formatPermissionLabel(perm) }}
                 </b-tag>
 
@@ -360,13 +314,8 @@
 
         <section class="modal-card-body">
           <div class="create-avatar">
-            <AvatarPicker
-              :modelValue="createForm.avatar || ''"
-              :placeholder="FALLBACK_AVATAR"
-              :editMode="true"
-              :size="56"
-              @update:modelValue="(val) => (createForm.avatar = val)"
-            />
+            <AvatarPicker :modelValue="createForm.avatar || ''" :placeholder="FALLBACK_AVATAR" :editMode="true"
+              :size="56" @update:modelValue="(val) => (createForm.avatar = val)" />
 
             <div class="create-avatar__hint">
               <p class="is-size-7 has-text-grey m-0">Foto de perfil</p>
@@ -871,7 +820,9 @@ onMounted(async () => {
 
 
 <style scoped>
-.user-cell__avatar-wrap { flex: 0 0 auto; }
+.user-cell__avatar-wrap {
+  flex: 0 0 auto;
+}
 
 /* PANEL */
 .panel-usuarios-section {
@@ -908,11 +859,17 @@ onMounted(async () => {
   gap: 1rem;
 }
 
-.panel-usuarios-summary { text-align: right; }
+.panel-usuarios-summary {
+  text-align: right;
+}
 
-.panel-usuarios-filters { margin-top: 0.25rem; }
+.panel-usuarios-filters {
+  margin-top: 0.25rem;
+}
 
-.panel-usuarios-filter-field { min-width: 210px; }
+.panel-usuarios-filter-field {
+  min-width: 210px;
+}
 
 /* BANNER */
 .selected-user-banner {
@@ -938,11 +895,15 @@ onMounted(async () => {
   background:
     radial-gradient(circle at 0 0, rgba(255, 255, 255, 0.28), transparent 60%),
     radial-gradient(circle at 100% 100%, rgba(15, 23, 42, 0.24), transparent 60%);
-  opacity: 0.55; /* 🔧 antes 0.9 (apagaba textos) */
+  opacity: 0.55;
+  /* 🔧 antes 0.9 (apagaba textos) */
   pointer-events: none;
 }
 
-.selected-user-banner > * { position: relative; z-index: 1; }
+.selected-user-banner>* {
+  position: relative;
+  z-index: 1;
+}
 
 .selected-user-banner__left {
   display: flex;
@@ -990,7 +951,9 @@ onMounted(async () => {
   transition: opacity 130ms ease;
 }
 
-.avatar-overlay--small { background: rgba(15, 23, 42, 0.28); }
+.avatar-overlay--small {
+  background: rgba(15, 23, 42, 0.28);
+}
 
 .selected-user-banner__avatar:hover .avatar-overlay,
 .user-cell__avatar:hover .avatar-overlay,
@@ -1012,13 +975,20 @@ onMounted(async () => {
   flex-wrap: wrap;
 }
 
-.selected-user-banner__name { font-weight: 600; font-size: 0.98rem; }
+.selected-user-banner__name {
+  font-weight: 600;
+  font-size: 0.98rem;
+}
 
-.selected-user-banner__role { font-size: 0.82rem; opacity: 0.92; }
+.selected-user-banner__role {
+  font-size: 0.82rem;
+  opacity: 0.92;
+}
 
 .selected-user-banner__bio {
   font-size: 0.75rem;
-  opacity: 0.92; /* 🔧 más legible */
+  opacity: 0.92;
+  /* 🔧 más legible */
   color: rgba(255, 255, 255, 0.92);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
   max-width: 560px;
@@ -1037,7 +1007,8 @@ onMounted(async () => {
 .selected-user-banner__email {
   padding: 0.25rem 0.7rem;
   border-radius: 999px;
-  background: rgba(15, 23, 42, 0.28); /* 🔧 antes 0.16 */
+  background: rgba(15, 23, 42, 0.28);
+  /* 🔧 antes 0.16 */
   color: rgba(255, 255, 255, 0.95);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
   backdrop-filter: blur(4px);
@@ -1057,7 +1028,9 @@ onMounted(async () => {
   flex-wrap: wrap;
 }
 
-.selected-user-banner__created { opacity: 0.93; }
+.selected-user-banner__created {
+  opacity: 0.93;
+}
 
 /* Hover: sube contraste (sin oscurecer) */
 .selected-user-banner:hover .selected-user-banner__bio,
@@ -1100,10 +1073,25 @@ onMounted(async () => {
   transition: transform 120ms ease, box-shadow 120ms ease;
 }
 
-.chip--light { background: #f9fafb; color: #111827; }
-.chip--status-active { background: #10b981; color: #ecfdf5; }
-.chip--status-inactive { background: #f59e0b; color: #111827; }
-.chip--info { background: #e0f2fe; color: #075985; }
+.chip--light {
+  background: #f9fafb;
+  color: #111827;
+}
+
+.chip--status-active {
+  background: #10b981;
+  color: #ecfdf5;
+}
+
+.chip--status-inactive {
+  background: #f59e0b;
+  color: #111827;
+}
+
+.chip--info {
+  background: #e0f2fe;
+  color: #075985;
+}
 
 .chip:hover {
   transform: translateY(-1px);
@@ -1111,9 +1099,14 @@ onMounted(async () => {
 }
 
 /* TABLA */
-:deep(.b-table .table) { table-layout: fixed; }
+:deep(.b-table .table) {
+  table-layout: fixed;
+}
+
 :deep(.b-table .table td),
-:deep(.b-table .table th) { vertical-align: middle; }
+:deep(.b-table .table th) {
+  vertical-align: middle;
+}
 
 .user-cell {
   display: flex;
@@ -1150,11 +1143,28 @@ onMounted(async () => {
   box-shadow: 0 0 0 1px #6366f1, 0 10px 20px rgba(15, 23, 42, 0.25);
 }
 
-.user-cell__meta { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
-.user-cell__meta-header { display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
+.user-cell__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
 
-.user-cell__name { font-weight: 600; font-size: 0.9rem; }
-.user-cell__role-tag { text-transform: capitalize; }
+.user-cell__meta-header {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.user-cell__name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.user-cell__role-tag {
+  text-transform: capitalize;
+}
 
 .user-cell__bio {
   font-size: 0.75rem;
@@ -1168,12 +1178,21 @@ onMounted(async () => {
   line-clamp: 2;
 }
 
-.user-email { font-size: 0.8rem; color: #374151; }
+.user-email {
+  font-size: 0.8rem;
+  color: #374151;
+}
 
-.user-row--inactive { background-color: #fff5f5; opacity: 0.95; }
+.user-row--inactive {
+  background-color: #fff5f5;
+  opacity: 0.95;
+}
 
 /* detalle */
-.user-detail { padding: 0.75rem 0; }
+.user-detail {
+  padding: 0.75rem 0;
+}
+
 .user-detail__avatar {
   width: 64px;
   height: 64px;
@@ -1181,10 +1200,29 @@ onMounted(async () => {
   overflow: hidden;
   box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.7);
 }
-.user-detail__avatar img { width: 100%; height: 100%; display:block; object-fit: cover; }
-.user-detail__permissions { display: flex; flex-wrap: wrap; gap: 0.4rem; }
-.user-detail__perm-tag { text-transform: none; }
-.user-detail__helper { font-size: 0.75rem; color: #9ca3af; margin-bottom: 0.4rem; }
+
+.user-detail__avatar img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.user-detail__permissions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.user-detail__perm-tag {
+  text-transform: none;
+}
+
+.user-detail__helper {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  margin-bottom: 0.4rem;
+}
 
 /* Crear usuario */
 .create-avatar {
@@ -1216,7 +1254,7 @@ onMounted(async () => {
 
 .create-avatar__img:hover {
   transform: translateY(-1px);
-  box-shadow: 0 0 0 2px rgba(121, 87, 213, 0.35), 0 12px 22px rgba(15,23,42,.12);
+  box-shadow: 0 0 0 2px rgba(121, 87, 213, 0.35), 0 12px 22px rgba(15, 23, 42, .12);
 }
 
 .create-avatar-picker {
@@ -1225,7 +1263,7 @@ onMounted(async () => {
   border-radius: 12px;
   padding: .75rem;
   background: #ffffff;
-  box-shadow: 0 12px 26px rgba(15,23,42,.06);
+  box-shadow: 0 12px 26px rgba(15, 23, 42, .06);
 }
 
 /* password tools */
@@ -1239,23 +1277,53 @@ onMounted(async () => {
 
 /* transition picker */
 .picker-slide-enter-active,
-.picker-slide-leave-active { transition: all 180ms ease; }
+.picker-slide-leave-active {
+  transition: all 180ms ease;
+}
+
 .picker-slide-enter-from,
-.picker-slide-leave-to { opacity: 0; transform: translateY(-6px); }
+.picker-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+}
 
 /* animaciones */
 @keyframes banner-gradient-shift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
 }
+
 @keyframes banner-enter {
-  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
+
 @keyframes panel-fade-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @media (max-width: 1024px) {
@@ -1263,8 +1331,14 @@ onMounted(async () => {
     grid-template-columns: minmax(0, 1.8fr) minmax(0, 1.4fr);
     grid-template-rows: auto auto;
   }
-  .selected-user-banner__right { justify-content: flex-start; }
-  .selected-user-banner__center { text-align: left; }
+
+  .selected-user-banner__right {
+    justify-content: flex-start;
+  }
+
+  .selected-user-banner__center {
+    text-align: left;
+  }
 }
 
 @media (max-width: 768px) {
@@ -1273,9 +1347,18 @@ onMounted(async () => {
     grid-auto-rows: auto;
     align-items: flex-start;
   }
-  .panel-usuarios-header { flex-direction: column; align-items: flex-start; }
-  .panel-usuarios-summary { text-align: left; }
-  .selected-user-actions { justify-content: flex-start; }
+
+  .panel-usuarios-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .panel-usuarios-summary {
+    text-align: left;
+  }
+
+  .selected-user-actions {
+    justify-content: flex-start;
+  }
 }
 </style>
-

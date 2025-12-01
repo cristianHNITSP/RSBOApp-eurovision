@@ -1,16 +1,15 @@
+// vite.config.js
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import path from 'path'
 
 export default defineConfig(({ command }) => {
-  const isBuild = command === 'build'
+  const apiTarget = process.env.VITE_PROXY_TARGET || 'http://localhost:3000'
 
   return {
     plugins: [vue()],
     resolve: {
-      alias: {
-        '@': path.resolve(__dirname, './src'),
-      },
+      alias: { '@': path.resolve(__dirname, './src') },
     },
     build: {
       sourcemap: false,
@@ -25,26 +24,19 @@ export default defineConfig(({ command }) => {
           passes: 3,
           toplevel: true,
         },
-        mangle: {
-          toplevel: true,
-        },
-        format: {
-          comments: false,
-          beautify: false,
-          ascii_only: true,
-        },
+        mangle: { toplevel: true },
+        format: { comments: false, beautify: false, ascii_only: true },
         keep_fnames: false,
       },
       chunkSizeWarningLimit: 500,
     },
     server: {
-     // host: '0.0.0.0', permite conexiones desde cualquier IP
       host: true,
       port: 5173,
       strictPort: true,
       proxy: {
         '/api': {
-          target: 'http://localhost:3000',
+          target: apiTarget,
           changeOrigin: true,
         },
       },

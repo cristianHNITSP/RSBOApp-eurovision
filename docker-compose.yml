@@ -37,159 +37,134 @@
 # sudo docker logs -f rsboapp-auth
 
 services:
-  # Auth Service
-  auth-service:
+  # Reverse proxy + Frontend (Vite build servido por Nginx)
+  frontend:
     build:
-      context: ./backend/auth-service
-      args:
-        NODE_ENV: ${NODE_ENV:-development}
-    container_name: rsboapp-auth
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: prod
+    container_name: rsboapp-frontend
     ports:
-      - "${AUTH_PORT_HOST:-3001}:3000"
+      - "80:80"
     depends_on:
-      - mongo
-    volumes:
-      - ./backend/auth-service:/app
-      - /app/node_modules
-    env_file:
-      - ./backend/auth-service/.env
-    environment:
-      NODE_ENV: ${NODE_ENV:-development}
-      MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@${MONGO_HOST:-mongo}:${MONGO_PORT:-27017}/${AUTH_DB:-auth_db}?authSource=admin"
-    restart: always
-    profiles: ["dev"]
+      - gateway
+    restart: unless-stopped
     networks:
       - rsbo-net
 
-  # Inventory Service
-  inventory-service:
-    build:
-      context: ./backend/inventory-service
-      args:
-        NODE_ENV: ${NODE_ENV:-development}
-    container_name: rsboapp-inventory
-    ports:
-      - "${INVENTORY_PORT_HOST:-3002}:3000"
-    depends_on:
-      - mongo
-    volumes:
-      - ./backend/inventory-service:/app
-      - /app/node_modules
-    env_file:
-      - ./backend/inventory-service/.env
-    environment:
-      NODE_ENV: ${NODE_ENV:-development}
-      MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@${MONGO_HOST:-mongo}:${MONGO_PORT:-27017}/${INVENTORY_DB:-inventory_db}?authSource=admin"
-    restart: always
-    profiles: ["dev"]
-    networks:
-      - rsbo-net
-
-  # Orders Service
-  orders-service:
-    build:
-      context: ./backend/orders-service
-      args:
-        NODE_ENV: ${NODE_ENV:-development}
-    container_name: rsboapp-orders
-    ports:
-      - "${ORDERS_PORT_HOST:-3003}:3000"
-    depends_on:
-      - mongo
-    volumes:
-      - ./backend/orders-service:/app
-      - /app/node_modules
-    env_file:
-      - ./backend/orders-service/.env
-    environment:
-      NODE_ENV: ${NODE_ENV:-development}
-      MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@${MONGO_HOST:-mongo}:${MONGO_PORT:-27017}/${ORDERS_DB:-orders_db}?authSource=admin"
-    restart: always
-    profiles: ["dev"]
-    networks:
-      - rsbo-net
-
-  # Notification Service
-  notification-service:
-    build:
-      context: ./backend/notification-service
-      args:
-        NODE_ENV: ${NODE_ENV:-development}
-    container_name: rsboapp-notification
-    ports:
-      - "${NOTIFICATION_PORT_HOST:-3004}:3000"
-    depends_on:
-      - mongo
-    volumes:
-      - ./backend/notification-service:/app
-      - /app/node_modules
-    env_file:
-      - ./backend/notification-service/.env
-    environment:
-      NODE_ENV: ${NODE_ENV:-development}
-      MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@${MONGO_HOST:-mongo}:${MONGO_PORT:-27017}/${NOTIFICATION_DB:-notification_db}?authSource=admin"
-    restart: always
-    profiles: ["dev"]
-    networks:
-      - rsbo-net
-
-  # Gateway
+  # Gateway (API pública interna para Nginx)
   gateway:
     build:
       context: ./backend/gateway
       args:
-        NODE_ENV: ${NODE_ENV:-development}
+        NODE_ENV: production
     container_name: rsboapp-gateway
-    ports:
-      - "${GATEWAY_PORT_HOST:-3000}:3000"
+    expose:
+      - "3000"
     depends_on:
       - auth-service
       - inventory-service
       - orders-service
       - notification-service
-    volumes:
-      - ./backend/gateway:/app
-      - /app/node_modules
     env_file:
-      - ./backend/gateway/.env
+      - ./.env.prod
+      - ./backend/gateway/.env.prod
     environment:
-      NODE_ENV: ${NODE_ENV:-development}
-    restart: always
-    profiles: ["dev"]
+      NODE_ENV: production
+    restart: unless-stopped
     networks:
       - rsbo-net
 
-  # MongoDB
+  auth-service:
+    build:
+      context: ./backend/auth-service
+      args:
+        NODE_ENV: production
+    container_name: rsboapp-auth
+    expose:
+      - "3000"
+    depends_on:
+      - mongo
+    env_file:
+      - ./.env.prod
+      - ./backend/auth-service/.env.prod
+    environment:
+      NODE_ENV: production
+      MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${AUTH_DB}?authSource=admin"
+    restart: unless-stopped
+    networks:
+      - rsbo-net
+
+  inventory-service:
+    build:
+      context: ./backend/inventory-service
+      args:
+        NODE_ENV: production
+    container_name: rsboapp-inventory
+    expose:
+      - "3000"
+    depends_on:
+      - mongo
+    env_file:
+      - ./.env.prod
+      - ./backend/inventory-service/.env.prod
+    environment:
+      NODE_ENV: production
+      MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${INVENTORY_DB}?authSource=admin"
+    restart: unless-stopped
+    networks:
+      - rsbo-net
+
+  orders-service:
+    build:
+      context: ./backend/orders-service
+      args:
+        NODE_ENV: production
+    container_name: rsboapp-orders
+    expose:
+      - "3000"
+    depends_on:
+      - mongo
+    env_file:
+      - ./.env.prod
+      - ./backend/orders-service/.env.prod
+    environment:
+      NODE_ENV: production
+      MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${ORDERS_DB}?authSource=admin"
+    restart: unless-stopped
+    networks:
+      - rsbo-net
+
+  notification-service:
+    build:
+      context: ./backend/notification-service
+      args:
+        NODE_ENV: production
+    container_name: rsboapp-notification
+    expose:
+      - "3000"
+    depends_on:
+      - mongo
+    env_file:
+      - ./.env.prod
+      - ./backend/notification-service/.env.prod
+    environment:
+      NODE_ENV: production
+      MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${NOTIFICATION_DB}?authSource=admin"
+    restart: unless-stopped
+    networks:
+      - rsbo-net
+
   mongo:
     image: mongo:6
     container_name: rsboapp-mongo
-    ports:
-      - "${MONGO_PORT_HOST:-27017}:27017"
+    # IMPORTANTE: en producción NO publiques 27017 al host
     volumes:
       - rsbo-mongo-data:/data/db
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
-    restart: always
-    networks:
-      - rsbo-net
-
-  # Mongo Express
-  mongo-express:
-    image: mongo-express
-    container_name: rsboapp-mongo-express
-    ports:
-      - "127.0.0.1:${MONGO_EXPRESS_PORT_HOST:-8081}:8081"
-    environment:
-      ME_CONFIG_MONGODB_SERVER: ${MONGO_HOST:-mongo}
-      ME_CONFIG_MONGODB_ADMINUSERNAME: ${MONGO_ROOT_USERNAME}
-      ME_CONFIG_MONGODB_ADMINPASSWORD: ${MONGO_ROOT_PASSWORD}
-      ME_CONFIG_BASICAUTH_USERNAME: ${MONGO_EXPRESS_BASICAUTH_USERNAME}
-      ME_CONFIG_BASICAUTH_PASSWORD: ${MONGO_EXPRESS_BASICAUTH_PASSWORD}
-    depends_on:
-      - mongo
-    restart: always
-    profiles: ["dev"]
+    restart: unless-stopped
     networks:
       - rsbo-net
 
@@ -200,3 +175,4 @@ networks:
 volumes:
   rsbo-mongo-data:
     driver: local
+

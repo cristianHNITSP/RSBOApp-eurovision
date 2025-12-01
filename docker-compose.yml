@@ -40,7 +40,7 @@ services:
   # Reverse proxy + Frontend (Vite build servido por Nginx)
   frontend:
     build:
-      context: ./frontend
+      context: ./rsbo-app
       dockerfile: Dockerfile
       target: prod
     container_name: rsboapp-frontend

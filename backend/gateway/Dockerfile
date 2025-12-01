@@ -21,4 +21,4 @@ COPY . .
 EXPOSE 3000
 
 # Ejecuta nodemon en desarrollo, node en producción
-CMD ["sh", "-c", "if [ \"$NODE_ENV\" = \"production\" ]; then node src/index.js; else npx nodemon --config nodemon.json index.js; fi"]
+CMD ["sh", "-c", "if [ \"$NODE_ENV\" = \"production\" ]; then node index.js; else npx nodemon --config nodemon.json index.js; fi"]

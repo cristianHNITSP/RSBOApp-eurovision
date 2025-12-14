@@ -1,14 +1,5 @@
 <template>
-  <div :class="{ 'reduced-effects': reduceEffects }">
-    <!-- ✅ Accesibilidad / efectos 
-    <div class="tabs-a11y-row">
-      <b-switch v-model="reduceEffects" size="is-small" type="is-dark">
-        Reducir transparencias / efectos
-      </b-switch>
-      <span class="a11y-hint">Se guarda en este dispositivo</span>
-    </div>
-    -->
-    
+  <div>
     <!-- TABS -->
     <div ref="tabsContainer" class="tabs-wrapper tabs-wrapper--glass">
       <!-- Skeleton de tabs mientras se cargan las planillas -->
@@ -36,7 +27,7 @@
           </template>
 
           <template v-else>
-            <!-- ✅ Texto (nombre + sku) -->
+            <!-- Texto (nombre + sku) -->
             <div class="tab-text">
               <span class="tab-label" :title="planilla.name">{{ planilla.name }}</span>
 
@@ -48,7 +39,7 @@
               </span>
             </div>
 
-            <!-- 3 puntos (abre modal; no deforma layout) -->
+            <!-- 3 puntos -->
             <button
               class="tab-menu-btn"
               title="Más acciones"
@@ -67,50 +58,48 @@
       <!-- NUEVA -->
       <div class="box" v-if="activeId === 'nueva'">
         <form @submit.prevent="handleCrear">
-          <!-- ✅ NUEVO: PROVEEDOR / MARCA -->
-          <transition name="fade-slide">
-            <div class="columns is-multiline">
-              <div class="column is-12-mobile is-6-tablet">
-                <b-field label="Proveedor (opcional)">
-                  <b-autocomplete
-                    v-model="newProveedorName"
-                    :data="filteredProveedorOptions"
-                    placeholder="Ej. Eurovisión / Luxottica / …"
-                    open-on-focus
-                    keep-first
-                    :clear-on-select="false"
-                    :max-height="220"
-                    :check-infinite-scroll="false"
-                    @select="onSelectProveedor"
-                  >
-                    <template #empty>
-                      <span class="has-text-grey">Sin coincidencias (puedes crear uno nuevo escribiéndolo).</span>
-                    </template>
-                  </b-autocomplete>
-                </b-field>
-              </div>
-
-              <div class="column is-12-mobile is-6-tablet">
-                <b-field label="Marca (opcional)">
-                  <b-autocomplete
-                    v-model="newMarcaName"
-                    :data="filteredMarcaOptions"
-                    placeholder="Ej. Essilor / Zeiss / …"
-                    open-on-focus
-                    keep-first
-                    :clear-on-select="false"
-                    :max-height="220"
-                    :check-infinite-scroll="false"
-                    @select="onSelectMarca"
-                  >
-                    <template #empty>
-                      <span class="has-text-grey">Sin coincidencias (puedes crear una nueva escribiéndola).</span>
-                    </template>
-                  </b-autocomplete>
-                </b-field>
-              </div>
+          <!-- PROVEEDOR / MARCA (CREAR) -->
+          <div class="columns is-multiline">
+            <div class="column is-12-mobile is-6-tablet">
+              <b-field label="Proveedor (opcional)">
+                <b-autocomplete
+                  v-model="newProveedorName"
+                  :data="filteredProveedorOptions"
+                  placeholder="Ej. Eurovisión / Luxottica / …"
+                  open-on-focus
+                  keep-first
+                  :clear-on-select="false"
+                  :max-height="220"
+                  :check-infinite-scroll="false"
+                  @select="onSelectProveedor"
+                >
+                  <template #empty>
+                    <span class="has-text-grey">Sin coincidencias (puedes crear uno nuevo escribiéndolo).</span>
+                  </template>
+                </b-autocomplete>
+              </b-field>
             </div>
-          </transition>
+
+            <div class="column is-12-mobile is-6-tablet">
+              <b-field label="Marca (opcional)">
+                <b-autocomplete
+                  v-model="newMarcaName"
+                  :data="filteredMarcaOptions"
+                  placeholder="Ej. Essilor / Zeiss / …"
+                  open-on-focus
+                  keep-first
+                  :clear-on-select="false"
+                  :max-height="220"
+                  :check-infinite-scroll="false"
+                  @select="onSelectMarca"
+                >
+                  <template #empty>
+                    <span class="has-text-grey">Sin coincidencias (puedes crear una nueva escribiéndola).</span>
+                  </template>
+                </b-autocomplete>
+              </b-field>
+            </div>
+          </div>
 
           <b-field label="Selecciona la Base">
             <div class="tabs tabs-opciones is-toggle is-small">
@@ -128,86 +117,82 @@
           </b-field>
 
           <!-- MATERIALES -->
-          <transition name="fade-slide">
-            <b-field v-if="selectedBase" label="Selecciona el Material">
-              <div class="tabs tabs-opciones is-toggle is-small">
-                <ul>
-                  <li
-                    v-for="mat in allMaterials"
-                    :key="mat"
-                    :class="[
-                      { 'is-active': selectedMaterial === mat },
-                      { 'is-disabled': !isMaterialAllowed(mat) }
-                    ]"
-                    :aria-disabled="!isMaterialAllowed(mat)"
-                  >
-                    <b-tooltip
-                      v-if="!isMaterialAllowed(mat)"
-                      :label="`No disponible con ${baseLabel}`"
-                      position="is-top"
-                      type="is-dark"
-                      multilined
-                    >
-                      <a @click.prevent>
-                        {{ mat }} <i class="fas fa-lock ml-1"></i>
-                      </a>
-                    </b-tooltip>
-
-                    <a v-else @click="selectMaterial(mat)">{{ mat }}</a>
-                  </li>
-                </ul>
-              </div>
-
-              <p class="help is-danger mt-2" v-if="selectedBase && !hasAnyAllowedMaterial">
-                No hay materiales compatibles con la base seleccionada.
-              </p>
-              <p class="help is-light mt-1">
-                Las opciones en gris no son compatibles con la base elegida.
-              </p>
-            </b-field>
-          </transition>
-
-          <!-- TRATAMIENTOS -->
-          <transition name="fade-slide">
-            <b-field v-if="selectedMaterial" label="Selecciona Tratamientos">
-              <div class="columns is-multiline is-mobile" style="max-height: 150px; overflow-y: auto;">
-                <div
-                  v-for="trat in allTratamientos"
-                  :key="trat"
-                  class="column is-half-mobile is-one-third-tablet is-one-quarter-desktop"
+          <b-field v-if="selectedBase" label="Selecciona el Material">
+            <div class="tabs tabs-opciones is-toggle is-small">
+              <ul>
+                <li
+                  v-for="mat in allMaterials"
+                  :key="mat"
+                  :class="[
+                    { 'is-active': selectedMaterial === mat },
+                    { 'is-disabled': !isMaterialAllowed(mat) }
+                  ]"
+                  :aria-disabled="!isMaterialAllowed(mat)"
                 >
                   <b-tooltip
-                    v-if="!isTratamientoAllowed(trat)"
-                    label="No compatible con la base/material seleccionados"
+                    v-if="!isMaterialAllowed(mat)"
+                    :label="`No disponible con ${baseLabel}`"
                     position="is-top"
                     type="is-dark"
+                    multilined
                   >
-                    <div class="tratamiento-item is-disabled">
-                      <b-checkbox
-                        :model-value="false"
-                        :native-value="trat"
-                        size="is-small"
-                        type="is-primary"
-                        disabled
-                      >
-                        {{ trat }} <i class="fas fa-lock ml-1"></i>
-                      </b-checkbox>
-                    </div>
+                    <a @click.prevent>
+                      {{ mat }} <i class="fas fa-lock ml-1"></i>
+                    </a>
                   </b-tooltip>
 
-                  <div v-else class="tratamiento-item">
-                    <b-checkbox v-model="selectedTratamientos" :native-value="trat" size="is-small" type="is-primary">
-                      {{ trat }}
+                  <a v-else @click="selectMaterial(mat)">{{ mat }}</a>
+                </li>
+              </ul>
+            </div>
+
+            <p class="help is-danger mt-2" v-if="selectedBase && !hasAnyAllowedMaterial">
+              No hay materiales compatibles con la base seleccionada.
+            </p>
+            <p class="help is-light mt-1">
+              Las opciones en gris no son compatibles con la base elegida.
+            </p>
+          </b-field>
+
+          <!-- TRATAMIENTOS -->
+          <b-field v-if="selectedMaterial" label="Selecciona Tratamientos">
+            <div class="columns is-multiline is-mobile" style="max-height: 150px; overflow-y: auto;">
+              <div
+                v-for="trat in allTratamientos"
+                :key="trat"
+                class="column is-half-mobile is-one-third-tablet is-one-quarter-desktop"
+              >
+                <b-tooltip
+                  v-if="!isTratamientoAllowed(trat)"
+                  label="No compatible con la base/material seleccionados"
+                  position="is-top"
+                  type="is-dark"
+                >
+                  <div class="tratamiento-item is-disabled">
+                    <b-checkbox
+                      :model-value="false"
+                      :native-value="trat"
+                      size="is-small"
+                      type="is-primary"
+                      disabled
+                    >
+                      {{ trat }} <i class="fas fa-lock ml-1"></i>
                     </b-checkbox>
                   </div>
+                </b-tooltip>
+
+                <div v-else class="tratamiento-item">
+                  <b-checkbox v-model="selectedTratamientos" :native-value="trat" size="is-small" type="is-primary">
+                    {{ trat }}
+                  </b-checkbox>
                 </div>
               </div>
+            </div>
 
-              <p class="help is-danger mt-2" v-if="!hasAnyAllowedTratamiento">
-                No hay tratamientos compatibles con la selección actual.
-              </p>
-            </b-field>
-          </transition>
+            <p class="help is-danger mt-2" v-if="!hasAnyAllowedTratamiento">
+              No hay tratamientos compatibles con la selección actual.
+            </p>
+          </b-field>
 
           <!-- TAGS -->
           <transition-group name="tag-list" tag="div" class="tags mb-3">
@@ -313,6 +298,83 @@
                 <div class="action-desc">Ir a la planilla y gestionarla.</div>
                 <div class="mt-2">
                   <b-button type="is-primary" :disabled="anySaving" @click="openSheet">Abrir</b-button>
+                </div>
+              </div>
+            </div>
+
+            <!-- ✅ PROVEEDOR / MARCA (EDITAR) -->
+            <div class="action-card" :class="{ 'vendor-glow': vendorGlow }">
+              <div class="action-icon"><i class="far fa-building"></i></div>
+              <div class="action-content">
+                <div class="action-title">Proveedor y Marca</div>
+                <div class="action-desc">Editar proveedor y marca asociados a esta planilla.</div>
+
+                <div class="columns is-multiline mt-2">
+                  <div class="column is-12-mobile is-6-tablet">
+                    <b-field label="Proveedor">
+                      <b-autocomplete
+                        v-model="editProveedorName"
+                        :data="filteredProveedorOptionsEdit"
+                        placeholder="Ej. Eurovisión / Luxottica / …"
+                        open-on-focus
+                        keep-first
+                        :clear-on-select="false"
+                        :max-height="220"
+                        :check-infinite-scroll="false"
+                        :disabled="savingVendor"
+                        @select="(v) => (editProveedorName = typeof v === 'string' ? v : editProveedorName)"
+                      >
+                        <template #empty>
+                          <span class="has-text-grey">Sin coincidencias (puedes escribir uno nuevo).</span>
+                        </template>
+                      </b-autocomplete>
+                    </b-field>
+                  </div>
+
+                  <div class="column is-12-mobile is-6-tablet">
+                    <b-field label="Marca">
+                      <b-autocomplete
+                        v-model="editMarcaName"
+                        :data="filteredMarcaOptionsEdit"
+                        placeholder="Ej. Essilor / Zeiss / …"
+                        open-on-focus
+                        keep-first
+                        :clear-on-select="false"
+                        :max-height="220"
+                        :check-infinite-scroll="false"
+                        :disabled="savingVendor"
+                        @select="(v) => (editMarcaName = typeof v === 'string' ? v : editMarcaName)"
+                      >
+                        <template #empty>
+                          <span class="has-text-grey">Sin coincidencias (puedes escribir una nueva).</span>
+                        </template>
+                      </b-autocomplete>
+                    </b-field>
+                  </div>
+                </div>
+
+                <div class="buttons is-right mt-2 meta-actions-row">
+                  <div class="meta-status-wrapper" aria-live="polite" role="status">
+                    <transition name="fade-status">
+                      <div v-if="vendorStatus !== 'idle'" class="meta-status" :class="vendorStatus">
+                        <span v-if="vendorStatus === 'saving'" class="dot-pulse"></span>
+                        <i v-else-if="vendorStatus === 'saved'" class="far fa-check-circle"></i>
+                        <i v-else-if="vendorStatus === 'error'" class="far fa-exclamation-triangle"></i>
+                        <span class="meta-status-text">{{ vendorStatusMessage }}</span>
+                      </div>
+                    </transition>
+                  </div>
+
+                  <b-button
+                    type="is-primary"
+                    size="is-small"
+                    :loading="savingVendor"
+                    :disabled="!canSaveVendor || savingVendor"
+                    @click="confirmSaveVendor"
+                  >
+                    <span v-if="!savingVendor">Guardar proveedor/marca</span>
+                    <span v-else>Sincronizando…</span>
+                  </b-button>
                 </div>
               </div>
             </div>
@@ -483,42 +545,7 @@ const emit = defineEmits([
   "renamed"
 ]);
 
-/* ===================== ✅ UI PREFS (reduce effects) ===================== */
-const UI_PREFS_KEY = "rsbo_ui_prefs_v1";
-const reduceEffects = ref(false);
-
-const readPrefs = () => {
-  try {
-    const raw = localStorage.getItem(UI_PREFS_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-};
-
-const writePrefs = (prefs) => {
-  try {
-    localStorage.setItem(UI_PREFS_KEY, JSON.stringify(prefs || {}));
-  } catch {}
-};
-
-onMounted(() => {
-  // default: respeta prefers-reduced-motion si no hay config guardada
-  const saved = readPrefs();
-  const mediaReduce = typeof window !== "undefined"
-    ? window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches
-    : false;
-
-  reduceEffects.value = saved?.reduceEffects ?? !!mediaReduce;
-});
-
-watch(reduceEffects, (v) => {
-  const saved = readPrefs() || {};
-  writePrefs({ ...saved, reduceEffects: !!v });
-});
-
-/* ===================== ✅ NORMALIZADOR (FIX SKU NULL) ===================== */
+/* ===================== NORMALIZADOR (FIX SKU NULL) ===================== */
 const normalizeSheet = (s) => {
   if (!s) return null;
   const id = String(s.id ?? s._id ?? "");
@@ -558,7 +585,7 @@ watch(
   { deep: true, immediate: true }
 );
 
-/* ===================== ✅ Autocomplete Proveedor/Marca (faltaba) ===================== */
+/* ===================== Autocomplete Proveedor/Marca ===================== */
 const normTxt = (s) =>
   String(s || "")
     .trim()
@@ -648,7 +675,7 @@ const handleInternalTabClick = (id) => {
   emit("update:internal", id);
 };
 
-/* ===================== ✅ Helpers de feedback ===================== */
+/* ===================== Helpers ===================== */
 const errMsg = (e, fallback) => e?.response?.data?.message || e?.message || fallback;
 
 /* ===== Crear ===== */
@@ -818,11 +845,8 @@ onMounted(() => {
       if (props.loadingTabs) return false;
       const relatedEl = evt.related;
       if (relatedEl && relatedEl.classList.contains("tab-agregar")) {
-        // ✅ si reduced effects, evitamos shake (no molestar)
-        if (!reduceEffects.value) {
-          evt.dragged.classList.add("shake", "shake-color");
-          setTimeout(() => evt.dragged.classList.remove("shake", "shake-color"), 300);
-        }
+        evt.dragged.classList.add("shake", "shake-color");
+        setTimeout(() => evt.dragged.classList.remove("shake", "shake-color"), 300);
         return false;
       }
       return true;
@@ -850,11 +874,10 @@ onMounted(() => {
 /* Modal acciones */
 const isActionsOpen = ref(false);
 const selectedSheet = ref(null);
+
+/* ===== Renombrar ===== */
 const renameName = ref("");
 const renaming = ref(false);
-const confirmingDelete = ref(false);
-const deleting = ref(false);
-
 const renameStatus = ref("idle");
 const renameStatusMessage = ref("");
 const renameGlow = ref(false);
@@ -871,22 +894,13 @@ const canRename = computed(() => {
   return !!selectedSheet.value && !renaming.value && next.length > 0 && next !== current;
 });
 
+/* ===== Meta ===== */
 const metaForm = ref({ observaciones: "", notas: "" });
 const savingMeta = ref(false);
 const metaStatus = ref("idle");
 const metaStatusMessage = ref("");
 const metaGlow = ref(false);
-
 const canSaveMeta = computed(() => !!selectedSheet.value && !savingMeta.value);
-
-const trashStatus = ref("idle");
-const trashStatusMessage = ref("");
-const resetTrashStatus = () => {
-  trashStatus.value = "idle";
-  trashStatusMessage.value = "";
-};
-
-const anySaving = computed(() => creatingSheet.value || renaming.value || savingMeta.value || deleting.value);
 
 const loadMetaFromSheet = (sheet) => {
   const meta = sheet?.meta || {};
@@ -909,7 +923,6 @@ const confirmSaveMeta = async () => {
   try {
     const { id } = selectedSheet.value;
 
-    // ✅ Solo mandamos lo que editas, NO ranges
     const metaPayload = {
       observaciones: metaForm.value.observaciones || "",
       notas: metaForm.value.notas || ""
@@ -935,10 +948,8 @@ const confirmSaveMeta = async () => {
 
       metaStatus.value = "saved";
       metaStatusMessage.value = "Notas sincronizadas";
-      if (!reduceEffects.value) {
-        metaGlow.value = true;
-        setTimeout(() => (metaGlow.value = false), 900);
-      }
+      metaGlow.value = true;
+      setTimeout(() => (metaGlow.value = false), 900);
       setTimeout(() => {
         metaStatus.value = "idle";
         metaStatusMessage.value = "";
@@ -959,6 +970,113 @@ const confirmSaveMeta = async () => {
   }
 };
 
+/* ===== ✅ Proveedor / Marca (EDITAR) ===== */
+const editProveedorName = ref("");
+const editMarcaName = ref("");
+const savingVendor = ref(false);
+const vendorStatus = ref("idle");
+const vendorStatusMessage = ref("");
+const vendorGlow = ref(false);
+
+const resetVendorStatus = () => {
+  vendorStatus.value = "idle";
+  vendorStatusMessage.value = "";
+  vendorGlow.value = false;
+};
+
+const filteredProveedorOptionsEdit = computed(() => {
+  const q = normTxt(editProveedorName.value);
+  const base = proveedorOptions.value;
+  if (!q) return base.slice(0, 30);
+  return base.filter((x) => normTxt(x).includes(q)).slice(0, 30);
+});
+
+const filteredMarcaOptionsEdit = computed(() => {
+  const q = normTxt(editMarcaName.value);
+  const base = marcaOptions.value;
+  if (!q) return base.slice(0, 30);
+  return base.filter((x) => normTxt(x).includes(q)).slice(0, 30);
+});
+
+const canSaveVendor = computed(() => {
+  if (!selectedSheet.value || savingVendor.value) return false;
+
+  const currentProv = String(selectedSheet.value?.proveedor?.name || "").trim();
+  const currentMarca = String(selectedSheet.value?.marca?.name || "").trim();
+
+  const nextProv = String(editProveedorName.value || "").trim();
+  const nextMarca = String(editMarcaName.value || "").trim();
+
+  // permitir guardar aunque uno esté vacío (opcional), pero debe haber algún cambio
+  return nextProv !== currentProv || nextMarca !== currentMarca;
+});
+
+const confirmSaveVendor = async () => {
+  if (!selectedSheet.value || savingVendor.value) return;
+  if (!canSaveVendor.value) return;
+
+  savingVendor.value = true;
+  vendorStatus.value = "saving";
+  vendorStatusMessage.value = "Sincronizando…";
+  vendorGlow.value = false;
+
+  try {
+    const { id } = selectedSheet.value;
+
+    const payload = {
+      proveedor: { id: null, name: String(editProveedorName.value || "").trim() },
+      marca: { id: null, name: String(editMarcaName.value || "").trim() },
+      actor: actorRef.value || undefined
+    };
+
+    const { data } = await updateSheet(id, payload);
+    if (!data || data.ok === false) throw new Error(data?.message || "El servidor rechazó el cambio");
+
+    const updated = data?.data?.sheet;
+    const tabs = data?.data?.tabs;
+
+    if (!updated) throw new Error("Respuesta inválida: falta data.sheet");
+
+    const norm = normalizeSheet(updated);
+    const idx = sheets.value.findIndex((s) => s.id === id);
+    const newTabs = tabs || (idx >= 0 ? sheets.value[idx].tabs : selectedSheet.value?.tabs || []);
+
+    if (idx >= 0) sheets.value[idx] = normalizeSheet({ ...sheets.value[idx], ...norm, tabs: newTabs });
+    selectedSheet.value = normalizeSheet({ ...selectedSheet.value, ...norm, tabs: newTabs });
+
+    // refresca inputs con lo guardado (por si el backend normaliza)
+    editProveedorName.value = String(selectedSheet.value?.proveedor?.name || "");
+    editMarcaName.value = String(selectedSheet.value?.marca?.name || "");
+
+    vendorStatus.value = "saved";
+    vendorStatusMessage.value = "Proveedor/marca actualizados";
+    vendorGlow.value = true;
+    setTimeout(() => (vendorGlow.value = false), 900);
+    setTimeout(() => resetVendorStatus(), 1800);
+  } catch (e) {
+    console.error("vendor save error:", e?.response?.data || e);
+    vendorStatus.value = "error";
+    vendorStatusMessage.value = errMsg(e, "No se pudo guardar proveedor/marca");
+    setTimeout(() => resetVendorStatus(), 2400);
+  } finally {
+    savingVendor.value = false;
+  }
+};
+
+/* ===== Trash ===== */
+const confirmingDelete = ref(false);
+const deleting = ref(false);
+const trashStatus = ref("idle");
+const trashStatusMessage = ref("");
+
+const resetTrashStatus = () => {
+  trashStatus.value = "idle";
+  trashStatusMessage.value = "";
+};
+
+const anySaving = computed(() => creatingSheet.value || renaming.value || savingMeta.value || deleting.value || savingVendor.value);
+
+/* Human label tipo */
 const tipoHuman = (t) =>
   ({
     BASE: "Monofocal (Base)",
@@ -974,8 +1092,14 @@ const openActions = (sheet) => {
 
   resetRenameStatus();
   resetTrashStatus();
+  resetVendorStatus();
 
   loadMetaFromSheet(selectedSheet.value);
+
+  // ✅ cargar proveedor/marca actuales en inputs editables
+  editProveedorName.value = String(selectedSheet.value?.proveedor?.name || "");
+  editMarcaName.value = String(selectedSheet.value?.marca?.name || "");
+
   isActionsOpen.value = true;
 };
 
@@ -985,6 +1109,7 @@ const openSheet = () => {
   isActionsOpen.value = false;
 };
 
+/* Rename */
 const confirmRename = async () => {
   const nextName = (renameName.value || "").trim();
   if (!selectedSheet.value || renaming.value) return;
@@ -1022,10 +1147,8 @@ const confirmRename = async () => {
 
     renameStatus.value = "saved";
     renameStatusMessage.value = "Nombre actualizado";
-    if (!reduceEffects.value) {
-      renameGlow.value = true;
-      setTimeout(() => (renameGlow.value = false), 900);
-    }
+    renameGlow.value = true;
+    setTimeout(() => (renameGlow.value = false), 900);
     setTimeout(() => resetRenameStatus(), 1800);
   } catch (e) {
     console.error("rename error:", e?.response?.data || e);
@@ -1037,6 +1160,7 @@ const confirmRename = async () => {
   }
 };
 
+/* Soft delete */
 const softDelete = async () => {
   if (!selectedSheet.value || deleting.value) return;
 
@@ -1086,22 +1210,8 @@ const handleTabClick = (id) => {
 </script>
 
 <style scoped>
-/* ✅ Accesibilidad row */
-.tabs-a11y-row{
-  display:flex;
-  align-items:center;
-  justify-content:flex-end;
-  gap:.6rem;
-  padding:.35rem .55rem .2rem;
-}
-.a11y-hint{
-  font-size:.78rem;
-  opacity:.65;
-}
+/* ====== (tu CSS tal cual lo traías) ====== */
 
-/* =========================
-   CONTENEDOR (card)
-   ========================= */
 .plantillas-contenedor {
   background: rgba(255, 255, 255, 0.88);
   border: 1px solid rgba(148, 163, 184, 0.22);
@@ -1112,14 +1222,12 @@ const handleTabClick = (id) => {
   overflow: hidden;
 }
 
-/* =========================
-   TABS WRAPPER (glass + fade)
-   ========================= */
 .tabs-wrapper {
   position: relative;
   display: flex;
   flex-wrap: nowrap;
   overflow-x: auto;
+  overflow-y: hidden;
   gap: 0.35rem;
   padding: 0.55rem 0.55rem 0;
   border-bottom: 1px solid rgba(148, 163, 184, 0.22);
@@ -1132,7 +1240,6 @@ const handleTabClick = (id) => {
   -webkit-backdrop-filter: blur(12px);
 }
 
-/* Fade lateral para indicar scroll */
 .tabs-wrapper::before,
 .tabs-wrapper::after {
   content: "";
@@ -1157,21 +1264,13 @@ const handleTabClick = (id) => {
   background: linear-gradient(270deg, rgba(255,255,255,0.92), rgba(255,255,255,0));
 }
 
-/* scrollbar suave */
-.tabs-wrapper::-webkit-scrollbar {
-  height: 8px;
-}
+.tabs-wrapper::-webkit-scrollbar { height: 8px; }
 .tabs-wrapper::-webkit-scrollbar-thumb {
   background: rgba(148,163,184,0.35);
   border-radius: 999px;
 }
-.tabs-wrapper::-webkit-scrollbar-track {
-  background: transparent;
-}
+.tabs-wrapper::-webkit-scrollbar-track { background: transparent; }
 
-/* =========================
-   TAB ITEM (glass)
-   ========================= */
 .tab-item {
   position: relative;
   display: inline-flex;
@@ -1207,7 +1306,6 @@ const handleTabClick = (id) => {
   border-color: rgba(121, 87, 213, 0.35);
 }
 
-/* indicator */
 .tab-item.active::after {
   content: "";
   position: absolute;
@@ -1219,7 +1317,6 @@ const handleTabClick = (id) => {
   background: linear-gradient(90deg, rgba(121,87,213,1), rgba(236,72,153,0.95));
 }
 
-/* Nueva */
 .tab-agregar {
   background: rgba(15, 23, 42, 0.92);
   color: #fff;
@@ -1230,7 +1327,6 @@ const handleTabClick = (id) => {
   box-shadow: 0 18px 50px rgba(15, 23, 42, 0.18);
 }
 
-/* Texto */
 .tab-text {
   display: flex;
   flex-direction: column;
@@ -1261,12 +1357,8 @@ const handleTabClick = (id) => {
   color: rgba(15,23,42,0.70);
 }
 
-.tab-sku--empty {
-  opacity: 0.55;
-  font-weight: 700;
-}
+.tab-sku--empty { opacity: 0.55; font-weight: 700; }
 
-/* Botón ⋮ */
 .tab-menu-btn {
   position: absolute;
   right: 6px;
@@ -1294,9 +1386,6 @@ const handleTabClick = (id) => {
   box-shadow: 0 12px 24px rgba(15, 23, 42, 0.10);
 }
 
-/* =========================
-   SKELETON TABS
-   ========================= */
 .skeleton-tab {
   background: transparent;
   border-color: transparent;
@@ -1325,25 +1414,9 @@ const handleTabClick = (id) => {
   100% { background-position: -200% 0; }
 }
 
-/* =========================
-   CREATE ACTIONS (pill status)
-   ========================= */
-.create-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  flex-wrap: wrap;
-}
+.create-actions { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; }
+.create-status { min-height: 26px; display: flex; align-items: center; }
 
-.create-status {
-  min-height: 26px;
-  display: flex;
-  align-items: center;
-}
-
-/* =========================
-   INTERNAL TABS (sheet tabs)
-   ========================= */
 .sheet-tabs {
   display: flex;
   height: 38px;
@@ -1363,19 +1436,13 @@ const handleTabClick = (id) => {
   color: rgba(15,23,42,0.70);
 }
 
-.sheet-tab:hover {
-  background: rgba(121,87,213,0.10);
-}
-
+.sheet-tab:hover { background: rgba(121,87,213,0.10); }
 .sheet-tab.active {
   background: rgba(121,87,213,0.16);
   color: rgba(15,23,42,0.92);
   box-shadow: 0 12px 24px rgba(15,23,42,0.10);
 }
 
-/* =========================
-   ANIMACIONES / FEEDBACK
-   ========================= */
 @keyframes shake {
   0%, 100% { transform: translateX(0); }
   20%, 60% { transform: translateX(-3px); }
@@ -1387,21 +1454,16 @@ const handleTabClick = (id) => {
   border-color: rgba(220, 38, 38, 0.35);
 }
 
-/* Fade slide */
-.fade-slide-enter-active,
-.fade-slide-leave-active { transition: all 0.28s ease; }
-.fade-slide-enter-from,
-.fade-slide-leave-to { opacity: 0; transform: translateY(-8px); }
+.fade-status-enter-active,
+.fade-status-leave-active { transition: opacity 0.22s ease, transform 0.22s ease; }
+.fade-status-enter-from,
+.fade-status-leave-to { opacity: 0; transform: translateY(3px); }
 
-/* Tags */
 .tag-list-enter-active,
 .tag-list-leave-active { transition: all 0.22s ease; }
 .tag-list-enter-from,
 .tag-list-leave-to { opacity: 0; transform: scale(0.92); }
 
-/* =========================
-   MODAL (glass + cards)
-   ========================= */
 .rsbo-sheet-actions-modal .modal-card { width: 100%; max-width: 760px; }
 
 .rsbo-actions-card {
@@ -1421,7 +1483,6 @@ const handleTabClick = (id) => {
 }
 
 .pill-row { display: flex; gap: 0.45rem; align-items: center; flex-wrap: wrap; }
-
 .pill {
   display: inline-flex;
   align-items: center;
@@ -1455,12 +1516,7 @@ const handleTabClick = (id) => {
   margin-bottom: 1rem;
   transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.16s ease;
 }
-
-.action-card:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 26px 70px rgba(15,23,42,0.14);
-}
-
+.action-card:hover { transform: translateY(-1px); box-shadow: 0 26px 70px rgba(15,23,42,0.14); }
 .action-card.primary { border-color: rgba(121,87,213,0.35); }
 .action-card.danger { border-color: rgba(220,38,38,0.28); }
 
@@ -1475,14 +1531,12 @@ const handleTabClick = (id) => {
   background: rgba(121,87,213,0.12);
   color: rgba(121,87,213,1);
 }
-
 .action-icon.danger { background: rgba(220,38,38,0.12); color: rgba(220,38,38,1); }
 
 .action-content { flex: 1; min-width: 0; }
 .action-title { font-weight: 900; font-size: 1rem; margin-bottom: 0.15rem; }
 .action-desc { opacity: 0.85; font-size: 0.9rem; color: rgba(15,23,42,0.72); }
 
-/* Status pills */
 .meta-status {
   display: inline-flex;
   align-items: center;
@@ -1495,7 +1549,6 @@ const handleTabClick = (id) => {
   background: rgba(248,250,252,0.85);
   color: rgba(15,23,42,0.72);
 }
-
 .meta-status.saving { border-color: rgba(59,130,246,0.25); background: rgba(59,130,246,0.08); }
 .meta-status.saved { border-color: rgba(34,197,94,0.25); background: rgba(34,197,94,0.08); color: rgba(15,23,42,0.86); }
 .meta-status.error { border-color: rgba(220,38,38,0.25); background: rgba(220,38,38,0.08); color: rgba(15,23,42,0.86); }
@@ -1515,12 +1568,11 @@ const handleTabClick = (id) => {
   100% { box-shadow: 0 0 0 0 rgba(0, 0, 0, 0); opacity: 0.4; }
 }
 
-.fade-status-enter-active,
-.fade-status-leave-active { transition: opacity 0.22s ease, transform 0.22s ease; }
-.fade-status-enter-from,
-.fade-status-leave-to { opacity: 0; transform: translateY(3px); }
+/* pequeño glow cuando guarda proveedor/marca */
+.vendor-glow { outline: 2px solid rgba(34,197,94,0.25); }
+.rename-glow { outline: 2px solid rgba(34,197,94,0.25); }
+.meta-glow { outline: 2px solid rgba(34,197,94,0.25); }
 
-/* confirm danger */
 .confirm-inline {
   display: flex;
   align-items: center;
@@ -1537,63 +1589,5 @@ const handleTabClick = (id) => {
 @media screen and (max-width: 768px) {
   .tab-item { max-width: 220px; }
   .rsbo-actions-body { padding: 0.9rem; }
-}
-
-/* ==========================================================
-   ✅ REDUCED EFFECTS MODE (reduce transparencias/gradientes)
-   ========================================================== */
-.reduced-effects .tabs-wrapper--glass,
-.reduced-effects .tab-item--glass,
-.reduced-effects .rsbo-actions-head,
-.reduced-effects .rsbo-actions-card,
-.reduced-effects .action-card {
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
-
-.reduced-effects .tab-item.active,
-.reduced-effects .pill.strong {
-  background: rgba(15, 23, 42, 0.06) !important;
-}
-
-.reduced-effects .tab-item.active::after {
-  background: rgba(15, 23, 42, 0.45) !important;
-}
-
-.reduced-effects .tab-item,
-.reduced-effects .action-card,
-.reduced-effects .sheet-tab,
-.reduced-effects .plantillas-contenedor,
-.reduced-effects .tab-menu-btn {
-  transition: none !important;
-  box-shadow: none !important;
-}
-
-.reduced-effects .tab-item:hover,
-.reduced-effects .action-card:hover,
-.reduced-effects .tab-menu-btn:hover {
-  transform: none !important;
-}
-
-.reduced-effects .skeleton-bar {
-  animation: none !important;
-  background: rgba(226,232,240,0.9) !important;
-}
-
-.reduced-effects .dot-pulse {
-  animation: none !important;
-}
-
-.reduced-effects .shake {
-  animation: none !important;
-}
-
-.reduced-effects .fade-slide-enter-active,
-.reduced-effects .fade-slide-leave-active,
-.reduced-effects .fade-status-enter-active,
-.reduced-effects .fade-status-leave-active,
-.reduced-effects .tag-list-enter-active,
-.reduced-effects .tag-list-leave-active {
-  transition: none !important;
 }
 </style>

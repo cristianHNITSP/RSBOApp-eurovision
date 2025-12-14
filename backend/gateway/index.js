@@ -10,31 +10,47 @@ const app = express();
 
 // 👇 Importante si algún día pones reverse proxy TLS (Nginx/Caddy)
 // y para que req.secure / x-forwarded-proto tenga sentido.
+// 👇 Importante si algún día pones reverse proxy TLS (Nginx/Caddy)
 app.set("trust proxy", 1);
 
-// ✅ Lista de orígenes permitidos
-const allowedOrigins = [
-  process.env.FRONTEND_URL_DEV,
-  "http://192.168.0.87:5173",
-  "http://172.18.0.1:5173",
-  process.env.FRONTEND_URL_PROD,
-].filter(Boolean);
+// Orígenes base desde .env (separados por coma)
+const rawOrigins = process.env.CORS_ORIGINS || "";
+const envOrigins = rawOrigins
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
 
-// CORS
+// Orígenes comunes de desarrollo
+const devOrigins = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+    "http://192.168.0.87:5173",
+];
+
+// Merge sin duplicados
+const allowedOrigins = Array.from(new Set([...envOrigins, ...devOrigins]));
+
+console.log("✅ CORS allowed origins:", allowedOrigins);
+
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Permite requests sin origin (curl, healthchecks, etc.)
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        console.warn(`❌ CORS bloqueado para origen no permitido: ${origin}`);
-        callback(new Error("Not allowed by CORS"));
+      // Permite peticiones sin origin (curl, healthchecks, Postman, etc.)
+      if (!origin) {
+        return callback(null, true);
       }
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      console.warn(`❌ CORS bloqueado para origen no permitido: ${origin}`);
+      return callback(new Error("Not allowed by CORS"));
     },
-    credentials: true, // 👈 habilita cookies
+    credentials: true,
   })
 );
+
 
 app.use(express.json());
 

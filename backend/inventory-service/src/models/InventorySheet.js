@@ -30,9 +30,21 @@ const defaultRangesByTipo = {
   }
 };
 
+const PartySchema = new mongoose.Schema(
+  {
+    id:   { type: String, default: null, trim: true },
+    name: { type: String, default: '', trim: true }
+  },
+  { _id: false }
+);
+
 const InventorySheetSchema = new mongoose.Schema(
   {
     nombre: { type: String, required: true, trim: true, alias: 'name' },
+
+    // ✅ NUEVO: proveedor + marca (para agrupar y para SKU)
+    proveedor: { type: PartySchema, default: () => ({ id: null, name: '' }) },
+    marca:     { type: PartySchema, default: () => ({ id: null, name: '' }) },
 
     // ✅ SKU de la PLANILLA (localizable)
     sku: { type: String, trim: true, uppercase: true, default: null },
@@ -81,9 +93,11 @@ const InventorySheetSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// índices
+// índices (ajústalos a tu gusto)
 InventorySheetSchema.index({ nombre: 1, material: 1 });
-// ✅ único pero con sparse para no romper docs viejos que aún no tengan sku
+InventorySheetSchema.index({ "proveedor.name": 1, "marca.name": 1 });
+
+// ✅ único pero sparse
 InventorySheetSchema.index({ sku: 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model('InventorySheet', InventorySheetSchema);

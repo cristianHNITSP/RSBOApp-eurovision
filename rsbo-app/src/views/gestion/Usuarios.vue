@@ -1,12 +1,21 @@
 <template>
   <section class="panel-usuarios-section">
     <!-- BANNER + ACCIONES SUPERIORES (CENTRADO EN USUARIO SELECCIONADO) -->
-    <div v-if="selectedUser" class="selected-user-banner">
+    <div
+      v-if="selectedUser"
+      ref="bannerRef"
+      class="selected-user-banner"
+      :class="{ 'selected-user-banner--pulse': bannerPulse }"
+    >
       <div class="selected-user-banner__left">
-        <!-- ✅ AvatarPicker (banner) -->
-        <AvatarPicker :modelValue="selectedUser.profile?.avatar || ''" :placeholder="FALLBACK_AVATAR"
-          :editMode="canEditAvatar(selectedUser)" :size="44"
-          @update:modelValue="(val) => onAvatarPicked(selectedUser, val)" />
+        <!-- AvatarPicker (banner) -->
+        <AvatarPicker
+          :modelValue="selectedUser.profile?.avatar || ''"
+          :placeholder="FALLBACK_AVATAR"
+          :editMode="canEditAvatar(selectedUser)"
+          :size="44"
+          @update:modelValue="(val) => onAvatarPicked(selectedUser, val)"
+        />
 
         <div class="selected-user-banner__text">
           <div class="selected-user-banner__name-row">
@@ -34,16 +43,19 @@
       <div class="selected-user-banner__right">
         <div class="chip chip--light">{{ formatDateTime(selectedUser.lastLogin) }}</div>
 
-        <div class="chip" :class="selectedUser.deletedAt
-          ? 'chip--status-inactive'
-          : selectedUser.isActive
-            ? 'chip--status-active'
-            : 'chip--status-inactive'
-          ">
+        <div
+          class="chip"
+          :class="
+            selectedUser.deletedAt
+              ? 'chip--status-inactive'
+              : selectedUser.isActive
+              ? 'chip--status-active'
+              : 'chip--status-inactive'
+          "
+        >
           {{ selectedUser.deletedAt ? "Eliminado" : selectedUser.isActive ? "Activo" : "Inactivo" }}
         </div>
 
-        <div class="chip chip--info">{{ selectedUser.tokensCount }} sesiones</div>
 
         <div class="selected-user-banner__created">Alta: {{ formatDate(selectedUser.createdAt) }}</div>
       </div>
@@ -51,36 +63,93 @@
       <!-- Acciones superiores -->
       <div class="selected-user-actions">
         <div class="selected-user-actions__left">
-          <b-button size="is-small" type="is-light" icon-left="account-plus-outline" @click="openCreate()">
+          <!-- ✅ FontAwesome (fas) -->
+          <b-button size="is-small" type="is-light" icon-left="user-plus" @click="openCreate()">
             Nuevo usuario
           </b-button>
 
-          <b-button size="is-small" type="is-light" icon-left="refresh" :loading="loading" @click="loadUsers()">
+          <b-button size="is-small" type="is-light" icon-left="sync-alt" :loading="loading" @click="loadUsers()">
             Recargar
           </b-button>
         </div>
 
         <div class="selected-user-actions__right">
-          <b-button size="is-small" type="is-light" icon-left="pencil-outline"
-            :disabled="selectedUser.isMe || !!selectedUser.deletedAt" @click="openEdit(selectedUser)">
+          <b-button size="is-small" type="is-light" icon-left="info-circle" @click="toggleBannerDetails">
+            {{ showBannerDetails ? "Ocultar detalles" : "Ver detalles" }}
+          </b-button>
+
+          <b-button
+            size="is-small"
+            type="is-light"
+            icon-left="pen"
+            :disabled="selectedUser.isMe || !!selectedUser.deletedAt"
+            @click="openEdit(selectedUser)"
+          >
             Editar
           </b-button>
 
-          <b-button size="is-small" type="is-light" icon-left="lock-reset"
-            :disabled="selectedUser.isMe || !!selectedUser.deletedAt" @click="openPassword(selectedUser)">
+          <b-button
+            size="is-small"
+            type="is-light"
+            icon-left="key"
+            :disabled="selectedUser.isMe || !!selectedUser.deletedAt"
+            @click="openPassword(selectedUser)"
+          >
             Contraseña
           </b-button>
 
-          <b-button v-if="!selectedUser.deletedAt" size="is-small" type="is-warning" icon-left="trash-can-outline"
-            :disabled="selectedUser.isMe" @click="confirmSoftDelete(selectedUser)">
+          <b-button
+            v-if="!selectedUser.deletedAt"
+            size="is-small"
+            type="is-warning"
+            icon-left="trash"
+            :disabled="selectedUser.isMe"
+            @click="confirmSoftDelete(selectedUser)"
+          >
             Papelera
           </b-button>
 
-          <b-button v-else size="is-small" type="is-success" icon-left="restore" @click="confirmRestore(selectedUser)">
+          <b-button v-else size="is-small" type="is-success" icon-left="undo" @click="confirmRestore(selectedUser)">
             Restaurar
           </b-button>
         </div>
       </div>
+
+      <!-- Detalles del usuario (se muestran EN EL BANNER, no en desplegable de tabla) -->
+      <transition name="banner-details">
+        <div v-if="showBannerDetails" class="banner-details" @click.stop>
+          <div class="banner-details__grid">
+            <div class="banner-details__item">
+              <p class="banner-details__k">Teléfono</p>
+              <p class="banner-details__v">{{ selectedUser.profile?.phone || "No registrado" }}</p>
+            </div>
+
+            <div class="banner-details__item">
+              <p class="banner-details__k">Descripción del rol</p>
+              <p class="banner-details__v">{{ selectedUser.roleDescription || "—" }}</p>
+            </div>
+
+            <div class="banner-details__item banner-details__item--full">
+              <p class="banner-details__k">Permisos</p>
+              <div class="banner-details__perms">
+                <b-tag
+                  v-for="perm in selectedUser.rolePermissions"
+                  :key="perm"
+                  size="is-small"
+                  type="is-light"
+                  class="banner-details__perm-tag"
+                >
+                  {{ formatPermissionLabel(perm) }}
+                </b-tag>
+
+                <span v-if="!selectedUser.rolePermissions?.length" class="banner-details__empty">
+                  Sin permisos configurados
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </transition>
     </div>
 
     <!-- HEADER PANEL -->
@@ -106,7 +175,13 @@
     <div class="panel-usuarios-filters">
       <b-field grouped group-multiline>
         <b-field label="Buscar" class="panel-usuarios-filter-field">
-          <b-input v-model="searchQuery" size="is-small" icon="magnify" placeholder="Buscar por nombre o correo…" />
+          <!-- ✅ FontAwesome -->
+          <b-input
+            v-model="searchQuery"
+            size="is-small"
+            icon="search"
+            placeholder="Buscar por nombre o correo…"
+          />
         </b-field>
 
         <b-field label="Rol" class="panel-usuarios-filter-field">
@@ -129,18 +204,35 @@
       </b-field>
     </div>
 
-    <!-- TABLA -->
-    <b-table :data="users" detailed detail-key="_id" :show-detail-icon="true" sticky-header :height="360" hoverable
-      focusable paginated backend-pagination backend-sorting :total="total" :per-page="perPage"
-      :current-page="currentPage" @page-change="onPageChange" @sort="onSort" v-model:selected="selectedUser"
-      :row-class="rowClass" :loading="loading">
+    <!-- TABLA (sin detalle desplegable) -->
+    <b-table
+      :data="users"
+      sticky-header
+      :height="360"
+      hoverable
+      focusable
+      paginated
+      backend-pagination
+      backend-sorting
+      :total="total"
+      :per-page="perPage"
+      :current-page="currentPage"
+      @page-change="onPageChange"
+      @sort="onSort"
+      v-model:selected="selectedUser"
+      :row-class="rowClass"
+      :loading="loading"
+    >
       <b-table-column field="name" label="Usuario" sortable v-slot="props">
         <div class="user-cell" @click="selectRow(props.row)">
-          <!-- ✅ AvatarPicker (fila) -->
           <div class="user-cell__avatar-wrap">
-            <AvatarPicker :modelValue="props.row.profile?.avatar || ''" :placeholder="FALLBACK_AVATAR"
-              :editMode="canEditAvatar(props.row)" :size="32"
-              @update:modelValue="(val) => onAvatarPicked(props.row, val)" />
+            <AvatarPicker
+              :modelValue="props.row.profile?.avatar || ''"
+              :placeholder="FALLBACK_AVATAR"
+              :editMode="canEditAvatar(props.row)"
+              :size="32"
+              @update:modelValue="(val) => onAvatarPicked(props.row, val)"
+            />
           </div>
 
           <div class="user-cell__meta">
@@ -157,18 +249,18 @@
               <b-tag v-if="props.row.deletedAt" type="is-warning" size="is-small">Papelera</b-tag>
             </div>
 
-
-            <span class="tag is-light is-size-7">
-
-              {{ props.row.profile?.bio }}
-            </span>
+            <!-- ✅ “fondo más grande” sin cortar el texto (wrap) -->
+            <p class="has-background-light px-3 py-2 is-size-7 has-text-grey-dark user-bio-pill">
+              {{ props.row.profile?.bio || "—" }}
+            </p>
           </div>
         </div>
       </b-table-column>
 
       <b-table-column field="email" label="Correo" sortable v-slot="props">
-        <span class="tag is-light is-size-7">
-          <b-icon pack="mdi" icon="email-outline" size="is-small" class="mr-1" />
+        <!-- ✅ Icono FA + gris/negro en fondo blanco -->
+        <span class="tag is-light is-size-7 has-text-grey-dark">
+          <b-icon icon="envelope" size="is-small" class="mr-1 has-text-grey-dark" />
           {{ props.row.email }}
         </span>
       </b-table-column>
@@ -184,55 +276,10 @@
         </b-tag>
       </b-table-column>
 
-      <b-table-column field="tokensCount" label="Sesiones" numeric v-slot="props">
-        <span class="tag is-info is-light is-size-7">{{ props.row.tokensCount }} sesiones</span>
-      </b-table-column>
 
       <b-table-column field="createdAt" label="Alta" sortable centered v-slot="props">
         <span class="is-size-7">{{ formatDate(props.row.createdAt) }}</span>
       </b-table-column>
-
-      <template #detail="props">
-        <article class="media user-detail">
-          <figure class="media-left">
-            <div class="user-detail__avatar">
-              <img :src="safeAvatar(props.row)" :alt="props.row.name" />
-            </div>
-          </figure>
-
-          <div class="media-content">
-            <div class="content">
-              <p class="mb-2">
-                <strong>{{ props.row.name }}</strong>
-                <b-tag v-if="props.row.isMe" type="is-light" size="is-small" class="ml-2">Yo</b-tag>
-                <br />
-                <span class="has-text-weight-semibold">Rol:</span>
-                {{ props.row.roleLabel }}
-                <span class="has-text-grey is-size-7">({{ props.row.roleDescription || "—" }})</span>
-              </p>
-
-              <p class="mb-2">
-                <b-icon pack="mdi" icon="phone" size="is-small" class="mr-1" />
-                <strong>Teléfono:</strong> {{ props.row.profile?.phone || "No registrado" }}
-              </p>
-
-              <p class="mb-1"><strong>Permisos del rol:</strong></p>
-              <p class="user-detail__helper">Provienen del backend (del rol).</p>
-
-              <div class="user-detail__permissions">
-                <b-tag v-for="perm in props.row.rolePermissions" :key="perm" size="is-small" type="is-light"
-                  class="user-detail__perm-tag">
-                  {{ formatPermissionLabel(perm) }}
-                </b-tag>
-
-                <span v-if="!props.row.rolePermissions?.length" class="is-size-7 has-text-grey">
-                  Sin permisos configurados
-                </span>
-              </div>
-            </div>
-          </div>
-        </article>
-      </template>
 
       <template #empty>
         <div class="has-text-centered has-text-grey py-5">No se encontraron usuarios con los filtros actuales.</div>
@@ -264,7 +311,7 @@
           </b-field>
         </section>
 
-        <footer class="modal-card-foot" style="justify-content: flex-end; gap: .5rem;">
+        <footer class="modal-card-foot" style="justify-content: flex-end; gap: 0.5rem">
           <b-button @click="editOpen = false">Cancelar</b-button>
           <b-button type="is-primary" :loading="saving" @click="saveEdit">Guardar</b-button>
         </footer>
@@ -287,17 +334,18 @@
           </b-field>
 
           <div class="password-tools">
-            <b-button size="is-small" type="is-light" icon-left="shield-key-outline" @click="generateIntoPassword()">
+            <!-- ✅ FontAwesome -->
+            <b-button size="is-small" type="is-light" icon-left="shield-alt" @click="generateIntoPassword()">
               Generar segura
             </b-button>
-            <b-button size="is-small" type="is-light" icon-left="content-copy" @click="copyText(newPassword)">
+            <b-button size="is-small" type="is-light" icon-left="copy" @click="copyText(newPassword)">
               Copiar
             </b-button>
             <span class="is-size-7 has-text-grey">Mínimo 10 caracteres recomendado.</span>
           </div>
         </section>
 
-        <footer class="modal-card-foot" style="justify-content: flex-end; gap: .5rem;">
+        <footer class="modal-card-foot" style="justify-content: flex-end; gap: 0.5rem">
           <b-button @click="passOpen = false">Cancelar</b-button>
           <b-button type="is-primary" :loading="saving" @click="savePassword">Actualizar</b-button>
         </footer>
@@ -314,8 +362,13 @@
 
         <section class="modal-card-body">
           <div class="create-avatar">
-            <AvatarPicker :modelValue="createForm.avatar || ''" :placeholder="FALLBACK_AVATAR" :editMode="true"
-              :size="56" @update:modelValue="(val) => (createForm.avatar = val)" />
+            <AvatarPicker
+              :modelValue="createForm.avatar || ''"
+              :placeholder="FALLBACK_AVATAR"
+              :editMode="true"
+              :size="56"
+              @update:modelValue="(val) => (createForm.avatar = val)"
+            />
 
             <div class="create-avatar__hint">
               <p class="is-size-7 has-text-grey m-0">Foto de perfil</p>
@@ -346,17 +399,18 @@
           </b-field>
 
           <div class="password-tools">
-            <b-button size="is-small" type="is-light" icon-left="shield-key-outline" @click="generateIntoCreate()">
+            <!-- ✅ FontAwesome -->
+            <b-button size="is-small" type="is-light" icon-left="shield-alt" @click="generateIntoCreate()">
               Generar segura
             </b-button>
-            <b-button size="is-small" type="is-light" icon-left="content-copy" @click="copyText(createForm.password)">
+            <b-button size="is-small" type="is-light" icon-left="copy" @click="copyText(createForm.password)">
               Copiar
             </b-button>
             <span class="is-size-7 has-text-grey">Se recomienda guardarla y dársela al usuario.</span>
           </div>
         </section>
 
-        <footer class="modal-card-foot" style="justify-content: flex-end; gap: .5rem;">
+        <footer class="modal-card-foot" style="justify-content: flex-end; gap: 0.5rem">
           <b-button @click="createOpen = false">Cancelar</b-button>
           <b-button type="is-primary" :loading="saving" @click="createUser">Crear</b-button>
         </footer>
@@ -366,7 +420,7 @@
 </template>
 
 <script setup>
-import { computed, getCurrentInstance, onMounted, ref, watch } from "vue";
+import { computed, getCurrentInstance, nextTick, onMounted, ref, watch } from "vue";
 import AvatarPicker from "../../components/AvatarPicker.vue";
 import { usersService } from "../../services/usersService.js";
 
@@ -395,6 +449,47 @@ const sortBy = ref("name");
 const sortDir = ref("asc");
 
 const selectedUser = ref(null);
+
+/* Banner focus */
+const bannerRef = ref(null);
+const bannerPulse = ref(false);
+const showBannerDetails = ref(false);
+
+let pulseT = null;
+let hasUserInteracted = false;
+
+function isElementMostlyVisible(el, ratio = 0.7) {
+  if (!el) return true;
+  const rect = el.getBoundingClientRect();
+  const vh = window.innerHeight || document.documentElement.clientHeight;
+  const visibleTop = Math.max(rect.top, 0);
+  const visibleBottom = Math.min(rect.bottom, vh);
+  const visibleHeight = Math.max(0, visibleBottom - visibleTop);
+  const h = Math.max(1, rect.height);
+  return visibleHeight / h >= ratio;
+}
+
+async function focusBannerIfNeeded() {
+  await nextTick();
+  const el = bannerRef.value;
+  if (!el) return;
+
+  // Pulso visual siempre
+  bannerPulse.value = false;
+  if (pulseT) clearTimeout(pulseT);
+  bannerPulse.value = true;
+  pulseT = setTimeout(() => (bannerPulse.value = false), 650);
+
+  // Si el usuario está abajo y selecciona, subimos al banner
+  if (hasUserInteracted && !isElementMostlyVisible(el, 0.65)) {
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
+function toggleBannerDetails() {
+  showBannerDetails.value = !showBannerDetails.value;
+  if (showBannerDetails.value) focusBannerIfNeeded();
+}
 
 /* Modales */
 const editOpen = ref(false);
@@ -451,7 +546,7 @@ function setUserAvatarLocal(userId, avatar) {
   });
 }
 
-/* ✅ guardar avatar al seleccionar (en cualquier contexto) */
+/* guardar avatar */
 async function onAvatarPicked(user, newAvatar) {
   if (!user?._id) return;
   if (!canEditAvatar(user)) return toast("No puedes cambiar el avatar de este usuario", "is-warning", 2200);
@@ -463,9 +558,9 @@ async function onAvatarPicked(user, newAvatar) {
   try {
     await usersService.updateUser(user._id, { avatar: newAvatar });
     toast("Avatar actualizado", "is-success", 1800);
-    await loadUsers(); // re-sync backend
+    await loadUsers();
   } catch (e) {
-    setUserAvatarLocal(user._id, prev); // rollback
+    setUserAvatarLocal(user._id, prev);
     toast(e?.error || "No se pudo actualizar el avatar");
   } finally {
     saving.value = false;
@@ -519,6 +614,7 @@ function rowClass(row) {
 }
 
 function selectRow(row) {
+  hasUserInteracted = true;
   selectedUser.value = row;
 }
 
@@ -578,6 +674,7 @@ const users = computed(() => {
   });
 });
 
+/* Mantener seleccionado si existe; si no, selecciona el primero */
 watch(users, (list) => {
   if (!list?.length) return;
   if (!selectedUser.value) {
@@ -587,6 +684,17 @@ watch(users, (list) => {
   const found = list.find((x) => String(x._id) === String(selectedUser.value?._id));
   if (found) selectedUser.value = found;
 });
+
+/* Cuando cambia el usuario seleccionado */
+watch(
+  selectedUser,
+  async (u, prev) => {
+    if (!u) return;
+    if (prev && String(prev._id) !== String(u._id)) showBannerDetails.value = false;
+    await focusBannerIfNeeded();
+  },
+  { flush: "post" }
+);
 
 /* debounce búsqueda */
 let t = null;
@@ -762,8 +870,13 @@ async function createUser() {
 }
 
 /* PAPELERA */
+const deleting = ref(false);
+
 function confirmSoftDelete(u) {
+  if (deleting.value) return;
   if (u.isMe) return toast("No puedes enviar tu propio usuario a papelera", "is-warning");
+
+  deleting.value = true;
 
   $buefy?.dialog?.confirm?.({
     title: "Enviar a papelera",
@@ -774,19 +887,50 @@ function confirmSoftDelete(u) {
     hasIcon: true,
     onConfirm: async () => {
       loading.value = true;
+
       try {
-        await usersService.softDelete(u._id);
-        toast("Usuario enviado a papelera", "is-warning", 2500);
-        selectedUser.value = null;
-        await loadUsers();
+        const res = await usersService.softDelete(u._id);
+
+        // ✅ respuesta esperada (200 JSON)
+        if (res?.alreadyDeleted) {
+          toast("El usuario ya estaba en papelera", "is-info", 2000);
+        } else {
+          toast("Usuario enviado a papelera", "is-warning", 2500);
+        }
       } catch (e) {
-        toast(e?.error || "No se pudo eliminar el usuario");
+        // 👇 workaround PRO: a veces el backend sí borró, pero el response fue 400/timeout/etc.
+        // Entonces validamos por estado real:
+        try {
+          await loadUsers();
+
+          const stillExists = (usersRaw.value || []).some(x => String(x._id) === String(u._id));
+          const nowDeleted = (usersRaw.value || []).some(
+            x => String(x._id) === String(u._id) && !!x.deletedAt
+          );
+
+          // Si ya no existe en lista (porque listUsers por defecto filtra deletedAt=null),
+          // asumimos que fue enviado a papelera aunque Axios haya marcado error.
+          if (!stillExists) {
+            toast("Usuario enviado a papelera", "is-warning", 2500);
+          } else if (nowDeleted) {
+            toast("El usuario ya estaba/enviándose a papelera", "is-info", 2200);
+          } else {
+            toast(e?.error || "No se pudo eliminar el usuario");
+          }
+        } catch {
+          toast(e?.error || "No se pudo eliminar el usuario");
+        }
       } finally {
+        selectedUser.value = null;
+        try { await loadUsers(); } catch {}
         loading.value = false;
+        deleting.value = false;
       }
     },
+    onCancel: () => (deleting.value = false),
   });
 }
+
 
 function confirmRestore(u) {
   $buefy?.dialog?.confirm?.({
@@ -818,10 +962,18 @@ onMounted(async () => {
 });
 </script>
 
-
 <style scoped>
 .user-cell__avatar-wrap {
   flex: 0 0 auto;
+}
+
+/* ✅ Bio: fondo grande y texto WRAP (no se corta por el fondo) */
+.user-bio-pill {
+  border-radius: 10px;
+  line-height: 1.25rem;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 /* PANEL */
@@ -888,19 +1040,21 @@ onMounted(async () => {
   animation: banner-enter 220ms ease-out, banner-gradient-shift 14s ease-in-out infinite alternate;
 }
 
+.selected-user-banner--pulse {
+  box-shadow: 0 14px 32px rgba(88, 28, 135, 0.45), 0 0 0 3px rgba(255, 255, 255, 0.22);
+}
+
 .selected-user-banner::after {
   content: "";
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(circle at 0 0, rgba(255, 255, 255, 0.28), transparent 60%),
+  background: radial-gradient(circle at 0 0, rgba(255, 255, 255, 0.28), transparent 60%),
     radial-gradient(circle at 100% 100%, rgba(15, 23, 42, 0.24), transparent 60%);
   opacity: 0.55;
-  /* 🔧 antes 0.9 (apagaba textos) */
   pointer-events: none;
 }
 
-.selected-user-banner>* {
+.selected-user-banner > * {
   position: relative;
   z-index: 1;
 }
@@ -910,55 +1064,6 @@ onMounted(async () => {
   align-items: center;
   gap: 0.8rem;
   min-width: 0;
-}
-
-.selected-user-banner__avatar {
-  width: 44px;
-  height: 44px;
-  min-width: 44px;
-  border-radius: 999px;
-  overflow: hidden;
-  border: none;
-  padding: 0;
-  background: transparent;
-  cursor: pointer;
-  position: relative;
-  box-shadow: 0 0 0 2px rgba(248, 250, 252, 0.9);
-  transform-origin: center;
-  transition: transform 160ms ease-out, box-shadow 160ms ease-out;
-}
-
-.selected-user-banner__avatar img {
-  width: 100%;
-  height: 100%;
-  display: block;
-  object-fit: cover;
-}
-
-.selected-user-banner__avatar:hover {
-  transform: scale(1.06) rotate(-2deg);
-  box-shadow: 0 0 0 2px #f97316, 0 14px 24px rgba(15, 23, 42, 0.35);
-}
-
-.avatar-overlay {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  background: rgba(15, 23, 42, 0.35);
-  color: #fff;
-  opacity: 0;
-  transition: opacity 130ms ease;
-}
-
-.avatar-overlay--small {
-  background: rgba(15, 23, 42, 0.28);
-}
-
-.selected-user-banner__avatar:hover .avatar-overlay,
-.user-cell__avatar:hover .avatar-overlay,
-.create-avatar__img:hover .avatar-overlay {
-  opacity: 1;
 }
 
 .selected-user-banner__text {
@@ -988,7 +1093,6 @@ onMounted(async () => {
 .selected-user-banner__bio {
   font-size: 0.75rem;
   opacity: 0.92;
-  /* 🔧 más legible */
   color: rgba(255, 255, 255, 0.92);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
   max-width: 560px;
@@ -1008,7 +1112,6 @@ onMounted(async () => {
   padding: 0.25rem 0.7rem;
   border-radius: 999px;
   background: rgba(15, 23, 42, 0.28);
-  /* 🔧 antes 0.16 */
   color: rgba(255, 255, 255, 0.95);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
   backdrop-filter: blur(4px);
@@ -1032,13 +1135,6 @@ onMounted(async () => {
   opacity: 0.93;
 }
 
-/* Hover: sube contraste (sin oscurecer) */
-.selected-user-banner:hover .selected-user-banner__bio,
-.selected-user-banner:hover .selected-user-banner__email {
-  opacity: 1;
-  color: #fff;
-}
-
 /* Barra acciones superior */
 .selected-user-actions {
   grid-column: 1 / -1;
@@ -1048,14 +1144,87 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: .75rem;
+  gap: 0.75rem;
 }
 
 .selected-user-actions__left,
 .selected-user-actions__right {
   display: flex;
-  gap: .5rem;
+  gap: 0.5rem;
   flex-wrap: wrap;
+}
+
+/* Detalles en banner */
+.banner-details {
+  grid-column: 1 / -1;
+  margin-top: 0.55rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid rgba(249, 250, 251, 0.18);
+}
+
+.banner-details__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.75rem;
+}
+
+.banner-details__item {
+  background: rgba(15, 23, 42, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(6px);
+  border-radius: 12px;
+  padding: 0.65rem 0.75rem;
+  min-width: 0;
+}
+
+.banner-details__item--full {
+  grid-column: 1 / -1;
+}
+
+.banner-details__k {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 800;
+  opacity: 0.9;
+}
+
+.banner-details__v {
+  margin: 0.25rem 0 0;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.banner-details__perms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.35rem;
+}
+
+.banner-details__perm-tag {
+  text-transform: none;
+}
+
+.banner-details__empty {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* Transición detalles */
+.banner-details-enter-active,
+.banner-details-leave-active {
+  transition: all 180ms ease;
+}
+
+.banner-details-enter-from,
+.banner-details-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
 }
 
 /* CHIPS */
@@ -1108,39 +1277,36 @@ onMounted(async () => {
   vertical-align: middle;
 }
 
+/* FIX CONTRASTE: fila seleccionada/focus */
+:deep(.b-table .table tbody tr.is-selected) {
+  background: rgba(79, 70, 229, 0.1) !important;
+}
+
+:deep(.b-table .table tbody tr.is-selected td) {
+  color: #111827 !important;
+}
+
+:deep(.b-table .table tbody tr.is-selected .tag) {
+  background: #ffffff !important;
+  color: #111827 !important;
+  border: 1px solid rgba(148, 163, 184, 0.22) !important;
+}
+
+:deep(.b-table .table tbody tr.is-selected .b-tag) {
+  color: inherit !important;
+}
+
+:deep(.b-table .table tbody tr:focus-within) {
+  outline: none;
+  box-shadow: inset 0 0 0 2px rgba(79, 70, 229, 0.2);
+}
+
 .user-cell {
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
   min-width: 0;
   cursor: pointer;
-}
-
-.user-cell__avatar {
-  width: 32px;
-  height: 32px;
-  min-width: 32px;
-  border-radius: 999px;
-  overflow: hidden;
-  border: none;
-  background: transparent;
-  padding: 0;
-  cursor: pointer;
-  position: relative;
-  box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.7);
-  transition: transform 160ms ease-out, box-shadow 160ms ease-out;
-}
-
-.user-cell__avatar img {
-  width: 100%;
-  height: 100%;
-  display: block;
-  object-fit: cover;
-}
-
-.user-cell__avatar:hover {
-  transform: scale(1.05);
-  box-shadow: 0 0 0 1px #6366f1, 0 10px 20px rgba(15, 23, 42, 0.25);
 }
 
 .user-cell__meta {
@@ -1166,125 +1332,25 @@ onMounted(async () => {
   text-transform: capitalize;
 }
 
-.user-cell__bio {
-  font-size: 0.75rem;
-  color: #6b7280;
-  max-width: 380px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-}
-
-.user-email {
-  font-size: 0.8rem;
-  color: #374151;
-}
-
 .user-row--inactive {
   background-color: #fff5f5;
   opacity: 0.95;
-}
-
-/* detalle */
-.user-detail {
-  padding: 0.75rem 0;
-}
-
-.user-detail__avatar {
-  width: 64px;
-  height: 64px;
-  border-radius: 999px;
-  overflow: hidden;
-  box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.7);
-}
-
-.user-detail__avatar img {
-  width: 100%;
-  height: 100%;
-  display: block;
-  object-fit: cover;
-}
-
-.user-detail__permissions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-}
-
-.user-detail__perm-tag {
-  text-transform: none;
-}
-
-.user-detail__helper {
-  font-size: 0.75rem;
-  color: #9ca3af;
-  margin-bottom: 0.4rem;
 }
 
 /* Crear usuario */
 .create-avatar {
   display: flex;
   align-items: center;
-  gap: .75rem;
-}
-
-.create-avatar__img {
-  width: 56px;
-  height: 56px;
-  border-radius: 999px;
-  overflow: hidden;
-  border: none;
-  padding: 0;
-  background: transparent;
-  cursor: pointer;
-  position: relative;
-  box-shadow: 0 0 0 2px rgba(121, 87, 213, 0.25);
-  transition: transform 160ms ease, box-shadow 160ms ease;
-}
-
-.create-avatar__img img {
-  width: 100%;
-  height: 100%;
-  display: block;
-  object-fit: cover;
-}
-
-.create-avatar__img:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 0 0 2px rgba(121, 87, 213, 0.35), 0 12px 22px rgba(15, 23, 42, .12);
-}
-
-.create-avatar-picker {
-  margin-top: .75rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: .75rem;
-  background: #ffffff;
-  box-shadow: 0 12px 26px rgba(15, 23, 42, .06);
+  gap: 0.75rem;
 }
 
 /* password tools */
 .password-tools {
   display: flex;
   align-items: center;
-  gap: .5rem;
+  gap: 0.5rem;
   flex-wrap: wrap;
-  margin-top: .25rem;
-}
-
-/* transition picker */
-.picker-slide-enter-active,
-.picker-slide-leave-active {
-  transition: all 180ms ease;
-}
-
-.picker-slide-enter-from,
-.picker-slide-leave-to {
-  opacity: 0;
-  transform: translateY(-6px);
+  margin-top: 0.25rem;
 }
 
 /* animaciones */
@@ -1292,11 +1358,9 @@ onMounted(async () => {
   0% {
     background-position: 0% 50%;
   }
-
   50% {
     background-position: 100% 50%;
   }
-
   100% {
     background-position: 0% 50%;
   }
@@ -1307,7 +1371,6 @@ onMounted(async () => {
     opacity: 0;
     transform: translateY(-4px) scale(0.98);
   }
-
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -1319,7 +1382,6 @@ onMounted(async () => {
     opacity: 0;
     transform: translateY(6px);
   }
-
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1338,6 +1400,10 @@ onMounted(async () => {
 
   .selected-user-banner__center {
     text-align: left;
+  }
+
+  .banner-details__grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

@@ -1,4 +1,4 @@
-# ---- build ----
+# ---- BUILD (Vite) ----
 FROM node:20-alpine AS build
 WORKDIR /app
 
@@ -8,17 +8,17 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-# ---- runtime (nginx) ----
+# ---- RUNTIME (Nginx) ----
 FROM nginx:1.25-alpine AS prod
 WORKDIR /usr/share/nginx/html
 
-# Limpia el html default
+# Limpia html por defecto
 RUN rm -rf ./*
 
 # Copia el build de Vite
 COPY --from=build /app/dist ./
 
-# Config nginx (SPA + proxy /api)
+# Config Nginx: SPA + proxy a Gateway
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80

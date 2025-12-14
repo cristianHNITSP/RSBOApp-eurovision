@@ -58,6 +58,15 @@ async function cargarSheets() {
       id: String(s._id),
       sku: s.sku,
       name: s.nombre,
+      //FIX: mapear desde s
+      proveedor: s.proveedor && typeof s.proveedor === "object"
+        ? { id: s.proveedor.id ?? null, name: String(s.proveedor.name ?? "") }
+        : { id: null, name: "" },
+
+      marca: s.marca && typeof s.marca === "object"
+        ? { id: s.marca.id ?? null, name: String(s.marca.name ?? "") }
+        : { id: null, name: "" },
+
       tipo_matriz: s.tipo_matriz,
       baseKey: s.baseKey,
       material: s.material,
@@ -91,6 +100,16 @@ function crearNuevaPlanilla({ payload, result, tabs }) {
     id: String(s._id),
     sku: s.sku,
     name: s.nombre,
+    
+  //IX
+  proveedor: s.proveedor && typeof s.proveedor === "object"
+    ? { id: s.proveedor.id ?? null, name: String(s.proveedor.name ?? "") }
+    : { id: null, name: "" },
+
+  marca: s.marca && typeof s.marca === "object"
+    ? { id: s.marca.id ?? null, name: String(s.marca.name ?? "") }
+    : { id: null, name: "" },
+
     tipo_matriz: s.tipo_matriz,
     baseKey: s.baseKey,
     material: s.material,

@@ -13,87 +13,90 @@ const canManageOrSelf = (req, res, next) => {
 router.get("/", authMiddleware, requirePermissions(["manage_users"]), async (req, res) => {
   try {
     const data = await userService.listUsers(req.query);
-    res.json(data);
+    return res.json(data);
   } catch (err) {
     console.error("Error al listar usuarios:", err);
-    res.status(500).json({ error: "Error interno del servidor" });
+    return res.status(500).json({ error: "Error interno del servidor" });
   }
 });
 
 router.post("/", authMiddleware, requirePermissions(["manage_users"]), async (req, res) => {
   try {
     const created = await userService.createUser(req.body);
-    res.json(created);
+    return res.json(created);
   } catch (err) {
     console.error("Error al crear usuario:", err);
     const status = err.statusCode || 400;
-    res.status(status).json({ error: err.message || "Error" });
+    return res.status(status).json({ error: err.message || "Error" });
   }
 });
 
 router.get("/me", authMiddleware, async (req, res) => {
   try {
     const me = await userService.getMe(req.user.id);
-    res.json(me);
+    return res.json(me);
   } catch (err) {
     console.error("Error al obtener mi usuario:", err);
     const status = err.statusCode || 500;
-    res.status(status).json({ error: status === 500 ? "Error interno del servidor" : err.message });
+    return res.status(status).json({ error: status === 500 ? "Error interno del servidor" : err.message });
   }
 });
 
 router.get("/roles", authMiddleware, requirePermissions(["manage_users"]), async (req, res) => {
   try {
     const roles = await userService.getRoles();
-    res.json(roles);
+    return res.json(roles);
   } catch (err) {
     console.error("Error al obtener roles:", err);
-    res.status(500).json({ error: "Error interno del servidor" });
+    return res.status(500).json({ error: "Error interno del servidor" });
   }
 });
 
 router.put("/:id", authMiddleware, canManageOrSelf, async (req, res) => {
   try {
     const updated = await userService.updateUser(req.params.id, req.body);
-    res.json(updated);
+    return res.json(updated);
   } catch (err) {
     console.error("Error al actualizar usuario:", err);
     const status = err.statusCode || 400;
-    res.status(status).json({ error: err.message || "Error" });
+    return res.status(status).json({ error: err.message || "Error" });
   }
 });
 
 router.put("/:id/password", authMiddleware, canManageOrSelf, async (req, res) => {
   try {
     const result = await userService.updatePassword(req.params.id, req.body.password);
-    res.json(result);
+    return res.json(result);
   } catch (err) {
     console.error("Error al actualizar contraseña:", err);
     const status = err.statusCode || 400;
-    res.status(status).json({ error: err.message || "Error" });
+    return res.status(status).json({ error: err.message || "Error" });
   }
 });
 
 router.put("/:id/restore", authMiddleware, requirePermissions(["manage_users"]), async (req, res) => {
   try {
+    // ✅ restore idempotente: siempre 200 si ya estaba restaurado o no existe
     const result = await userService.restoreUser(req.params.id);
-    res.json(result);
+    return res.status(200).json(result);
   } catch (err) {
     console.error("Error al restaurar usuario:", err);
-    const status = err.statusCode || 400;
-    res.status(status).json({ error: err.message || "Error" });
+    const status = err.statusCode || 500;
+    return res.status(status).json({ error: err.message || "Error interno del servidor" });
   }
 });
 
+// DELETE (soft delete, idempotente)
 router.delete("/:id", authMiddleware, requirePermissions(["manage_users"]), async (req, res) => {
   try {
     const result = await userService.deleteUser(req.params.id);
-    res.json(result);
+    // ✅ SIEMPRE JSON (evita "respuesta vacía")
+    return res.status(200).json({ ok: true, action: "SOFT_DELETE", ...result });
   } catch (err) {
     console.error("Error al eliminar usuario:", err);
-    const status = err.statusCode || 400;
-    res.status(status).json({ error: err.message || "Error" });
+    return sendError(res, err, 500);
   }
 });
+
 
 module.exports = router;

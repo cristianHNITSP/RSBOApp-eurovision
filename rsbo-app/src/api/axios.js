@@ -1,35 +1,158 @@
-import axios from 'axios'
+// src/api/api.js
+import axios from "axios";
 
-const API_URL = import.meta.env.VITE_API_URL
+// En dev con Vite proxy: VITE_API_URL="/api"
+// En prod: puedes setear https://tu-dominio.com/api (si aplica)
+const API_URL = import.meta.env.VITE_API_URL || "/api";
 
-const api = axios.create({
+export const api = axios.create({
   baseURL: API_URL,
-  timeout: 10000, 
-  withCredentials: true // ✅ enviar cookies con cada request
+  timeout: Number(import.meta.env.VITE_API_TIMEOUT || 15000),
+  withCredentials: true, // ✅ cookies
+});
 
-})
+// -------------------------
+// Normalización de errores
+// -------------------------
+// src/api/api.js
+export function normalizeApiError(err) {
+  // Caso 1: respuesta HTTP del servidor
+  if (err?.response) {
+    const status = err.response.status;
+    const data = err.response.data;
 
-// Estado global para solicitudes
-const pendingRequests = new Map()
+    // Backend manda { error: "..."}
+    if (data && typeof data === "object" && data.error) {
+      return { status, error: data.error };
+    }
+
+    // Backend manda texto
+    if (typeof data === "string" && data.trim()) {
+      return { status, error: data };
+    }
+
+    // Backend no manda body → MENSAJE HUMANO
+    return {
+      status,
+      error: defaultMessageByStatus(status),
+    };
+  }
+
+  // Caso 2: no hubo respuesta (timeout / red)
+  if (err?.request) {
+    return {
+      status: 0,
+      error: "No se pudo conectar con el servidor",
+    };
+  }
+
+  // Caso 3: error interno JS
+  return {
+    status: 0,
+    error: err?.message || "Ocurrió un error inesperado",
+  };
+}
+
+function defaultMessageByStatus(status) {
+  switch (status) {
+    case 400:
+      return "La solicitud no es válida";
+    case 401:
+      return "Tu sesión expiró, inicia sesión nuevamente";
+    case 403:
+      return "No tienes permisos para realizar esta acción";
+    case 404:
+      return "El recurso solicitado no existe";
+    case 409:
+      return "No se pudo completar la acción por un conflicto";
+    case 422:
+      return "Los datos enviados no son válidos";
+    case 500:
+      return "Ocurrió un error en el servidor";
+    case 502:
+    case 503:
+      return "El servicio no está disponible temporalmente";
+    default:
+      return "No se pudo completar la operación";
+  }
+}
+
+
+// -------------------------
+// Request-Id (diagnóstico)
+// -------------------------
+function genReqId() {
+  // suficientemente bueno para debug
+  return `req_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
+
+api.interceptors.request.use((config) => {
+  config.headers = config.headers || {};
+  config.headers["X-Request-Id"] = config.headers["X-Request-Id"] || genReqId();
+  return config;
+});
+
+// Log en dev
+api.interceptors.response.use(
+  (res) => {
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.log(
+        `[HTTP] <- ${res.config.method?.toUpperCase()} ${res.config.url} | ${res.status} | reqId=${res.config.headers?.["X-Request-Id"]}`
+      );
+    }
+    return res;
+  },
+  (err) => {
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[HTTP] !! ${err.config?.method?.toUpperCase()} ${err.config?.url} | status=${err.response?.status ?? "NO_RESP"} | reqId=${err.config?.headers?.["X-Request-Id"]}`
+      );
+    }
+    return Promise.reject(err);
+  }
+);
+
+// -------------------------
+// Dedupe de requests iguales
+// -------------------------
+const pendingRequests = new Map();
+
+function stableStringify(obj) {
+  if (!obj) return "";
+  try {
+    return JSON.stringify(obj, Object.keys(obj).sort());
+  } catch {
+    return String(obj);
+  }
+}
+
+function makeKey(config) {
+  const method = (config.method || "get").toLowerCase();
+  const url = config.url || "";
+  const params = stableStringify(config.params);
+  const data = stableStringify(config.data);
+  return `${method}::${url}::p=${params}::d=${data}`;
+}
 
 /**
  * Envía la solicitud solo si no hay una idéntica en curso
- * @param {string} key - Identificador único de la solicitud (ej: URL + params)
- * @param {object} config - Configuración de Axios
+ * @param {object} config - Configuración Axios
  */
-export const sendRequest = async (key, config) => {
+export async function sendRequest(config) {
+  const key = makeKey(config);
+
   if (pendingRequests.has(key)) {
-    // Devuelve la promesa existente para no duplicar
-    return pendingRequests.get(key)
+    return pendingRequests.get(key);
   }
 
-  const request = api(config)
-    .finally(() => {
-      pendingRequests.delete(key) // Elimina cuando termine
-    })
+  const request = api(config).finally(() => {
+    pendingRequests.delete(key);
+  });
 
-  pendingRequests.set(key, request)
-  return request
+  pendingRequests.set(key, request);
+  return request;
 }
 
-export default api
+export default api;

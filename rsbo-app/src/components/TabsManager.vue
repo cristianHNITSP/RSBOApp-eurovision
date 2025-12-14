@@ -1,7 +1,16 @@
 <template>
-  <div>
+  <div :class="{ 'reduced-effects': reduceEffects }">
+    <!-- ✅ Accesibilidad / efectos 
+    <div class="tabs-a11y-row">
+      <b-switch v-model="reduceEffects" size="is-small" type="is-dark">
+        Reducir transparencias / efectos
+      </b-switch>
+      <span class="a11y-hint">Se guarda en este dispositivo</span>
+    </div>
+    -->
+    
     <!-- TABS -->
-    <div ref="tabsContainer" class="tabs-wrapper">
+    <div ref="tabsContainer" class="tabs-wrapper tabs-wrapper--glass">
       <!-- Skeleton de tabs mientras se cargan las planillas -->
       <template v-if="loadingTabs">
         <div v-for="n in 3" :key="'sk-' + n" class="tab-item skeleton-tab">
@@ -17,6 +26,7 @@
           :data-id="planilla.id"
           :class="[
             'tab-item',
+            'tab-item--glass',
             { 'tab-agregar': planilla.id === 'nueva', active: planilla.id === activeId }
           ]"
           @click="handleTabClick(planilla.id)"
@@ -57,7 +67,51 @@
       <!-- NUEVA -->
       <div class="box" v-if="activeId === 'nueva'">
         <form @submit.prevent="handleCrear">
-          <!-- BASE -->
+          <!-- ✅ NUEVO: PROVEEDOR / MARCA -->
+          <transition name="fade-slide">
+            <div class="columns is-multiline">
+              <div class="column is-12-mobile is-6-tablet">
+                <b-field label="Proveedor (opcional)">
+                  <b-autocomplete
+                    v-model="newProveedorName"
+                    :data="filteredProveedorOptions"
+                    placeholder="Ej. Eurovisión / Luxottica / …"
+                    open-on-focus
+                    keep-first
+                    :clear-on-select="false"
+                    :max-height="220"
+                    :check-infinite-scroll="false"
+                    @select="onSelectProveedor"
+                  >
+                    <template #empty>
+                      <span class="has-text-grey">Sin coincidencias (puedes crear uno nuevo escribiéndolo).</span>
+                    </template>
+                  </b-autocomplete>
+                </b-field>
+              </div>
+
+              <div class="column is-12-mobile is-6-tablet">
+                <b-field label="Marca (opcional)">
+                  <b-autocomplete
+                    v-model="newMarcaName"
+                    :data="filteredMarcaOptions"
+                    placeholder="Ej. Essilor / Zeiss / …"
+                    open-on-focus
+                    keep-first
+                    :clear-on-select="false"
+                    :max-height="220"
+                    :check-infinite-scroll="false"
+                    @select="onSelectMarca"
+                  >
+                    <template #empty>
+                      <span class="has-text-grey">Sin coincidencias (puedes crear una nueva escribiéndola).</span>
+                    </template>
+                  </b-autocomplete>
+                </b-field>
+              </div>
+            </div>
+          </transition>
+
           <b-field label="Selecciona la Base">
             <div class="tabs tabs-opciones is-toggle is-small">
               <ul>
@@ -73,7 +127,7 @@
             </div>
           </b-field>
 
-          <!-- MATERIALES (feedback de incompatibles) -->
+          <!-- MATERIALES -->
           <transition name="fade-slide">
             <b-field v-if="selectedBase" label="Selecciona el Material">
               <div class="tabs tabs-opciones is-toggle is-small">
@@ -87,7 +141,6 @@
                     ]"
                     :aria-disabled="!isMaterialAllowed(mat)"
                   >
-                    <!-- Incompatible → tooltip + bloqueo -->
                     <b-tooltip
                       v-if="!isMaterialAllowed(mat)"
                       :label="`No disponible con ${baseLabel}`"
@@ -100,7 +153,6 @@
                       </a>
                     </b-tooltip>
 
-                    <!-- Compatible → selección normal -->
                     <a v-else @click="selectMaterial(mat)">{{ mat }}</a>
                   </li>
                 </ul>
@@ -115,7 +167,7 @@
             </b-field>
           </transition>
 
-          <!-- TRATAMIENTOS (feedback de incompatibles) -->
+          <!-- TRATAMIENTOS -->
           <transition name="fade-slide">
             <b-field v-if="selectedMaterial" label="Selecciona Tratamientos">
               <div class="columns is-multiline is-mobile" style="max-height: 150px; overflow-y: auto;">
@@ -124,7 +176,6 @@
                   :key="trat"
                   class="column is-half-mobile is-one-third-tablet is-one-quarter-desktop"
                 >
-                  <!-- Incompatible → tooltip + aspecto deshabilitado -->
                   <b-tooltip
                     v-if="!isTratamientoAllowed(trat)"
                     label="No compatible con la base/material seleccionados"
@@ -144,7 +195,6 @@
                     </div>
                   </b-tooltip>
 
-                  <!-- Compatible -->
                   <div v-else class="tratamiento-item">
                     <b-checkbox v-model="selectedTratamientos" :native-value="trat" size="is-small" type="is-primary">
                       {{ trat }}
@@ -163,11 +213,7 @@
           <transition-group name="tag-list" tag="div" class="tags mb-3">
             <span v-for="(tag, i) in selectedTratamientos" :key="tag" class="tag is-info is-light is-rounded">
               {{ tag }}
-              <button
-                class="delete is-small"
-                @click.prevent="removeTratamiento(i)"
-                aria-label="Eliminar tratamiento"
-              ></button>
+              <button class="delete is-small" @click.prevent="removeTratamiento(i)" aria-label="Eliminar tratamiento"></button>
             </span>
           </transition-group>
 
@@ -188,7 +234,6 @@
               <span v-else>Creando…</span>
             </b-button>
 
-            <!-- ✅ Status pill de crear -->
             <div class="create-status" aria-live="polite" role="status">
               <transition name="fade-status">
                 <div v-if="createStatus !== 'idle'" class="meta-status" :class="createStatus">
@@ -223,218 +268,195 @@
     </div>
 
     <!-- MODAL ACCIONES -->
-         <teleport to="body">
-    <b-modal
-      v-model="isActionsOpen"
-      has-modal-card
-      :can-cancel="['escape']"
-      :width="760"
-      trap-focus
-      scroll="keep"
-      custom-class="rsbo-sheet-actions-modal"
-    >
-      <div class="modal-card rsbo-actions-card">
-        <!-- Header opaco -->
-        <header class="modal-card-head rsbo-actions-head">
-          <div class="pill-row">
-            <span class="pill strong">{{ selectedSheet?.name || "Planilla" }}</span>
+    <teleport to="body">
+      <b-modal
+        v-model="isActionsOpen"
+        has-modal-card
+        :can-cancel="['escape']"
+        :width="760"
+        trap-focus
+        scroll="keep"
+        custom-class="rsbo-sheet-actions-modal"
+      >
+        <div class="modal-card rsbo-actions-card">
+          <header class="modal-card-head rsbo-actions-head">
+            <div class="pill-row">
+              <span class="pill strong">{{ selectedSheet?.name || "Planilla" }}</span>
+              <span class="pill" v-if="selectedSheet?.sku">SKU: {{ selectedSheet.sku }}</span>
+              <span class="pill">Tipo: {{ tipoHuman(selectedSheet?.tipo_matriz) }}</span>
+              <span class="pill" v-if="selectedSheet?.material">Material: {{ selectedSheet.material }}</span>
+              <span class="pill" v-if="selectedSheet?.tratamientos?.length">
+                Tratamientos: {{ selectedSheet.tratamientos.join(" + ") }}
+              </span>
+            </div>
 
-            <!-- ✅ SKU visible -->
-            <span class="pill" v-if="selectedSheet?.sku">SKU: {{ selectedSheet.sku }}</span>
+            <button
+              class="delete"
+              :class="{ 'is-disabled': anySaving }"
+              :disabled="anySaving"
+              aria-label="close"
+              :title="anySaving ? 'Hay cambios en proceso…' : 'Cerrar'"
+              @click="isActionsOpen = false"
+            ></button>
+          </header>
 
-            <span class="pill">Tipo: {{ tipoHuman(selectedSheet?.tipo_matriz) }}</span>
-            <span class="pill" v-if="selectedSheet?.material">Material: {{ selectedSheet.material }}</span>
-            <span class="pill" v-if="selectedSheet?.tratamientos?.length">
-              Tratamientos: {{ selectedSheet.tratamientos.join(" + ") }}
-            </span>
-          </div>
+          <section class="modal-card-body rsbo-actions-body">
+            <b-field label="SKU" class="mb-3">
+              <b-input :value="selectedSheet?.sku || ''" disabled expanded />
+            </b-field>
 
-          <!-- ✅ Evita cerrar mientras hay sync (renaming/meta/trash) -->
-          <button
-            class="delete"
-            :class="{ 'is-disabled': anySaving }"
-            :disabled="anySaving"
-            aria-label="close"
-            :title="anySaving ? 'Hay cambios en proceso…' : 'Cerrar'"
-            @click="isActionsOpen = false"
-          ></button>
-        </header>
-
-        <section class="modal-card-body rsbo-actions-body">
-          <!-- SKU visible (solo lectura) -->
-          <b-field label="SKU" class="mb-3">
-            <b-input :value="selectedSheet?.sku || ''" disabled expanded />
-          </b-field>
-
-          <!-- ABRIR -->
-          <div class="action-card primary">
-            <div class="action-icon primary"><i class="far fa-table"></i></div>
-            <div class="action-content">
-              <div class="action-title">Abrir planilla</div>
-              <div class="action-desc">Ir a la planilla y gestionarla.</div>
-              <div class="mt-2">
-                <b-button type="is-primary" :disabled="anySaving" @click="openSheet">
-                  Abrir
-                </b-button>
+            <!-- ABRIR -->
+            <div class="action-card primary">
+              <div class="action-icon primary"><i class="far fa-table"></i></div>
+              <div class="action-content">
+                <div class="action-title">Abrir planilla</div>
+                <div class="action-desc">Ir a la planilla y gestionarla.</div>
+                <div class="mt-2">
+                  <b-button type="is-primary" :disabled="anySaving" @click="openSheet">Abrir</b-button>
+                </div>
               </div>
             </div>
-          </div>
 
-          <!-- RENOMBRAR (✅ feedback completo) -->
-          <div class="action-card" :class="{ 'rename-glow': renameGlow }">
-            <div class="action-icon"><i class="far fa-edit"></i></div>
-            <div class="action-content">
-              <div class="action-title">Renombrar</div>
-              <div class="action-desc">Cambiar el nombre visible de la planilla</div>
+            <!-- RENOMBRAR -->
+            <div class="action-card" :class="{ 'rename-glow': renameGlow }">
+              <div class="action-icon"><i class="far fa-edit"></i></div>
+              <div class="action-content">
+                <div class="action-title">Renombrar</div>
+                <div class="action-desc">Cambiar el nombre visible de la planilla</div>
 
-              <div class="rename-row">
-                <b-field label="Nuevo nombre" class="rename-field">
-                  <b-input
-                    v-model.trim="renameName"
-                    placeholder="Escribe el nuevo nombre"
-                    maxlength="80"
-                    :disabled="renaming"
-                  />
-                </b-field>
+                <div class="rename-row">
+                  <b-field label="Nuevo nombre" class="rename-field">
+                    <b-input
+                      v-model.trim="renameName"
+                      placeholder="Escribe el nuevo nombre"
+                      maxlength="80"
+                      :disabled="renaming"
+                    />
+                  </b-field>
 
-                <div class="rename-actions">
-                  <div class="rename-status-wrapper" aria-live="polite" role="status">
+                  <div class="rename-actions">
+                    <div class="rename-status-wrapper" aria-live="polite" role="status">
+                      <transition name="fade-status">
+                        <div v-if="renameStatus !== 'idle'" class="meta-status" :class="renameStatus">
+                          <span v-if="renameStatus === 'saving'" class="dot-pulse"></span>
+                          <i v-else-if="renameStatus === 'saved'" class="far fa-check-circle"></i>
+                          <i v-else-if="renameStatus === 'error'" class="far fa-exclamation-triangle"></i>
+                          <span class="meta-status-text">{{ renameStatusMessage }}</span>
+                        </div>
+                      </transition>
+                    </div>
+
+                    <b-button
+                      type="is-primary"
+                      :disabled="!canRename || renaming"
+                      :loading="renaming"
+                      @click="confirmRename"
+                    >
+                      <span v-if="!renaming">Guardar</span>
+                      <span v-else>Guardando…</span>
+                    </b-button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- NOTAS Y OBSERVACIONES -->
+            <div class="action-card" :class="{ 'meta-glow': metaGlow }">
+              <div class="action-icon"><i class="far fa-comment-dots"></i></div>
+              <div class="action-content">
+                <div class="action-title">Notas y observaciones</div>
+                <div class="action-desc">Guarda comentarios internos sobre la planilla (no afectan el stock).</div>
+
+                <div class="meta-grid">
+                  <b-field label="Observaciones">
+                    <b-input v-model.trim="metaForm.observaciones" type="textarea" rows="2" maxlength="500" :disabled="savingMeta" />
+                  </b-field>
+
+                  <b-field label="Notas">
+                    <b-input v-model.trim="metaForm.notas" type="textarea" rows="2" maxlength="500" :disabled="savingMeta" />
+                  </b-field>
+                </div>
+
+                <div class="buttons is-right mt-2 meta-actions-row">
+                  <div class="meta-status-wrapper" aria-live="polite" role="status">
                     <transition name="fade-status">
-                      <div v-if="renameStatus !== 'idle'" class="meta-status" :class="renameStatus">
-                        <span v-if="renameStatus === 'saving'" class="dot-pulse"></span>
-                        <i v-else-if="renameStatus === 'saved'" class="far fa-check-circle"></i>
-                        <i v-else-if="renameStatus === 'error'" class="far fa-exclamation-triangle"></i>
-                        <span class="meta-status-text">{{ renameStatusMessage }}</span>
+                      <div v-if="metaStatus !== 'idle'" class="meta-status" :class="metaStatus">
+                        <span v-if="metaStatus === 'saving'" class="dot-pulse"></span>
+                        <i v-else-if="metaStatus === 'saved'" class="far fa-check-circle"></i>
+                        <i v-else-if="metaStatus === 'error'" class="far fa-exclamation-triangle"></i>
+                        <span class="meta-status-text">{{ metaStatusMessage }}</span>
                       </div>
                     </transition>
                   </div>
 
                   <b-button
                     type="is-primary"
-                    :disabled="!canRename || renaming"
-                    :loading="renaming"
-                    @click="confirmRename"
+                    size="is-small"
+                    :loading="savingMeta"
+                    :disabled="!canSaveMeta || savingMeta"
+                    @click="confirmSaveMeta"
                   >
-                    <span v-if="!renaming">Guardar</span>
-                    <span v-else>Guardando…</span>
+                    <span v-if="!savingMeta">Guardar notas</span>
+                    <span v-else>Sincronizando…</span>
                   </b-button>
                 </div>
               </div>
             </div>
-          </div>
 
-          <!-- NOTAS Y OBSERVACIONES -->
-          <div class="action-card" :class="{ 'meta-glow': metaGlow }">
-            <div class="action-icon"><i class="far fa-comment-dots"></i></div>
-            <div class="action-content">
-              <div class="action-title">Notas y observaciones</div>
-              <div class="action-desc">
-                Guarda comentarios internos sobre la planilla (no afectan el stock).
-              </div>
+            <!-- PAPELERA -->
+            <div class="action-card danger">
+              <div class="action-icon danger"><i class="far fa-trash-alt"></i></div>
+              <div class="action-content">
+                <div class="action-title">Enviar a papelera</div>
 
-              <div class="meta-grid">
-                <b-field label="Observaciones">
-                  <b-input
-                    v-model.trim="metaForm.observaciones"
-                    type="textarea"
-                    rows="2"
-                    maxlength="500"
-                    :disabled="savingMeta"
-                  />
-                </b-field>
+                <div class="confirm-space">
+                  <div v-show="confirmingDelete" class="confirm-inline">
+                    <span class="confirm-text">
+                      ¿Enviar <strong class="truncate">{{ selectedSheet?.name }}</strong> a la papelera?
+                    </span>
 
-                <b-field label="Notas">
-                  <b-input
-                    v-model.trim="metaForm.notas"
-                    type="textarea"
-                    rows="2"
-                    maxlength="500"
-                    :disabled="savingMeta"
-                  />
-                </b-field>
-              </div>
-
-              <div class="buttons is-right mt-2 meta-actions-row">
-                <div class="meta-status-wrapper" aria-live="polite" role="status">
-                  <transition name="fade-status">
-                    <div v-if="metaStatus !== 'idle'" class="meta-status" :class="metaStatus">
-                      <span v-if="metaStatus === 'saving'" class="dot-pulse"></span>
-                      <i v-else-if="metaStatus === 'saved'" class="far fa-check-circle"></i>
-                      <i v-else-if="metaStatus === 'error'" class="far fa-exclamation-triangle"></i>
-                      <span class="meta-status-text">{{ metaStatusMessage }}</span>
+                    <div class="buttons are-small ml-2">
+                      <b-button :disabled="deleting" @click="confirmingDelete = false">Cancelar</b-button>
+                      <b-button type="is-danger" :loading="deleting" :disabled="deleting" @click="softDelete">
+                        <span v-if="!deleting">Sí, enviar</span>
+                        <span v-else>Enviando…</span>
+                      </b-button>
                     </div>
-                  </transition>
-                </div>
+                  </div>
 
-                <b-button
-                  type="is-primary"
-                  size="is-small"
-                  :loading="savingMeta"
-                  :disabled="!canSaveMeta || savingMeta"
-                  @click="confirmSaveMeta"
-                >
-                  <span v-if="!savingMeta">Guardar notas</span>
-                  <span v-else>Sincronizando…</span>
-                </b-button>
-              </div>
-            </div>
-          </div>
-
-          <!-- ENVIAR A PAPELERA (soft-delete con /trash) -->
-          <div class="action-card danger">
-            <div class="action-icon danger"><i class="far fa-trash-alt"></i></div>
-            <div class="action-content">
-              <div class="action-title">Enviar a papelera</div>
-
-              <div class="confirm-space">
-                <div v-show="confirmingDelete" class="confirm-inline">
-                  <span class="confirm-text">
-                    ¿Enviar <strong class="truncate">{{ selectedSheet?.name }}</strong> a la papelera?
-                  </span>
-
-                  <div class="buttons are-small ml-2">
-                    <b-button :disabled="deleting" @click="confirmingDelete = false">Cancelar</b-button>
-                    <b-button type="is-danger" :loading="deleting" :disabled="deleting" @click="softDelete">
-                      <span v-if="!deleting">Sí, enviar</span>
-                      <span v-else>Enviando…</span>
+                  <div class="mt-2" v-show="!confirmingDelete">
+                    <b-button type="is-danger" outlined :disabled="anySaving" @click="confirmingDelete = true">
+                      Enviar a papelera
                     </b-button>
                   </div>
-                </div>
 
-                <div class="mt-2" v-show="!confirmingDelete">
-                  <b-button type="is-danger" outlined :disabled="anySaving" @click="confirmingDelete = true">
-                    Enviar a papelera
-                  </b-button>
-                </div>
-
-                <!-- ✅ Status pill de papelera -->
-                <div class="mt-2" aria-live="polite" role="status">
-                  <transition name="fade-status">
-                    <div v-if="trashStatus !== 'idle'" class="meta-status" :class="trashStatus">
-                      <span v-if="trashStatus === 'saving'" class="dot-pulse"></span>
-                      <i v-else-if="trashStatus === 'saved'" class="far fa-check-circle"></i>
-                      <i v-else-if="trashStatus === 'error'" class="far fa-exclamation-triangle"></i>
-                      <span class="meta-status-text">{{ trashStatusMessage }}</span>
-                    </div>
-                  </transition>
+                  <div class="mt-2" aria-live="polite" role="status">
+                    <transition name="fade-status">
+                      <div v-if="trashStatus !== 'idle'" class="meta-status" :class="trashStatus">
+                        <span v-if="trashStatus === 'saving'" class="dot-pulse"></span>
+                        <i v-else-if="trashStatus === 'saved'" class="far fa-check-circle"></i>
+                        <i v-else-if="trashStatus === 'error'" class="far fa-exclamation-triangle"></i>
+                        <span class="meta-status-text">{{ trashStatusMessage }}</span>
+                      </div>
+                    </transition>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div class="audit-row">
-            <button class="audit-btn" disabled><i class="far fa-shield-check"></i> Cambios auditados</button>
-          </div>
-        </section>
+            <div class="audit-row">
+              <button class="audit-btn" disabled><i class="far fa-shield-check"></i> Cambios auditados</button>
+            </div>
+          </section>
 
-        <footer class="modal-card-foot rsbo-actions-foot">
-          <b-button :disabled="anySaving" @click="isActionsOpen = false">
-            <span v-if="!anySaving">Cerrar</span>
-            <span v-else>Procesando…</span>
-          </b-button>
-        </footer>
-      </div>
-    </b-modal>
+          <footer class="modal-card-foot rsbo-actions-foot">
+            <b-button :disabled="anySaving" @click="isActionsOpen = false">
+              <span v-if="!anySaving">Cerrar</span>
+              <span v-else>Procesando…</span>
+            </b-button>
+          </footer>
+        </div>
+      </b-modal>
     </teleport>
   </div>
 </template>
@@ -461,6 +483,41 @@ const emit = defineEmits([
   "renamed"
 ]);
 
+/* ===================== ✅ UI PREFS (reduce effects) ===================== */
+const UI_PREFS_KEY = "rsbo_ui_prefs_v1";
+const reduceEffects = ref(false);
+
+const readPrefs = () => {
+  try {
+    const raw = localStorage.getItem(UI_PREFS_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+};
+
+const writePrefs = (prefs) => {
+  try {
+    localStorage.setItem(UI_PREFS_KEY, JSON.stringify(prefs || {}));
+  } catch {}
+};
+
+onMounted(() => {
+  // default: respeta prefers-reduced-motion si no hay config guardada
+  const saved = readPrefs();
+  const mediaReduce = typeof window !== "undefined"
+    ? window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches
+    : false;
+
+  reduceEffects.value = saved?.reduceEffects ?? !!mediaReduce;
+});
+
+watch(reduceEffects, (v) => {
+  const saved = readPrefs() || {};
+  writePrefs({ ...saved, reduceEffects: !!v });
+});
+
 /* ===================== ✅ NORMALIZADOR (FIX SKU NULL) ===================== */
 const normalizeSheet = (s) => {
   if (!s) return null;
@@ -468,11 +525,23 @@ const normalizeSheet = (s) => {
   const name = String(s.name ?? s.nombre ?? "");
   const skuRaw = s.sku ?? s.SKU ?? null;
 
+  const proveedor =
+    s.proveedor && typeof s.proveedor === "object"
+      ? { id: s.proveedor.id ?? null, name: String(s.proveedor.name ?? "") }
+      : { id: null, name: String(s.proveedor || "") };
+
+  const marca =
+    s.marca && typeof s.marca === "object"
+      ? { id: s.marca.id ?? null, name: String(s.marca.name ?? "") }
+      : { id: null, name: String(s.marca || "") };
+
   return {
     ...s,
     id,
     name,
     sku: skuRaw ? String(skuRaw) : null,
+    proveedor,
+    marca,
     tratamientos: Array.isArray(s.tratamientos) ? s.tratamientos : [],
     meta: s.meta && typeof s.meta === "object" ? s.meta : { observaciones: "", notas: "" },
     tabs: Array.isArray(s.tabs) ? s.tabs : []
@@ -488,6 +557,55 @@ watch(
   (v) => (sheets.value = mapSheets(v)),
   { deep: true, immediate: true }
 );
+
+/* ===================== ✅ Autocomplete Proveedor/Marca (faltaba) ===================== */
+const normTxt = (s) =>
+  String(s || "")
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+const uniqueNamesFromSheets = (getter) => {
+  const set = new Map();
+  for (const sh of sheets.value || []) {
+    if (sh?.id === "nueva") continue;
+    const raw = getter(sh);
+    const pretty = String(raw || "").trim();
+    if (!pretty) continue;
+    const key = normTxt(pretty);
+    if (!key) continue;
+    if (!set.has(key)) set.set(key, pretty);
+  }
+  return Array.from(set.values()).sort((a, b) => a.localeCompare(b));
+};
+
+const proveedorOptions = computed(() => uniqueNamesFromSheets((s) => s?.proveedor?.name));
+const marcaOptions = computed(() => uniqueNamesFromSheets((s) => s?.marca?.name));
+
+const newProveedorName = ref("");
+const newMarcaName = ref("");
+
+const filteredProveedorOptions = computed(() => {
+  const q = normTxt(newProveedorName.value);
+  const base = proveedorOptions.value;
+  if (!q) return base.slice(0, 30);
+  return base.filter((x) => normTxt(x).includes(q)).slice(0, 30);
+});
+
+const filteredMarcaOptions = computed(() => {
+  const q = normTxt(newMarcaName.value);
+  const base = marcaOptions.value;
+  if (!q) return base.slice(0, 30);
+  return base.filter((x) => normTxt(x).includes(q)).slice(0, 30);
+});
+
+const onSelectProveedor = (val) => {
+  if (typeof val === "string") newProveedorName.value = val;
+};
+const onSelectMarca = (val) => {
+  if (typeof val === "string") newMarcaName.value = val;
+};
 
 const activeId = computed(() => props.activeId);
 const activeSheetObj = computed(() => sheets.value.find((s) => s.id === activeId.value));
@@ -533,17 +651,6 @@ const handleInternalTabClick = (id) => {
 /* ===================== ✅ Helpers de feedback ===================== */
 const errMsg = (e, fallback) => e?.response?.data?.message || e?.message || fallback;
 
-const pulseStatus = ({ statusRef, messageRef, status, message, resetMs = 1800 }) => {
-  statusRef.value = status;
-  messageRef.value = message;
-  if (status === "saved") {
-    setTimeout(() => {
-      statusRef.value = "idle";
-      messageRef.value = "";
-    }, resetMs);
-  }
-};
-
 /* ===== Crear ===== */
 const selectedBase = ref(null);
 const selectedMaterial = ref(null);
@@ -551,8 +658,7 @@ const selectedTratamientos = ref([]);
 const newSheetName = ref("");
 const creatingSheet = ref(false);
 
-/* ✅ Status crear */
-const createStatus = ref("idle"); // 'idle' | 'saving' | 'saved' | 'error'
+const createStatus = ref("idle");
 const createStatusMessage = ref("");
 const resetCreateStatus = () => {
   createStatus.value = "idle";
@@ -606,7 +712,6 @@ const canCreate = computed(
     !creatingSheet.value
 );
 
-/* Feedback helpers */
 const hasAnyAllowedMaterial = computed(() => allMaterials.some((m) => isMaterialAllowed(m)));
 const hasAnyAllowedTratamiento = computed(() => allTratamientos.some((t) => isTratamientoAllowed(t)));
 const baseLabel = computed(() => {
@@ -654,18 +759,17 @@ const handleCrear = async () => {
       tipo_matriz,
       seed: true,
       autoGenerate: true,
+
+      proveedor: { id: null, name: (newProveedorName.value || "").trim() },
+      marca: { id: null, name: (newMarcaName.value || "").trim() },
+
       actor: actorRef.value || undefined
     };
-
-    console.log("[createSheet] payload =>", payload);
-
-    createStatusMessage.value = "Conectando con el servidor…";
-    await nextTick();
 
     createStatusMessage.value = "Subiendo planilla…";
     const { data } = await createSheet(payload);
 
-    createStatusMessage.value = "Aplicando respuesta y tabs…";
+    createStatusMessage.value = "Aplicando respuesta…";
     const s = data?.data?.sheet;
     const tabs = data?.data?.tabs || [];
     if (!s) throw new Error("Sin hoja en respuesta");
@@ -683,6 +787,8 @@ const handleCrear = async () => {
     selectedMaterial.value = null;
     selectedTratamientos.value = [];
     newSheetName.value = "";
+    newProveedorName.value = "";
+    newMarcaName.value = "";
 
     createStatus.value = "saved";
     createStatusMessage.value = "Planilla creada correctamente";
@@ -712,8 +818,11 @@ onMounted(() => {
       if (props.loadingTabs) return false;
       const relatedEl = evt.related;
       if (relatedEl && relatedEl.classList.contains("tab-agregar")) {
-        evt.dragged.classList.add("shake", "shake-color");
-        setTimeout(() => evt.dragged.classList.remove("shake", "shake-color"), 300);
+        // ✅ si reduced effects, evitamos shake (no molestar)
+        if (!reduceEffects.value) {
+          evt.dragged.classList.add("shake", "shake-color");
+          setTimeout(() => evt.dragged.classList.remove("shake", "shake-color"), 300);
+        }
         return false;
       }
       return true;
@@ -746,8 +855,7 @@ const renaming = ref(false);
 const confirmingDelete = ref(false);
 const deleting = ref(false);
 
-/* ✅ Rename feedback */
-const renameStatus = ref("idle"); // 'idle' | 'saving' | 'saved' | 'error'
+const renameStatus = ref("idle");
 const renameStatusMessage = ref("");
 const renameGlow = ref(false);
 
@@ -763,17 +871,15 @@ const canRename = computed(() => {
   return !!selectedSheet.value && !renaming.value && next.length > 0 && next !== current;
 });
 
-/* Meta: notas y observaciones */
 const metaForm = ref({ observaciones: "", notas: "" });
 const savingMeta = ref(false);
-const metaStatus = ref("idle"); // 'idle' | 'saving' | 'saved' | 'error'
+const metaStatus = ref("idle");
 const metaStatusMessage = ref("");
 const metaGlow = ref(false);
 
 const canSaveMeta = computed(() => !!selectedSheet.value && !savingMeta.value);
 
-/* ✅ Trash feedback */
-const trashStatus = ref("idle"); // 'idle' | 'saving' | 'saved' | 'error'
+const trashStatus = ref("idle");
 const trashStatusMessage = ref("");
 const resetTrashStatus = () => {
   trashStatus.value = "idle";
@@ -798,19 +904,17 @@ const confirmSaveMeta = async () => {
 
   savingMeta.value = true;
   metaStatus.value = "saving";
-  metaStatusMessage.value = "Conectando con el servidor…";
+  metaStatusMessage.value = "Sincronizando…";
 
   try {
     const { id } = selectedSheet.value;
 
+    // ✅ Solo mandamos lo que editas, NO ranges
     const metaPayload = {
       observaciones: metaForm.value.observaciones || "",
       notas: metaForm.value.notas || ""
     };
 
-    console.log("[updateSheet meta] id =>", id, "payload =>", metaPayload);
-
-    metaStatusMessage.value = "Sincronizando notas…";
     const { data } = await updateSheet(id, {
       meta: metaPayload,
       actor: actorRef.value || undefined
@@ -826,18 +930,15 @@ const confirmSaveMeta = async () => {
       const idx = sheets.value.findIndex((s) => s.id === id);
       const newTabs = tabs || (idx >= 0 ? sheets.value[idx].tabs : selectedSheet.value?.tabs || []);
 
-      if (idx >= 0) {
-        sheets.value[idx] = normalizeSheet({ ...sheets.value[idx], ...norm, tabs: newTabs });
-      }
-
-      if (selectedSheet.value) {
-        selectedSheet.value = normalizeSheet({ ...selectedSheet.value, ...norm, tabs: newTabs });
-      }
+      if (idx >= 0) sheets.value[idx] = normalizeSheet({ ...sheets.value[idx], ...norm, tabs: newTabs });
+      selectedSheet.value = normalizeSheet({ ...selectedSheet.value, ...norm, tabs: newTabs });
 
       metaStatus.value = "saved";
-      metaStatusMessage.value = "Notas sincronizadas correctamente";
-      metaGlow.value = true;
-      setTimeout(() => (metaGlow.value = false), 900);
+      metaStatusMessage.value = "Notas sincronizadas";
+      if (!reduceEffects.value) {
+        metaGlow.value = true;
+        setTimeout(() => (metaGlow.value = false), 900);
+      }
       setTimeout(() => {
         metaStatus.value = "idle";
         metaStatusMessage.value = "";
@@ -871,7 +972,6 @@ const openActions = (sheet) => {
   renameName.value = selectedSheet.value?.name || "";
   confirmingDelete.value = false;
 
-  // ✅ reseteos de UI para que nunca “se queden pegados”
   resetRenameStatus();
   resetTrashStatus();
 
@@ -894,15 +994,12 @@ const confirmRename = async () => {
 
   renaming.value = true;
   renameStatus.value = "saving";
-  renameStatusMessage.value = "Conectando con el servidor…";
+  renameStatusMessage.value = "Guardando…";
   renameGlow.value = false;
 
   try {
     const { id } = selectedSheet.value;
 
-    console.log("[updateSheet rename] id =>", id, "nombre =>", nextName);
-
-    renameStatusMessage.value = "Enviando nuevo nombre…";
     const { data } = await updateSheet(id, {
       nombre: nextName,
       actor: actorRef.value || undefined
@@ -913,26 +1010,22 @@ const confirmRename = async () => {
     const updated = data?.data?.sheet;
     if (!updated) throw new Error("Respuesta inválida: falta data.sheet");
 
-    renameStatusMessage.value = "Aplicando cambios…";
     const norm = normalizeSheet(updated);
 
     const idx = sheets.value.findIndex((s) => s.id === id);
-    if (idx >= 0) {
-      sheets.value[idx] = normalizeSheet({ ...sheets.value[idx], ...norm });
-    }
+    if (idx >= 0) sheets.value[idx] = normalizeSheet({ ...sheets.value[idx], ...norm });
 
-    selectedSheet.value = normalizeSheet({ ...selectedSheet.value, ...norm });
-
-    // ✅ sincroniza el input con el nombre confirmado por server
+    selectedSheet.value = normalizeSheet({ ...selectedSheet.value, ...norm, tabs: selectedSheet.value?.tabs || [] });
     renameName.value = norm.name;
 
     emit("renamed", { id, nombre: norm.name });
 
     renameStatus.value = "saved";
     renameStatusMessage.value = "Nombre actualizado";
-    renameGlow.value = true;
-
-    setTimeout(() => (renameGlow.value = false), 900);
+    if (!reduceEffects.value) {
+      renameGlow.value = true;
+      setTimeout(() => (renameGlow.value = false), 900);
+    }
     setTimeout(() => resetRenameStatus(), 1800);
   } catch (e) {
     console.error("rename error:", e?.response?.data || e);
@@ -949,16 +1042,12 @@ const softDelete = async () => {
 
   deleting.value = true;
   trashStatus.value = "saving";
-  trashStatusMessage.value = "Conectando con el servidor…";
+  trashStatusMessage.value = "Enviando a papelera…";
 
   try {
     const id = selectedSheet.value.id;
-    console.log("[moveSheetToTrash] id =>", id, "actor =>", actorRef.value);
-
-    trashStatusMessage.value = "Enviando a papelera…";
     await moveSheetToTrash(id, actorRef.value || undefined);
 
-    trashStatusMessage.value = "Actualizando lista…";
     const idx = sheets.value.findIndex((s) => s.id === id);
     if (idx >= 0) sheets.value.splice(idx, 1);
 
@@ -997,270 +1086,341 @@ const handleTabClick = (id) => {
 </script>
 
 <style scoped>
+/* ✅ Accesibilidad row */
+.tabs-a11y-row{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:.6rem;
+  padding:.35rem .55rem .2rem;
+}
+.a11y-hint{
+  font-size:.78rem;
+  opacity:.65;
+}
+
+/* =========================
+   CONTENEDOR (card)
+   ========================= */
 .plantillas-contenedor {
-  background: #fff;
-  border: 1px solid rgba(113, 77, 210, 0.12);
-  border-radius: 0 6px 6px 6px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 14px;
   min-height: 140px;
-  box-shadow: 0 6px 18px rgba(113, 77, 210, 0.04);
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.10);
   transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  overflow: hidden;
 }
 
-/* ===== Crear: layout feedback ===== */
-.create-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-}
-
-.create-status {
-  min-height: 24px;
-  display: flex;
-  align-items: center;
-}
-
-/* ===== Tabs ===== */
+/* =========================
+   TABS WRAPPER (glass + fade)
+   ========================= */
 .tabs-wrapper {
+  position: relative;
   display: flex;
   flex-wrap: nowrap;
   overflow-x: auto;
-  gap: 0.25rem;
-  border-bottom: 2px solid #dbdbdb;
+  gap: 0.35rem;
+  padding: 0.55rem 0.55rem 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+  -webkit-overflow-scrolling: touch;
 }
 
+.tabs-wrapper--glass {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Fade lateral para indicar scroll */
+.tabs-wrapper::before,
+.tabs-wrapper::after {
+  content: "";
+  position: sticky;
+  top: 0;
+  width: 20px;
+  height: 100%;
+  flex: 0 0 20px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.tabs-wrapper::before {
+  left: 0;
+  margin-left: -0.55rem;
+  background: linear-gradient(90deg, rgba(255,255,255,0.92), rgba(255,255,255,0));
+}
+
+.tabs-wrapper::after {
+  right: 0;
+  margin-right: -0.55rem;
+  background: linear-gradient(270deg, rgba(255,255,255,0.92), rgba(255,255,255,0));
+}
+
+/* scrollbar suave */
+.tabs-wrapper::-webkit-scrollbar {
+  height: 8px;
+}
+.tabs-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(148,163,184,0.35);
+  border-radius: 999px;
+}
+.tabs-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* =========================
+   TAB ITEM (glass)
+   ========================= */
 .tab-item {
   position: relative;
   display: inline-flex;
   align-items: center;
-  max-width: 260px;
-  padding: 0.35rem 1.6rem 0.35rem 0.75rem;
-  font-size: 0.85rem;
-  border-radius: 4px 4px 0 0;
+  max-width: 280px;
+  padding: 0.45rem 2.1rem 0.45rem 0.75rem;
+  font-size: 0.86rem;
+  border-radius: 12px 12px 0 0;
   cursor: pointer;
-  background: #f5f5f5;
-  color: #4a4a4a;
   user-select: none;
-  border: 1px solid #dbdbdb;
-  transition: background-color 0.3s, color 0.3s, box-shadow 0.2s;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-bottom: none;
+  transition: transform 0.16s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease;
+  will-change: transform;
+}
+
+.tab-item--glass {
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #0f172a;
+}
+
+.tab-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.10);
 }
 
 .tab-item.active {
-  background-color: var(--rsbo-primary, #714dd2);
-  color: #fff;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+  background: linear-gradient(90deg, rgba(121, 87, 213, 0.18), rgba(236, 72, 153, 0.10));
+  color: #0f172a;
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.12);
+  border-color: rgba(121, 87, 213, 0.35);
 }
 
+/* indicator */
+.tab-item.active::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: -1px;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(121,87,213,1), rgba(236,72,153,0.95));
+}
+
+/* Nueva */
 .tab-agregar {
-  cursor: pointer !important;
-  background: #494949;
+  background: rgba(15, 23, 42, 0.92);
   color: #fff;
+  border-color: rgba(15, 23, 42, 0.25);
+  padding-right: 0.85rem;
+}
+.tab-agregar:hover {
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.18);
 }
 
+/* Texto */
 .tab-text {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  padding-right: 0.5rem;
+  padding-right: 0.65rem;
   line-height: 1.05;
 }
 
 .tab-label {
+  font-weight: 900;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .tab-sku {
-  margin-top: 2px;
+  margin-top: 3px;
   font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  font-weight: 800;
+  letter-spacing: 0.03em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: #7a7a7a;
-  opacity: 0.95;
+  color: rgba(15,23,42,0.58);
 }
 
 .tab-item.active .tab-sku {
-  color: rgba(255, 255, 255, 0.92);
-  opacity: 0.95;
+  color: rgba(15,23,42,0.70);
 }
 
 .tab-sku--empty {
-  opacity: 0.5;
-  font-weight: 600;
+  opacity: 0.55;
+  font-weight: 700;
 }
 
-/* menu */
+/* Botón ⋮ */
 .tab-menu-btn {
   position: absolute;
-  right: 4px;
+  right: 6px;
   top: 50%;
   transform: translateY(-50%);
-  border: none;
-  background: transparent;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(255,255,255,0.72);
   line-height: 1;
   cursor: pointer;
-  font-size: 18px;
-  width: 22px;
-  height: 22px;
+  font-size: 16px;
+  width: 28px;
+  height: 28px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
-  opacity: 0.8;
+  border-radius: 999px;
+  opacity: 0.92;
+  transition: transform 0.14s ease, box-shadow 0.2s ease, background 0.2s ease, opacity 0.2s ease;
 }
 
 .tab-menu-btn:hover {
   opacity: 1;
-  background: rgba(0, 0, 0, 0.06);
+  transform: translateY(-50%) scale(1.03);
+  background: rgba(255,255,255,0.92);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.10);
 }
 
-/* 🔹 Skeleton para tabs */
+/* =========================
+   SKELETON TABS
+   ========================= */
 .skeleton-tab {
   background: transparent;
   border-color: transparent;
   cursor: default;
+  box-shadow: none !important;
+  transform: none !important;
 }
 
 .skeleton-bar {
   display: block;
-  width: 110px;
-  height: 0.8rem;
+  width: 120px;
+  height: 0.85rem;
   border-radius: 999px;
-  background: linear-gradient(90deg, #eee 0%, #f5f5f5 50%, #eee 100%);
+  background: linear-gradient(
+    90deg,
+    rgba(226,232,240,0.9) 0%,
+    rgba(248,250,252,0.9) 50%,
+    rgba(226,232,240,0.9) 100%
+  );
   background-size: 200% 100%;
-  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+  animation: skeleton-shimmer 1.2s ease-in-out infinite;
 }
 
 @keyframes skeleton-shimmer {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
-/* ===== Tabs internas ===== */
-.sheet-tab {
-  padding: 0.25rem 0.75rem;
-  font-size: 0.85rem;
-  background: transparent;
-  border: 1px solid transparent;
-  border-bottom: none;
-  border-radius: 4px 4px 0 0;
-  margin-right: 2px;
-  cursor: pointer;
-  transition: all 0.2s;
+/* =========================
+   CREATE ACTIONS (pill status)
+   ========================= */
+.create-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
 }
 
+.create-status {
+  min-height: 26px;
+  display: flex;
+  align-items: center;
+}
+
+/* =========================
+   INTERNAL TABS (sheet tabs)
+   ========================= */
 .sheet-tabs {
   display: flex;
-  height: 34px;
+  height: 38px;
   align-items: center;
-  border-bottom: 1px solid #dbdbdb;
-  background: #f5f5f5;
-  padding-left: 0.25rem;
-  border-radius: 0 0 4px 4px;
+  border-top: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(255,255,255,0.66);
+  padding: 0.2rem 0.35rem;
+}
+
+.sheet-tab {
+  padding: 0.35rem 0.85rem;
+  font-size: 0.85rem;
+  font-weight: 800;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  color: rgba(15,23,42,0.70);
+}
+
+.sheet-tab:hover {
+  background: rgba(121,87,213,0.10);
 }
 
 .sheet-tab.active {
-  background: #fff;
-  border-color: #dbdbdb #dbdbdb #fff;
+  background: rgba(121,87,213,0.16);
+  color: rgba(15,23,42,0.92);
+  box-shadow: 0 12px 24px rgba(15,23,42,0.10);
 }
 
-.sheet-tab:hover:not(.active) {
-  background: #e8e8e8;
-}
-
-/* ===== Animaciones ===== */
+/* =========================
+   ANIMACIONES / FEEDBACK
+   ========================= */
 @keyframes shake {
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-  20%,
-  60% {
-    transform: translateX(-3px);
-  }
-  40%,
-  80% {
-    transform: translateX(3px);
-  }
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-3px); }
+  40%, 80% { transform: translateX(3px); }
 }
-
-.shake {
-  animation: shake 0.3s;
-}
-
+.shake { animation: shake 0.3s; }
 .tabs-wrapper .tab-item.shake-color {
-  background: red;
-  color: #fff;
+  background: rgba(220, 38, 38, 0.16);
+  border-color: rgba(220, 38, 38, 0.35);
 }
 
+/* Fade slide */
 .fade-slide-enter-active,
-.fade-slide-leave-active {
-  transition: all 0.4s cubic-bezier(0.55, 0, 0.1, 1);
-}
-
+.fade-slide-leave-active { transition: all 0.28s ease; }
 .fade-slide-enter-from,
-.fade-slide-leave-to {
-  opacity: 0;
-  transform: translateY(-10px);
-}
+.fade-slide-leave-to { opacity: 0; transform: translateY(-8px); }
 
+/* Tags */
 .tag-list-enter-active,
-.tag-list-leave-active {
-  transition: all 0.3s ease;
-}
-
+.tag-list-leave-active { transition: all 0.22s ease; }
 .tag-list-enter-from,
-.tag-list-leave-to {
-  opacity: 0;
-  transform: scale(0.8);
-}
+.tag-list-leave-to { opacity: 0; transform: scale(0.92); }
 
-/* ===== Feedback de incompatibles ===== */
-.tabs-opciones ul li.is-disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-  filter: grayscale(0.25);
-}
+/* =========================
+   MODAL (glass + cards)
+   ========================= */
+.rsbo-sheet-actions-modal .modal-card { width: 100%; max-width: 760px; }
 
-.tabs-opciones ul li.is-disabled a {
-  text-decoration: line-through;
-}
-
-.tratamiento-item.is-disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.tratamiento-item.is-disabled :deep(input[type="checkbox"]) {
-  cursor: not-allowed !important;
-}
-
-/* ===== Modal ===== */
 .rsbo-actions-card {
   width: 100%;
-  border-radius: 14px;
+  border-radius: 16px;
   overflow: hidden;
+  background: rgba(255,255,255,0.90);
+  border: 1px solid rgba(148,163,184,0.22);
+  box-shadow: 0 28px 80px rgba(15, 23, 42, 0.22);
 }
 
 .rsbo-actions-head {
-  background: #fff;
-  border-bottom: 1px solid #eee;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  background: rgba(255,255,255,0.70);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(148,163,184,0.22);
 }
 
-.pill-row {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  flex-wrap: wrap;
-}
+.pill-row { display: flex; gap: 0.45rem; align-items: center; flex-wrap: wrap; }
 
 .pill {
   display: inline-flex;
@@ -1268,124 +1428,77 @@ const handleTabClick = (id) => {
   gap: 0.4rem;
   padding: 0.35rem 0.6rem;
   border-radius: 999px;
-  font-weight: 600;
-  font-size: 0.8rem;
-  background: #fff;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  color: #3c3c3c;
+  font-weight: 800;
+  font-size: 0.78rem;
+  background: rgba(255,255,255,0.72);
+  border: 1px solid rgba(148,163,184,0.22);
+  color: rgba(15,23,42,0.78);
 }
 
 .pill.strong {
-  background: rgba(142, 0, 210, 0.08);
-  color: var(--rsbo-primary, #8e00d2);
-  border-color: rgba(142, 0, 210, 0.25);
+  background: linear-gradient(90deg, rgba(121,87,213,0.16), rgba(236,72,153,0.10));
+  border-color: rgba(121,87,213,0.35);
+  color: rgba(15,23,42,0.88);
 }
 
-.rsbo-actions-body {
-  padding: 1rem 1.25rem;
-  min-height: 320px;
-}
+.rsbo-actions-body { padding: 1rem 1.25rem; min-height: 320px; }
 
 .action-card {
   display: flex;
   gap: 1rem;
   align-items: flex-start;
   padding: 1rem;
-  background: #fff;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 14px;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.04);
+  background: rgba(255,255,255,0.86);
+  border: 1px solid rgba(148,163,184,0.22);
+  border-radius: 16px;
+  box-shadow: 0 18px 50px rgba(15,23,42,0.10);
   margin-bottom: 1rem;
-  transition: box-shadow 0.25s ease, border-color 0.25s ease, transform 0.18s ease;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.16s ease;
 }
 
-.action-card.primary {
-  border-color: rgba(142, 0, 210, 0.25);
+.action-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 26px 70px rgba(15,23,42,0.14);
 }
+
+.action-card.primary { border-color: rgba(121,87,213,0.35); }
+.action-card.danger { border-color: rgba(220,38,38,0.28); }
 
 .action-icon {
-  width: 42px;
-  height: 42px;
-  flex: 0 0 42px;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 12px;
-  background: rgba(142, 0, 210, 0.08);
-  color: var(--rsbo-primary, #8e00d2);
+  border-radius: 14px;
+  background: rgba(121,87,213,0.12);
+  color: rgba(121,87,213,1);
 }
 
-.action-icon.danger {
-  background: rgba(192, 57, 43, 0.08);
-  color: #c0392b;
-}
+.action-icon.danger { background: rgba(220,38,38,0.12); color: rgba(220,38,38,1); }
 
-.action-content {
-  flex: 1;
-  min-width: 0;
-}
+.action-content { flex: 1; min-width: 0; }
+.action-title { font-weight: 900; font-size: 1rem; margin-bottom: 0.15rem; }
+.action-desc { opacity: 0.85; font-size: 0.9rem; color: rgba(15,23,42,0.72); }
 
-.action-title {
-  font-weight: 800;
-  font-size: 1rem;
-  margin-bottom: 0.15rem;
-}
-
-.action-desc {
-  opacity: 0.85;
-  font-size: 0.9rem;
-}
-
-/* Meta */
-.meta-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.meta-actions-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.meta-status-wrapper {
-  flex: 1;
-  min-height: 24px;
-}
-
+/* Status pills */
 .meta-status {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.25rem 0.55rem;
+  padding: 0.25rem 0.6rem;
   border-radius: 999px;
-  font-size: 0.75rem;
+  font-size: 0.76rem;
+  font-weight: 800;
   border: 1px solid transparent;
-  background: #f5f5f5;
-  color: #555;
+  background: rgba(248,250,252,0.85);
+  color: rgba(15,23,42,0.72);
 }
 
-.meta-status.saving {
-  border-color: rgba(0, 123, 255, 0.2);
-  background: rgba(0, 123, 255, 0.06);
-}
-
-.meta-status.saved {
-  border-color: rgba(40, 167, 69, 0.3);
-  background: rgba(40, 167, 69, 0.06);
-  color: #1f6f38;
-}
-
-.meta-status.error {
-  border-color: rgba(220, 53, 69, 0.3);
-  background: rgba(220, 53, 69, 0.06);
-  color: #b0212f;
-}
-
-.meta-status-text {
-  white-space: nowrap;
-}
+.meta-status.saving { border-color: rgba(59,130,246,0.25); background: rgba(59,130,246,0.08); }
+.meta-status.saved { border-color: rgba(34,197,94,0.25); background: rgba(34,197,94,0.08); color: rgba(15,23,42,0.86); }
+.meta-status.error { border-color: rgba(220,38,38,0.25); background: rgba(220,38,38,0.08); color: rgba(15,23,42,0.86); }
 
 .dot-pulse {
   position: relative;
@@ -1396,115 +1509,91 @@ const handleTabClick = (id) => {
   box-shadow: 0 0 0 currentColor;
   animation: dotPulse 1s infinite linear;
 }
-
 @keyframes dotPulse {
-  0% {
-    box-shadow: 0 0 0 0 currentColor;
-    opacity: 1;
-  }
-  70% {
-    box-shadow: 0 0 0 6px rgba(0, 0, 0, 0);
-    opacity: 0.6;
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
-    opacity: 0.4;
-  }
-}
-
-.meta-glow {
-  box-shadow: 0 0 0 1px rgba(40, 167, 69, 0.2), 0 0 18px rgba(40, 167, 69, 0.25);
-  transform: translateY(-1px);
+  0% { box-shadow: 0 0 0 0 currentColor; opacity: 1; }
+  70% { box-shadow: 0 0 0 6px rgba(0, 0, 0, 0); opacity: 0.6; }
+  100% { box-shadow: 0 0 0 0 rgba(0, 0, 0, 0); opacity: 0.4; }
 }
 
 .fade-status-enter-active,
-.fade-status-leave-active {
-  transition: opacity 0.25s ease, transform 0.25s ease;
-}
-
+.fade-status-leave-active { transition: opacity 0.22s ease, transform 0.22s ease; }
 .fade-status-enter-from,
-.fade-status-leave-to {
-  opacity: 0;
-  transform: translateY(3px);
-}
+.fade-status-leave-to { opacity: 0; transform: translateY(3px); }
 
-/* ✅ Rename layout + glow */
-.rename-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-}
-
-.rename-status-wrapper {
-  min-height: 24px;
-  display: flex;
-  align-items: center;
-}
-
-.rename-glow {
-  box-shadow: 0 0 0 1px rgba(40, 167, 69, 0.2), 0 0 18px rgba(40, 167, 69, 0.22);
-  transform: translateY(-1px);
-}
-
-/* Confirmación */
-.confirm-space {
-  min-height: 56px;
-}
-
+/* confirm danger */
 .confirm-inline {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.5rem 0.75rem;
-  background: #fff5f5;
-  border: 1px solid #f5c6cb;
-  border-radius: 10px;
-}
-
-.confirm-text {
-  flex: 1 1 auto;
-  white-space: normal;
-  word-break: break-word;
-  overflow-wrap: anywhere;
-}
-
-.truncate {
-  max-width: 260px;
-  display: inline-block;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.audit-row {
-  display: flex;
-  justify-content: flex-start;
-}
-
-.audit-btn {
-  border: none;
-  background: #f5f5f5;
-  color: #666;
   padding: 0.55rem 0.8rem;
-  border-radius: 10px;
-  display: inline-flex;
-  gap: 0.5rem;
-  align-items: center;
-  cursor: not-allowed;
+  background: rgba(220,38,38,0.08);
+  border: 1px solid rgba(220,38,38,0.20);
+  border-radius: 14px;
 }
 
-.rsbo-actions-foot {
-  justify-content: flex-end;
+.rsbo-actions-foot { justify-content: flex-end; }
+.delete.is-disabled { opacity: 0.35; cursor: not-allowed; }
+
+@media screen and (max-width: 768px) {
+  .tab-item { max-width: 220px; }
+  .rsbo-actions-body { padding: 0.9rem; }
 }
 
-.rsbo-sheet-actions-modal .modal-card {
-  width: 100%;
-  max-width: 760px;
+/* ==========================================================
+   ✅ REDUCED EFFECTS MODE (reduce transparencias/gradientes)
+   ========================================================== */
+.reduced-effects .tabs-wrapper--glass,
+.reduced-effects .tab-item--glass,
+.reduced-effects .rsbo-actions-head,
+.reduced-effects .rsbo-actions-card,
+.reduced-effects .action-card {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
-/* close button disabled */
-.delete.is-disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
+.reduced-effects .tab-item.active,
+.reduced-effects .pill.strong {
+  background: rgba(15, 23, 42, 0.06) !important;
+}
+
+.reduced-effects .tab-item.active::after {
+  background: rgba(15, 23, 42, 0.45) !important;
+}
+
+.reduced-effects .tab-item,
+.reduced-effects .action-card,
+.reduced-effects .sheet-tab,
+.reduced-effects .plantillas-contenedor,
+.reduced-effects .tab-menu-btn {
+  transition: none !important;
+  box-shadow: none !important;
+}
+
+.reduced-effects .tab-item:hover,
+.reduced-effects .action-card:hover,
+.reduced-effects .tab-menu-btn:hover {
+  transform: none !important;
+}
+
+.reduced-effects .skeleton-bar {
+  animation: none !important;
+  background: rgba(226,232,240,0.9) !important;
+}
+
+.reduced-effects .dot-pulse {
+  animation: none !important;
+}
+
+.reduced-effects .shake {
+  animation: none !important;
+}
+
+.reduced-effects .fade-slide-enter-active,
+.reduced-effects .fade-slide-leave-active,
+.reduced-effects .fade-status-enter-active,
+.reduced-effects .fade-status-leave-active,
+.reduced-effects .tag-list-enter-active,
+.reduced-effects .tag-list-leave-active {
+  transition: none !important;
 }
 </style>

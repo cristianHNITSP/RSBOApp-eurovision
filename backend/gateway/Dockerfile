@@ -1,24 +1,14 @@
-FROM node:18
+FROM node:20-alpine
 
 WORKDIR /app
 
-# Copiar archivos de dependencias
 COPY package*.json ./
+RUN npm install --omit=dev
 
-ARG NODE_ENV=production
-ENV NODE_ENV=$NODE_ENV
-
-# Instalar dependencias según entorno
-RUN if [ "$NODE_ENV" = "production" ]; then \
-      npm install --omit=dev; \
-    else \
-      npm install; \
-    fi
-
-# Copiar el código
 COPY . .
+
+ENV NODE_ENV=production
 
 EXPOSE 3000
 
-# Ejecuta nodemon en desarrollo, node en producción
-CMD ["sh", "-c", "if [ \"$NODE_ENV\" = \"production\" ]; then node index.js; else npx nodemon --config nodemon.json index.js; fi"]
+CMD ["node", "index.js"]

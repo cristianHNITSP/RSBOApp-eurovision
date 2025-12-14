@@ -1,15 +1,10 @@
-import api from "../api/axios";
-
-const normalizeApiError = (err) => {
-  if (err && err.response && err.response.data) return err.response.data;
-  if (err && err.request) return { error: "No se pudo conectar al servidor" };
-  return { error: (err && err.message) || "Error desconocido" };
-};
+// src/services/usersService.js
+import api, { sendRequest, normalizeApiError } from "../api/axios";
 
 export const usersService = {
   async me() {
     try {
-      const res = await api.get("/users/me");
+      const res = await sendRequest({ method: "GET", url: "/users/me" });
       return res.data;
     } catch (err) {
       return Promise.reject(normalizeApiError(err));
@@ -18,7 +13,7 @@ export const usersService = {
 
   async getRoles() {
     try {
-      const res = await api.get("/users/roles");
+      const res = await sendRequest({ method: "GET", url: "/users/roles" });
       return res.data;
     } catch (err) {
       return Promise.reject(normalizeApiError(err));
@@ -27,8 +22,8 @@ export const usersService = {
 
   async listUsers(params) {
     try {
-      const res = await api.get("/users", { params });
-      return res.data; // { items,total,stats,permissionsCatalog? }
+      const res = await sendRequest({ method: "GET", url: "/users", params });
+      return res.data;
     } catch (err) {
       return Promise.reject(normalizeApiError(err));
     }
@@ -63,7 +58,14 @@ export const usersService = {
 
   async softDelete(id) {
     try {
-      const res = await api.delete(`/users/${id}`);
+      // ✅ DELETE sin body
+      const res = await api.request({
+        method: "DELETE",
+        url: `/users/${id}`,
+        data: undefined,
+        // ✅ evita que algún interceptor/entorno meta JSON vacío
+        headers: { "Content-Type": "text/plain" },
+      });
       return res.data;
     } catch (err) {
       return Promise.reject(normalizeApiError(err));

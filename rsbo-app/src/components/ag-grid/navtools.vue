@@ -1,209 +1,220 @@
-z<!-- src/components/ag-grid/navtools.vue -->
+<!-- src/components/ag-grid/navtools.vue -->
 <template>
   <section class="navtools">
-    <!-- HEADER: META + ESTADO -->
-    <nav class="level is-mobile mb-2 navtools-header">
-      <div class="level-left">
-        <div class="level-item">
-          <div class="meta-tags-scroll" aria-label="Metadatos de hoja">
-            <b-taglist class="meta-taglist">
-              <b-tag v-if="tipoHuman" type="is-light" size="is-small">
-                <b-icon icon="layer-group" size="is-small" class="mr-1" />
-                {{ tipoHuman }}
-              </b-tag>
+    <!-- HEADER / META (glass + gradient) -->
+    <div class="navtools-card navtools-card--meta">
+      <nav class="level is-mobile navtools-header">
+        <div class="level-left">
+          <div class="level-item">
+            <div class="meta-tags-scroll" aria-label="Metadatos de hoja">
+              <b-taglist class="meta-taglist">
+                <b-tag v-if="tipoHuman" type="is-light" size="is-small" class="meta-pill">
+                  <b-icon icon="layer-group" size="is-small" class="mr-1" />
+                  {{ tipoHuman }}
+                </b-tag>
 
-              <b-tag v-if="material" type="is-light" size="is-small">
-                <b-icon icon="gem" size="is-small" class="mr-1" />
-                {{ material }}
-              </b-tag>
+                <b-tag v-if="material" type="is-light" size="is-small" class="meta-pill">
+                  <b-icon icon="gem" size="is-small" class="mr-1" />
+                  {{ material }}
+                </b-tag>
 
-              <b-tag v-if="tratamientosLabel" type="is-light" size="is-small">
-                <b-icon icon="magic" size="is-small" class="mr-1" />
-                {{ tratamientosLabel }}
-              </b-tag>
+                <b-tag v-if="tratamientosLabel" type="is-light" size="is-small" class="meta-pill">
+                  <b-icon icon="magic" size="is-small" class="mr-1" />
+                  {{ tratamientosLabel }}
+                </b-tag>
 
-              <b-tag v-if="totalRows != null" type="is-light" size="is-small">
-                <b-icon icon="database" size="is-small" class="mr-1" />
-                {{ totalRows }} filas
-              </b-tag>
-            </b-taglist>
+                <b-tag v-if="totalRows != null" type="is-light" size="is-small" class="meta-pill">
+                  <b-icon icon="database" size="is-small" class="mr-1" />
+                  {{ totalRows }} filas
+                </b-tag>
+              </b-taglist>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div class="level-right">
-        <!-- ✅ Estado real del último request (success/error) -->
-        <div class="level-item" v-if="serverBadge">
-          <b-tag :type="serverBadge.type" size="is-small">
-            <b-icon :icon="serverBadge.icon" size="is-small" class="mr-1" />
-            {{ serverBadge.text }}
-          </b-tag>
+        <div class="level-right">
+          <div class="level-item" v-if="serverBadge">
+            <b-tag :type="serverBadge.type" size="is-small" class="server-pill">
+              <b-icon :icon="serverBadge.icon" size="is-small" class="mr-1" />
+              {{ serverBadge.text }}
+            </b-tag>
+          </div>
+
+          <div class="level-item" v-if="lastSavedLabel">
+            <span class="is-size-7 has-text-grey last-saved">
+              <b-icon icon="clock" size="is-small" class="mr-1" />
+              {{ lastSavedLabel }}
+            </span>
+          </div>
         </div>
-
-        <div class="level-item" v-if="lastSavedLabel">
-          <span class="is-size-7 has-text-grey last-saved">
-            <b-icon icon="clock" size="is-small" class="mr-1" />
-            {{ lastSavedLabel }}
-          </span>
-        </div>
-      </div>
-    </nav>
-
-    <!-- TABS DE ACCIONES -->
-    <b-tabs v-model="activeTab" size="is-small" type="is-toggle-rounded" class="p-0 m-0">
-      <b-tab-item label="Edición" icon="edit">
-        <div class="ribbon-actions-row">
-          <b-field grouped group-multiline>
-            <p class="control">
-              <b-tooltip label="Ctrl+Z" position="is-top">
-                <b-button size="is-small" icon-left="undo-alt" :disabled="!canUndo" @click="handleUndoClick">
-                  Deshacer
-                </b-button>
-              </b-tooltip>
-            </p>
-
-            <p class="control">
-              <b-tooltip label="Ctrl+Y" position="is-top">
-                <b-button size="is-small" icon-left="redo-alt" :disabled="!canRedo" @click="handleRedoClick">
-                  Rehacer
-                </b-button>
-              </b-tooltip>
-            </p>
-
-            <p class="control">
-              <b-tooltip label="Ctrl+C" position="is-top">
-                <b-button size="is-small" icon-left="copy" @click="handleCopyClick">
-                  Copiar
-                </b-button>
-              </b-tooltip>
-            </p>
-
-            <p class="control">
-              <b-tooltip label="Ctrl+X" position="is-top">
-                <b-button size="is-small" icon-left="cut" @click="handleCutClick">
-                  Cortar
-                </b-button>
-              </b-tooltip>
-            </p>
-
-            <p class="control" v-if="!isMobile">
-              <b-tooltip label="Ctrl+V" position="is-top">
-                <b-button size="is-small" icon-left="paste" @click="handlePasteClick">
-                  Pegar
-                </b-button>
-              </b-tooltip>
-            </p>
-          </b-field>
-        </div>
-      </b-tab-item>
-
-      <b-tab-item label="Estructura" icon="border-all">
-        <div class="ribbon-actions-row">
-          <b-field grouped group-multiline>
-            <p class="control">
-              <b-button
-                size="is-small"
-                icon-left="plus-square"
-                type="is-light"
-                :disabled="opPending"
-                @click="openAddRowModal"
-              >
-                {{ rowActionLabel }}
-              </b-button>
-            </p>
-
-            <p class="control" v-if="allowColumns">
-              <b-button
-                size="is-small"
-                icon-left="plus"
-                type="is-light"
-                :disabled="opPending"
-                @click="openAddColumnModal"
-              >
-                {{ colActionLabel }}
-              </b-button>
-            </p>
-          </b-field>
-        </div>
-      </b-tab-item>
-
-      <b-tab-item label="Datos" icon="database">
-        <div class="ribbon-actions-row">
-          <b-field grouped group-multiline>
-            <p class="control">
-              <b-button size="is-small" type="is-light" icon-left="filter" @click="emit('clear-filters')">
-                Limpiar filtros
-              </b-button>
-            </p>
-
-            <p class="control">
-              <b-button size="is-small" type="is-light" icon-left="sort-amount-down-alt" @click="emit('reset-sort')">
-                Restablecer orden
-              </b-button>
-            </p>
-
-            <p class="control">
-              <b-button
-                size="is-small"
-                :type="dirty ? 'is-primary' : 'is-light'"
-                icon-left="save"
-                :disabled="!dirty || saving || opPending"
-                @click="handleSaveClick"
-              >
-                <span v-if="saving || opPending">Guardando…</span>
-                <span v-else>Guardar cambios</span>
-              </b-button>
-            </p>
-
-            <p class="control">
-              <b-button
-                size="is-small"
-                type="is-light"
-                icon-left="undo"
-                :disabled="!dirty || saving || opPending"
-                @click="handleDiscard"
-              >
-                Descartar cambios
-              </b-button>
-            </p>
-
-            <p class="control">
-              <b-button size="is-small" type="is-light" icon-left="file-export" @click="emit('export')">
-                Exportar
-              </b-button>
-            </p>
-          </b-field>
-        </div>
-      </b-tab-item>
-    </b-tabs>
-
-    <!-- BARRA FX -->
-    <div class="mt-2 formula-bar-card">
-      <b-tag type="is-light" class="formula-fx-tag"> fx </b-tag>
-      <b-input
-        v-model="localValue"
-        type="text"
-        inputmode="numeric"
-        placeholder="Selecciona una celda"
-        size="is-small"
-        class="formula-input"
-        @input="handleFxInput"
-        @keyup.enter="applyChange"
-        @blur="applyChange"
-      />
-      <b-button
-        size="is-small"
-        :rounded="true"
-        type="is-primary"
-        icon-left="check"
-        class="formula-apply-button"
-        @click="applyChange"
-      >
-        Aplicar
-      </b-button>
+      </nav>
     </div>
 
-    <!-- ✅ OVERLAY REAL: TELEPORT A BODY -->
+    <!-- RIBBON -->
+    <div class="navtools-card navtools-card--ribbon">
+      <b-tabs v-model="activeTab" size="is-small" type="is-toggle-rounded" class="ribbon-tabs">
+        <b-tab-item label="Edición" icon="edit">
+          <div class="ribbon-actions-row">
+            <b-field grouped group-multiline>
+              <p class="control">
+                <b-tooltip label="Ctrl+Z" position="is-top">
+                  <b-button class="rbtn" size="is-small" icon-left="undo-alt" :disabled="!canUndo" @click="handleUndoClick">
+                    Deshacer
+                  </b-button>
+                </b-tooltip>
+              </p>
+
+              <p class="control">
+                <b-tooltip label="Ctrl+Y" position="is-top">
+                  <b-button class="rbtn" size="is-small" icon-left="redo-alt" :disabled="!canRedo" @click="handleRedoClick">
+                    Rehacer
+                  </b-button>
+                </b-tooltip>
+              </p>
+
+              <p class="control">
+                <b-tooltip label="Ctrl+C" position="is-top">
+                  <b-button class="rbtn" size="is-small" icon-left="copy" @click="handleCopyClick">
+                    Copiar
+                  </b-button>
+                </b-tooltip>
+              </p>
+
+              <p class="control">
+                <b-tooltip label="Ctrl+X" position="is-top">
+                  <b-button class="rbtn" size="is-small" icon-left="cut" @click="handleCutClick">
+                    Cortar
+                  </b-button>
+                </b-tooltip>
+              </p>
+
+              <p class="control" v-if="!isMobile">
+                <b-tooltip label="Ctrl+V" position="is-top">
+                  <b-button class="rbtn" size="is-small" icon-left="paste" @click="handlePasteClick">
+                    Pegar
+                  </b-button>
+                </b-tooltip>
+              </p>
+            </b-field>
+          </div>
+        </b-tab-item>
+
+        <b-tab-item label="Estructura" icon="border-all">
+          <div class="ribbon-actions-row">
+            <b-field grouped group-multiline>
+              <p class="control">
+                <b-button
+                  class="rbtn"
+                  size="is-small"
+                  icon-left="plus-square"
+                  type="is-light"
+                  :disabled="opPending"
+                  @click="openAddRowModal"
+                >
+                  {{ rowActionLabel }}
+                </b-button>
+              </p>
+
+              <p class="control" v-if="allowColumns">
+                <b-button
+                  class="rbtn"
+                  size="is-small"
+                  icon-left="plus"
+                  type="is-light"
+                  :disabled="opPending"
+                  @click="openAddColumnModal"
+                >
+                  {{ colActionLabel }}
+                </b-button>
+              </p>
+            </b-field>
+          </div>
+        </b-tab-item>
+
+        <b-tab-item label="Datos" icon="database">
+          <div class="ribbon-actions-row">
+            <b-field grouped group-multiline>
+              <p class="control">
+                <b-button class="rbtn" size="is-small" type="is-light" icon-left="filter" @click="emit('clear-filters')">
+                  Limpiar filtros
+                </b-button>
+              </p>
+
+              <p class="control">
+                <b-button class="rbtn" size="is-small" type="is-light" icon-left="sort-amount-down-alt" @click="emit('reset-sort')">
+                  Restablecer orden
+                </b-button>
+              </p>
+
+              <p class="control">
+                <b-button
+                  class="rbtn rbtn--primary"
+                  size="is-small"
+                  :type="dirty ? 'is-primary' : 'is-light'"
+                  icon-left="save"
+                  :disabled="!dirty || saving || opPending"
+                  @click="handleSaveClick"
+                >
+                  <span v-if="saving || opPending">Guardando…</span>
+                  <span v-else>Guardar cambios</span>
+                </b-button>
+              </p>
+
+              <p class="control">
+                <b-button
+                  class="rbtn"
+                  size="is-small"
+                  type="is-light"
+                  icon-left="undo"
+                  :disabled="!dirty || saving || opPending"
+                  @click="handleDiscard"
+                >
+                  Descartar cambios
+                </b-button>
+              </p>
+
+              <p class="control">
+                <b-button class="rbtn" size="is-small" type="is-light" icon-left="file-export" @click="emit('export')">
+                  Exportar
+                </b-button>
+              </p>
+            </b-field>
+          </div>
+        </b-tab-item>
+      </b-tabs>
+    </div>
+
+    <!-- FX BAR -->
+    <div class="navtools-card navtools-card--fx">
+      <div class="formula-bar-card">
+        <b-tag type="is-light" class="formula-fx-tag"> fx </b-tag>
+
+        <b-input
+          v-model="localValue"
+          type="text"
+          inputmode="numeric"
+          placeholder="Selecciona una celda"
+          size="is-small"
+          class="formula-input"
+          @input="handleFxInput"
+          @keyup.enter="applyChange"
+          @blur="applyChange"
+        />
+
+        <b-button
+          size="is-small"
+          :rounded="true"
+          type="is-primary"
+          icon-left="check"
+          class="formula-apply-button"
+          @click="applyChange"
+        >
+          Aplicar
+        </b-button>
+      </div>
+    </div>
+
+    <!-- ✅ OVERLAY DIRTY -->
     <teleport to="body">
       <transition name="dirty-float-slide">
         <div v-if="showDirtyFloat" class="dirty-float-root" role="status" aria-live="polite">
@@ -233,14 +244,7 @@ z<!-- src/components/ag-grid/navtools.vue -->
                   Descartar
                 </b-button>
 
-                <b-button
-                  size="is-small"
-                  type="is-light"
-                  icon-left="times"
-                  :disabled="saving || opPending"
-                  @click="dismissDirtyFloat"
-                  title="Ocultar aviso"
-                >
+                <b-button size="is-small" type="is-light" icon-left="times" :disabled="saving || opPending" @click="dismissDirtyFloat">
                   Ocultar
                 </b-button>
               </div>
@@ -276,27 +280,18 @@ const emit = defineEmits([
   'save-request',
   'discard-changes',
   'export',
-  // ✅ NUEVO: solo se emiten cuando el usuario escribe / confirma en la barra FX
   'fx-input',
   'fx-commit'
 ])
 
 const activeTab = ref(0)
 const localValue = ref(props.modelValue ?? '')
-
-// ✅ Flag: evita "autoguardado" por blur si no escribiste realmente
 const fxDirty = ref(false)
 
 const internalInstance = getCurrentInstance()
 const $buefy = internalInstance?.appContext?.config?.globalProperties?.$buefy
 
 /* ===================== SAFE UI ERROR HANDLING ===================== */
-/**
- * Objetivo:
- * - NO exponer: tokens, credenciales, URIs, headers, stacktraces, paths, dumps.
- * - Mostrar mensajes seguros y categorías útiles (validación / sesión / permisos / red / servidor).
- */
-
 const stripHtml = (s) => String(s ?? '').replace(/<[^>]*>/g, '')
 const collapseWs = (s) => String(s ?? '').replace(/\s+/g, ' ').trim()
 
@@ -312,148 +307,88 @@ const looksLikeStackTrace = (s) => {
 const containsSensitive = (s) => {
   const t = String(s ?? '')
   if (!t) return false
-
   const patterns = [
     /\bAuthorization:\s*Bearer\s+[A-Za-z0-9\-_\.]+\b/i,
     /\bBearer\s+[A-Za-z0-9\-_\.]+\b/i,
-    /\beyJ[A-Za-z0-9\-_]+?\.[A-Za-z0-9\-_]+?\.[A-Za-z0-9\-_]+\b/, // JWT
+    /\beyJ[A-Za-z0-9\-_]+?\.[A-Za-z0-9\-_]+?\.[A-Za-z0-9\-_]+\b/,
     /\bmongodb(\+srv)?:\/\/[^\s]+/i,
-    /\/\/[^/\s:]+:[^@\s]+@/i, // user:pass@
+    /\/\/[^/\s:]+:[^@\s]+@/i,
     /\b(api[_-]?key|token|secret|password|passwd|pwd)\b\s*[:=]\s*["']?[^"'\s]+/i,
     /\bPRIVATE KEY\b|\bBEGIN (RSA|EC|OPENSSH) PRIVATE KEY\b/i,
-    /\bAKIA[0-9A-Z]{16}\b/, // AWS access key-ish
+    /\bAKIA[0-9A-Z]{16}\b/,
   ]
-
   return patterns.some((re) => re.test(t))
 }
 
 const sanitizeUserText = (raw, { maxLen = 140 } = {}) => {
   if (raw == null) return ''
   let s = collapseWs(stripHtml(raw))
-
-  // si trae data sensible o stacktrace: no lo mostramos
   if (!s) return ''
   if (containsSensitive(s) || looksLikeStackTrace(s)) return ''
-
-  // recorte bonito
   if (s.length > maxLen) s = s.slice(0, maxLen - 1).trimEnd() + '…'
   return s
 }
 
 const guessCategory = (status, rawMsg) => {
   const msg = String(rawMsg ?? '').toLowerCase()
-
-  // Red
-  if (
-    msg.includes('network error') ||
-    msg.includes('failed to fetch') ||
-    msg.includes('econnrefused') ||
-    msg.includes('timeout') ||
-    msg.includes('etimedout')
-  ) return 'network'
-
-  // Auth / permisos
+  if (msg.includes('network error') || msg.includes('failed to fetch') || msg.includes('econnrefused') || msg.includes('timeout') || msg.includes('etimedout')) return 'network'
   if (status === 401) return 'auth'
   if (status === 403) return 'forbidden'
-
-  // Validación / negocio
   if (status === 400 || status === 422) return 'validation'
   if (status === 404) return 'notfound'
   if (status === 409) return 'conflict'
   if (status === 429) return 'ratelimit'
-
-  // Firmas comunes backend
   if (msg.includes('e11000') || msg.includes('duplicate key')) return 'conflict'
   if (msg.includes('casterror') || msg.includes('validationerror')) return 'validation'
-
-  // Servidor
   if (typeof status === 'number' && status >= 500) return 'server'
-
   return 'generic'
 }
 
 const categoryToPublicMessage = (category) => {
   switch (category) {
-    case 'network':
-      return 'No se pudo conectar con el servidor. Revisa tu red o intenta de nuevo.'
-    case 'auth':
-      return 'Tu sesión expiró. Vuelve a iniciar sesión.'
-    case 'forbidden':
-      return 'No tienes permisos para realizar esta acción.'
-    case 'validation':
-      return 'Hay datos inválidos o fuera de rango. Revisa los valores e intenta de nuevo.'
-    case 'notfound':
-      return 'No se encontró el recurso solicitado.'
-    case 'conflict':
-      return 'Conflicto: ese registro/valor ya existe o está en uso.'
-    case 'ratelimit':
-      return 'Demasiadas solicitudes. Intenta nuevamente en unos segundos.'
-    case 'server':
-      return 'Error interno del servidor. Intenta más tarde.'
-    default:
-      return 'Ocurrió un error al procesar la operación. Intenta de nuevo.'
+    case 'network': return 'No se pudo conectar con el servidor. Revisa tu red o intenta de nuevo.'
+    case 'auth': return 'Tu sesión expiró. Vuelve a iniciar sesión.'
+    case 'forbidden': return 'No tienes permisos para realizar esta acción.'
+    case 'validation': return 'Hay datos inválidos o fuera de rango. Revisa los valores e intenta de nuevo.'
+    case 'notfound': return 'No se encontró el recurso solicitado.'
+    case 'conflict': return 'Conflicto: ese registro/valor ya existe o está en uso.'
+    case 'ratelimit': return 'Demasiadas solicitudes. Intenta nuevamente en unos segundos.'
+    case 'server': return 'Error interno del servidor. Intenta más tarde.'
+    default: return 'Ocurrió un error al procesar la operación. Intenta de nuevo.'
   }
 }
 
-/**
- * Normaliza cualquier cosa que venga del padre (ack, error, axios shape),
- * y devuelve un objeto seguro para UI.
- */
 const normalizeAck = (ack, { successFallback = 'Listo.', errorFallback = 'Ocurrió un error.' } = {}) => {
   if (!ack) return null
-
-  // si viene string
   if (typeof ack === 'string') {
     const safe = sanitizeUserText(ack)
     return { ok: false, status: null, message: safe || errorFallback, _raw: ack }
   }
-
-  // Error instance
   if (ack instanceof Error) {
     const status = ack?.response?.status ?? ack?.status ?? null
     const rawMsg = ack?.response?.data?.message ?? ack?.message ?? String(ack)
     const category = guessCategory(status, rawMsg)
     const safeMsg = sanitizeUserText(rawMsg)
-    return {
-      ok: false,
-      status,
-      message: safeMsg || categoryToPublicMessage(category),
-      _raw: rawMsg
-    }
+    return { ok: false, status, message: safeMsg || categoryToPublicMessage(category), _raw: rawMsg }
   }
 
-  // axios-style / custom
-  const status =
-    ack?.status ??
-    ack?.statusCode ??
-    ack?.response?.status ??
-    ack?.response?.statusCode ??
-    null
-
+  const status = ack?.status ?? ack?.statusCode ?? ack?.response?.status ?? ack?.response?.statusCode ?? null
   const ok =
     ack?.ok === true ? true :
     ack?.ok === false ? false :
     typeof status === 'number' ? status < 400 :
     null
 
-  const rawMsg =
-    ack?.message ??
-    ack?.response?.data?.message ??
-    ack?.response?.data?.error ??
-    ack?.error ??
-    ''
+  const rawMsg = ack?.message ?? ack?.response?.data?.message ?? ack?.response?.data?.error ?? ack?.error ?? ''
 
-  // si ok==true, permitimos un texto seguro (pero sanitizado). Si no hay, fallback.
   if (ok === true) {
     const safe = sanitizeUserText(rawMsg)
     return { ok: true, status, message: safe || successFallback, _raw: rawMsg }
   }
 
-  // si ok==false o indeterminado, evitamos exponer detalles sensibles
   const category = guessCategory(status, rawMsg)
   const safe = sanitizeUserText(rawMsg)
   const publicMsg = safe || categoryToPublicMessage(category) || errorFallback
-
   return { ok: ok === null ? false : ok, status, message: publicMsg, _raw: rawMsg }
 }
 
@@ -461,7 +396,6 @@ const safeToast = (message, type = 'is-info') => {
   try {
     $buefy?.toast.open({ message: sanitizeUserText(message, { maxLen: 180 }) || 'Listo.', type })
   } catch {
-    // NO console.error con mensaje crudo (podría traer credenciales)
     console.warn('[navtools] toast failed')
   }
 }
@@ -474,12 +408,7 @@ const toastFromAck = (ack, { successFallback, errorFallback } = {}) => {
 
 /* ===================== Backend ACK (estado real) ===================== */
 const opPending = ref(false)
-const lastServer = ref({
-  kind: 'idle', // 'idle' | 'ok' | 'error'
-  text: '',
-  status: null,
-  at: null
-})
+const lastServer = ref({ kind: 'idle', text: '', status: null, at: null })
 
 const serverBadge = computed(() => {
   if (props.saving || opPending.value) return { type: 'is-info', icon: 'spinner', text: 'Procesando…' }
@@ -492,51 +421,29 @@ const markServerOk = (text = 'Operación exitosa', status = null) => {
   lastServer.value = { kind: 'ok', text: sanitizeUserText(text) || 'Operación exitosa', status, at: new Date() }
 }
 const markServerErr = (text = 'Error', status = null) => {
-  // ⚠️ nunca mostramos el texto crudo si venía sucio
   lastServer.value = { kind: 'error', text: sanitizeUserText(text) || 'Ocurrió un error', status, at: new Date() }
 }
 
-/**
- * Emite evento con callback ACK:
- * El padre puede llamar ack({ ok, status, message }) cuando termine el request real al backend.
- * Si el padre no llama ack, esto NO asume éxito (solo muestra mensaje neutro).
- */
 const emitWithAck = (eventName, ...args) => {
   const ACK_TIMEOUT_MS = 2000
   return new Promise((resolve) => {
     let done = false
-    const ack = (payload) => {
-      if (done) return
-      done = true
-      resolve(payload)
-    }
+    const ack = (payload) => { if (done) return; done = true; resolve(payload) }
     emit(eventName, ...args, ack)
-
-    setTimeout(() => {
-      if (done) return
-      done = true
-      resolve(undefined)
-    }, ACK_TIMEOUT_MS)
+    setTimeout(() => { if (done) return; done = true; resolve(undefined) }, ACK_TIMEOUT_MS)
   })
 }
 
-/* ========= Notificación flotante (FIX: vuelve a salir en nuevos cambios) ========= */
+/* ========= Dirty float ========= */
 const dirtyFloatDismissed = ref(false)
 const dirtyChangeTick = ref(0)
-
 const showDirtyFloat = computed(() => props.dirty && !props.saving && !dirtyFloatDismissed.value)
-
-const dismissDirtyFloat = () => {
-  dirtyFloatDismissed.value = true
-}
+const dismissDirtyFloat = () => { dirtyFloatDismissed.value = true }
 
 watch(
   () => props.modelValue,
   (val, oldVal) => {
-    // cuando el padre cambia el valor (por selección de celda u otros),
-    // esto NO debe "commit" nada: reseteamos bandera de edición local.
     fxDirty.value = false
-
     if (!props.dirty) return
     if (props.saving) return
     if (oldVal === undefined) return
@@ -551,7 +458,7 @@ watch(dirtyChangeTick, () => {
   if (dirtyFloatDismissed.value) dirtyFloatDismissed.value = false
 })
 
-/* ========= Warn al cerrar pestaña ========= */
+/* ========= Warn unload ========= */
 const onBeforeUnload = (e) => {
   if (!props.dirty) return
   e.preventDefault()
@@ -571,7 +478,7 @@ watch(
   { immediate: true }
 )
 
-/* ========= Historial undo/redo ========= */
+/* ========= Undo/redo ========= */
 const MAX_HISTORY = 200
 const undoStack = ref([])
 const redoStack = ref([])
@@ -580,9 +487,6 @@ const isApplyingHistory = ref(false)
 const canUndo = computed(() => undoStack.value.length > 0)
 const canRedo = computed(() => redoStack.value.length > 0)
 
-// ⚠️ Nota: esto sigue escuchando modelValue (que cambia al seleccionar celda).
-// Tu bug principal no era este; el bug era que se editaba al seleccionar.
-// Si luego quieres, hacemos undo/redo por "cellKey" para que sea perfecto.
 watch(
   () => props.modelValue,
   (val, oldVal) => {
@@ -595,30 +499,25 @@ watch(
   }
 )
 
-/* ===================== FX (solo usuario escribe) ===================== */
+/* ===================== FX ===================== */
 const handleFxInput = (val) => {
   fxDirty.value = true
   emit('fx-input', val ?? localValue.value)
 }
 
 const applyChange = () => {
-  // ✅ Si no se escribió nada, NO hacemos nada (evita commits por blur/click)
   if (!fxDirty.value) return
   fxDirty.value = false
 
   const rawText = String(localValue.value ?? '')
   const raw = rawText.trim()
 
-  // emitimos para el padre (si le sirve guardar el estado)
   let next
   if (raw === '') next = 0
   else if (/^-?\d+(\.\d+)?$/.test(raw)) next = Number(raw)
   else next = stripHtml(raw)
 
-  // evita spam de update por mismos valores
   if (next !== props.modelValue) emit('update:modelValue', next)
-
-  // ✅ commit explícito para que el grid aplique SOLO cuando hubo escritura real
   emit('fx-commit', rawText)
 }
 
@@ -642,6 +541,7 @@ const redo = () => {
   setTimeout(() => (isApplyingHistory.value = false), 0)
 }
 
+/* ========= Clipboard ========= */
 const copyToClipboard = async (text) => {
   try {
     if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(text)
@@ -684,9 +584,7 @@ const pasteFromClipboard = async () => {
   }
 }
 
-const copyCell = async () => {
-  if (localValue.value !== '' && localValue.value != null) await copyToClipboard(String(localValue.value))
-}
+const copyCell = async () => { if (localValue.value !== '' && localValue.value != null) await copyToClipboard(String(localValue.value)) }
 const cutCell = async () => {
   if (localValue.value !== '' && localValue.value != null) {
     await copyToClipboard(String(localValue.value))
@@ -710,7 +608,7 @@ const handlePasteClick = () => pasteCell()
 /* ========= Modales fila/columna ========= */
 const PHYSICAL_LIMITS = Object.freeze({
   SPH: { min: -40, max: 40 },
-  CYL: { min: -15, max: 15 },
+  CYL: { min: -15, max: 0 },   // ✅ en SPH_CYL nosotros operamos CYL negativo/0
   BASE: { min: -40, max: 40 },
   ADD: { min: 0, max: 8 }
 })
@@ -732,27 +630,20 @@ const fmtSigned = (value) => {
 const rowLabel = computed(() => {
   switch (props.tipoMatriz) {
     case 'SPH_CYL':
-    case 'SPH_ADD':
-      return 'SPH'
+    case 'SPH_ADD': return 'SPH'
     case 'BASE_ADD':
-    case 'BASE':
-      return 'BASE'
-    default:
-      return 'valor'
+    case 'BASE': return 'BASE'
+    default: return 'valor'
   }
 })
 
 const colLabel = computed(() => {
   switch (props.tipoMatriz) {
-    case 'SPH_CYL':
-      return 'CYL'
+    case 'SPH_CYL': return 'CYL'
     case 'SPH_ADD':
-    case 'BASE_ADD':
-      return 'ADD'
-    case 'BASE':
-      return 'valor'
-    default:
-      return 'valor'
+    case 'BASE_ADD': return 'ADD'
+    case 'BASE': return 'valor'
+    default: return 'valor'
   }
 })
 
@@ -787,6 +678,17 @@ const colActionLabel = computed(() => {
   }
 })
 
+/** ✅ regla: si es CYL en SPH_CYL, debe ser negativo (o 0 no permitido por tu lógica de columnas) */
+const validateCylSignRule = (num) => {
+  if (props.tipoMatriz !== 'SPH_CYL') return true
+  if (!Number.isFinite(num)) return false
+  if (num >= 0) {
+    safeToast('Para CYL escribe el valor NEGATIVO. Ej: -0.25, -1.00, -7.00.', 'is-danger')
+    return false
+  }
+  return true
+}
+
 const ensureQuarterStepOrToast = (value, kind) => {
   const num = Number(value)
   const lbl = kind === 'row' ? rowLabel.value : colLabel.value
@@ -808,10 +710,15 @@ const ensureQuarterStepOrToast = (value, kind) => {
   if (!isQuarterStep(num)) {
     const what = lbl === 'valor' ? '' : ` de ${lbl}`
     safeToast(
-      `El valor${what} debe ser múltiplo de 0.25 D (…00, …25, …50, …75). Ejemplos: -6.00, -5.75, -5.50, +0.00, +0.25, +0.50.`,
+      `El valor${what} debe ser múltiplo de 0.25 D (…00, …25, …50, …75). Ejemplos: -6.00, -5.75, -5.50, +0.00, +0.25.`,
       'is-danger'
     )
     return false
+  }
+
+  // ✅ extra: si es col CYL, obligamos signo negativo
+  if (kind === 'col' && getContextDimension('col') === 'CYL') {
+    if (!validateCylSignRule(num)) return false
   }
 
   return true
@@ -844,17 +751,8 @@ const openAddRowModal = () => {
         errorFallback: 'No se pudo agregar la fila.'
       })
 
-      if (n?.ok === true) {
-        markServerOk(n.message, n.status ?? null)
-        toastFromAck(n, { successFallback: n.message })
-        return
-      }
-
-      if (n?.ok === false) {
-        markServerErr(n.message, n.status ?? null)
-        toastFromAck(n, { errorFallback: n.message })
-        return
-      }
+      if (n?.ok === true) { markServerOk(n.message, n.status ?? null); toastFromAck(n); return }
+      if (n?.ok === false) { markServerErr(n.message, n.status ?? null); toastFromAck(n); return }
 
       markServerOk('Solicitud enviada', null)
       safeToast('Solicitud enviada. Si no ves cambios, revisa el log del backend.', 'is-warning')
@@ -866,7 +764,15 @@ const openAddColumnModal = () => {
   if (!allowColumns.value) return
   const dim = getContextDimension('col')
   const limits = dim ? PHYSICAL_LIMITS[dim] : null
-  const placeholder = dim === 'CYL' ? 'Ej: -0.25' : dim === 'ADD' ? 'Ej: +1.00' : 'Ej: 0.00'
+
+  // ✅ placeholder claro para CYL
+  const placeholder =
+    dim === 'CYL'
+      ? 'Ej: -0.25 (CYL siempre negativo)'
+      : dim === 'ADD'
+        ? 'Ej: +1.00'
+        : 'Ej: 0.00'
+
   const inputAttrs = { placeholder, type: 'number', step: '0.25' }
   if (limits) { inputAttrs.min = limits.min; inputAttrs.max = limits.max }
 
@@ -877,11 +783,14 @@ const openAddColumnModal = () => {
     onConfirm: async (value) => {
       if (value === null || value === undefined || value === '') return
       const num = Number(value)
+
+      // ✅ validación (incluye CYL negativo obligatorio cuando aplica)
       if (!ensureQuarterStepOrToast(num, 'col')) return
 
       opPending.value = true
       safeToast(`Solicitando agregar columna ${colLabel.value} ${fmtSigned(num)}…`, 'is-info')
 
+      // ✅ para CYL mandamos el negativo tal cual (sin abs)
       const ack = await emitWithAck('add-column', num)
       opPending.value = false
 
@@ -890,17 +799,8 @@ const openAddColumnModal = () => {
         errorFallback: 'No se pudo agregar la columna.'
       })
 
-      if (n?.ok === true) {
-        markServerOk(n.message, n.status ?? null)
-        toastFromAck(n, { successFallback: n.message })
-        return
-      }
-
-      if (n?.ok === false) {
-        markServerErr(n.message, n.status ?? null)
-        toastFromAck(n, { errorFallback: n.message })
-        return
-      }
+      if (n?.ok === true) { markServerOk(n.message, n.status ?? null); toastFromAck(n); return }
+      if (n?.ok === false) { markServerErr(n.message, n.status ?? null); toastFromAck(n); return }
 
       markServerOk('Solicitud enviada', null)
       safeToast('Solicitud enviada. Si no ves cambios, revisa el log del backend.', 'is-warning')
@@ -913,10 +813,7 @@ const isMobile =
   typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '')
 
 const handleSaveInternal = () => {
-  if (!props.dirty) {
-    safeToast('No hay cambios pendientes por guardar.', 'is-info')
-    return
-  }
+  if (!props.dirty) { safeToast('No hay cambios pendientes por guardar.', 'is-info'); return }
   if (props.saving || opPending.value) return
 
   $buefy?.dialog.confirm({
@@ -938,16 +835,8 @@ const handleSaveInternal = () => {
         errorFallback: 'No se pudieron guardar los cambios.'
       })
 
-      if (n?.ok === true) {
-        markServerOk(n.message, n.status ?? null)
-        toastFromAck(n, { successFallback: n.message })
-        return
-      }
-      if (n?.ok === false) {
-        markServerErr(n.message, n.status ?? null)
-        toastFromAck(n, { errorFallback: n.message })
-        return
-      }
+      if (n?.ok === true) { markServerOk(n.message, n.status ?? null); toastFromAck(n); return }
+      if (n?.ok === false) { markServerErr(n.message, n.status ?? null); toastFromAck(n); return }
 
       markServerOk('Guardado solicitado', null)
       safeToast('Guardado solicitado. Si falla, revisa el backend (HTTP/validaciones).', 'is-warning')
@@ -998,10 +887,7 @@ const lastSavedLabel = computed(() => {
 })
 
 const handleDiscard = () => {
-  if (!props.dirty) {
-    safeToast('No hay cambios locales para descartar.', 'is-info')
-    return
-  }
+  if (!props.dirty) { safeToast('No hay cambios locales para descartar.', 'is-info'); return }
   $buefy?.dialog.confirm({
     title: 'Descartar cambios',
     message: 'Se perderán los cambios locales no guardados. ¿Deseas continuar?',
@@ -1015,19 +901,55 @@ const handleDiscard = () => {
 </script>
 
 <style scoped>
-/* ... (TU CSS original sin cambios) ... */
-.navtools { width: 100%; max-width: 100%; }
+/* ===== tokens (metodología) ===== */
+.navtools {
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
 
+/* glass cards */
+.navtools-card {
+  border-radius: 0.95rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 10px 24px rgba(17, 24, 39, 0.06);
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(10px);
+}
+
+.navtools-card--meta {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(121,87,213,0.10), transparent 55%),
+    radial-gradient(circle at 100% 100%, rgba(236,72,153,0.08), transparent 60%),
+    rgba(255,255,255,0.92);
+}
+
+.navtools-card--ribbon {
+  background:
+    linear-gradient(120deg, rgba(121,87,213,0.10), rgba(154,109,255,0.08), rgba(236,72,153,0.06)),
+    rgba(255,255,255,0.92);
+}
+
+.navtools-card--fx {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(121,87,213,0.08), transparent 55%),
+    rgba(255,255,255,0.92);
+}
+
+/* header row */
 .navtools-header {
   width: 100%;
-  height: 40px;
-  max-width: 100%;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
+  padding: 0.55rem 0.7rem;
+  margin: 0;
+  min-height: 44px;
 }
 
 .level-left, .level-right, .level-item { min-width: 0; }
 
+/* tags */
 .meta-tags-scroll {
   max-width: 100%;
   overflow-x: auto;
@@ -1035,80 +957,98 @@ const handleDiscard = () => {
   -webkit-overflow-scrolling: touch;
 }
 .meta-taglist { flex-wrap: nowrap; white-space: nowrap; }
+.meta-pill {
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px rgba(148,163,184,0.22);
+}
 
-/* ribbon */
+.server-pill {
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px rgba(148,163,184,0.22);
+}
+
+/* tabs */
+.ribbon-tabs::v-deep(.tabs) { margin-bottom: 0 !important; }
+.ribbon-tabs::v-deep(.tab-content) { padding: 0.35rem 0.4rem 0.55rem; }
+
+.ribbon-tabs::v-deep(.tabs.is-toggle-rounded li a) {
+  border-radius: 999px !important;
+  font-weight: 800;
+}
+
+/* ribbon actions */
 .ribbon-actions-row {
-  height: 40px;
   width: 100%;
   max-width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
+  padding: 0.25rem 0.15rem;
 }
 .ribbon-actions-row::v-deep(.field.is-grouped) { flex-wrap: nowrap; }
 .ribbon-actions-row::v-deep(.control) { flex: 0 0 auto; }
+
+/* buttons */
+.rbtn {
+  border-radius: 999px !important;
+  box-shadow: 0 0 0 1px rgba(148,163,184,0.18);
+  transition: transform 120ms ease, box-shadow 140ms ease;
+}
+.rbtn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(15,23,42,0.10), 0 0 0 1px rgba(148,163,184,0.18);
+}
+.rbtn--primary {
+  box-shadow: 0 0 0 1px rgba(121,87,213,0.18);
+}
 
 /* fx */
 .formula-bar-card {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.35rem 0.6rem;
-  background: #f7f3ff;
+  padding: 0.45rem 0.6rem;
   border-radius: 999px;
-  border: 1px solid #e0d7ff;
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
+  border: 1px solid rgba(121,87,213,0.18);
+  background:
+    radial-gradient(circle at 20% 0%, rgba(121,87,213,0.12), transparent 55%),
+    linear-gradient(90deg, rgba(144,111,225,0.10), rgba(236,72,153,0.06)),
+    rgba(255,255,255,0.95);
+  margin: 0.55rem 0.55rem 0.6rem;
 }
+
 .formula-fx-tag {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding-inline: 0.9rem;
-  min-width: 3rem;
-  font-weight: 600;
   border-radius: 999px;
-  background: #ffffff;
+  padding-inline: 0.9rem;
+  font-weight: 900;
+  background: rgba(255,255,255,0.96);
   color: #7957d5;
-  border: 1px solid #e0d7ff;
+  border: 1px solid rgba(121,87,213,0.18);
 }
+
 .formula-input { flex: 1 1 260px; min-width: 120px; }
 .formula-input::v-deep(.input) {
   border-radius: 999px;
   border-color: transparent;
   box-shadow: none;
-  background: #ffffff;
+  background: rgba(255,255,255,0.98);
   height: 2.1rem;
   padding-inline: 0.9rem;
 }
 .formula-input::v-deep(.input:focus) {
-  border-color: #b39df2;
-  box-shadow: 0 0 0 0.08rem rgba(121, 87, 213, 0.25);
+  border-color: rgba(121,87,213,0.35);
+  box-shadow: 0 0 0 0.09rem rgba(121, 87, 213, 0.22);
 }
 .formula-apply-button {
-  flex: 0 0 auto;
   border-radius: 999px;
   padding-inline: 1.1rem;
-  font-weight: 600;
+  font-weight: 900;
   white-space: nowrap;
 }
 
-/* overlay */
-.dirty-float-root {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-}
-
-.dirty-float {
-  position: absolute;
-  right: 14px;
-  bottom: 14px;
-  max-width: min(720px, calc(100vw - 28px));
-  pointer-events: auto;
-}
+/* overlay dirty (tu base) */
+.dirty-float-root { position: fixed; inset: 0; pointer-events: none; z-index: 1; }
+.dirty-float { position: absolute; right: 14px; bottom: 14px; max-width: min(720px, calc(100vw - 28px)); pointer-events: auto; }
 
 .dirty-float__content {
   display: flex;
@@ -1123,72 +1063,24 @@ const handleDiscard = () => {
   box-shadow: 0 12px 28px rgba(17, 24, 39, 0.18);
 }
 
-.dirty-float__left {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  min-width: 0;
-}
-
+.dirty-float__left { display: flex; align-items: center; gap: 0.55rem; min-width: 0; }
 .dirty-float__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 999px;
   background: rgba(245, 158, 11, 0.18);
   border: 1px solid rgba(245, 158, 11, 0.25);
   flex: 0 0 auto;
-  line-height: 1;
 }
-.dirty-float__icon::v-deep(.icon) {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  line-height: 1 !important;
-  height: 1em;
-}
-.dirty-float__icon::v-deep(.icon i) {
-  line-height: 1 !important;
-  display: block;
-}
-
 .dirty-float__texts { min-width: 0; }
-.dirty-float__title {
-  font-weight: 900;
-  letter-spacing: 0.01em;
-  line-height: 1.1;
-  color: #3b2a1a;
-}
-.dirty-float__subtitle {
-  font-size: 0.78rem;
-  line-height: 1.15;
-  color: rgba(55, 65, 81, 0.88);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 52ch;
-}
+.dirty-float__title { font-weight: 900; letter-spacing: 0.01em; line-height: 1.1; color: #3b2a1a; }
+.dirty-float__subtitle { font-size: 0.78rem; line-height: 1.15; color: rgba(55, 65, 81, 0.88); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 52ch; }
 .dirty-float__hint { margin-left: 0.35rem; opacity: 0.9; }
+.dirty-float__actions { display: flex; align-items: center; gap: 0.45rem; flex: 0 0 auto; }
 
-.dirty-float__actions {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  flex: 0 0 auto;
-}
-
-/* transición */
 .dirty-float-slide-enter-active,
-.dirty-float-slide-leave-active {
-  transition: transform 160ms ease, opacity 160ms ease;
-}
+.dirty-float-slide-leave-active { transition: transform 160ms ease, opacity 160ms ease; }
 .dirty-float-slide-enter-from,
-.dirty-float-slide-leave-to {
-  opacity: 0;
-  transform: translate3d(0, 8px, 0);
-}
+.dirty-float-slide-leave-to { opacity: 0; transform: translate3d(0, 8px, 0); }
 
 @media (prefers-reduced-motion: reduce) {
   .dirty-float-slide-enter-active,
@@ -1196,18 +1088,9 @@ const handleDiscard = () => {
 }
 
 @media screen and (max-width: 768px) {
-  .dirty-float {
-    left: 10px;
-    right: 10px;
-    bottom: 10px;
-    max-width: none;
-  }
+  .dirty-float { left: 10px; right: 10px; bottom: 10px; max-width: none; }
   .dirty-float__content { flex-wrap: wrap; gap: 0.6rem; }
   .dirty-float__subtitle { display: none; }
-  .dirty-float__actions {
-    width: 100%;
-    justify-content: flex-end;
-    flex-wrap: wrap;
-  }
+  .dirty-float__actions { width: 100%; justify-content: flex-end; flex-wrap: wrap; }
 }
 </style>

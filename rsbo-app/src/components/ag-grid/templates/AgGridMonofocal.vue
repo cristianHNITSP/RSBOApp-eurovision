@@ -1,54 +1,25 @@
 <!-- src/components/ag-grid/templates/AgGridMonofocal.vue -->
 <template>
-  <div class="is-flex is-flex-direction-column" style="height: 100%;">
-    <navtools
-      class="p-4"
-      v-model="formulaValue"
-      :dirty="dirty"
-      :saving="saving"
-      :total-rows="totalRows"
-      :sheet-name="sheetName"
-      :tipo-matriz="tipoMatriz"
-      :material="material"
-      :tratamientos="tratamientos"
-      :last-saved-at="lastSavedAt"
-      @add-row="handleAddRow"
-      @add-column="handleAddColumn"
-      @clear-filters="clearFilters"
-      @reset-sort="resetSort"
-      @toggle-filters="handleToggleFilters"
-      @save-request="handleSave"
-      @discard-changes="handleDiscard"
-      @refresh="handleRefresh"
-      @seed="handleSeed"
-      @export="handleExport"
-      @fx-input="onFxInput"
-      @fx-commit="onFxCommit"
-    />
+  <div class="grid-page">
+    <!-- ✅ TOPBAR (sticky) -->
+    <header class="grid-topbar">
+      <navtools class="navtools-wrap" v-model="formulaValue" :dirty="dirty" :saving="saving" :total-rows="totalRows"
+        :sheet-name="sheetName" :tipo-matriz="tipoMatriz" :material="material" :tratamientos="tratamientos"
+        :last-saved-at="lastSavedAt" @add-row="handleAddRow" @add-column="handleAddColumn" @clear-filters="clearFilters"
+        @reset-sort="resetSort" @toggle-filters="handleToggleFilters" @save-request="handleSave"
+        @discard-changes="handleDiscard" @refresh="handleRefresh" @seed="handleSeed" @export="handleExport"
+        @fx-input="onFxInput" @fx-commit="onFxCommit" />
+    </header>
 
-    <div
-      class="buefy-balham-light grid-shell"
-      :class="{ 'grid-shell--switching': switchingView }"
-      style="flex: 1 1 auto; display: flex; flex-direction: column; overflow: auto;"
-    >
-      <AgGridVue
-        class="ag-grid-buefy"
-        :columnDefs="columns"
-        :rowData="rowData"
-        :defaultColDef="defaultColDef"
-        :getRowId="getRowId"
-        :animateRows="true"
-        :localeText="localeText"
-        :theme="themeCustom"
-        :rowHeight="30"
-        :headerHeight="32"
-        :suppressMovableColumns="true"
-        @cellClicked="onCellClicked"
-        @cellValueChanged="onCellValueChanged"
-        @grid-ready="onGridReady"
-        style="width: 100%; height: 100%;"
-      />
-    </div>
+    <!-- ✅ GRID MAIN -->
+    <main class="grid-main">
+      <div class="buefy-balham-light grid-shell" :class="{ 'grid-shell--switching': switchingView }">
+        <AgGridVue class="ag-grid-buefy" :columnDefs="columns" :rowData="rowData" :defaultColDef="defaultColDef"
+          :getRowId="getRowId" :animateRows="true" :localeText="localeText" :theme="themeCustom" :rowHeight="30"
+          :headerHeight="32" :suppressMovableColumns="true" @cellClicked="onCellClicked"
+          @cellValueChanged="onCellValueChanged" @grid-ready="onGridReady" style="width: 100%; height: 100%;" />
+      </div>
+    </main>
   </div>
 </template>
 
@@ -115,6 +86,13 @@ const fmtSigned = (n) => {
   return num >= 0 ? `+${s}` : s;
 };
 const isNumeric = (v) => /^-?\d+(\.\d+)?$/.test(String(v ?? "").trim());
+
+/* ✅ CYL headers: siempre “-” por columna (0.00 neutro) */
+const fmtCylHeader = (cDisp) => {
+  const n = Number(cDisp);
+  if (!Number.isFinite(n)) return "";
+  return n === 0 ? "0.00" : `-${n.toFixed(2)}`;
+};
 
 /** decimal-safe axis builder (incluyente) */
 function buildAxisRange(start, end, step = 0.25) {
@@ -183,8 +161,7 @@ const themeCustom = themeQuartz
     headerTextColor: "#4527a0",
     headerFontSize: 11,
     headerFontWeight: 600,
-    fontFamily:
-      "Satoshi, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    fontFamily: "Satoshi, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     fontSize: 12,
     spacing: 3,
     oddRowBackgroundColor: "#fbfbff"
@@ -267,7 +244,7 @@ const columns = computed(() => [
     headerName: "CYL (-)",
     children: cylValues.value.map((cDisp) => ({
       field: `cyl_${norm(cDisp)}`,
-      headerName: Number(cDisp).toFixed(2),
+      headerName: fmtCylHeader(cDisp), // ✅ “-” por columna
       editable: true,
       filter: "agNumberColumnFilter",
       minWidth: 80,
@@ -409,9 +386,7 @@ async function loadRows() {
   cylValues.value = [...new Set(cylAxisDisplay)].sort((a, b) => a - b);
 
   const key = (s, cDisp) => `${to2(s)}|${to2(cDisp)}`;
-  const map = new Map(
-    items.map((i) => [key(i.sph, Math.abs(i.cyl)), Number(i.existencias ?? 0)])
-  );
+  const map = new Map(items.map((i) => [key(i.sph, Math.abs(i.cyl)), Number(i.existencias ?? 0)]));
 
   rowData.value = sphAxis.map((sph) => {
     const row = { sph: to2(sph) };
@@ -569,9 +544,8 @@ const handleAddColumn = async (nuevoValor, ack) => {
 
   if (!Number.isFinite(raw)) return ackErr(ack, "Ingresa un CYL numérico", 400);
   if (!isQuarterStep(raw)) return ackErr(ack, "CYL debe ser múltiplo de 0.25 (…00, …25, …50, …75)", 400);
-
-  const vDisp = to2(Math.abs(raw));
-  if (vDisp === 0) return ackErr(ack, "CYL 0.00 ya existe (no se puede duplicar)", 409);
+  if (raw >= 0) return ackErr(ack, "CYL debe ingresarse en negativo. Ej: -0.25, -1.00, -7.00", 400);
+  const vDisp = to2(Math.abs(raw)); // aquí ya es seguro: raw es negativo  if (vDisp === 0) return ackErr(ack, "CYL 0.00 ya existe (no se puede duplicar)", 409);
   if (vDisp > P.cylAbsMax) return ackErr(ack, `CYL fuera de límite (máx ${P.cylAbsMax})`, 400);
   if (cylValues.value.includes(vDisp)) return ackErr(ack, `CYL ${vDisp.toFixed(2)} ya existe`, 409);
 
@@ -696,19 +670,55 @@ function handleExport() {
 </script>
 
 <style scoped>
-.buefy-balham-light {
-  padding: 0.5rem 0.75rem 0.75rem;
-  background-color: #ffffff;
-  border-radius: 0.75rem;
-  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.03);
+/* ✅ App-like shell */
+.grid-page {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #fbfbff;
 }
 
+/* ✅ Topbar “metodología nueva” */
+.grid-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  padding: 0.75rem 0.75rem 0.35rem;
+  background: rgba(251, 251, 255, 0.82);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.navtools-wrap {
+  padding: 0 !important;
+}
+
+/* Main */
+.grid-main {
+  flex: 1 1 auto;
+  padding: 0.5rem 0.75rem 0.75rem;
+  overflow: hidden;
+}
+
+/* Card */
+.buefy-balham-light {
+  height: 100%;
+  padding: 0.55rem;
+  background-color: #ffffff;
+  border-radius: 0.9rem;
+  box-shadow: 0 10px 22px rgba(17, 24, 39, 0.06);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+/* switching anim */
 .grid-shell {
+  height: 100%;
   transition: opacity 160ms ease,
     transform 200ms cubic-bezier(0.22, 0.61, 0.36, 1),
     filter 160ms ease;
   will-change: opacity, transform, filter;
 }
+
 .grid-shell--switching {
   opacity: 0;
   transform: translate3d(0, 8px, 0) scale(0.992);
@@ -722,6 +732,7 @@ function handleExport() {
   }
 }
 
+/* ag-grid cosmetics */
 .ag-grid-buefy .ag-header-cell.ag-header-cell--compact {
   padding-inline: 6px;
   font-size: 0.7rem;

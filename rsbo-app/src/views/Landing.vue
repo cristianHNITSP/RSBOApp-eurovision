@@ -11,14 +11,14 @@
           <img :src="logoImg" alt="Laboratorio Eurovisión" class="brand__logo" />
           <div class="brand__text">
             <p class="brand__name">Laboratorio Eurovisión</p>
-            <p class="brand__tag">Gestión óptica · Inventario y pedidos</p>
+            <p class="brand__tag">Sistema interno · Inventario y pedidos</p>
           </div>
         </div>
 
         <div class="topbar-actions">
           <span class="pill pill--info">
             <b-icon icon="lock" size="is-small" class="mr-1" />
-            Acceso interno
+            Uso interno
           </span>
 
           <b-button type="is-primary" size="is-small" icon-left="user" class="btn-cta" @click="openLogin">
@@ -42,22 +42,22 @@
                 </span>
                 <span class="pill pill--light">
                   <b-icon icon="chart-bar" size="is-small" class="mr-1" />
-                  Métricas en tiempo real
+                  Indicadores al instante
                 </span>
                 <span class="pill pill--light">
                   <b-icon icon="shield-alt" size="is-small" class="mr-1" />
-                  Permisos por rol
+                  Acceso por roles
                 </span>
               </div>
 
               <h1 class="hero-title animate-fade-up">
-                Controla pedidos, planillas y usuarios<br />
-                <span class="hero-title__accent">sin fricción</span>.
+                Gestiona inventario, pedidos y usuarios<br />
+                <span class="hero-title__accent">sin complicaciones</span>.
               </h1>
 
               <p class="hero-subtitle animate-fade-up">
-                Plataforma interna del laboratorio: inventario por combinatorias (ESFERICA/CILINDRICA/ADICION/BASE),
-                usuarios por roles y trazabilidad de cambios.
+                Plataforma interna del laboratorio para administrar existencias por combinaciones de graduación
+                (esférica, cilíndrica, adición y base), con roles de acceso y registro de cambios.
               </p>
 
               <div class="hero-actions animate-fade-up">
@@ -72,13 +72,13 @@
 
                 <a class="btn-ghost" href="#como">
                   <b-icon icon="play-circle" size="is-small" class="mr-1" />
-                  ¿Cómo funciona?
+                  Cómo funciona
                 </a>
               </div>
 
               <p class="hero-note animate-fade-up">
                 <b-icon icon="exclamation-circle" size="is-small" class="mr-1" />
-                Acceso solo para personal autorizado. Las cuentas se administran dentro del sistema.
+                Acceso exclusivo para personal autorizado. Las cuentas se gestionan internamente.
               </p>
             </div>
 
@@ -92,7 +92,7 @@
                   </span>
                   <span class="pill pill--light pill--sm">
                     <b-icon icon="sync-alt" size="is-small" class="mr-1" />
-                    Actualizado
+                    Al día
                   </span>
                 </div>
 
@@ -100,8 +100,8 @@
                   <div class="columns is-mobile is-multiline is-variable is-2">
                     <div class="column is-6">
                       <div class="mini-stat">
-                        <p class="mini-stat__k">Planillas</p>
-                        <p class="mini-stat__v">BASE · SPH/CYL · ADD</p>
+                        <p class="mini-stat__k">Plantillas</p>
+                        <p class="mini-stat__v">Base · Esférica/Cilíndrica · Adición</p>
                       </div>
                     </div>
                     <div class="column is-6">
@@ -115,15 +115,15 @@
                       <div class="mini-list">
                         <div class="mini-list__row">
                           <span class="dot dot--ok"></span>
-                          <span>Inventario por rangos y pasos</span>
+                          <span>Existencias por rangos y pasos</span>
                         </div>
                         <div class="mini-list__row">
                           <span class="dot dot--warn"></span>
-                          <span>Validación de límites físicos</span>
+                          <span>Validación de límites definidos</span>
                         </div>
                         <div class="mini-list__row">
                           <span class="dot dot--info"></span>
-                          <span>Logs de cambios (auditoría)</span>
+                          <span>Registro de cambios (auditoría)</span>
                         </div>
                       </div>
                     </div>
@@ -133,7 +133,7 @@
                         <b-button type="is-light" size="is-small" icon-left="user" @click="openLogin">
                           Acceder
                         </b-button>
-                        <span class="is-size-7 has-text-grey">Tip: Usa un correo facil de recordar.</span>
+                        <span class="is-size-7 has-text-grey">Sugerencia: activa “Recordar correo” para entrar más rápido.</span>
                       </div>
                     </div>
                   </div>
@@ -142,7 +142,7 @@
                 <div class="preview-card__foot">
                   <span class="pill pill--light pill--sm">
                     <b-icon icon="life-ring" size="is-small" class="mr-1" />
-                    Centro de ayuda integrado
+                    Ayuda integrada
                   </span>
                 </div>
               </div>
@@ -165,7 +165,7 @@
             </span>
             <h2 class="section-title">Todo lo esencial, bien organizado</h2>
             <p class="section-subtitle">
-              UI ligera (Bulma + Buefy) con componentes consistentes y transiciones suaves.
+              Interfaz ágil y consistente, diseñada para el trabajo diario del laboratorio.
             </p>
           </header>
 
@@ -177,7 +177,7 @@
                 </div>
                 <h3 class="feature-card__title">Inventario</h3>
                 <p class="feature-card__text">
-                  Planillas por tipo (BASE, SPH/CYL, SPH/ADD, etc.) con vistas y validación.
+                  Plantillas por tipo (base, esférica/cilíndrica y esférica/adición), con filtros y validación.
                 </p>
               </article>
             </div>
@@ -189,7 +189,7 @@
                 </div>
                 <h3 class="feature-card__title">Usuarios</h3>
                 <p class="feature-card__text">
-                  Roles, permisos, control de accesos y administración interna.
+                  Roles, permisos y administración interna para mantener el control de acceso.
                 </p>
               </article>
             </div>
@@ -201,7 +201,7 @@
                 </div>
                 <h3 class="feature-card__title">Trazabilidad</h3>
                 <p class="feature-card__text">
-                  Cambios auditables: quién, qué y cuándo. Ideal para control y revisión.
+                  Registro claro de cambios: quién hizo qué y cuándo. Útil para revisión y control.
                 </p>
               </article>
             </div>
@@ -213,7 +213,7 @@
                 </div>
                 <h3 class="feature-card__title">Centro de ayuda</h3>
                 <p class="feature-card__text">
-                  Guías, buscador, FAQ y solución rápida cuando “no guarda” o “no aparece”.
+                  Guías y soluciones para los casos más comunes, con soporte de consulta dentro del sistema.
                 </p>
               </article>
             </div>
@@ -221,16 +221,16 @@
         </div>
       </section>
 
-      <!-- COMO FUNCIONA (REEMPLAZA EL b-steps “gigante”) -->
+      <!-- COMO FUNCIONA -->
       <section id="como" class="section">
         <div class="container">
           <header class="section-head">
             <span class="pill pill--light">
               <b-icon icon="play-circle" size="is-small" class="mr-1" />
-              ¿Cómo funciona?
+              Cómo funciona
             </span>
-            <h2 class="section-title">Un flujo simple (y consistente)</h2>
-            <p class="section-subtitle">Acceso → planillas → control. Sin rodeos.</p>
+            <h2 class="section-title">Un flujo simple y consistente</h2>
+            <p class="section-subtitle">Inicia sesión, trabaja en plantillas y consulta el control del sistema.</p>
           </header>
 
           <div class="columns is-multiline is-variable is-5">
@@ -253,7 +253,7 @@
                 </div>
                 <div class="step-card__body">
                   <p class="step-card__t">Paso 2</p>
-                  <p class="step-card__d">Trabaja planillas, rangos y stock con validación.</p>
+                  <p class="step-card__d">Gestiona plantillas, rangos y existencias con validación automática.</p>
                 </div>
               </div>
             </div>
@@ -265,7 +265,7 @@
                 </div>
                 <div class="step-card__body">
                   <p class="step-card__t">Paso 3</p>
-                  <p class="step-card__d">Consulta auditoría y administra usuarios por rol.</p>
+                  <p class="step-card__d">Revisa el historial de cambios y administra usuarios por rol.</p>
                 </div>
               </div>
             </div>
@@ -273,8 +273,8 @@
 
           <div class="cta-strip animate-fade-up">
             <div class="cta-strip__left">
-              <p class="cta-strip__t">¿Listo para entrar?</p>
-              <p class="cta-strip__d">Accede al sistema interno con tu cuenta del laboratorio.</p>
+              <p class="cta-strip__t">¿Listo para acceder?</p>
+              <p class="cta-strip__d">Ingresa al sistema interno con tu cuenta del laboratorio.</p>
             </div>
             <div class="cta-strip__right">
               <b-button type="is-primary" icon-left="sign-in-alt" @click="openLogin">
@@ -289,19 +289,24 @@
       <footer class="landing-footer">
         <div class="container">
           <div class="footer-inner">
-        <div class="footer-brand">
-          <img :src="logoImg" alt="Laboratorio Eurovisión" class="footer-logo" style="object-fit: cover; width: 34px; height: 34px;" />
-          <div>
-            <p class="footer-name">Laboratorio Eurovisión</p>
-            <p class="footer-copy">© {{ year }} · Todos los derechos reservados</p>
-          </div>
-        </div>
+            <div class="footer-brand">
+              <img
+                :src="logoImg"
+                alt="Laboratorio Eurovisión"
+                class="footer-logo"
+                style="object-fit: cover; width: 34px; height: 34px;"
+              />
+              <div>
+                <p class="footer-name">Laboratorio Eurovisión</p>
+                <p class="footer-copy">© {{ year }} · Todos los derechos reservados</p>
+              </div>
+            </div>
 
-        <div class="footer-links">
-          <a href="#features" class="footer-link">Módulos</a>
-          <a href="#como" class="footer-link">Cómo funciona</a>
-          <button class="footer-link button is-text" type="button" @click="openLogin">Acceder</button>
-        </div>
+            <div class="footer-links">
+              <a href="#features" class="footer-link">Módulos</a>
+              <a href="#como" class="footer-link">Cómo funciona</a>
+              <button class="footer-link button is-text" type="button" @click="openLogin">Acceder</button>
+            </div>
           </div>
         </div>
       </footer>
@@ -323,7 +328,7 @@
         <header class="modal-card-head login-modal__head">
           <div>
             <p class="modal-card-title login-modal__title">Iniciar sesión</p>
-            <p class="login-modal__sub">Acceso interno · Laboratorio Eurovisión</p>
+            <p class="login-modal__sub">Sistema interno · Laboratorio Eurovisión</p>
           </div>
           <button class="delete" aria-label="close" @click="showLoginPanel = false"></button>
         </header>
@@ -332,7 +337,7 @@
           <div class="login-badge">
             <span class="pill pill--light pill--sm">
               <b-icon icon="shield-alt" size="is-small" class="mr-1" />
-              Sesión segura
+              Sesión protegida
             </span>
             <span class="pill pill--light pill--sm">
               <b-icon icon="clock" size="is-small" class="mr-1" />
@@ -458,7 +463,7 @@ async function loginUser() {
     // Mantiene tu lógica existente: tu authService maneja tokens/toasts/redirects
     await Promise.resolve(handleLogin(credentials, showLoginPanel));
 
-    // Persistencia de correo (no dependas de logout, ni de clear)
+    // Persistencia de correo
     if (rememberUsername.value) {
       const u = String(credentials.username || "").trim();
       if (u) localStorage.setItem(SAVED_USERNAME_KEY, u);
@@ -499,9 +504,9 @@ watch(
  * AUTH REASON -> TOAST + ABRIR MODAL
  * ========================= */
 const AUTH_REASON_TO_TOAST = {
-  "no-token": { message: "No has iniciado sesión. Por favor inicia sesión para continuar.", type: "is-warning" },
-  "token-expired": { message: "Tu sesión expiró. Vuelve a iniciar sesión para continuar.", type: "is-warning" },
-  "invalid-token": { message: "Sesión inválida. Por favor inicia sesión nuevamente.", type: "is-danger" },
+  "no-token": { message: "Necesitas iniciar sesión para continuar.", type: "is-warning" },
+  "token-expired": { message: "Tu sesión expiró. Inicia sesión nuevamente.", type: "is-warning" },
+  "invalid-token": { message: "No pudimos validar tu sesión. Inicia sesión de nuevo.", type: "is-danger" },
 };
 
 onMounted(() => {
@@ -516,7 +521,7 @@ onMounted(() => {
   const authReason = route.query.authReason;
   if (authReason) {
     const toastConfig =
-      AUTH_REASON_TO_TOAST[authReason] || { message: "No has iniciado sesión o tu sesión no es válida.", type: "is-danger" };
+      AUTH_REASON_TO_TOAST[authReason] || { message: "Tu sesión no está activa. Inicia sesión para continuar.", type: "is-danger" };
 
     $buefy?.toast?.open?.({ message: toastConfig.message, type: toastConfig.type, duration: 4000 });
     showLoginPanel.value = true;
@@ -527,7 +532,10 @@ onMounted(() => {
   // Toast global opcional
   const showToast = (event) => {
     const detail = event?.detail;
-    const message = typeof detail === "object" && detail?.message ? detail.message : detail || "Tu sesión expiró. Vuelve a iniciar sesión.";
+    const message =
+      typeof detail === "object" && detail?.message
+        ? detail.message
+        : detail || "Tu sesión expiró. Inicia sesión nuevamente.";
     const type = typeof detail === "object" && detail?.type ? detail.type : "is-danger";
     $buefy?.toast?.open?.({ message, type, duration: 3000 });
   };
@@ -683,8 +691,6 @@ onBeforeUnmount(() => {
 <style scoped>
 /* =========================
  * IMPORTANTE: FIX SCROLL VERTICAL
- * - antes “llenábamos” el landing y luego le poníamos overflow hidden, eso mata el scroll
- * - aquí: el landing es el scrollbar principal, y el fondo es absoluto
  * ========================= */
 .landing {
   --primary: #4f46e5;
@@ -1042,7 +1048,7 @@ onBeforeUnmount(() => {
   line-height: 1.25;
 }
 
-/* COMO FUNCIONA (cards compactas) */
+/* COMO FUNCIONA */
 .step-card {
   border-radius: 16px;
   border: 1px solid rgba(148, 163, 184, 0.18);
@@ -1282,4 +1288,3 @@ onBeforeUnmount(() => {
   }
 }
 </style>
-

@@ -7,11 +7,11 @@
  * @version 1.0.0
  */
 
-const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
-const cookieParser = require('cookie-parser');
-require('dotenv').config();
+const express = require("express");
+const mongoose = require("mongoose");
+const cors = require("cors");
+const cookieParser = require("cookie-parser");
+require("dotenv").config();
 
 /**
  * Instancia de la aplicación Express
@@ -29,36 +29,52 @@ const PORT = Number(process.env.PORT) || 3000;
  * @type {string}
  * @default '0.0.0.0'
  */
-const HOST = process.env.SERVICE_HOST || '0.0.0.0';
+const HOST = process.env.SERVICE_HOST || "0.0.0.0";
 
 /**
  * Lista de orígenes permitidos para CORS
  * Incluye tus URLs de frontend en dev/prod y redes locales comunes.
  */
-const allowedOrigins = [
-  process.env.FRONTEND_URL_DEV,
-  'http://localhost:5173',
-  'http://127.0.0.1:5173',
-  'http://192.168.0.87:5173',
-  'http://172.18.0.1:5173',
-  process.env.FRONTEND_URL_PROD
+// 👇 Importante si algún día pones reverse proxy TLS (Nginx/Caddy)
+app.set("trust proxy", 1);
+
+// Orígenes base desde .env (separados por coma)
+const rawOrigins = process.env.CORS_ORIGINS || "";
+const envOrigins = rawOrigins
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+// Orígenes comunes de desarrollo
+const devOrigins = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "http://192.168.0.87:5173",
 ];
 
-/**
- * Configuración de CORS
- * Valida el origen y permite credenciales (cookies).
- */
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      console.warn(`❌ CORS blocked for unauthorized origin: ${origin}`);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true
-}));
+// Merge sin duplicados
+const allowedOrigins = Array.from(new Set([...envOrigins, ...devOrigins]));
+
+console.log("✅ CORS allowed origins:", allowedOrigins);
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Permite peticiones sin origin (curl, healthchecks, Postman, etc.)
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      console.warn(`❌ CORS bloqueado para origen no permitido: ${origin}`);
+      return callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
+  })
+);
 
 // Middlewares
 app.use(express.json());
@@ -68,36 +84,37 @@ app.use(cookieParser());
  * Conexión a MongoDB
  * Usa MONGO_URI desde variables de entorno.
  */
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-})
-  .then(() => console.log('✅ Connected to MongoDB (inventory)'))
-  .catch(err => {
-    console.error('MongoDB connection error:', err);
+mongoose
+  .connect(process.env.MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
+  .then(() => console.log("✅ Connected to MongoDB (inventory)"))
+  .catch((err) => {
+    console.error("MongoDB connection error:", err);
     process.exit(1);
   });
 
 /**
  * Ruta de healthcheck
  */
-app.get('/health', (_req, res) => {
-  res.json({ ok: true, service: 'inventory', ts: Date.now() });
+app.get("/health", (_req, res) => {
+  res.json({ ok: true, service: "inventory", ts: Date.now() });
 });
 
 /**
  * Rutas principales de inventario
  * - /api/inventory: recursos de inventario y plantillas
  */
-app.use('/api/inventory', require('./routes/inventory.routes'));
+app.use("/api/inventory", require("./routes/inventory.routes"));
 
 /**
  * Manejo centralizado de errores
  */
 app.use((err, _req, res, _next) => {
-  console.error('[Inventory ERROR]', err);
+  console.error("[Inventory ERROR]", err);
   const status = err.status || 500;
-  res.status(status).json({ error: err.message || 'Internal error' });
+  res.status(status).json({ error: err.message || "Internal error" });
 });
 
 /**

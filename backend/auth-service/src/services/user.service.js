@@ -18,11 +18,11 @@ function escapeRegex(s) {
 }
 
 async function getRoles() {
-  return Role.find();
+  return Role.find().lean();
 }
 
 async function getMe(userId) {
-  const user = await User.findById(userId).populate("role");
+  const user = await User.findById(userId).populate("role").lean();
   if (!user) {
     const error = new Error("Usuario no encontrado");
     error.statusCode = 404;
@@ -131,7 +131,7 @@ async function createUser(data) {
     throw error;
   }
 
-  const exists = await User.findOne({ email }).select("_id");
+  const exists = await User.findOne({ email }).select("_id").lean();
   if (exists) {
     const error = new Error("Ese correo ya está registrado");
     error.statusCode = 400;
@@ -151,7 +151,7 @@ async function createUser(data) {
     deletedAt: null,
   });
 
-  const out = await User.findById(user._id).populate("role").select("-password");
+  const out = await User.findById(user._id).populate("role").select("-password").lean();
   return out;
 }
 
@@ -184,7 +184,7 @@ async function updateUser(userId, data) {
   if (name !== undefined) user.name = name;
   if (email !== undefined) user.email = email;
 
-  // ✅ regla dura extra: si por alguna razón tuviera deletedAt, jamás permitir isActive=true
+  // ✅ si está en papelera, jamás permitir activo
   if (isActive !== undefined) user.isActive = user.deletedAt ? false : isActive;
 
   user.profile = user.profile || {};
@@ -193,7 +193,7 @@ async function updateUser(userId, data) {
   if (avatar !== undefined) user.profile.avatar = avatar;
 
   await user.save();
-  return User.findById(user._id).populate("role").select("-password");
+  return User.findById(user._id).populate("role").select("-password").lean();
 }
 
 async function updatePassword(userId, password) {
@@ -217,39 +217,53 @@ async function updatePassword(userId, password) {
   return { message: "Contraseña actualizada correctamente" };
 }
 
+/**
+ * ✅ DELETE IDEMPOTENTE
+ * - Si NO existe → 200 { ok:true, alreadyDeleted:true }
+ * - Si YA está en papelera → 200 { ok:true, alreadyDeleted:true }
+ * - Si tiene tokens → 409
+ * - Si borra → 200 { ok:true, deleted:true }
+ */
 async function deleteUser(userId) {
-  // ✅ importante: si tokens está select:false, así sí lo traes
+  // ✅ Trae tokens aunque sea select:false
   const user = await User.findById(userId).select("+tokens");
-  if (!user || user.deletedAt) {
-    const error = new Error("Usuario no encontrado");
-    error.statusCode = 404;
-    throw error;
+
+  if (!user) {
+    return { deleted: false, alreadyDeleted: true, reason: "NOT_FOUND" };
+  }
+  if (user.deletedAt) {
+    return { deleted: false, alreadyDeleted: true, deletedAt: user.deletedAt };
   }
 
-  if (user.tokens && user.tokens.length > 0) {
+  if (Array.isArray(user.tokens) && user.tokens.length > 0) {
     const error = new Error("No se puede eliminar al usuario mientras tenga sesiones activas");
-    error.statusCode = 400;
+    error.statusCode = 409;
     throw error;
   }
 
-  // ✅ tu schema ya hace: deletedAt=Date y isActive=false
   await user.softDelete();
-  return { message: "Usuario enviado a papelera" };
+  return { deleted: true, alreadyDeleted: false };
 }
 
+/**
+ * ✅ RESTORE IDEMPOTENTE
+ * - Si NO existe → 200 { ok:true, alreadyActive:true }
+ * - Si ya está activo → 200 { ok:true, alreadyActive:true }
+ * - Si restaura → 200 { ok:true, restored:true }
+ */
 async function restoreUser(userId) {
   const user = await User.findById(userId);
+
   if (!user) {
-    const error = new Error("Usuario no encontrado");
-    error.statusCode = 404;
-    throw error;
+    return { ok: true, alreadyActive: true, reason: "NOT_FOUND" };
   }
 
-  if (!user.deletedAt) return { message: "El usuario ya está activo" };
+  if (!user.deletedAt) {
+    return { ok: true, alreadyActive: true };
+  }
 
-  // ✅ tu schema ya hace: deletedAt=null y isActive=true
   await user.restore();
-  return { message: "Usuario restaurado correctamente" };
+  return { ok: true, restored: true };
 }
 
 module.exports = {

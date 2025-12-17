@@ -438,7 +438,7 @@ export default {
                   </div>
                 </b-tooltip>
 
-                <!-- ✅ NUEVO: reducir efectos -->
+                <!--NUEVO: reducir efectos 
                 <b-tooltip
                   :label="reducedEffects ? 'Efectos reducidos: activado' : 'Efectos reducidos: desactivado'"
                   position="is-bottom"
@@ -452,7 +452,7 @@ export default {
                     @click="toggleReducedEffects"
                   />
                 </b-tooltip>
-
+                -->
                 <b-tooltip label="Modo oscuro (beta)" position="is-bottom" append-to-body>
                   <b-button
                     class="toolbar-btn"

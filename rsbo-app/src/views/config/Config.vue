@@ -109,17 +109,35 @@ watch(
   border-bottom: 1px solid #ccc;
 }
 
+
+/* ✅ Quitar padding que mete Buefy en el contenido de las tabs */
+:deep(.b-tabs .tab-content) {
+  position: relative;
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+  padding: 0 !important;
+  margin-top: 1rem;
+  /* <- lo que quieres */
+}
+
+/* Opcional: si también ves padding en el wrapper de cada tab */
+:deep(.b-tabs .tab-content > .tab-item) {
+  padding: 0 !important;
+}
+
+
 .config-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: #4f46e5;
-    background: #eef2ff;
-    padding: 0.2rem 0.45rem;
-    border-radius: 999px;
-    margin-bottom: 1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #4f46e5;
+  background: #eef2ff;
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+  margin-bottom: 1rem;
 }
 </style>

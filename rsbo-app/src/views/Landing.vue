@@ -321,7 +321,7 @@
       animation="zoom-in"
       aria-role="dialog"
       aria-modal
-      :width="560"
+      :width="modalWidth"
       @after-enter="focusEmail"
     >
       <div class="modal-card login-modal">
@@ -545,6 +545,25 @@ onMounted(() => {
 });
 
 /* =========================
+ * MODAL RESPONSIVE (FIX MOBILE)
+ * ========================= */
+const modalWidth = ref(560);
+
+function updateModalWidth() {
+  const w = typeof window !== "undefined" ? window.innerWidth : 560;
+  modalWidth.value = Math.min(560, Math.max(320, w - 24));
+}
+
+onMounted(() => {
+  updateModalWidth();
+  window.addEventListener("resize", updateModalWidth, { passive: true });
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("resize", updateModalWidth);
+});
+
+/* =========================
  * UX HELPERS + SCROLL (FIX)
  * ========================= */
 const year = computed(() => new Date().getFullYear());
@@ -698,7 +717,10 @@ onBeforeUnmount(() => {
   --shadow: 0 14px 36px rgba(15, 23, 42, 0.06);
   --shadow-2: 0 18px 48px rgba(15, 23, 42, 0.10);
 
-  height: 100vh;
+  /* FIX: 100vh en móvil puede fallar; dvh se adapta mejor */
+  height: 100dvh;
+  min-height: 100vh;
+
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
@@ -711,6 +733,12 @@ onBeforeUnmount(() => {
     #ffffff;
 }
 
+/* contenido por encima del fondo */
+.landing-content {
+  position: relative;
+  z-index: 1;
+}
+
 /* fondo animado */
 .background-animated {
   position: absolute;
@@ -718,12 +746,6 @@ onBeforeUnmount(() => {
   pointer-events: none;
   user-select: none;
   z-index: 0;
-}
-
-/* contenido por encima del fondo */
-.landing-content {
-  position: relative;
-  z-index: 1;
 }
 
 .floating-icon {
@@ -1275,6 +1297,97 @@ onBeforeUnmount(() => {
   }
   .landing-topbar__inner {
     padding: 0.75rem 0.6rem;
+  }
+}
+
+/* =========================
+ * MOBILE HARDENING (FIXES)
+ * ========================= */
+
+/* Bulma container: padding consistente en móvil */
+:deep(.container) {
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+/* Topbar: wrap + ocultar tag para evitar overflow */
+@media (max-width: 520px) {
+  .landing-topbar__inner {
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .brand__logo {
+    width: 34px;
+    height: 34px;
+  }
+
+  .brand__name {
+    font-size: 0.9rem;
+  }
+
+  .brand__tag {
+    display: none;
+  }
+
+  .topbar-actions {
+    width: 100%;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+  }
+
+  .pill--info {
+    letter-spacing: 0.06em;
+    padding: 0.18rem 0.45rem;
+  }
+}
+
+/* Hero CTAs a una columna en pantallas muy angostas */
+@media (max-width: 420px) {
+  .hero-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .btn-hero {
+    width: 100%;
+  }
+
+  .btn-ghost {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .hero-title {
+    font-size: 1.65rem;
+    line-height: 1.08;
+  }
+
+  .hero-subtitle {
+    font-size: 0.95rem;
+  }
+}
+
+/* Preview CTA: evitar empujes y overflow */
+@media (max-width: 420px) {
+  .preview-card__cta {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .preview-card__cta .is-size-7 {
+    width: 100%;
+  }
+}
+
+/* Footer: links envuelven */
+@media (max-width: 520px) {
+  .footer-links {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 0.6rem 0.9rem;
   }
 }
 

@@ -70,7 +70,7 @@ services:
     ports:
       - "5173:5173"
     environment:
-      # 👇 Vite proxy apunta al gateway dentro de la red Docker
+      #Vite proxy apunta al gateway dentro de la red Docker
       VITE_PROXY_TARGET: "http://gateway:3000"
       # Opcional (pero coherente)
       VITE_API_URL: "/api"

@@ -1,10 +1,11 @@
+<!-- src/components/UserManager.vue (ajusta ruta/nombre según tu proyecto) -->
 <template>
-  <section v-motion-fade-visible-once class="user-manager">
+  <section v-motion-fade-visible-once class="user-manager um-root">
     <!-- Skeleton Loading -->
     <div v-if="props.loading" class="columns is-multiline">
       <!-- Left skeleton -->
-      <div class="column is-4">
-        <div class="panel-card panel-card--soft">
+      <div class="column is-4 p-2">
+        <div class="um-card um-card--glass um-card--soft">
           <div class="has-text-centered mb-4">
             <b-skeleton type="avatar" size="128px" :animated="true" class="mb-3" />
             <b-skeleton width="60%" :animated="true" class="mb-2" />
@@ -34,7 +35,7 @@
 
       <!-- Right skeleton -->
       <div class="column is-8">
-        <div class="panel-card panel-card--soft">
+        <div class="um-card um-card--glass um-card--soft">
           <b-skeleton width="30%" :animated="true" class="mb-3" />
           <b-skeleton width="100%" :animated="true" class="mb-2" />
           <b-skeleton width="100%" :animated="true" class="mb-2" />
@@ -50,36 +51,40 @@
     <div v-else class="columns is-multiline">
       <!-- Left column -->
       <div class="column is-4">
-        <div class="panel-card profile-card">
+        <div class="um-card um-card--glass" :class="{ 'card-glow-ok': props.user?.isActive, 'card-glow-bad': !props.user?.isActive }">
           <!-- Header pills -->
           <div class="profile-card__top">
-            <div class="tags are-medium">
-              <span class="tag is-light">
+            <div class="pill-row">
+              <span class="pill pill--light">
                 <span class="icon is-small mr-1"><i class="fas fa-user"></i></span>
                 Perfil
               </span>
 
-              <span class="tag" :class="statusTagClass">
+              <span class="pill" :class="props.user?.isActive ? 'pill--ok' : 'pill--bad'">
                 <span class="dot-status" :class="statusDotClass" aria-hidden="true"></span>
                 {{ statusLabel }}
               </span>
             </div>
 
-            <b-tag type="is-primary" size="is-medium" rounded class="role-pill">
+            <span class="pill pill--strong role-pill">
               <span class="icon is-small mr-1"><i class="fas fa-user-tag"></i></span>
               {{ roleName }}
-            </b-tag>
+            </span>
           </div>
 
           <!-- Avatar + identity -->
           <div class="section-info has-text-centered">
-            <AvatarPicker
-              v-model="formData.avatar"
-              :edit-mode="isEditingProfile"
-              :placeholder="avatarPlaceholder"
-            />
+            <div class="avatar-wrap">
+              <div class="avatar-ring" aria-hidden="true"></div>
 
-            <h2 class="title is-4 mb-1 mt-3">
+              <AvatarPicker
+                v-model="formData.avatar"
+                :edit-mode="isEditingProfile"
+                :placeholder="avatarPlaceholder"
+              />
+            </div>
+
+            <h2 class="title is-4 mb-1 mt-3 um-title">
               {{ displayName }}
             </h2>
 
@@ -142,7 +147,7 @@
                 v-if="passwordMessage"
                 :type="passwordSuccess ? 'is-success' : 'is-danger'"
                 :icon="passwordSuccess ? 'check-circle' : 'exclamation-circle'"
-                class="mb-3"
+                class="mb-3 um-message"
                 :closable="true"
                 @close="passwordMessage = ''"
                 :has-animation="true"
@@ -204,18 +209,29 @@
                 Actualizar contraseña
               </b-button>
             </div>
+
+            <div class="audit-chip" aria-hidden="true">
+              <i class="far fa-shield-check"></i>
+              <span>Acciones registradas</span>
+            </div>
           </div>
         </div>
       </div>
 
       <!-- Right column -->
       <div class="column is-8">
-        <div class="panel-card profile-form-card">
+        <div class="um-card um-card--glass p-4">
           <!-- Header -->
           <div class="card-head">
             <div class="card-head__title">
-              <p class="has-text-weight-semibold mb-0">
-                <span class="icon mr-1"><i class="fas fa-user-edit"></i></span>
+              <div class="pill-row">
+                <span class="pill pill--primary">
+                  <span class="icon is-small mr-1"><i class="fas fa-user-edit"></i></span>
+                  Perfil
+                </span>
+              </div>
+
+              <p class="has-text-weight-semibold mb-0 mt-2">
                 Información del perfil
               </p>
               <p class="is-size-7 has-text-grey mb-0">Edita tus datos. El rol es de solo lectura.</p>
@@ -227,6 +243,7 @@
                 size="is-small"
                 type="is-primary"
                 icon-left="pencil-alt"
+                class="btn-cta"
                 @click="startProfileEdit"
               >
                 Editar
@@ -240,6 +257,7 @@
                   size="is-small"
                   type="is-primary"
                   icon-left="check"
+                  class="btn-cta"
                   @click="updateProfile"
                   :loading="loadingProfile"
                   :disabled="loadingProfile || props.loading"
@@ -255,7 +273,7 @@
               v-if="profileMessage"
               :type="profileSuccess ? 'is-success' : 'is-danger'"
               :icon="profileSuccess ? 'check-circle' : 'exclamation-circle'"
-              class="mb-4"
+              class="mb-4 um-message"
               :closable="true"
               @close="profileMessage = ''"
               :has-animation="true"
@@ -350,9 +368,20 @@
               </div>
             </div>
           </div>
+
+          <div class="form-foot">
+            <div class="meta-badge" aria-hidden="true">
+              <span class="dot-pulse"></span>
+              <span>Consistencia UI: glass + gradients</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
+
+    <!-- glows (decor) -->
+    <div class="um-glow um-glow--a" aria-hidden="true"></div>
+    <div class="um-glow um-glow--b" aria-hidden="true"></div>
   </section>
 </template>
 
@@ -404,12 +433,9 @@ const displayEmail = computed(() => props.user?.email || "Error al cargar el cor
 const roleName = computed(() => props.user?.role?.name || "Sin rol asignado");
 
 const statusLabel = computed(() => (props.user?.isActive ? "Activo" : "Inactivo"));
-const statusTagClass = computed(() => (props.user?.isActive ? "is-success" : "is-danger"));
 const statusDotClass = computed(() => (props.user?.isActive ? "dot--ok" : "dot--bad"));
 
 const avatarPlaceholder = computed(() => props.user?.avatar || formData.avatar || avatarUrl);
-
-onMounted(() => {});
 
 watch(
   () => props.user,
@@ -599,34 +625,178 @@ async function copyEmail() {
 }
 
 const { formatDate, timeSince } = utils;
+
+onMounted(() => {});
 </script>
 
 <style scoped>
-.user-manager {
-  --c1: #4f46e5;
+/* =========================
+   Base + glows (como tu UI actual)
+   ========================= */
+.user-manager.um-root {
+  --primary: #4f46e5;
   --c2: #9a6dff;
   --c3: #ec4899;
+
   --border: rgba(148, 163, 184, 0.22);
-  --shadow: 0 14px 40px rgba(15, 23, 42, 0.08);
-  --shadow2: 0 18px 50px rgba(15, 23, 42, 0.12);
+  --shadow: 0 14px 36px rgba(15, 23, 42, 0.06);
+  --shadow-2: 0 18px 50px rgba(15, 23, 42, 0.12);
+
+  position: relative;
+  overflow: hidden;
+
+  background:
+    radial-gradient(circle at 0 0, rgba(79, 70, 229, 0.10), transparent 55%),
+    radial-gradient(circle at 100% 12%, rgba(236, 72, 153, 0.08), transparent 55%),
+    radial-gradient(circle at 60% 100%, rgba(249, 115, 22, 0.06), transparent 55%);
+  border-radius: 18px;
+  padding: 0.35rem;
 }
 
-/* Left */
-.profile-card__top {
-  display: flex;
+.um-glow {
+  position: absolute;
+  width: 420px;
+  height: 420px;
+  border-radius: 999px;
+  filter: blur(55px);
+  opacity: 0.25;
+  pointer-events: none;
+}
+.um-glow--a {
+  top: -220px;
+  right: -220px;
+  background: radial-gradient(circle, rgba(79, 70, 229, 0.75), transparent 60%);
+}
+.um-glow--b {
+  bottom: -250px;
+  left: -230px;
+  background: radial-gradient(circle, rgba(236, 72, 153, 0.55), transparent 60%);
+}
+
+/* =========================
+   Card system (glass)
+   ========================= */
+.um-card {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-2);
+  transition: transform 140ms ease, box-shadow 160ms ease, border-color 160ms ease, background 160ms ease;
+  overflow: hidden;
+}
+
+.um-card--glass {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.um-card--soft {
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.um-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 26px 70px rgba(15, 23, 42, 0.14);
+  border-color: rgba(121, 87, 213, 0.28);
+}
+
+/* estado (glow suave) */
+.card-glow-ok { box-shadow: 0 18px 50px rgba(16, 185, 129, 0.08), var(--shadow-2); }
+.card-glow-bad { box-shadow: 0 18px 50px rgba(239, 68, 68, 0.08), var(--shadow-2); }
+
+/* =========================
+   Pills (como landing/tabs)
+   ========================= */
+.pill-row { display: flex; flex-wrap: wrap; gap: 0.45rem; align-items: center; }
+.pill {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  margin-bottom: 0.75rem;
+  gap: 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  padding: 0.22rem 0.55rem;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(255, 255, 255, 0.70);
+  color: #111827;
+}
+.pill--primary {
+  color: var(--primary);
+  background: #eef2ff;
+  border-color: rgba(79, 70, 229, 0.18);
+}
+.pill--light {
+  color: var(--primary);
+  background: rgba(79, 70, 229, 0.06);
+  border-color: rgba(79, 70, 229, 0.12);
+}
+.pill--strong {
+  background: linear-gradient(90deg, rgba(121,87,213,0.16), rgba(236,72,153,0.10));
+  border-color: rgba(121,87,213,0.35);
+  color: rgba(15,23,42,0.88);
+}
+.pill--ok {
+  background: rgba(16, 185, 129, 0.10);
+  border-color: rgba(16, 185, 129, 0.22);
+  color: rgba(15, 23, 42, 0.86);
+}
+.pill--bad {
+  background: rgba(239, 68, 68, 0.10);
+  border-color: rgba(239, 68, 68, 0.22);
+  color: rgba(15, 23, 42, 0.86);
 }
 
 .role-pill {
   box-shadow: 0 10px 24px rgba(79, 70, 229, 0.14);
 }
 
+/* =========================
+   Left layout
+   ========================= */
+.profile-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.9rem 0.95rem 0.65rem;
+  background: radial-gradient(circle at 0 0, rgba(79, 70, 229, 0.10), transparent 55%), rgba(255, 255, 255, 0.75);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+}
+
 .section-info {
-  padding: 0.35rem 0 0.85rem;
+  padding: 0.85rem 0.95rem 0.95rem;
+}
+
+/* Avatar “ring” */
+.avatar-wrap {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+}
+.avatar-ring {
+  position: absolute;
+  width: 112px;
+  height: 112px;
+  border-radius: 999px;
+  background: conic-gradient(from 180deg, rgba(79,70,229,0.55), rgba(154,109,255,0.45), rgba(236,72,153,0.45), rgba(79,70,229,0.55));
+  filter: blur(0.2px);
+  opacity: 0.22;
+  animation: ringRotate 4.2s linear infinite;
+  pointer-events: none;
+}
+@keyframes ringRotate {
+  to { transform: rotate(360deg); }
+}
+
+.um-title {
+  font-weight: 900;
+  background: linear-gradient(90deg, #0f172a, rgba(15,23,42,0.85));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .email-row {
@@ -639,11 +809,12 @@ const { formatDate, timeSince } = utils;
 .btn-icon {
   border-radius: 12px;
   border: 1px solid rgba(148, 163, 184, 0.25);
-  transition: transform 120ms ease, box-shadow 120ms ease;
+  transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
 }
 .btn-icon:hover {
   transform: translateY(-1px);
   box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+  background: #fff;
 }
 
 .quick-stats {
@@ -652,26 +823,15 @@ const { formatDate, timeSince } = utils;
   gap: 0.65rem;
   margin-top: 1rem;
 }
-
 .quick-stat {
   border: 1px solid rgba(148, 163, 184, 0.18);
-  background: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.78);
   border-radius: 16px;
   padding: 0.75rem;
   text-align: center;
 }
-
-.quick-stat__v {
-  margin: 0;
-  font-weight: 900;
-  color: #111827;
-}
-.quick-stat__k {
-  margin: 0.15rem 0 0;
-  font-size: 0.75rem;
-  color: #6b7280;
-  font-weight: 800;
-}
+.quick-stat__v { margin: 0; font-weight: 900; color: #111827; }
+.quick-stat__k { margin: 0.15rem 0 0; font-size: 0.75rem; color: #6b7280; font-weight: 800; }
 
 /* status dot */
 .dot-status {
@@ -682,18 +842,15 @@ const { formatDate, timeSince } = utils;
   margin-right: 0.35rem;
   box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.25);
 }
-.dot--ok {
-  background: #23d160;
-}
-.dot--bad {
-  background: #ff3860;
-}
+.dot--ok { background: #10b981; }
+.dot--bad { background: #ef4444; }
 
 /* security */
 .section-seguridad {
-  margin-top: 1rem;
-  border-top: 1px dashed rgba(148, 163, 184, 0.45);
-  padding-top: 1rem;
+  margin-top: 0.25rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(255, 255, 255, 0.62);
+  padding: 0.95rem;
 }
 
 .sec-head {
@@ -704,7 +861,23 @@ const { formatDate, timeSince } = utils;
   margin-bottom: 0.25rem;
 }
 
-/* Right */
+.audit-chip {
+  margin-top: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: rgba(15, 23, 42, 0.72);
+  background: rgba(79, 70, 229, 0.06);
+  border: 1px solid rgba(79, 70, 229, 0.12);
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+}
+
+/* =========================
+   Right card header
+   ========================= */
 
 .card-head {
   display: flex;
@@ -715,19 +888,15 @@ const { formatDate, timeSince } = utils;
   border-bottom: 1px solid rgba(148, 163, 184, 0.18);
   margin-bottom: 1rem;
 }
+.card-head__title { display: flex; flex-direction: column; gap: 0.2rem; }
+.card-head__actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
 
-.card-head__title {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-.card-head__actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+.btn-cta {
+  border-radius: 14px !important;
+  box-shadow: 0 16px 32px rgba(79, 70, 229, 0.18);
 }
 
+/* hint */
 .hint-line {
   display: flex;
   gap: 0.4rem;
@@ -740,44 +909,60 @@ const { formatDate, timeSince } = utils;
   border-radius: 14px;
 }
 
-/* Animaciones */
-.slide-fade-enter-active {
-  transition: all 0.3s ease-out;
+/* footer mini badge */
+.form-foot {
+  margin-top: 0.25rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed rgba(148, 163, 184, 0.28);
+  display: flex;
+  justify-content: flex-end;
 }
-.slide-fade-leave-active {
-  transition: all 0.25s cubic-bezier(1, 0.5, 0.8, 1);
+.meta-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(255,255,255,0.72);
+  color: rgba(15,23,42,0.70);
 }
-.slide-fade-enter-from,
-.slide-fade-leave-to {
-  transform: translateY(-10px);
-  opacity: 0;
+.dot-pulse {
+  position: relative;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 currentColor;
+  animation: dotPulse 1s infinite linear;
+}
+@keyframes dotPulse {
+  0% { box-shadow: 0 0 0 0 currentColor; opacity: 1; }
+  70% { box-shadow: 0 0 0 6px rgba(0, 0, 0, 0); opacity: 0.6; }
+  100% { box-shadow: 0 0 0 0 rgba(0, 0, 0, 0); opacity: 0.4; }
 }
 
-.pulse-animation {
-  animation: pulse 1.35s infinite;
-}
+/* =========================
+   Animations / messages / inputs
+   ========================= */
+.slide-fade-enter-active { transition: all 0.3s ease-out; }
+.slide-fade-leave-active { transition: all 0.25s cubic-bezier(1, 0.5, 0.8, 1); }
+.slide-fade-enter-from,
+.slide-fade-leave-to { transform: translateY(-10px); opacity: 0; }
+
+.pulse-animation { animation: pulse 1.35s infinite; }
 @keyframes pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.35);
-  }
-  70% {
-    box-shadow: 0 0 0 12px rgba(79, 70, 229, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(79, 70, 229, 0);
-  }
+  0% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.35); }
+  70% { box-shadow: 0 0 0 12px rgba(79, 70, 229, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); }
 }
 
 /* Mensajes (más “premium”) */
-:deep(.message.is-danger) {
-  border-left: 4px solid #ff3860;
-}
-:deep(.message.is-success) {
-  border-left: 4px solid #23d160;
-}
-:deep(.message .message-body) {
-  border-radius: 14px;
-}
+:deep(.message.is-danger) { border-left: 4px solid #ef4444; }
+:deep(.message.is-success) { border-left: 4px solid #10b981; }
+:deep(.message .message-body) { border-radius: 14px; }
 
 /* Textarea bio */
 :deep(textarea.textarea-bio) {
@@ -786,26 +971,29 @@ const { formatDate, timeSince } = utils;
   resize: vertical;
 }
 
-/* Inputs más suaves */
+/* Inputs suaves + icon color */
 :deep(.input),
-:deep(.textarea) {
-  border-radius: 14px;
-}
-:deep(.control .icon) {
-  color: rgba(79, 70, 229, 0.85);
+:deep(.textarea) { border-radius: 14px; }
+:deep(.control .icon) { color: rgba(79, 70, 229, 0.85); }
+
+/* =========================
+   Responsive
+   ========================= */
+@media (max-width: 768px) {
+  .quick-stats { grid-template-columns: 1fr; }
+  .card-head { flex-direction: column; align-items: stretch; }
+  .card-head__actions { justify-content: flex-end; }
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-  .quick-stats {
-    grid-template-columns: 1fr;
-  }
-  .card-head {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .card-head__actions {
-    justify-content: flex-end;
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .um-card,
+  .btn-icon,
+  .avatar-ring,
+  .pulse-animation,
+  .dot-pulse {
+    transition: none !important;
+    animation: none !important;
   }
 }
 </style>

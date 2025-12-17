@@ -1,20 +1,18 @@
-import { createApp } from 'vue'
-import App from './App.vue'
-import { MotionPlugin } from '@vueuse/motion'
+import { createApp } from "vue";
+import App from "./App.vue";
+import { MotionPlugin } from "@vueuse/motion";
 
+import "bulma/css/bulma.css";
+import Buefy from "buefy";
+import "buefy/dist/buefy.css";
+import "@fortawesome/fontawesome-free/css/all.css";
 
-import 'bulma/css/bulma.css'
-import Buefy from 'buefy'
-import 'buefy/dist/buefy.css'
-import '@fortawesome/fontawesome-free/css/all.css'
+import ExtendedTooltip from "./global-components/ExtendedTooltip.js";
 
-import ExtendedTooltip from './global-components/ExtendedTooltip.js'
+import "./assets/css/global.css";
+import router from "./router";
 
-
-import './assets/css/global.css'
-import router from './router'
-
-const style = document.createElement('style')
+const style = document.createElement("style");
 style.textContent = `
 @import url('https://api.fontshare.com/v2/css?f[]=satoshi@1&f[]=switzer@1&display=swap');
 
@@ -35,19 +33,18 @@ button, label, .subtitle, .menu {
   font-family: 'Satoshi', sans-serif;
   font-weight: 500;
 }
-`
-document.head.appendChild(style)
+`;
+document.head.appendChild(style);
 
-
-const app = createApp(App)
+const app = createApp(App);
 
 // Reemplaza globalmente el componente original b-tooltip con el extendido
-app.component('b-tooltip', ExtendedTooltip)
+app.component("b-tooltip", ExtendedTooltip);
 
 app.use(Buefy, {
-  defaultIconPack: 'fas',
-})
+  defaultIconPack: "fas",
+});
 
-app.use(router)
-app.use(MotionPlugin)
-app.mount('#app')
+app.use(router);
+app.use(MotionPlugin);
+app.mount("#app");

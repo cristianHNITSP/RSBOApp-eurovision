@@ -3,21 +3,68 @@
   <div class="grid-page">
     <!-- ✅ TOPBAR (sticky) -->
     <header class="grid-topbar">
-      <navtools class="navtools-wrap" v-model="formulaValue" :dirty="dirty" :saving="saving" :total-rows="totalRows"
-        :sheet-name="sheetName" :tipo-matriz="tipoMatriz" :material="material" :tratamientos="tratamientos"
-        :last-saved-at="lastSavedAt" @add-row="handleAddRow" @add-column="handleAddColumn" @clear-filters="clearFilters"
-        @reset-sort="resetSort" @toggle-filters="handleToggleFilters" @save-request="handleSave"
-        @discard-changes="handleDiscard" @refresh="handleRefresh" @seed="handleSeed" @export="handleExport"
-        @fx-input="onFxInput" @fx-commit="onFxCommit" />
-    </header>
+      <navtools
+        class="navtools-wrap"
+        v-model="formulaValue"
+        :dirty="dirty"
+        :saving="saving"
+        :total-rows="totalRows"
+        :sheet-name="sheetName"
+        :tipo-matriz="tipoMatriz"
+        :material="material"
+        :tratamientos="tratamientos"
+        :last-saved-at="lastSavedAt"
+        @add-row="handleAddRow"
+        @add-column="handleAddColumn"
+        @clear-filters="clearFilters"
+        @reset-sort="resetSort"
+        @toggle-filters="handleToggleFilters"
+        @save-request="handleSave"
+        @discard-changes="handleDiscard"
+        @refresh="handleRefresh"
+        @seed="handleSeed"
+        @export="handleExport"
+        @fx-input="onFxInput"
+        @fx-commit="onFxCommit"
+      />
 
-    <!-- ✅ GRID MAIN -->
+      <!-- ✅ Leyenda natural (sin componentes extra) 
+      <div class="stock-legend pt-2">
+        <span class="stock-pill stock-pill--low">
+          <i class="fas fa-exclamation-triangle mr-1"></i>
+          Bajo stock (≤ {{ LOW_STOCK_THRESHOLD }})
+        </span>
+        <span class="stock-pill stock-pill--zero">
+          <i class="fas fa-times-circle mr-1"></i>
+          Sin stock (0)
+        </span>
+      </div>
+      -->
+    </header>
+    
+
+
+    <!--GRID MAIN -->
     <main class="grid-main">
       <div class="buefy-balham-light grid-shell" :class="{ 'grid-shell--switching': switchingView }">
-        <AgGridVue class="ag-grid-buefy" :columnDefs="columns" :rowData="rowData" :defaultColDef="defaultColDef"
-          :getRowId="getRowId" :animateRows="true" :localeText="localeText" :theme="themeCustom" :rowHeight="30"
-          :headerHeight="32" :suppressMovableColumns="true" @cellClicked="onCellClicked"
-          @cellValueChanged="onCellValueChanged" @grid-ready="onGridReady" style="width: 100%; height: 100%;" />
+        <AgGridVue
+          class="ag-grid-buefy"
+          :columnDefs="columns"
+          :rowData="rowData"
+          :defaultColDef="defaultColDef"
+          :getRowId="getRowId"
+          :animateRows="true"
+          :localeText="localeText"
+          :theme="themeCustom"
+          :rowHeight="30"
+          :headerHeight="32"
+          :suppressMovableColumns="true"
+          :rowClassRules="rowClassRules"
+          @cellClicked="onCellClicked"
+          @cellValueChanged="onCellValueChanged"
+          @grid-ready="onGridReady"
+          style="width: 100%; height: 100%;"
+        />
       </div>
     </main>
   </div>
@@ -185,6 +232,48 @@ const tipoMatriz = computed(() => sheetMeta.value?.tipo_matriz || "SPH_CYL");
 const material = computed(() => sheetMeta.value?.material || "");
 const tratamientos = computed(() => sheetMeta.value?.tratamientos || []);
 
+/* ===================== ✅ UMBRAL DE BAJO STOCK (escalable) ===================== */
+const LOW_STOCK_THRESHOLD = computed(() => {
+  const s = sheetMeta.value || {};
+  const raw =
+    s?.lowStockThreshold ??
+    s?.alerts?.lowStock ??
+    s?.config?.lowStockThreshold ??
+    2; // fallback
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : 2;
+});
+
+const isZeroStock = (v) => Number(v ?? 0) <= 0;
+const isLowStock = (v) => {
+  const n = Number(v ?? 0);
+  return n > 0 && n <= LOW_STOCK_THRESHOLD.value;
+};
+
+function rowHasZeroStock(row) {
+  if (!row) return false;
+  for (const k of Object.keys(row)) {
+    if (k.startsWith("cyl_")) {
+      if (isZeroStock(row[k])) return true;
+    }
+  }
+  return false;
+}
+function rowHasLowStock(row) {
+  if (!row) return false;
+  for (const k of Object.keys(row)) {
+    if (k.startsWith("cyl_")) {
+      if (isLowStock(row[k])) return true;
+    }
+  }
+  return false;
+}
+
+const rowClassRules = computed(() => ({
+  "ag-row--stock-zero": (p) => rowHasZeroStock(p?.data),
+  "ag-row--stock-low": (p) => !rowHasZeroStock(p?.data) && rowHasLowStock(p?.data)
+}));
+
 /**
  * ✅ FUENTE DE VERDAD: PHYSICAL_LIMITS desde backend
  */
@@ -252,6 +341,13 @@ const columns = computed(() => [
       resizable: true,
       cellClass: ["ag-cell--compact", "ag-cell--numeric"],
       headerClass: ["ag-header-cell--compact"],
+
+      /* ✅ Marca la celda si está baja / en cero */
+      cellClassRules: {
+        "ag-cell--stock-zero": (p) => isZeroStock(p.value),
+        "ag-cell--stock-low": (p) => isLowStock(p.value)
+      },
+
       valueSetter: (p) => {
         const v = String(p.newValue ?? "").trim();
         const newVal = isNumeric(v) ? Number(v) : 0;
@@ -545,7 +641,9 @@ const handleAddColumn = async (nuevoValor, ack) => {
   if (!Number.isFinite(raw)) return ackErr(ack, "Ingresa un CYL numérico", 400);
   if (!isQuarterStep(raw)) return ackErr(ack, "CYL debe ser múltiplo de 0.25 (…00, …25, …50, …75)", 400);
   if (raw >= 0) return ackErr(ack, "CYL debe ingresarse en negativo. Ej: -0.25, -1.00, -7.00", 400);
-  const vDisp = to2(Math.abs(raw)); // aquí ya es seguro: raw es negativo  if (vDisp === 0) return ackErr(ack, "CYL 0.00 ya existe (no se puede duplicar)", 409);
+
+  const vDisp = to2(Math.abs(raw)); // aquí ya es seguro: raw es negativo
+  if (vDisp === 0) return ackErr(ack, "CYL 0.00 ya existe (no se puede duplicar)", 409);
   if (vDisp > P.cylAbsMax) return ackErr(ack, `CYL fuera de límite (máx ${P.cylAbsMax})`, 400);
   if (cylValues.value.includes(vDisp)) return ackErr(ack, `CYL ${vDisp.toFixed(2)} ya existe`, 409);
 
@@ -693,6 +791,34 @@ function handleExport() {
   padding: 0 !important;
 }
 
+/* ✅ Leyenda */
+.stock-legend {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.stock-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.22rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  line-height: 1;
+  user-select: none;
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  background: rgba(15, 23, 42, 0.03);
+}
+.stock-pill--low {
+  background: rgba(245, 158, 11, 0.14);
+  border-color: rgba(245, 158, 11, 0.25);
+}
+.stock-pill--zero {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.22);
+}
+
 /* Main */
 .grid-main {
   flex: 1 1 auto;
@@ -760,5 +886,28 @@ function handleExport() {
 
 .ag-grid-buefy .ag-row-hover {
   background-color: #f3f0ff !important;
+}
+
+/* ===================== ✅ ALERTAS STOCK (fila + celda) ===================== */
+/* fila (suave) */
+.ag-grid-buefy :deep(.ag-row.ag-row--stock-low) {
+  box-shadow: inset 3px 0 0 rgba(245, 158, 11, 0.75);
+  background: rgba(245, 158, 11, 0.06);
+}
+.ag-grid-buefy :deep(.ag-row.ag-row--stock-zero) {
+  box-shadow: inset 3px 0 0 rgba(239, 68, 68, 0.85);
+  background: rgba(239, 68, 68, 0.06);
+}
+
+/* celda (más explícita) */
+.ag-grid-buefy :deep(.ag-cell.ag-cell--stock-low) {
+  font-weight: 700;
+  background: rgba(245, 158, 11, 0.12);
+  border-radius: 6px;
+}
+.ag-grid-buefy :deep(.ag-cell.ag-cell--stock-zero) {
+  font-weight: 800;
+  background: rgba(239, 68, 68, 0.12);
+  border-radius: 6px;
 }
 </style>

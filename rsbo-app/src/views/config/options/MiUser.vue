@@ -234,7 +234,6 @@
               <p class="has-text-weight-semibold mb-0 mt-2">
                 Información del perfil
               </p>
-              <p class="is-size-7 has-text-grey mb-0">Edita tus datos. El rol es de solo lectura.</p>
             </div>
 
             <div class="card-head__actions">
@@ -366,13 +365,6 @@
                 <span class="icon is-small mr-1"><i class="fas fa-info-circle"></i></span>
                 <span>Tip: usa un nombre consistente para reportes y auditoría.</span>
               </div>
-            </div>
-          </div>
-
-          <div class="form-foot">
-            <div class="meta-badge" aria-hidden="true">
-              <span class="dot-pulse"></span>
-              <span>Consistencia UI: glass + gradients</span>
             </div>
           </div>
         </div>

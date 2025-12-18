@@ -26,6 +26,19 @@
       @fx-commit="onFxCommit"
     />
 
+    <!-- ✅ Leyenda natural (sin componentes extra) 
+    <div class="stock-legend px-4 pb-2">
+      <span class="stock-pill stock-pill--low">
+        <i class="fas fa-exclamation-triangle mr-1"></i>
+        Bajo stock (≤ {{ LOW_STOCK_THRESHOLD }})
+      </span>
+      <span class="stock-pill stock-pill--zero">
+        <i class="fas fa-times-circle mr-1"></i>
+        Sin stock (0)
+      </span>
+    </div>
+    -->
+    
     <div
       class="buefy-balham-light grid-shell"
       :class="{ 'grid-shell--switching': switchingView }"
@@ -43,6 +56,7 @@
         :rowHeight="30"
         :headerHeight="32"
         :suppressMovableColumns="true"
+        :rowClassRules="rowClassRules"
         @cellClicked="onCellClicked"
         @cellValueChanged="onCellValueChanged"
         @grid-ready="onGridReady"
@@ -211,6 +225,53 @@ const tipoMatriz = computed(() => sheetMeta.value?.tipo_matriz || "SPH_ADD");
 const material = computed(() => sheetMeta.value?.material || "");
 const tratamientos = computed(() => sheetMeta.value?.tratamientos || []);
 
+/* ===================== ✅ UMBRAL DE BAJO STOCK (igual que Base) ===================== */
+const LOW_STOCK_THRESHOLD = computed(() => {
+  const s = sheetMeta.value || {};
+  const raw =
+    s?.lowStockThreshold ??
+    s?.alerts?.lowStock ??
+    s?.config?.lowStockThreshold ??
+    2; // fallback
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : 2;
+});
+
+const isZeroStock = (v) => Number(v ?? 0) <= 0;
+const isLowStock = (v) => {
+  const n = Number(v ?? 0);
+  return n > 0 && n <= LOW_STOCK_THRESHOLD.value;
+};
+
+/**
+ * ✅ Dado que una fila tiene MUCHAS celdas (OD/OI por ADD),
+ * marcamos la fila si cualquiera está en 0 o bajo.
+ */
+function rowHasZeroStock(row) {
+  if (!row) return false;
+  for (const k of Object.keys(row)) {
+    if (k.startsWith("add_")) {
+      if (isZeroStock(row[k])) return true;
+    }
+  }
+  return false;
+}
+function rowHasLowStock(row) {
+  if (!row) return false;
+  for (const k of Object.keys(row)) {
+    if (k.startsWith("add_")) {
+      if (isLowStock(row[k])) return true;
+    }
+  }
+  return false;
+}
+
+/** ✅ Reglas a nivel fila (suaves, pero útiles) */
+const rowClassRules = computed(() => ({
+  "ag-row--stock-zero": (p) => rowHasZeroStock(p?.data),
+  "ag-row--stock-low": (p) => !rowHasZeroStock(p?.data) && rowHasLowStock(p?.data)
+}));
+
 /* ===================== Límites físicos (source of truth) ===================== */
 const PHYS = computed(() => {
   const p = physical.value || {};
@@ -287,6 +348,13 @@ function makeLeaf(field, header, add, eye) {
     resizable: true,
     cellClass: ["ag-cell--compact", "ag-cell--numeric"],
     headerClass: ["ag-header-cell--compact"],
+
+    /* ✅ Marca esta celda (OD/OI) si está baja / en cero */
+    cellClassRules: {
+      "ag-cell--stock-zero": (p) => isZeroStock(p.value),
+      "ag-cell--stock-low": (p) => isLowStock(p.value)
+    },
+
     valueSetter: (p) => {
       const raw = String(p.newValue ?? "").trim();
       const newVal = isNumeric(raw) ? Number(raw) : 0;
@@ -516,7 +584,6 @@ function applyFxToGrid(val, { commit = false } = {}) {
   if (activeCell.data) activeCell.data[field] = newVal;
 
   if (!commit) {
-    // repaint rápido sin transacción
     gridApi.value.refreshCells?.({
       rowNodes: activeCell.node ? [activeCell.node] : undefined,
       columns: [field],
@@ -772,6 +839,33 @@ const handleToggleFilters = () => clearFilters();
   }
 }
 
+.stock-legend {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.stock-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.22rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  line-height: 1;
+  user-select: none;
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  background: rgba(15, 23, 42, 0.03);
+}
+.stock-pill--low {
+  background: rgba(245, 158, 11, 0.14);
+  border-color: rgba(245, 158, 11, 0.25);
+}
+.stock-pill--zero {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.22);
+}
+
 .ag-grid-buefy .ag-header-cell.ag-header-cell--compact {
   padding-inline: 6px;
   font-size: 0.7rem;
@@ -799,5 +893,28 @@ const handleToggleFilters = () => clearFilters();
 
 .ag-grid-buefy .ag-row-hover {
   background-color: #f3f0ff !important;
+}
+
+/* ===================== ✅ ALERTAS STOCK (fila + celda) ===================== */
+/* fila (suave) */
+.ag-grid-buefy :deep(.ag-row.ag-row--stock-low) {
+  box-shadow: inset 3px 0 0 rgba(245, 158, 11, 0.75);
+  background: rgba(245, 158, 11, 0.06);
+}
+.ag-grid-buefy :deep(.ag-row.ag-row--stock-zero) {
+  box-shadow: inset 3px 0 0 rgba(239, 68, 68, 0.85);
+  background: rgba(239, 68, 68, 0.06);
+}
+
+/* celda (más explícita) */
+.ag-grid-buefy :deep(.ag-cell.ag-cell--stock-low) {
+  font-weight: 700;
+  background: rgba(245, 158, 11, 0.12);
+  border-radius: 6px;
+}
+.ag-grid-buefy :deep(.ag-cell.ag-cell--stock-zero) {
+  font-weight: 800;
+  background: rgba(239, 68, 68, 0.12);
+  border-radius: 6px;
 }
 </style>

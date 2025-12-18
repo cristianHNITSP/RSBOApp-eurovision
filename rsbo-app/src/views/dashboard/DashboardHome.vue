@@ -583,7 +583,8 @@ const lastSyncLabel = computed(() => {
 
 /* Dashboard layout */
 .dashboard-section {
-  padding: 1.5rem;
+  padding: 0;
+  margin-top: 1rem;
 }
 
 .dashboard-card {

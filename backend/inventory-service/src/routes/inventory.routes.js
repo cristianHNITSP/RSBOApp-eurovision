@@ -14,23 +14,42 @@ const MatrixProgresivo = require("../models/matrix/MatrixProgresivo");
 // Inventory modules
 const PHYSICAL_LIMITS = require("../inventory/constants/physicalLimits");
 const { buildTabsForTipo } = require("../inventory/utils/tabs");
-const { actorFromBody, normalizeParty, escapeRegExp } = require("../inventory/utils/normalize");
-const { makeUniqueSheetSku, ensureSheetSku } = require("../inventory/utils/sku");
+const {
+  actorFromBody,
+  normalizeParty,
+  escapeRegExp,
+} = require("../inventory/utils/normalize");
+const {
+  makeUniqueSheetSku,
+  ensureSheetSku,
+} = require("../inventory/utils/sku");
 const { to2, isDef, isMultipleOfStep } = require("../inventory/utils/numbers");
 const { clampRange } = require("../inventory/utils/ranges");
-const { parseKey, denormNum, keySphCyl, normalizeCylConvention } = require("../inventory/utils/keys");
+const {
+  parseKey,
+  denormNum,
+  keySphCyl,
+  normalizeCylConvention,
+} = require("../inventory/utils/keys");
 const { makeSku, makeCodebar } = require("../inventory/utils/barcode");
 
 // Services
-const { seedRootForSheet, seedFullForSheet } = require("../inventory/services/seed.service");
-const { validateChunkRows } = require("../inventory/services/chunkValidate.service");
+const {
+  seedRootForSheet,
+  seedFullForSheet,
+} = require("../inventory/services/seed.service");
+const {
+  validateChunkRows,
+} = require("../inventory/services/chunkValidate.service");
 const {
   applyChunkBase,
   applyChunkSphCyl,
   applyChunkBifocal,
   applyChunkProgresivo,
 } = require("../inventory/services/chunkApply.service");
-const { maybeExtendMetaRangesFromRows } = require("../inventory/services/metaRangesExtend.service");
+const {
+  maybeExtendMetaRangesFromRows,
+} = require("../inventory/services/metaRangesExtend.service");
 
 // Helpers router-level (solo express-validator)
 const handleValidation = (req, res, next) => {
@@ -110,12 +129,24 @@ router.post(
   ]),
 
   body("proveedor").optional({ nullable: true }).isObject(),
-  body("proveedor.name").optional({ nullable: true, checkFalsy: true }).isString().trim(),
-  body("proveedor.id").optional({ nullable: true, checkFalsy: true }).isString().trim(),
+  body("proveedor.name")
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .trim(),
+  body("proveedor.id")
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .trim(),
 
   body("marca").optional({ nullable: true }).isObject(),
-  body("marca.name").optional({ nullable: true, checkFalsy: true }).isString().trim(),
-  body("marca.id").optional({ nullable: true, checkFalsy: true }).isString().trim(),
+  body("marca.name")
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .trim(),
+  body("marca.id")
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .trim(),
 
   body("baseKey").isString().trim().notEmpty(),
   body("material").isString().trim().notEmpty(),
@@ -133,7 +164,9 @@ router.post(
       const proveedor = normalizeParty(req.body.proveedor);
       const marca = normalizeParty(req.body.marca);
 
-      const sheetSku = isDef(req.body.sku) ? String(req.body.sku).trim().toUpperCase() : null;
+      const sheetSku = isDef(req.body.sku)
+        ? String(req.body.sku).trim().toUpperCase()
+        : null;
 
       const sheetLikeForSku = {
         proveedor,
@@ -144,7 +177,8 @@ router.post(
         tratamientos: req.body.tratamientos || [],
       };
 
-      const skuFinal = sheetSku || (await makeUniqueSheetSku(InventorySheet, sheetLikeForSku));
+      const skuFinal =
+        sheetSku || (await makeUniqueSheetSku(InventorySheet, sheetLikeForSku));
 
       const sheet = await InventorySheet.create({
         nombre,
@@ -213,7 +247,9 @@ router.get(
       if (!sheet)
         return res.status(404).json({ ok: false, message: "Sheet no existe" });
       if (sheet.isDeleted)
-        return res.status(410).json({ ok: false, message: "Sheet eliminada (soft-delete)" });
+        return res
+          .status(410)
+          .json({ ok: false, message: "Sheet eliminada (soft-delete)" });
 
       if (!sheet.sku) {
         try {
@@ -225,7 +261,11 @@ router.get(
 
       res.json({
         ok: true,
-        data: { sheet, tabs: buildTabsForTipo(sheet), physicalLimits: PHYSICAL_LIMITS },
+        data: {
+          sheet,
+          tabs: buildTabsForTipo(sheet),
+          physicalLimits: PHYSICAL_LIMITS,
+        },
       });
     } catch (err) {
       console.error("GET /sheets/:sheetId error:", err);
@@ -236,16 +276,28 @@ router.get(
 
 router.get("/sheets/by-sku/:sku", async (req, res) => {
   try {
-    const sku = String(req.params.sku || "").trim().toUpperCase();
-    if (!sku) return res.status(400).json({ ok: false, message: "SKU requerido" });
+    const sku = String(req.params.sku || "")
+      .trim()
+      .toUpperCase();
+    if (!sku)
+      return res.status(400).json({ ok: false, message: "SKU requerido" });
 
-    const sheet = await InventorySheet.findOne({ sku, isDeleted: { $ne: true } });
+    const sheet = await InventorySheet.findOne({
+      sku,
+      isDeleted: { $ne: true },
+    });
     if (!sheet)
-      return res.status(404).json({ ok: false, message: "No existe planilla con ese SKU" });
+      return res
+        .status(404)
+        .json({ ok: false, message: "No existe planilla con ese SKU" });
 
     res.json({
       ok: true,
-      data: { sheet, tabs: buildTabsForTipo(sheet), physicalLimits: PHYSICAL_LIMITS },
+      data: {
+        sheet,
+        tabs: buildTabsForTipo(sheet),
+        physicalLimits: PHYSICAL_LIMITS,
+      },
     });
   } catch (err) {
     console.error("GET /sheets/by-sku/:sku error:", err);
@@ -263,11 +315,23 @@ router.patch(
   body("tratamientos").optional().isArray(),
 
   body("proveedor").optional({ nullable: true }).isObject(),
-  body("proveedor.name").optional({ nullable: true, checkFalsy: true }).isString().trim(),
-  body("proveedor.id").optional({ nullable: true, checkFalsy: true }).isString().trim(),
+  body("proveedor.name")
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .trim(),
+  body("proveedor.id")
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .trim(),
   body("marca").optional({ nullable: true }).isObject(),
-  body("marca.name").optional({ nullable: true, checkFalsy: true }).isString().trim(),
-  body("marca.id").optional({ nullable: true, checkFalsy: true }).isString().trim(),
+  body("marca.name")
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .trim(),
+  body("marca.id")
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .trim(),
 
   body("meta").optional().isObject(),
   body("meta.observaciones").optional().isString(),
@@ -275,7 +339,11 @@ router.patch(
   body("meta.ranges").optional().isObject(),
 
   // ✅ NUEVO: SKU control
-  body("sku").optional({ nullable: true }).isString().trim().isLength({ min: 6, max: 60 }),
+  body("sku")
+    .optional({ nullable: true })
+    .isString()
+    .trim()
+    .isLength({ min: 6, max: 60 }),
   body("regenSku").optional().isBoolean(),
   body("preserveSku").optional().isBoolean(),
 
@@ -288,13 +356,28 @@ router.patch(
     const sameParty = (a, b) => {
       const A = normalizeParty(a);
       const B = normalizeParty(b);
-      return String(A?.id || "") === String(B?.id || "") && String(A?.name || "") === String(B?.name || "");
+      return (
+        String(A?.id || "") === String(B?.id || "") &&
+        String(A?.name || "") === String(B?.name || "")
+      );
     };
 
     // helper: comparar arrays sin importar orden
     const sameArr = (a, b) => {
-      const A = Array.isArray(a) ? a.map(String).map((x) => x.trim()).filter(Boolean).sort() : [];
-      const B = Array.isArray(b) ? b.map(String).map((x) => x.trim()).filter(Boolean).sort() : [];
+      const A = Array.isArray(a)
+        ? a
+            .map(String)
+            .map((x) => x.trim())
+            .filter(Boolean)
+            .sort()
+        : [];
+      const B = Array.isArray(b)
+        ? b
+            .map(String)
+            .map((x) => x.trim())
+            .filter(Boolean)
+            .sort()
+        : [];
       if (A.length !== B.length) return false;
       for (let i = 0; i < A.length; i++) if (A[i] !== B[i]) return false;
       return true;
@@ -302,9 +385,12 @@ router.patch(
 
     try {
       const sheet = await InventorySheet.findById(req.params.sheetId);
-      if (!sheet) return res.status(404).json({ ok: false, message: "Sheet no existe" });
+      if (!sheet)
+        return res.status(404).json({ ok: false, message: "Sheet no existe" });
       if (sheet.isDeleted)
-        return res.status(410).json({ ok: false, message: "Sheet eliminada (soft-delete)" });
+        return res
+          .status(410)
+          .json({ ok: false, message: "Sheet eliminada (soft-delete)" });
 
       const skuBefore = sheet.sku || null;
 
@@ -323,13 +409,16 @@ router.patch(
         sheet.nombre = (req.body.nombre ?? req.body.name).trim();
       }
 
-      if (isDef(req.body.tratamientos)) sheet.tratamientos = req.body.tratamientos;
+      if (isDef(req.body.tratamientos))
+        sheet.tratamientos = req.body.tratamientos;
 
-      if (isDef(req.body.proveedor)) sheet.proveedor = normalizeParty(req.body.proveedor);
+      if (isDef(req.body.proveedor))
+        sheet.proveedor = normalizeParty(req.body.proveedor);
       if (isDef(req.body.marca)) sheet.marca = normalizeParty(req.body.marca);
 
       if (req.body.meta && typeof req.body.meta === "object") {
-        sheet.meta = sheet.meta && typeof sheet.meta === "object" ? sheet.meta : {};
+        sheet.meta =
+          sheet.meta && typeof sheet.meta === "object" ? sheet.meta : {};
 
         if (isDef(req.body.meta.observaciones))
           sheet.meta.observaciones = String(req.body.meta.observaciones || "");
@@ -347,8 +436,12 @@ router.patch(
       const forceRegen = req.body.regenSku === true;
 
       // si mandan sku manual explícito
-      const skuManualProvided = Object.prototype.hasOwnProperty.call(req.body, "sku") && req.body.sku !== null;
-      const skuWantsClearAndAuto = Object.prototype.hasOwnProperty.call(req.body, "sku") && req.body.sku === null;
+      const skuManualProvided =
+        Object.prototype.hasOwnProperty.call(req.body, "sku") &&
+        req.body.sku !== null;
+      const skuWantsClearAndAuto =
+        Object.prototype.hasOwnProperty.call(req.body, "sku") &&
+        req.body.sku === null;
 
       // detectar cambios contextuales (después de aplicar updates)
       const afterSnapshot = {
@@ -363,9 +456,12 @@ router.patch(
       const contextChanged =
         !sameParty(beforeSnapshot.proveedor, afterSnapshot.proveedor) ||
         !sameParty(beforeSnapshot.marca, afterSnapshot.marca) ||
-        String(beforeSnapshot.tipo_matriz || "") !== String(afterSnapshot.tipo_matriz || "") ||
-        String(beforeSnapshot.baseKey || "") !== String(afterSnapshot.baseKey || "") ||
-        String(beforeSnapshot.material || "") !== String(afterSnapshot.material || "") ||
+        String(beforeSnapshot.tipo_matriz || "") !==
+          String(afterSnapshot.tipo_matriz || "") ||
+        String(beforeSnapshot.baseKey || "") !==
+          String(afterSnapshot.baseKey || "") ||
+        String(beforeSnapshot.material || "") !==
+          String(afterSnapshot.material || "") ||
         !sameArr(beforeSnapshot.tratamientos, afterSnapshot.tratamientos);
 
       if (!preserveSku) {
@@ -383,7 +479,11 @@ router.patch(
             tratamientos: sheet.tratamientos || [],
           };
 
-          sheet.sku = await makeUniqueSheetSku(InventorySheet, sheetLikeForSku, sheet._id);
+          sheet.sku = await makeUniqueSheetSku(
+            InventorySheet,
+            sheetLikeForSku,
+            sheet._id
+          );
         } else if (!sheet.sku) {
           // backfill si quedó vacío
           await ensureSheetSku(InventorySheet, sheet);
@@ -418,15 +518,20 @@ router.patch(
 
       return res.json({
         ok: true,
-        data: { sheet, tabs: buildTabsForTipo(sheet), physicalLimits: PHYSICAL_LIMITS },
+        data: {
+          sheet,
+          tabs: buildTabsForTipo(sheet),
+          physicalLimits: PHYSICAL_LIMITS,
+        },
       });
     } catch (err) {
       console.error("PATCH /sheets/:sheetId error:", err);
-      return res.status(500).json({ ok: false, message: "Error al actualizar hoja" });
+      return res
+        .status(500)
+        .json({ ok: false, message: "Error al actualizar hoja" });
     }
   }
 );
-
 
 // trash, delete, restore
 router.patch(
@@ -438,13 +543,18 @@ router.patch(
     const actor = actorFromBody(req);
     try {
       const sheet = await InventorySheet.findById(req.params.sheetId);
-      if (!sheet) return res.status(404).json({ ok: false, message: "Sheet no existe" });
+      if (!sheet)
+        return res.status(404).json({ ok: false, message: "Sheet no existe" });
 
       if (sheet.isDeleted) {
         return res.json({
           ok: true,
           message: "Hoja ya estaba en papelera",
-          data: { sheet, tabs: buildTabsForTipo(sheet), physicalLimits: PHYSICAL_LIMITS },
+          data: {
+            sheet,
+            tabs: buildTabsForTipo(sheet),
+            physicalLimits: PHYSICAL_LIMITS,
+          },
         });
       }
 
@@ -466,11 +576,17 @@ router.patch(
       return res.json({
         ok: true,
         message: "Hoja enviada a papelera",
-        data: { sheet, tabs: buildTabsForTipo(sheet), physicalLimits: PHYSICAL_LIMITS },
+        data: {
+          sheet,
+          tabs: buildTabsForTipo(sheet),
+          physicalLimits: PHYSICAL_LIMITS,
+        },
       });
     } catch (err) {
       console.error("PATCH /sheets/:sheetId/trash error:", err);
-      return res.status(500).json({ ok: false, message: "Error al enviar a papelera" });
+      return res
+        .status(500)
+        .json({ ok: false, message: "Error al enviar a papelera" });
     }
   }
 );
@@ -484,8 +600,10 @@ router.delete(
     const actor = actorFromBody(req);
     try {
       const sheet = await InventorySheet.findById(req.params.sheetId);
-      if (!sheet) return res.status(404).json({ ok: false, message: "Sheet no existe" });
-      if (sheet.isDeleted) return res.json({ ok: true, message: "Hoja ya estaba eliminada" });
+      if (!sheet)
+        return res.status(404).json({ ok: false, message: "Sheet no existe" });
+      if (sheet.isDeleted)
+        return res.json({ ok: true, message: "Hoja ya estaba eliminada" });
 
       sheet.isDeleted = true;
       sheet.deletedAt = new Date();
@@ -518,8 +636,10 @@ router.patch(
     const actor = actorFromBody(req);
     try {
       const sheet = await InventorySheet.findById(req.params.sheetId);
-      if (!sheet) return res.status(404).json({ ok: false, message: "Sheet no existe" });
-      if (!sheet.isDeleted) return res.json({ ok: true, message: "Hoja ya está activa" });
+      if (!sheet)
+        return res.status(404).json({ ok: false, message: "Sheet no existe" });
+      if (!sheet.isDeleted)
+        return res.json({ ok: true, message: "Hoja ya está activa" });
 
       sheet.isDeleted = false;
       sheet.deletedAt = null;
@@ -537,7 +657,11 @@ router.patch(
 
       res.json({
         ok: true,
-        data: { sheet, tabs: buildTabsForTipo(sheet), physicalLimits: PHYSICAL_LIMITS },
+        data: {
+          sheet,
+          tabs: buildTabsForTipo(sheet),
+          physicalLimits: PHYSICAL_LIMITS,
+        },
       });
     } catch (err) {
       console.error("PATCH /sheets/:sheetId/restore error:", err);
@@ -555,9 +679,12 @@ router.get(
   async (req, res) => {
     try {
       const sheet = await InventorySheet.findById(req.params.sheetId);
-      if (!sheet) return res.status(404).json({ ok: false, message: "Sheet no existe" });
+      if (!sheet)
+        return res.status(404).json({ ok: false, message: "Sheet no existe" });
       if (sheet.isDeleted)
-        return res.status(410).json({ ok: false, message: "Sheet eliminada (soft-delete)" });
+        return res
+          .status(410)
+          .json({ ok: false, message: "Sheet eliminada (soft-delete)" });
 
       const limit = Math.min(Number(req.query.limit ?? 5000), 20000);
 
@@ -565,17 +692,28 @@ router.get(
         const doc = await MatrixBase.findOne({ sheet: sheet._id });
 
         const baseRange = clampRange(
-          isDef(req.query.baseMin) ? Number(req.query.baseMin) : PHYSICAL_LIMITS.BASE.min,
-          isDef(req.query.baseMax) ? Number(req.query.baseMax) : PHYSICAL_LIMITS.BASE.max,
+          isDef(req.query.baseMin)
+            ? Number(req.query.baseMin)
+            : PHYSICAL_LIMITS.BASE.min,
+          isDef(req.query.baseMax)
+            ? Number(req.query.baseMax)
+            : PHYSICAL_LIMITS.BASE.max,
           PHYSICAL_LIMITS.BASE
         );
-        if (!baseRange) return res.status(400).json({ ok: false, message: "Rango BASE inválido" });
+        if (!baseRange)
+          return res
+            .status(400)
+            .json({ ok: false, message: "Rango BASE inválido" });
 
         let rows = [];
         if (doc?.cells) {
           for (const [k, cell] of doc.cells.entries()) {
             const base = denormNum(k);
-            if (Number.isFinite(base) && base >= baseRange.min && base <= baseRange.max) {
+            if (
+              Number.isFinite(base) &&
+              base >= baseRange.min &&
+              base <= baseRange.max
+            ) {
               rows.push({
                 sheet: sheet._id,
                 tipo_matriz: "BASE",
@@ -596,17 +734,31 @@ router.get(
         const doc = await MatrixSphCyl.findOne({ sheet: sheet._id });
 
         const sphRange = clampRange(
-          isDef(req.query.sphMin) ? Number(req.query.sphMin) : PHYSICAL_LIMITS.SPH.min,
-          isDef(req.query.sphMax) ? Number(req.query.sphMax) : PHYSICAL_LIMITS.SPH.max,
+          isDef(req.query.sphMin)
+            ? Number(req.query.sphMin)
+            : PHYSICAL_LIMITS.SPH.min,
+          isDef(req.query.sphMax)
+            ? Number(req.query.sphMax)
+            : PHYSICAL_LIMITS.SPH.max,
           PHYSICAL_LIMITS.SPH
         );
         const cylRange = clampRange(
-          isDef(req.query.cylMin) ? Number(req.query.cylMin) : PHYSICAL_LIMITS.CYL.min,
-          isDef(req.query.cylMax) ? Number(req.query.cylMax) : PHYSICAL_LIMITS.CYL.max,
+          isDef(req.query.cylMin)
+            ? Number(req.query.cylMin)
+            : PHYSICAL_LIMITS.CYL.min,
+          isDef(req.query.cylMax)
+            ? Number(req.query.cylMax)
+            : PHYSICAL_LIMITS.CYL.max,
           PHYSICAL_LIMITS.CYL
         );
-        if (!sphRange) return res.status(400).json({ ok: false, message: "Rango SPH inválido" });
-        if (!cylRange) return res.status(400).json({ ok: false, message: "Rango CYL inválido" });
+        if (!sphRange)
+          return res
+            .status(400)
+            .json({ ok: false, message: "Rango SPH inválido" });
+        if (!cylRange)
+          return res
+            .status(400)
+            .json({ ok: false, message: "Rango CYL inválido" });
 
         let rows = [];
         if (doc?.cells) {
@@ -640,6 +792,105 @@ router.get(
         return res.json({ ok: true, data: rows });
       }
 
+      /* =====================================================
+     SPH_ADD (BIFOCAL)
+     ===================================================== */
+if (sheet.tipo_matriz === "SPH_ADD") {
+  const doc = await MatrixBifocal.findOne({ sheet: sheet._id });
+
+  const sphMin = Number(req.query.sphMin ?? PHYSICAL_LIMITS.SPH.min);
+  const sphMax = Number(req.query.sphMax ?? PHYSICAL_LIMITS.SPH.max);
+  const addMin = Number(req.query.addMin ?? PHYSICAL_LIMITS.ADD.min);
+  const addMax = Number(req.query.addMax ?? PHYSICAL_LIMITS.ADD.max);
+
+  const eyes = String(req.query.eyes || "OD,OI")
+    .split(",")
+    .map((e) => e.trim().toUpperCase());
+
+  let rows = [];
+
+  if (doc?.cells) {
+    for (const [k, cell] of doc.cells.entries()) {
+      const [sph, add] = parseKey(k);
+
+      if (sph < sphMin || sph > sphMax) continue;
+      if (add < addMin || add > addMax) continue;
+
+      for (const eye of eyes) {
+        const eyeNode = cell[eye];
+        if (!eyeNode) continue;
+
+        rows.push({
+          sheet: sheet._id,
+          tipo_matriz: "SPH_ADD",
+          sph,
+          add,
+          eye,
+          base_izq: to2(cell.base_izq),
+          base_der: to2(cell.base_der),
+          existencias: Number(eyeNode.existencias || 0),
+          sku: eyeNode.sku || null,
+          codebar: eyeNode.codebar || null,
+        });
+      }
+    }
+  }
+
+  rows = rows
+    .sort((a, b) =>
+      a.sph === b.sph ? a.add - b.add : a.sph - b.sph
+    )
+    .slice(0, limit);
+
+  return res.json({ ok: true, data: rows });
+}
+
+
+      /* =====================================================
+     BASE_ADD (PROGRESIVO)
+     ===================================================== */
+if (sheet.tipo_matriz === "BASE_ADD") {
+  const doc = await MatrixProgresivo.findOne({ sheet: sheet._id });
+
+  const addMin = Number(req.query.addMin ?? PHYSICAL_LIMITS.ADD.min);
+  const addMax = Number(req.query.addMax ?? PHYSICAL_LIMITS.ADD.max);
+
+  const eyes = String(req.query.eyes || "OD,OI")
+    .split(",")
+    .map((e) => e.trim().toUpperCase());
+
+  let rows = [];
+
+  if (doc?.cells) {
+    for (const [k, cell] of doc.cells.entries()) {
+      const [, , add] = parseKey(k);
+
+      if (add < addMin || add > addMax) continue;
+
+      for (const eye of eyes) {
+        const eyeNode = cell[eye];
+        if (!eyeNode) continue;
+
+        rows.push({
+          sheet: sheet._id,
+          tipo_matriz: "BASE_ADD",
+          base_izq: to2(cell.base_izq),
+          base_der: to2(cell.base_der),
+          add: to2(add),
+          eye,
+          existencias: Number(eyeNode.existencias || 0),
+          sku: eyeNode.sku || null,
+          codebar: eyeNode.codebar || null,
+        });
+      }
+    }
+  }
+
+  rows = rows.slice(0, limit);
+  return res.json({ ok: true, data: rows });
+}
+
+
       // SPH_ADD y BASE_ADD: si ya los tenías en tu router anterior, puedes pegar esa parte aquí.
       return res.json({ ok: true, data: [] });
     } catch (err) {
@@ -660,9 +911,12 @@ router.post(
     const actor = actorFromBody(req);
     try {
       const sheet = await InventorySheet.findById(req.params.sheetId);
-      if (!sheet) return res.status(404).json({ ok: false, message: "Sheet no existe" });
+      if (!sheet)
+        return res.status(404).json({ ok: false, message: "Sheet no existe" });
       if (sheet.isDeleted)
-        return res.status(410).json({ ok: false, message: "Sheet eliminada (soft-delete)" });
+        return res
+          .status(410)
+          .json({ ok: false, message: "Sheet eliminada (soft-delete)" });
 
       const stats = await seedFullForSheet(models, sheet, actor);
 
@@ -701,15 +955,21 @@ router.put(
     try {
       const sheet = await InventorySheet.findById(req.params.sheetId);
       if (!sheet || sheet.isDeleted)
-        return res.status(404).json({ ok: false, message: "Hoja no encontrada" });
+        return res
+          .status(404)
+          .json({ ok: false, message: "Hoja no encontrada" });
       if (sheet.tipo_matriz !== "SPH_CYL")
-        return res.status(400).json({ ok: false, message: "Esta hoja no es SPH_CYL" });
+        return res
+          .status(400)
+          .json({ ok: false, message: "Esta hoja no es SPH_CYL" });
 
       const sph = to2(req.body.sph);
       const cyl = normalizeCylConvention(req.body.cyl);
 
       if (!Number.isFinite(sph) || !Number.isFinite(cyl))
-        return res.status(400).json({ ok: false, message: "SPH/CYL inválidos" });
+        return res
+          .status(400)
+          .json({ ok: false, message: "SPH/CYL inválidos" });
 
       if (sph < PHYSICAL_LIMITS.SPH.min || sph > PHYSICAL_LIMITS.SPH.max)
         return res.status(400).json({
@@ -717,7 +977,9 @@ router.put(
           message: `SPH fuera de límites (${PHYSICAL_LIMITS.SPH.min}..${PHYSICAL_LIMITS.SPH.max})`,
         });
       if (!isMultipleOfStep(sph, 0.25))
-        return res.status(400).json({ ok: false, message: "SPH debe ir en pasos de 0.25" });
+        return res
+          .status(400)
+          .json({ ok: false, message: "SPH debe ir en pasos de 0.25" });
 
       if (cyl < PHYSICAL_LIMITS.CYL.min || cyl > PHYSICAL_LIMITS.CYL.max)
         return res.status(400).json({
@@ -727,13 +989,19 @@ router.put(
 
       const cylIsZero = Math.abs(cyl) < 1e-6;
       if (!cylIsZero && !isMultipleOfStep(cyl, 0.25))
-        return res.status(400).json({ ok: false, message: "CYL debe ir en pasos de 0.25" });
+        return res
+          .status(400)
+          .json({ ok: false, message: "CYL debe ir en pasos de 0.25" });
 
       const key = keySphCyl(sph, cyl);
 
       let doc = await MatrixSphCyl.findOne({ sheet: sheet._id });
       if (!doc)
-        doc = new MatrixSphCyl({ sheet: sheet._id, tipo_matriz: "SPH_CYL", cells: new Map() });
+        doc = new MatrixSphCyl({
+          sheet: sheet._id,
+          tipo_matriz: "SPH_CYL",
+          cells: new Map(),
+        });
 
       doc.set("cells", doc.cells || new Map());
 
@@ -748,10 +1016,18 @@ router.put(
       let after;
       if (isDef(req.body.existencias)) after = Number(req.body.existencias);
       else if (isDef(req.body.delta)) after = before + Number(req.body.delta);
-      else return res.status(400).json({ ok: false, message: "Envía existencias o delta" });
+      else
+        return res
+          .status(400)
+          .json({ ok: false, message: "Envía existencias o delta" });
 
       if (!Number.isFinite(after) || after < 0)
-        return res.status(400).json({ ok: false, message: "Existencias resultantes inválidas (<0)" });
+        return res
+          .status(400)
+          .json({
+            ok: false,
+            message: "Existencias resultantes inválidas (<0)",
+          });
 
       let finalSku = isDef(req.body.sku)
         ? String(req.body.sku)
@@ -763,7 +1039,8 @@ router.put(
           : String(req.body.codebar)
         : prev.codebar;
 
-      if (after > 0 && !finalCodebar) finalCodebar = makeCodebar(sheet._id, "SPH_CYL", { sph, cyl });
+      if (after > 0 && !finalCodebar)
+        finalCodebar = makeCodebar(sheet._id, "SPH_CYL", { sph, cyl });
 
       const nextCell = {
         ...prev,
@@ -781,7 +1058,9 @@ router.put(
       let axisExtended = false;
       let axisExtendError = null;
       try {
-        axisExtended = await maybeExtendMetaRangesFromRows(sheet, [{ sph, cyl, existencias: after }]);
+        axisExtended = await maybeExtendMetaRangesFromRows(sheet, [
+          { sph, cyl, existencias: after },
+        ]);
       } catch (e) {
         axisExtended = false;
         axisExtendError = e?.message || String(e);
@@ -793,14 +1072,35 @@ router.put(
         sph,
         cyl,
         type: "CELL_UPDATE",
-        details: { key, before, after, delta: after - before, axisExtended, axisExtendError },
+        details: {
+          key,
+          before,
+          after,
+          delta: after - before,
+          axisExtended,
+          axisExtendError,
+        },
         actor,
       });
 
-      return res.json({ ok: true, key, before, after, cell: nextCell, axisExtended, axisExtendError });
+      return res.json({
+        ok: true,
+        key,
+        before,
+        after,
+        cell: nextCell,
+        axisExtended,
+        axisExtendError,
+      });
     } catch (err) {
       console.error("PUT /sheets/:sheetId/sph-cyl/cell error:", err);
-      return res.status(500).json({ ok: false, message: "Error interno", error: String(err?.message || err) });
+      return res
+        .status(500)
+        .json({
+          ok: false,
+          message: "Error interno",
+          error: String(err?.message || err),
+        });
     }
   }
 );
@@ -818,16 +1118,25 @@ router.post(
 
     try {
       const sheet = await InventorySheet.findById(req.params.sheetId);
-      if (!sheet) return res.status(404).json({ ok: false, message: "Sheet no existe" });
+      if (!sheet)
+        return res.status(404).json({ ok: false, message: "Sheet no existe" });
       if (sheet.isDeleted)
-        return res.status(410).json({ ok: false, message: "Sheet eliminada (soft-delete)" });
+        return res
+          .status(410)
+          .json({ ok: false, message: "Sheet eliminada (soft-delete)" });
 
       const rows = Array.isArray(req.body.rows) ? req.body.rows : [];
       if (!rows.length) return res.json({ ok: true, data: { upserted: 0 } });
 
       const validationErrors = validateChunkRows(sheet.tipo_matriz, rows);
       if (validationErrors.length) {
-        return res.status(400).json({ ok: false, message: "Datos inválidos en rows", errors: validationErrors });
+        return res
+          .status(400)
+          .json({
+            ok: false,
+            message: "Datos inválidos en rows",
+            errors: validationErrors,
+          });
       }
 
       let result;
@@ -839,7 +1148,10 @@ router.post(
           break;
 
         case "SPH_CYL": {
-          const normalizedRows = rows.map((r) => ({ ...r, cyl: normalizeCylConvention(r.cyl) }));
+          const normalizedRows = rows.map((r) => ({
+            ...r,
+            cyl: normalizeCylConvention(r.cyl),
+          }));
           result = await applyChunkSphCyl(models, sheet, normalizedRows, actor);
           usedRowsForExtend = normalizedRows;
           break;
@@ -854,13 +1166,21 @@ router.post(
           break;
 
         default:
-          return res.status(400).json({ ok: false, message: `tipo_matriz no soportado: ${sheet.tipo_matriz}` });
+          return res
+            .status(400)
+            .json({
+              ok: false,
+              message: `tipo_matriz no soportado: ${sheet.tipo_matriz}`,
+            });
       }
 
       let axisExtended = false;
       let axisExtendError = null;
       try {
-        axisExtended = await maybeExtendMetaRangesFromRows(sheet, usedRowsForExtend);
+        axisExtended = await maybeExtendMetaRangesFromRows(
+          sheet,
+          usedRowsForExtend
+        );
       } catch (e) {
         axisExtended = false;
         axisExtendError = e?.message || String(e);

@@ -11,6 +11,7 @@ const routes = [
   {
     path: "/layouts",
     component: () => import("../layouts/DashboardLayout.vue"),
+    redirect: "/layouts/home",
     meta: { requiresAuth: true },
     children: [
       {

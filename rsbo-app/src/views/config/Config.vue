@@ -16,11 +16,7 @@
 
       <!-- OTRAS TABS (relleno por ahora) -->
       <b-tab-item label="Preferencias" icon="sliders-h" value="preferences">
-        <div class="box">
-          <p class="has-text-grey">
-            Aquí podrás configurar preferencias de la aplicación (tema, idioma, etc.).
-          </p>
-        </div>
+        <Preferencias />
       </b-tab-item>
 
       <b-tab-item label="Seguridad" icon="shield-alt" value="security">
@@ -38,6 +34,7 @@
 import { ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import MiUser from '../../views/config/options/MiUser.vue'
+import Preferencias from '../../views/config/options/Preferencias.vue'
 
 // 🔹 Props que vienen del layout (por router-view): :user, :loading
 const props = defineProps({

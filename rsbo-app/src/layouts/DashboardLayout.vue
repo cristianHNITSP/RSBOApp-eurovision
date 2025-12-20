@@ -44,42 +44,74 @@ const currentRouteName = computed(() => route.meta.breadcrumb || route.name || "
 const pageTitle = computed(() => "Panel de Control");
 
 /* =========================
-   Dark mode
+   Dark mode (persistente)
    ========================= */
-const isDark = ref(document.documentElement.getAttribute("data-theme") === "dark");
+const DARK_KEY = "dark-mode";
+const isDark = ref(false);
 
-function toggleDarkMode() {
+function applyDark(enabled) {
   const html = document.documentElement;
-  const next = html.getAttribute("data-theme") !== "dark" ? "dark" : "light";
+  const next = enabled ? "dark" : "light";
   html.setAttribute("data-theme", next);
   html.style.colorScheme = next;
-  localStorage.setItem("dark-mode", next === "dark" ? "true" : "false");
-  isDark.value = next === "dark";
+  isDark.value = enabled;
+}
+
+(function applyDarkImmediately() {
+  try {
+    const saved = localStorage.getItem(DARK_KEY);
+    applyDark(saved === "true");
+  } catch {
+    applyDark(false);
+  }
+})();
+
+function setDarkMode(enabled) {
+  const on = !!enabled;
+  try {
+    localStorage.setItem(DARK_KEY, on ? "true" : "false");
+  } catch { }
+  applyDark(on);
+}
+
+function toggleDarkMode() {
+  setDarkMode(!isDark.value);
 }
 
 /* =========================
-   Font size
+   Font size (persistente)
    ========================= */
 const FONT_SIZE_KEY = "user-font-size";
 const sizes = { xs: "85%", sm: "92.5%", md: "100%", lg: "112.5%" };
-
 const fontSize = ref("md");
+
+function applyFontSize(sizeKey) {
+  const k = sizes[sizeKey] ? sizeKey : "md";
+  fontSize.value = k;
+  document.documentElement.style.fontSize = sizes[k];
+}
+
 (function applyFontSizeImmediately() {
-  const saved = localStorage.getItem(FONT_SIZE_KEY);
-  const size = saved && sizes[saved] ? saved : "md";
-  fontSize.value = size;
-  document.documentElement.style.fontSize = sizes[size];
+  try {
+    const saved = localStorage.getItem(FONT_SIZE_KEY);
+    applyFontSize(saved && sizes[saved] ? saved : "md");
+  } catch {
+    applyFontSize("md");
+  }
 })();
 
-function setFontSize(size) {
-  const next = sizes[size] ? size : "md";
-  fontSize.value = next;
-  document.documentElement.style.fontSize = sizes[next];
-  localStorage.setItem(FONT_SIZE_KEY, next);
+function setFontSize(val) {
+  // ✅ robust: por si llega event / objeto
+  const raw = val?.target?.value ?? val?.detail?.value ?? val;
+  const next = sizes[raw] ? raw : "md";
+  try {
+    localStorage.setItem(FONT_SIZE_KEY, next);
+  } catch { }
+  applyFontSize(next);
 }
 
 /* =========================
-   Reduce effects (blur/gradients/transparency)
+   Reduce effects (persistente)
    ========================= */
 const REDUCED_EFFECTS_KEY = "ui-reduced-effects";
 const reducedEffects = ref(false);
@@ -90,18 +122,23 @@ function applyReducedEffects(enabled) {
   else html.removeAttribute("data-reduced-effects");
 }
 
-// ✅ aplicar INMEDIATO (evita “flash”)
 (function applyReducedEffectsImmediately() {
-  const saved = localStorage.getItem(REDUCED_EFFECTS_KEY);
-  const enabled = saved === "true";
-  reducedEffects.value = enabled;
-  applyReducedEffects(enabled);
+  try {
+    const enabled = localStorage.getItem(REDUCED_EFFECTS_KEY) === "true";
+    reducedEffects.value = enabled;
+    applyReducedEffects(enabled);
+  } catch {
+    reducedEffects.value = false;
+    applyReducedEffects(false);
+  }
 })();
 
 function setReducedEffects(val) {
   const enabled = !!val;
   reducedEffects.value = enabled;
-  localStorage.setItem(REDUCED_EFFECTS_KEY, enabled ? "true" : "false");
+  try {
+    localStorage.setItem(REDUCED_EFFECTS_KEY, enabled ? "true" : "false");
+  } catch { }
   applyReducedEffects(enabled);
 }
 
@@ -148,13 +185,19 @@ const onResize = rafThrottle(() => {
 const sidebarmobile = ref(null);
 const isMobileSidebarVisible = ref(true);
 
-const savedSidebarState = localStorage.getItem("mobileSidebarVisible");
-if (savedSidebarState !== null) isMobileSidebarVisible.value = savedSidebarState === "true";
+(function applyMobileSidebarImmediately() {
+  try {
+    const saved = localStorage.getItem("mobileSidebarVisible");
+    if (saved !== null) isMobileSidebarVisible.value = saved === "true";
+  } catch { }
+})();
 
 onBeforeMount(() => {
   if (!isMobile.value) {
     isMobileSidebarVisible.value = true;
-    localStorage.setItem("mobileSidebarVisible", "true");
+    try {
+      localStorage.setItem("mobileSidebarVisible", "true");
+    } catch { }
   }
 });
 
@@ -184,7 +227,9 @@ function hideSidebarMobile() {
     () => {
       el.classList.remove("mobileSidebtraction-leave-active");
       isMobileSidebarVisible.value = false;
-      localStorage.setItem("mobileSidebarVisible", "false");
+      try {
+        localStorage.setItem("mobileSidebarVisible", "false");
+      } catch { }
     },
     { once: true }
   );
@@ -197,7 +242,9 @@ function toggleMobileSidebar() {
     hideSidebarMobile();
   } else {
     isMobileSidebarVisible.value = true;
-    localStorage.setItem("mobileSidebarVisible", "true");
+    try {
+      localStorage.setItem("mobileSidebarVisible", "true");
+    } catch { }
     nextTick(showSidebarMobile);
   }
 }
@@ -207,7 +254,9 @@ const mobileSearchOpen = ref(false);
 watch(isMobile, (nowMobile) => {
   if (!nowMobile) {
     isMobileSidebarVisible.value = true;
-    localStorage.setItem("mobileSidebarVisible", "true");
+    try {
+      localStorage.setItem("mobileSidebarVisible", "true");
+    } catch { }
   } else {
     mobileSearchOpen.value = false;
   }
@@ -231,7 +280,7 @@ function openMobileSearch() {
     try {
       const el = mobileSearchInputRef.value?.$el?.querySelector?.("input");
       el?.focus?.();
-    } catch {}
+    } catch { }
   });
 }
 
@@ -268,6 +317,33 @@ function closePanelFromOverlay() {
 }
 
 /* =========================
+   ✅ Bridge de eventos desde Preferencias.vue
+   ========================= */
+const UI_EVENT = "rsbo:ui";
+
+function normalizeValue(v) {
+  return v?.target?.value ?? v?.detail?.value ?? v;
+}
+
+function handleUiEvent(e) {
+  try {
+    const detail = e?.detail || {};
+    const type = detail.type;
+    const value = normalizeValue(detail.value);
+
+    if (type === "toggle-dark") return toggleDarkMode();
+    if (type === "set-dark") return setDarkMode(!!value);
+
+    if (type === "set-font") return setFontSize(value);
+
+    if (type === "toggle-reduced-effects") return toggleReducedEffects();
+    if (type === "set-reduced-effects") return setReducedEffects(!!value);
+  } catch (err) {
+    console.error("[rsbo:ui] handler error:", err);
+  }
+}
+
+/* =========================
    Mount / Unmount
    ========================= */
 onMounted(() => {
@@ -281,6 +357,9 @@ onMounted(() => {
 
   if (mql.addEventListener) mql.addEventListener("change", onMediaChange);
   else mql.addListener(onMediaChange);
+
+  // ✅ escucha eventos de Preferencias.vue
+  window.addEventListener(UI_EVENT, handleUiEvent);
 });
 
 onBeforeUnmount(() => {
@@ -291,6 +370,8 @@ onBeforeUnmount(() => {
 
   if (mql.removeEventListener) mql.removeEventListener("change", onMediaChange);
   else mql.removeListener(onMediaChange);
+
+  window.removeEventListener(UI_EVENT, handleUiEvent);
 });
 </script>
 
@@ -337,57 +418,33 @@ export default {
     <div class="layout-bg" aria-hidden="true"></div>
 
     <!-- Aviso sin conexión -->
-    <b-notification
-      v-if="isOffline"
-      type="is-danger"
-      aria-close-label="Cerrar notificación"
-      has-icon
-      class="has-text-centered offline-bar"
-    >
+    <b-notification v-if="isOffline" type="is-danger" aria-close-label="Cerrar notificación" has-icon
+      class="has-text-centered offline-bar">
       No hay conexión a internet. Por favor verifica tu red.
     </b-notification>
 
     <!-- Aviso sin conexión (loading) -->
-    <b-loading
-      v-model="showLoading"
-      :is-full-page="true"
-      :can-cancel="false"
-      :is-fullscreen="true"
-      aria-label="Cargando..."
-    >
+    <b-loading v-model="showLoading" :is-full-page="true" :can-cancel="false" :is-fullscreen="true"
+      aria-label="Cargando...">
       <b-icon pack="fas" icon="sync-alt" size="is-large" custom-class="fa-spin" />
     </b-loading>
 
     <div class="content-layout">
       <!-- Sidebar -->
-      <Sidebar
-        ref="sidebarmobile"
-        class="sidebar-mobile-panel"
-        v-if="!isMobile || isMobileSidebarVisible"
-        @toggle="setSidebarState"
-        :collapsed="isSidebarCollapsed"
-        :user="user"
-        :loading="loading"
-      />
+      <Sidebar ref="sidebarmobile" class="sidebar-mobile-panel" v-if="!isMobile || isMobileSidebarVisible"
+        @toggle="setSidebarState" :collapsed="isSidebarCollapsed" :user="user" :loading="loading" />
 
       <!-- Panel de notificaciones -->
-      <NotificationPanel
-        :visible="showPanel"
-        @close="closePanel"
-        @update-unread="unreadNotifications = $event"
-      />
+      <NotificationPanel :visible="showPanel" @close="closePanel" @update-unread="unreadNotifications = $event" />
 
       <!-- Overlay blur notificaciones móvil -->
       <div v-if="isMobile && showPanel" class="blur-overlay" @click="closePanelFromOverlay"></div>
 
       <!-- Contenido principal -->
-      <main
-        class="main-content p-0"
-        :class="{
-          'ignore-grid-mobile': isMobile && showPanel,
-          'visible-sidebar': isMobileSidebarVisible && isMobile && showPanel
-        }"
-      >
+      <main class="main-content p-0" :class="{
+        'ignore-grid-mobile': isMobile && showPanel,
+        'visible-sidebar': isMobileSidebarVisible && isMobile && showPanel
+      }">
         <!-- Header -->
         <section class="dashboard-header" ref="motionRef" :class="{ 'dashboard-header--mobile': isMobile }">
           <!-- DESKTOP TOOLBAR -->
@@ -418,29 +475,31 @@ export default {
               <div class="dashboard-actions">
                 <b-tooltip label="Notificaciones" position="is-bottom" append-to-body>
                   <div class="has-badge-wrapper">
-                    <b-button
-                      class="toolbar-btn"
-                      type="is-light"
-                      :icon-right="showPanel ? 'close' : 'bell'"
-                      @click="showPanel ? closePanel() : openPanel()"
-                    />
+                    <b-button class="toolbar-btn" type="is-light" :icon-right="showPanel ? 'close' : 'bell'"
+                      @click="showPanel ? closePanel() : openPanel()" />
                     <transition name="badge-fade">
-                      <b-tag
-                        v-if="unreadNotifications > 0"
-                        type="is-primary"
-                        size="is-small"
-                        rounded
-                        class="is-badge"
-                      >
+                      <b-tag v-if="unreadNotifications > 0" type="is-primary" size="is-small" rounded class="is-badge">
                         {{ unreadNotifications }}
                       </b-tag>
                     </transition>
                   </div>
                 </b-tooltip>
 
-                <!--NUEVO: reducir efectos 
+
+
+                <!-- 
+                <b-tooltip label="Modo oscuro (beta)" position="is-bottom" append-to-body>
+                  <b-button
+                    class="toolbar-btn"
+                    :type="isDark ? 'is-dark' : 'is-light'"
+                    icon-pack="fas"
+                    icon-left="adjust"
+                    @click="toggleDarkMode"
+                  />
+                </b-tooltip>
+
                 <b-tooltip
-                  :label="reducedEffects ? 'Efectos reducidos: activado' : 'Efectos reducidos: desactivado'"
+                  :label="reducedEffects ? 'Efectos reducidos: ON' : 'Efectos reducidos: OFF'"
                   position="is-bottom"
                   append-to-body
                 >
@@ -450,16 +509,6 @@ export default {
                     icon-pack="fas"
                     :icon-left="reducedEffects ? 'eye-slash' : 'eye'"
                     @click="toggleReducedEffects"
-                  />
-                </b-tooltip>
-                -->
-                <b-tooltip label="Modo oscuro (beta)" position="is-bottom" append-to-body>
-                  <b-button
-                    class="toolbar-btn"
-                    :type="isDark ? 'is-dark' : 'is-light'"
-                    icon-pack="fas"
-                    icon-left="adjust"
-                    @click="toggleDarkMode"
                   />
                 </b-tooltip>
 
@@ -475,12 +524,12 @@ export default {
                       Tamaño
                     </b-button>
                   </template>
-                  <b-dropdown-item @click="setFontSize('xs')">🅰 Extra pequeña</b-dropdown-item>
-                  <b-dropdown-item @click="setFontSize('sm')">🅰 Pequeña</b-dropdown-item>
-                  <b-dropdown-item @click="setFontSize('md')">🅰 Mediana (recomendada)</b-dropdown-item>
-                  <b-dropdown-item @click="setFontSize('lg')">🅰 Grande</b-dropdown-item>
+                <b-dropdown-item @click="setFontSize('xs')">🅰 Extra pequeña</b-dropdown-item>
+                <b-dropdown-item @click="setFontSize('sm')">🅰 Pequeña</b-dropdown-item>
+                <b-dropdown-item @click="setFontSize('md')">🅰 Mediana (recomendada)</b-dropdown-item>
+                <b-dropdown-item @click="setFontSize('lg')">🅰 Grande</b-dropdown-item>
                 </b-dropdown>
-
+                -->
                 <b-dropdown position="is-bottom-left" aria-role="menu" append-to-body class="user-dd">
                   <template #trigger>
                     <b-button class="toolbar-user" type="is-primary" icon-right="user-circle" label="Usuario" />
@@ -507,7 +556,8 @@ export default {
           <!-- MOBILE TOPBAR -->
           <div v-else class="mobile-topbar">
             <div class="mobile-topbar__left">
-              <b-button icon-left="bars" class="menu-toggle" type="is-primary" size="is-small" @click="toggleMobileSidebar" />
+              <b-button icon-left="bars" class="menu-toggle" type="is-primary" size="is-small"
+                @click="toggleMobileSidebar" />
               <div class="mobile-title-wrap">
                 <div class="mobile-title">{{ pageTitle }}</div>
                 <div class="mobile-subtitle">{{ currentRouteName }}</div>
@@ -516,17 +566,14 @@ export default {
 
             <div class="mobile-topbar__right">
               <b-tooltip label="Buscar" position="is-bottom" append-to-body>
-                <b-button class="toolbar-btn" type="is-light" icon-pack="fas" icon-left="search" @click="toggleMobileSearch" />
+                <b-button class="toolbar-btn" type="is-light" icon-pack="fas" icon-left="search"
+                  @click="toggleMobileSearch" />
               </b-tooltip>
 
               <b-tooltip label="Notificaciones" position="is-bottom" append-to-body>
                 <div class="has-badge-wrapper">
-                  <b-button
-                    class="toolbar-btn"
-                    type="is-light"
-                    :icon-right="showPanel ? 'close' : 'bell'"
-                    @click="showPanel ? closePanel() : openPanel()"
-                  />
+                  <b-button class="toolbar-btn" type="is-light" :icon-right="showPanel ? 'close' : 'bell'"
+                    @click="showPanel ? closePanel() : openPanel()" />
                   <transition name="badge-fade">
                     <b-tag v-if="unreadNotifications > 0" type="is-primary" size="is-small" rounded class="is-badge">
                       {{ unreadNotifications }}
@@ -540,12 +587,12 @@ export default {
                   <b-button class="toolbar-btn" type="is-light" icon-pack="fas" icon-left="ellipsis-v" />
                 </template>
 
+                <!-- 
                 <b-dropdown-item aria-role="menu-item" @click="toggleDarkMode">
                   <b-icon icon="adjust" size="is-small" />&nbsp;
                   {{ isDark ? "Modo claro" : "Modo oscuro" }}
                 </b-dropdown-item>
 
-                <!-- ✅ NUEVO: reducir efectos -->
                 <b-dropdown-item aria-role="menu-item" @click="toggleReducedEffects">
                   <b-icon :icon="reducedEffects ? 'eye-slash' : 'eye'" size="is-small" />&nbsp;
                   {{ reducedEffects ? "Efectos reducidos: ON" : "Efectos reducidos: OFF" }}
@@ -559,7 +606,7 @@ export default {
                 <b-dropdown-item aria-role="menu-item" @click="setFontSize('lg')">🅰 Grande</b-dropdown-item>
 
                 <hr class="dropdown-divider" />
-
+                -->
                 <b-dropdown-item aria-role="menu-item" @click="profile">
                   <b-icon icon="user" size="is-small" />&nbsp; Perfil
                 </b-dropdown-item>
@@ -582,19 +629,13 @@ export default {
                 <div class="mobile-search-card">
                   <div class="mobile-search-head">
                     <span class="mobile-search-title">Buscar</span>
-                    <b-button size="is-small" type="is-light" icon-pack="fas" icon-left="times" @click="closeMobileSearch" />
+                    <b-button size="is-small" type="is-light" icon-pack="fas" icon-left="times"
+                      @click="closeMobileSearch" />
                   </div>
 
                   <b-field class="m-0">
-                    <b-input
-                      ref="mobileSearchInputRef"
-                      v-model="mobileSearchQuery"
-                      placeholder="Buscar en el panel..."
-                      icon-pack="fas"
-                      icon="search"
-                      expanded
-                      rounded
-                    />
+                    <b-input ref="mobileSearchInputRef" v-model="mobileSearchQuery" placeholder="Buscar en el panel..."
+                      icon-pack="fas" icon="search" expanded rounded />
                   </b-field>
 
                   <p class="mobile-search-hint">Tip: aquí puedes conectar tu búsqueda global si quieres.</p>
@@ -643,10 +684,10 @@ export default {
 
   --fx-shadow-a: 0.12;
 
-  --surface: rgba(255,255,255,var(--fx-surface-a));
+  --surface: rgba(255, 255, 255, var(--fx-surface-a));
   --border: rgba(148, 163, 184, 0.22);
   --text: #0f172a;
-  --muted: rgba(15,23,42,0.62);
+  --muted: rgba(15, 23, 42, 0.62);
   --shadow: 0 18px 50px rgba(15, 23, 42, var(--fx-shadow-a));
 
   display: flex;
@@ -730,25 +771,63 @@ export default {
   pointer-events: none;
   opacity: 0.65;
   background:
-    radial-gradient(circle at 0 0, rgba(255,255,255,0.22), transparent 60%),
-    radial-gradient(circle at 100% 100%, rgba(15,23,42,0.10), transparent 60%);
+    radial-gradient(circle at 0 0, rgba(255, 255, 255, 0.22), transparent 60%),
+    radial-gradient(circle at 100% 100%, rgba(15, 23, 42, 0.10), transparent 60%);
 }
 
-.dashboard-header > * { position: relative; z-index: 1; }
+.dashboard-header>* {
+  position: relative;
+  z-index: 1;
+}
 
-/* Toolbar grid */
+/* =========================================
+   ✅ Toolbar grid (FIX de centrado real)
+   - el buscador queda en el centro REAL
+   - la derecha queda bien alineada sin empujar el centro
+   ========================================= */
 .dashboard-toolbar {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) auto;
+
+  /* ✅ 3 columnas simétricas:
+     left  : ocupa sin romper
+     center: ancho controlado (el buscador)
+     right : ocupa sin romper */
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 560px) minmax(0, 1fr);
   grid-template-areas: "left center right";
+
   align-items: center;
   column-gap: 1rem;
   row-gap: 0.75rem;
 }
 
-.dashboard-toolbar__left { grid-area: left; display: flex; flex-direction: column; gap: 0.35rem; min-width: 0; }
-.dashboard-toolbar__center { grid-area: center; min-width: 0; }
-.dashboard-toolbar__right { grid-area: right; min-width: 0; }
+.dashboard-toolbar__left {
+  grid-area: left;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+  justify-self: start;
+}
+
+.dashboard-toolbar__center {
+  grid-area: center;
+  min-width: 0;
+  justify-self: center;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dashboard-toolbar__right {
+  grid-area: right;
+  min-width: 0;
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+
+}
 
 /* Title */
 .dashboard-title {
@@ -758,25 +837,49 @@ export default {
   color: var(--text);
 }
 
-/* Search */
+/* =========================================
+   ✅ Search (quita márgenes fantasma Bulma/Buefy)
+   ========================================= */
 .dashboard-search {
   width: 100%;
-  max-width: 540px;
-  margin: 0 auto;
+  margin: 0 !important;
+  max-width: none !important;
+  /* ahora lo controla la columna central */
 }
 
-/* Actions */
+/* Buefy/Bulma meten margin-bottom en .field */
+.dashboard-search :deep(.field) {
+  margin: 0 !important;
+}
+
+/* Asegura que el control e input llenen el ancho */
+.dashboard-search :deep(.control) {
+  width: 100%;
+}
+
+.dashboard-search :deep(.input) {
+  width: 100%;
+}
+
+/* =========================================
+   ✅ Actions (derecha) bien distribuidas
+   - NO wrap (evita que empuje/rompa el centro)
+   - mantiene espaciado consistente
+   ========================================= */
 .dashboard-actions {
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  flex-wrap: wrap;
+
   gap: 0.5rem;
+  flex-wrap: nowrap;
+  white-space: nowrap;
 }
 
+/* Botones */
 .toolbar-btn :deep(.button) {
   border-radius: 999px;
-  box-shadow: 0 0 0 1px rgba(148,163,184,0.22);
+  box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.22);
 }
 
 .toolbar-user :deep(.button) {
@@ -784,8 +887,20 @@ export default {
   box-shadow: 0 14px 30px rgba(88, 28, 135, 0.18);
 }
 
+/* Si dropdown/user button mete ancho raro */
+.user-dd,
+.user-dd :deep(.dropdown),
+.user-dd :deep(.dropdown-trigger) {
+  display: inline-flex;
+  align-items: center;
+}
+
 /* Badge */
-.has-badge-wrapper { position: relative; display: inline-block; }
+.has-badge-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
 .is-badge {
   position: absolute;
   top: 0;
@@ -797,14 +912,22 @@ export default {
 
 /* Badge anim */
 .badge-fade-enter-active,
-.badge-fade-leave-active { transition: opacity 0.15s ease, transform 0.15s ease; }
+.badge-fade-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
 .badge-fade-enter-from,
-.badge-fade-leave-to { opacity: 0; transform: translate(40%, -60%) scale(0.85); }
+.badge-fade-leave-to {
+  opacity: 0;
+  transform: translate(40%, -60%) scale(0.85);
+}
 
 /* =========
   Mobile topbar
 ========= */
-.dashboard-header--mobile { padding: 0.55rem 0.75rem; }
+.dashboard-header--mobile {
+  padding: 0.55rem 0.75rem;
+}
 
 .mobile-topbar {
   display: flex;
@@ -814,10 +937,24 @@ export default {
   min-height: 52px;
 }
 
-.mobile-topbar__left { display: flex; align-items: center; gap: 0.6rem; min-width: 0; }
-.menu-toggle { border-radius: 999px; }
+.mobile-topbar__left {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
 
-.mobile-title-wrap { display: flex; flex-direction: column; gap: 0.05rem; min-width: 0; }
+.menu-toggle {
+  border-radius: 999px;
+}
+
+.mobile-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  min-width: 0;
+}
+
 .mobile-title {
   font-weight: 900;
   font-size: 0.98rem;
@@ -826,6 +963,7 @@ export default {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
 .mobile-subtitle {
   font-size: 0.78rem;
   color: rgba(17, 24, 39, 0.65);
@@ -833,7 +971,12 @@ export default {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.mobile-topbar__right { display: flex; align-items: center; gap: 0.45rem; }
+
+.mobile-topbar__right {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
 
 /* Mobile search overlay */
 .mobile-search-overlay {
@@ -851,21 +994,41 @@ export default {
 
 .mobile-search-card {
   width: min(720px, 100%);
-  background: rgba(255,255,255,0.92);
+  background: rgba(255, 255, 255, 0.92);
   border-radius: 14px;
   padding: 0.75rem;
   border: 1px solid rgba(17, 24, 39, 0.08);
   box-shadow: var(--shadow);
 }
 
-.mobile-search-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.55rem; }
-.mobile-search-title { font-weight: 900; color: #111827; }
-.mobile-search-hint { margin: 0.55rem 0 0; font-size: 0.8rem; color: rgba(17, 24, 39, 0.6); }
+.mobile-search-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.55rem;
+}
+
+.mobile-search-title {
+  font-weight: 900;
+  color: #111827;
+}
+
+.mobile-search-hint {
+  margin: 0.55rem 0 0;
+  font-size: 0.8rem;
+  color: rgba(17, 24, 39, 0.6);
+}
 
 .mobile-search-enter-active,
-.mobile-search-leave-active { transition: opacity 180ms ease, transform 180ms ease; }
+.mobile-search-leave-active {
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
 .mobile-search-enter-from,
-.mobile-search-leave-to { opacity: 0; transform: translateY(-10px); }
+.mobile-search-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
 
 /* =========
   Body + Footer
@@ -876,7 +1039,7 @@ export default {
 
 .dashboard-footer {
   padding: 0.75rem 1.25rem 1.25rem;
-  color: rgba(15,23,42,0.65);
+  color: rgba(15, 23, 42, 0.65);
 }
 
 /* Overlay notifs */
@@ -892,8 +1055,13 @@ export default {
 
 /* ===== Mobile behavior fixes ===== */
 @media screen and (max-width: 768px) {
-  .dashboard-body { padding: 0.75rem 0.9rem 1rem; }
-  .dashboard-footer { padding: 0.75rem 0.9rem 1.25rem; }
+  .dashboard-body {
+    padding: 0.75rem 0.9rem 1rem;
+  }
+
+  .dashboard-footer {
+    padding: 0.75rem 0.9rem 1.25rem;
+  }
 
   .ignore-grid-mobile {
     all: unset !important;
@@ -909,34 +1077,75 @@ export default {
     box-sizing: border-box !important;
     overscroll-behavior: contain !important;
   }
+
+  /* En móvil ya no necesitamos el grid del desktop */
+  .dashboard-toolbar {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "left"
+      "center"
+      "right";
+  }
+
+  .dashboard-toolbar__center {
+    justify-self: stretch;
+  }
+
+  .dashboard-toolbar__right {
+    justify-self: stretch;
+  }
+
+  .dashboard-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
 }
 
 /* =========
   Mobile sidebar animations (same as yours)
 ========= */
 @keyframes mobileSidebtractionIn {
-  0% { transform: translateX(-110%); opacity: 0; }
-  60% { transform: translateX(15%); opacity: 1; }
-  80% { transform: translateX(-5%); }
-  100% { transform: translateX(0); }
+  0% {
+    transform: translateX(-110%);
+    opacity: 0;
+  }
+
+  60% {
+    transform: translateX(15%);
+    opacity: 1;
+  }
+
+  80% {
+    transform: translateX(-5%);
+  }
+
+  100% {
+    transform: translateX(0);
+  }
 }
+
 @keyframes mobileSidebtractionOut {
-  0% { transform: translateX(0); opacity: 1; }
-  100% { transform: translateX(-110%); opacity: 0; }
+  0% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateX(-110%);
+    opacity: 0;
+  }
 }
+
 .mobileSidebtraction-enter-active {
   animation: mobileSidebtractionIn 0.4s forwards cubic-bezier(0.4, 0, 0.2, 1);
 }
+
 .mobileSidebtraction-leave-active {
   animation: mobileSidebtractionOut 0.3s forwards cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* =========================
    ✅ MODO EFECTOS REDUCIDOS (global)
-   - menos transparencia
-   - sin blur
-   - gradientes casi apagados
-   - sombra más ligera
    ========================= */
 :global(html[data-reduced-effects="true"]) {
   --fx-surface-a: 0.98;
@@ -949,7 +1158,6 @@ export default {
   --fx-shadow-a: 0.08;
 }
 
-/* opcional: reduce duraciones de transición para sentirlo más rápido */
 :global(html[data-reduced-effects="true"]) * {
   transition-duration: 120ms !important;
 }

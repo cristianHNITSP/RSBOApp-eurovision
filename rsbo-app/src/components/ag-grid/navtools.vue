@@ -968,12 +968,17 @@ const handleDiscard = () => {
 }
 
 /* tabs */
-.ribbon-tabs::v-deep(.tabs) { margin-bottom: 0 !important; }
-.ribbon-tabs::v-deep(.tab-content) { padding: 0.35rem 0.4rem 0.55rem; }
+.ribbon-tabs::v-deep(.tabs) { margin-bottom: 0 !important; padding: .5rem; }
+.ribbon-tabs::v-deep(.tab-content) { padding: 0.35rem 0.4rem 0.55rem;  }
 
 .ribbon-tabs::v-deep(.tabs.is-toggle-rounded li a) {
   border-radius: 999px !important;
   font-weight: 800;
+  margin-left: 1.5rem; 
+}
+
+.ribbon-tabs::v-deep(.tabs.is-toggle-rounded li:first-child a) {
+  margin-left: 0;
 }
 
 /* ribbon actions */
@@ -982,6 +987,7 @@ const handleDiscard = () => {
   max-width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
+
   -webkit-overflow-scrolling: touch;
   padding: 0.25rem 0.15rem;
 }

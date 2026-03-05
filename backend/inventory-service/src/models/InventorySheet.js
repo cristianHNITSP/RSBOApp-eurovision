@@ -1,62 +1,92 @@
 // models/InventorySheet.js
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
-const RangeAxisSchema = new mongoose.Schema({
-  start: { type: Number, required: true },
-  end:   { type: Number, required: true },
-  step:  { type: Number, required: true }
-}, { _id: false });
+const DEBUG_INVENTORY = String(process.env.DEBUG_INVENTORY || "") === "1";
 
-const RangesSchema = new mongoose.Schema({
-  base: { type: RangeAxisSchema, default: undefined },
-  sph:  { type: RangeAxisSchema, default: undefined },
-  cyl:  { type: RangeAxisSchema, default: undefined },
-  add:  { type: RangeAxisSchema, default: undefined }
-}, { _id: false });
+const RangeAxisSchema = new mongoose.Schema(
+  {
+    start: { type: Number, required: true },
+    end: { type: Number, required: true },
+    step: { type: Number, required: true }
+  },
+  { _id: false }
+);
+
+const RangesSchema = new mongoose.Schema(
+  {
+    base: { type: RangeAxisSchema, default: undefined },
+    sph: { type: RangeAxisSchema, default: undefined },
+    cyl: { type: RangeAxisSchema, default: undefined },
+    add: { type: RangeAxisSchema, default: undefined }
+  },
+  { _id: false }
+);
 
 const defaultRangesByTipo = {
-  BASE: { base: { start: 0, end: 8, step: 0.50 } },
+  BASE: { base: { start: 0, end: 8, step: 0.5 } },
   SPH_CYL: {
     sph: { start: -6, end: 6, step: 0.25 },
     cyl: { start: -6, end: 6, step: 0.25 }
   },
   SPH_ADD: {
     sph: { start: -6, end: 6, step: 0.25 },
-    add: { start: 0,  end: 4, step: 0.25 }
+    add: { start: 0, end: 4, step: 0.25 }
   },
   BASE_ADD: {
-    base:{ start: 0, end: 8, step: 0.50 },
+    base: { start: 0, end: 8, step: 0.5 },
     add: { start: 0, end: 4, step: 0.25 }
   }
 };
 
 const PartySchema = new mongoose.Schema(
   {
-    id:   { type: String, default: null, trim: true },
-    name: { type: String, default: '', trim: true }
+    id: { type: String, default: null, trim: true },
+    name: { type: String, default: "", trim: true }
   },
   { _id: false }
 );
 
+/** Caducidad por defecto: 24 meses (=2 años) */
+const DEFAULT_EXPIRY_MONTHS = 24;
+
+const addMonths = (date, months) => {
+  const d = new Date(date);
+  const day = d.getDate();
+  d.setMonth(d.getMonth() + months);
+  if (d.getDate() < day) d.setDate(0);
+  return d;
+};
+
 const InventorySheetSchema = new mongoose.Schema(
   {
-    nombre: { type: String, required: true, trim: true, alias: 'name' },
+    nombre: { type: String, required: true, trim: true, alias: "name" },
 
-    // ✅ NUEVO: proveedor + marca (para agrupar y para SKU)
-    proveedor: { type: PartySchema, default: () => ({ id: null, name: '' }) },
-    marca:     { type: PartySchema, default: () => ({ id: null, name: '' }) },
+    proveedor: { type: PartySchema, default: () => ({ id: null, name: "" }) },
+    marca: { type: PartySchema, default: () => ({ id: null, name: "" }) },
 
-    // ✅ SKU de la PLANILLA (localizable)
     sku: { type: String, trim: true, uppercase: true, default: null },
 
     tipo_matriz: {
       type: String,
       required: true,
-      enum: ['BASE', 'SPH_CYL', 'SPH_ADD', 'BASE_ADD']
+      enum: ["BASE", "SPH_CYL", "SPH_ADD", "BASE_ADD"]
     },
+
     baseKey: { type: String, required: true, trim: true },
     material: { type: String, required: true, trim: true },
+
+    tratamiento: { type: String, trim: true, default: null },
+    variante: { type: String, trim: true, default: null },
+
     tratamientos: [{ type: String, trim: true }],
+
+    /** Compra / Fechas */
+    fechaCreacion: { type: Date, default: null },
+    fechaCaducidad: { type: Date, default: null },
+
+    numFactura: { type: String, trim: true, default: "" },
+    loteProducto: { type: String, trim: true, default: "" },
+    fechaCompra: { type: Date, default: null },
 
     ranges: {
       type: RangesSchema,
@@ -86,18 +116,63 @@ const InventorySheetSchema = new mongoose.Schema(
     },
 
     meta: {
-      observaciones: { type: String, default: '' },
-      notas: { type: String, default: '' }
+      observaciones: { type: String, default: "" },
+      notas: { type: String, default: "" }
     }
   },
   { timestamps: true }
 );
 
-// índices (ajústalos a tu gusto)
+InventorySheetSchema.pre("validate", function (next) {
+  if (DEBUG_INVENTORY) {
+    console.log("[INV][MODEL pre-validate] IN", {
+      _id: this._id ? String(this._id) : null,
+      numFactura: this.numFactura,
+      loteProducto: this.loteProducto,
+      fechaCompra: this.fechaCompra,
+      fechaCaducidad: this.fechaCaducidad,
+      fechaCreacion: this.fechaCreacion
+    });
+  }
+
+  if (!this.fechaCreacion) {
+    this.fechaCreacion = this.createdAt || new Date();
+  }
+
+  if (this.fechaCompra && !Number.isFinite(new Date(this.fechaCompra).getTime())) {
+    this.fechaCompra = null;
+  }
+
+  if (!this.fechaCaducidad) {
+    const base = this.fechaCompra || this.fechaCreacion || new Date();
+    this.fechaCaducidad = addMonths(base, DEFAULT_EXPIRY_MONTHS);
+  } else if (!Number.isFinite(new Date(this.fechaCaducidad).getTime())) {
+    const base = this.fechaCompra || this.fechaCreacion || new Date();
+    this.fechaCaducidad = addMonths(base, DEFAULT_EXPIRY_MONTHS);
+  }
+
+  if (DEBUG_INVENTORY) {
+    console.log("[INV][MODEL pre-validate] OUT", {
+      _id: this._id ? String(this._id) : null,
+      numFactura: this.numFactura,
+      loteProducto: this.loteProducto,
+      fechaCompra: this.fechaCompra ? this.fechaCompra.toISOString() : null,
+      fechaCaducidad: this.fechaCaducidad ? this.fechaCaducidad.toISOString() : null,
+      fechaCreacion: this.fechaCreacion ? this.fechaCreacion.toISOString() : null
+    });
+  }
+
+  next();
+});
+
+// índices
 InventorySheetSchema.index({ nombre: 1, material: 1 });
 InventorySheetSchema.index({ "proveedor.name": 1, "marca.name": 1 });
+InventorySheetSchema.index({ tratamiento: 1, variante: 1 });
 
-// ✅ único pero sparse
+InventorySheetSchema.index({ fechaCaducidad: 1 });
+InventorySheetSchema.index({ numFactura: 1, loteProducto: 1 });
+
 InventorySheetSchema.index({ sku: 1 }, { unique: true, sparse: true });
 
-module.exports = mongoose.model('InventorySheet', InventorySheetSchema);
+module.exports = mongoose.model("InventorySheet", InventorySheetSchema);

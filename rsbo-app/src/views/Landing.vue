@@ -61,7 +61,8 @@
               </p>
 
               <div class="hero-actions animate-fade-up">
-                <b-button type="is-primary" size="is-medium" icon-left="sign-in-alt" class="btn-hero" @click="openLogin">
+                <b-button type="is-primary" size="is-medium" icon-left="sign-in-alt" class="btn-hero"
+                  @click="openLogin">
                   Iniciar sesión
                 </b-button>
 
@@ -133,7 +134,8 @@
                         <b-button type="is-light" size="is-small" icon-left="user" @click="openLogin">
                           Acceder
                         </b-button>
-                        <span class="is-size-7 has-text-grey">Sugerencia: activa “Recordar correo” para entrar más rápido.</span>
+                        <span class="is-size-7 has-text-grey">Sugerencia: activa “Recordar correo” para entrar más
+                          rápido.</span>
                       </div>
                     </div>
                   </div>
@@ -290,12 +292,8 @@
         <div class="container">
           <div class="footer-inner">
             <div class="footer-brand">
-              <img
-                :src="logoImg"
-                alt="Laboratorio Eurovisión"
-                class="footer-logo"
-                style="object-fit: cover; width: 34px; height: 34px;"
-              />
+              <img :src="logoImg" alt="Laboratorio Eurovisión" class="footer-logo"
+                style="object-fit: cover; width: 34px; height: 34px;" />
               <div>
                 <p class="footer-name">Laboratorio Eurovisión</p>
                 <p class="footer-copy">© {{ year }} · Todos los derechos reservados</p>
@@ -313,24 +311,14 @@
     </main>
 
     <!-- LOGIN MODAL (BUEFY) -->
-    <b-modal
-      v-model="showLoginPanel"
-      has-modal-card
-      trap-focus
-      :destroy-on-hide="true"
-      animation="zoom-in"
-      aria-role="dialog"
-      aria-modal
-      :width="modalWidth"
-      @after-enter="focusEmail"
-    >
+    <b-modal v-model="showLoginPanel" has-modal-card trap-focus :destroy-on-hide="true" animation="zoom-in"
+      aria-role="dialog" aria-modal :width="modalWidth" @after-enter="focusEmail">
       <div class="modal-card login-modal">
         <header class="modal-card-head login-modal__head">
           <div>
             <p class="modal-card-title login-modal__title">Iniciar sesión</p>
             <p class="login-modal__sub">Sistema interno · Laboratorio Eurovisión</p>
           </div>
-          <button class="delete" aria-label="close" @click="showLoginPanel = false"></button>
         </header>
 
         <section class="modal-card-body login-modal__body">
@@ -346,27 +334,14 @@
           </div>
 
           <b-field label="Correo electrónico" label-position="on-border">
-            <b-input
-              ref="emailInput"
-              v-model="credentials.username"
-              type="email"
-              autocomplete="email"
-              icon="envelope"
-              placeholder="tu.correo@empresa.com"
-              @keyup.enter="loginUser"
-            />
+            <b-input ref="emailInput" v-model="credentials.username" type="email" autocomplete="email" icon="envelope"
+              placeholder="tu.correo@empresa.com" @keyup.enter="loginUser" />
           </b-field>
 
           <b-field label="Contraseña" label-position="on-border">
-            <b-input
-              v-model="credentials.password"
-              :type="showPassword ? 'text' : 'password'"
-              autocomplete="current-password"
-              icon="lock"
-              placeholder="••••••••"
-              password-reveal
-              @keyup.enter="loginUser"
-            />
+            <b-input v-model="credentials.password" :type="showPassword ? 'text' : 'password'"
+              autocomplete="current-password" icon="lock" placeholder="••••••••" password-reveal
+              @keyup.enter="loginUser" />
           </b-field>
 
           <div class="login-tools">
@@ -390,13 +365,8 @@
 
         <footer class="modal-card-foot login-modal__foot">
           <b-button @click="showLoginPanel = false" :disabled="isLoggingIn">Cancelar</b-button>
-          <b-button
-            type="is-primary"
-            :loading="isLoggingIn"
-            :disabled="!canSubmit"
-            icon-left="sign-in-alt"
-            @click="loginUser"
-          >
+          <b-button type="is-primary" :loading="isLoggingIn" :disabled="!canSubmit" icon-left="sign-in-alt"
+            @click="loginUser">
             Entrar
           </b-button>
         </footer>
@@ -794,6 +764,7 @@ onBeforeUnmount(() => {
   margin: 0;
   line-height: 1.05;
 }
+
 .brand__tag {
   margin: 0.1rem 0 0;
   font-size: 0.75rem;
@@ -881,6 +852,7 @@ onBeforeUnmount(() => {
   flex-wrap: wrap;
   gap: 0.45rem;
 }
+
 .pill {
   display: inline-flex;
   align-items: center;
@@ -895,21 +867,25 @@ onBeforeUnmount(() => {
   background: rgba(255, 255, 255, 0.70);
   color: #111827;
 }
+
 .pill--primary {
   color: #4f46e5;
   background: #eef2ff;
   border-color: rgba(79, 70, 229, 0.18);
 }
+
 .pill--info {
   color: #0f172a;
   background: rgba(15, 23, 42, 0.06);
   border-color: rgba(148, 163, 184, 0.22);
 }
+
 .pill--light {
   color: #4f46e5;
   background: rgba(79, 70, 229, 0.06);
   border-color: rgba(79, 70, 229, 0.12);
 }
+
 .pill--sm {
   font-size: 0.68rem;
   padding: 0.18rem 0.5rem;
@@ -939,6 +915,7 @@ onBeforeUnmount(() => {
   background: radial-gradient(circle at 0 0, rgba(79, 70, 229, 0.10), transparent 55%), rgba(255, 255, 255, 0.8);
   border-bottom: 1px solid rgba(148, 163, 184, 0.16);
 }
+
 .preview-card__foot {
   border-top: 1px solid rgba(148, 163, 184, 0.16);
   border-bottom: none;
@@ -954,12 +931,14 @@ onBeforeUnmount(() => {
   padding: 0.7rem 0.75rem;
   background: #fafafa;
 }
+
 .mini-stat__k {
   margin: 0;
   font-size: 0.72rem;
   color: #6b7280;
   font-weight: 800;
 }
+
 .mini-stat__v {
   margin: 0.15rem 0 0;
   font-size: 0.86rem;
@@ -976,6 +955,7 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 0.5rem;
 }
+
 .mini-list__row {
   display: flex;
   align-items: center;
@@ -983,18 +963,22 @@ onBeforeUnmount(() => {
   font-size: 0.85rem;
   color: #374151;
 }
+
 .dot {
   width: 10px;
   height: 10px;
   border-radius: 999px;
   box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.25);
 }
+
 .dot--ok {
   background: #10b981;
 }
+
 .dot--warn {
   background: #f59e0b;
 }
+
 .dot--info {
   background: #60a5fa;
 }
@@ -1026,6 +1010,7 @@ onBeforeUnmount(() => {
   color: #111827;
   margin: 0.15rem 0 0;
 }
+
 .section-subtitle {
   margin: 0;
   color: #6b7280;
@@ -1043,10 +1028,12 @@ onBeforeUnmount(() => {
   height: 100%;
   transition: transform 140ms ease, box-shadow 140ms ease;
 }
+
 .feature-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 18px 44px rgba(15, 23, 42, 0.10);
 }
+
 .feature-card__icon {
   width: 40px;
   height: 40px;
@@ -1057,12 +1044,14 @@ onBeforeUnmount(() => {
   background: #eef2ff;
   border: 1px solid rgba(79, 70, 229, 0.18);
 }
+
 .feature-card__title {
   margin: 0.65rem 0 0;
   font-size: 0.95rem;
   font-weight: 900;
   color: #111827;
 }
+
 .feature-card__text {
   margin: 0.35rem 0 0;
   font-size: 0.86rem;
@@ -1082,6 +1071,7 @@ onBeforeUnmount(() => {
   align-items: flex-start;
   height: 100%;
 }
+
 .step-card__n {
   width: 34px;
   height: 34px;
@@ -1092,11 +1082,13 @@ onBeforeUnmount(() => {
   background: #eef2ff;
   border: 1px solid rgba(79, 70, 229, 0.18);
 }
+
 .step-card__t {
   margin: 0;
   font-weight: 900;
   color: #111827;
 }
+
 .step-card__d {
   margin: 0.2rem 0 0;
   color: #4b5563;
@@ -1116,16 +1108,19 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   gap: 1rem;
 }
+
 .cta-strip__t {
   margin: 0;
   font-weight: 900;
   color: #111827;
 }
+
 .cta-strip__d {
   margin: 0.15rem 0 0;
   color: #6b7280;
   font-size: 0.9rem;
 }
+
 @media (max-width: 768px) {
   .cta-strip {
     flex-direction: column;
@@ -1139,6 +1134,7 @@ onBeforeUnmount(() => {
   padding: 1.25rem 0;
   background: rgba(255, 255, 255, 0.65);
 }
+
 .footer-inner {
   display: flex;
   align-items: center;
@@ -1146,32 +1142,38 @@ onBeforeUnmount(() => {
   gap: 1rem;
   flex-wrap: wrap;
 }
+
 .footer-brand {
   display: flex;
   align-items: center;
   gap: 0.65rem;
 }
+
 .footer-logo {
   width: 34px;
   height: 34px;
   border-radius: 10px;
   box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.35);
 }
+
 .footer-name {
   margin: 0;
   font-weight: 900;
   color: #111827;
 }
+
 .footer-copy {
   margin: 0.1rem 0 0;
   color: #6b7280;
   font-size: 0.8rem;
 }
+
 .footer-links {
   display: flex;
   align-items: center;
   gap: 0.75rem;
 }
+
 .footer-link {
   color: #4f46e5;
   font-weight: 800;
@@ -1188,11 +1190,13 @@ onBeforeUnmount(() => {
   opacity: 0.35;
   pointer-events: none;
 }
+
 .hero-glow--a {
   top: -180px;
   right: -140px;
   background: radial-gradient(circle, rgba(79, 70, 229, 0.75), transparent 60%);
 }
+
 .hero-glow--b {
   bottom: -220px;
   left: -160px;
@@ -1204,29 +1208,35 @@ onBeforeUnmount(() => {
   border-radius: 16px;
   overflow: hidden;
 }
+
 .login-modal__head {
   background: linear-gradient(135deg, #4f46e5, #9a6dff, #ec4899);
   border-bottom: none;
 }
+
 .login-modal__title {
   color: #fff;
   font-weight: 900;
 }
+
 .login-modal__sub {
   margin: 0.15rem 0 0;
   color: rgba(255, 255, 255, 0.88);
   font-size: 0.8rem;
   font-weight: 700;
 }
+
 .login-modal__body {
   background: radial-gradient(circle at 0 0, rgba(79, 70, 229, 0.08), transparent 55%), #ffffff;
 }
+
 .login-badge {
   display: flex;
   gap: 0.45rem;
   flex-wrap: wrap;
   margin-bottom: 0.75rem;
 }
+
 .login-tools {
   margin-top: 0.35rem;
   display: flex;
@@ -1234,6 +1244,7 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   gap: 0.75rem;
 }
+
 .login-hint {
   margin-top: 0.75rem;
   font-size: 0.8rem;
@@ -1246,6 +1257,7 @@ onBeforeUnmount(() => {
   padding: 0.55rem 0.65rem;
   border-radius: 12px;
 }
+
 .login-modal__foot {
   justify-content: flex-end;
   gap: 0.5rem;
@@ -1257,6 +1269,7 @@ onBeforeUnmount(() => {
   transform: translateY(16px);
   transition: all 0.55s ease;
 }
+
 .animate-fade-up.visible {
   opacity: 1;
   transform: translateY(0);
@@ -1264,28 +1277,36 @@ onBeforeUnmount(() => {
 
 /* keyframes */
 @keyframes floatUpDown {
+
   0%,
   100% {
     transform: translateY(0) rotate(0deg);
   }
+
   50% {
     transform: translateY(-22px) rotate(10deg);
   }
 }
+
 @keyframes floatLeftRight {
+
   0%,
   100% {
     transform: translateX(0) rotate(0deg);
   }
+
   50% {
     transform: translateX(70px) rotate(-10deg);
   }
 }
+
 @keyframes floatRotate {
+
   0%,
   100% {
     transform: rotate(0) translateY(0);
   }
+
   50% {
     transform: rotate(360deg) translateY(-12px);
   }
@@ -1295,6 +1316,7 @@ onBeforeUnmount(() => {
   .hero-title {
     font-size: 1.85rem;
   }
+
   .landing-topbar__inner {
     padding: 0.75rem 0.6rem;
   }
@@ -1376,6 +1398,7 @@ onBeforeUnmount(() => {
     flex-direction: column;
     align-items: stretch;
   }
+
   .preview-card__cta .is-size-7 {
     width: 100%;
   }
@@ -1392,6 +1415,7 @@ onBeforeUnmount(() => {
 }
 
 @media (prefers-reduced-motion: reduce) {
+
   .floating-icon,
   .animate-fade-up,
   .feature-card,

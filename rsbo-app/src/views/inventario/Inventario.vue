@@ -1,14 +1,16 @@
-<!-- (Tu vista donde renderizas TabsManager y el grid dinámico) -->
+<!-- src/views/Inventario.vue -->
 <script setup>
 import { reactive, ref, onMounted } from "vue";
 import TabsManager from "@/components/TabsManager.vue";
 
-import AgGridBifocal from "@/components/ag-grid/templates/AgGridBifocal.vue";        // SPH_ADD
-import AgGridBase from "@/components/ag-grid/templates/AgGridBase.vue";               // BASE
-import AgGridMonofocal from "@/components/ag-grid/templates/AgGridMonofocal.vue";     // SPH_CYL
-import AgGridProgresivo from "@/components/ag-grid/templates/AgGridProgresivo.vue";   // BASE_ADD
+import AgGridBifocal from "@/components/ag-grid/templates/AgGridBifocal.vue";
+import AgGridBase from "@/components/ag-grid/templates/AgGridBase.vue";
+import AgGridMonofocal from "@/components/ag-grid/templates/AgGridMonofocal.vue";
+import AgGridProgresivo from "@/components/ag-grid/templates/AgGridProgresivo.vue";
 
 import { listSheets } from "@/services/inventory";
+
+const DEBUG_INV_VIEW = true;
 
 const props = defineProps({
   user: { type: Object, required: false, default: null }
@@ -17,34 +19,45 @@ const props = defineProps({
 const dynamicSheets = reactive([{ id: "nueva", name: "+ Agregar" }]);
 const activeSheet = ref("nueva");
 const activeInternalTab = ref(null);
-
 const loadingSheets = ref(true);
 
 const configuracion = {
   bases: {
     monofocal: {
-      label: "Monofocal",
-      materiales: ["Polycarbonato", "CR-39", "1.56", "1.61", "1.74"],
-      tratamientos: ["Antirreflejo", "Fotocromático", "Tinte Gris", "Blue Light", "Endurecido"],
+      label: "Monofocal (Base)",
+      materiales: ["Policarbonato", "CR-39", "1.56", "1.61 MR-8", "1.67", "1.74", "Cristal"],
+      tratamientos: ["BCO", "AR", "ANTIBLE", "FOTO", "FOTO_ANTIBLE", "TRANSITIONS", "POLAR", "POLAR_ESPEJO", "CRISTAL_FOTO"],
       tipo_matriz: "BASE"
     },
+    progresivo: {
+      label: "Progresivo (Base + ADD)",
+      materiales: ["Policarbonato", "CR-39", "1.56", "1.61 MR-8", "1.67", "1.74"],
+      tratamientos: ["BCO", "AR", "ANTIBLE", "FOTO", "FOTO_ANTIBLE", "TRANSITIONS"],
+      tipo_matriz: "BASE_ADD"
+    },
     monofocalEsfCil: {
-      label: "Monofocal Esférico-Cilíndrico",
-      materiales: ["Polycarbonato", "CR-39", "1.56", "1.61", "1.74"],
-      tratamientos: ["Antirreflejo", "Fotocromático", "Tinte Gris", "Blue Light", "Endurecido"],
+      label: "Monofocal Esférico-Cilíndrico (SPH/CYL)",
+      materiales: ["Policarbonato", "CR-39", "1.56", "1.61 MR-8", "1.67", "1.74"],
+      tratamientos: ["BCO", "AR", "ANTIBLE", "FOTO", "FOTO_ANTIBLE", "TRANSITIONS", "POLAR", "POLAR_ESPEJO"],
       tipo_matriz: "SPH_CYL"
     },
     bifocal: {
-      label: "Bifocal",
-      materiales: ["CR-39", "1.56", "1.61", "1.74"],
-      tratamientos: ["Antirreflejo", "Fotocromático", "Tinte Gris", "Endurecido"],
+      label: "Bifocal (SPH + ADD)",
+      materiales: ["Policarbonato", "CR-39", "1.56", "1.61 MR-8", "1.67", "1.74"],
+      tratamientos: ["BCO", "AR", "ANTIBLE", "FOTO", "FOTO_ANTIBLE", "TRANSITIONS"],
       tipo_matriz: "SPH_ADD"
     },
-    progresivo: {
-      label: "Progresivo",
-      materiales: ["1.56", "1.61", "1.74"],
-      tratamientos: ["Antirreflejo", "Fotocromático", "Tinte Gris", "Blue Light", "Endurecido"],
-      tipo_matriz: "BASE_ADD"
+    bifocalFT: {
+      label: "Bifocal F.T (SPH + ADD)",
+      materiales: ["Policarbonato", "CR-39"],
+      tratamientos: ["BCO", "AR", "ANTIBLE", "FOTO", "FOTO_ANTIBLE", "TRANSITIONS"],
+      tipo_matriz: "SPH_ADD"
+    },
+    bifocalYounger: {
+      label: "Bifocal Younger (SPH + ADD)",
+      materiales: ["Policarbonato", "CR-39"],
+      tratamientos: ["BCO", "AR", "ANTIBLE", "FOTO", "FOTO_ANTIBLE", "TRANSITIONS"],
+      tipo_matriz: "SPH_ADD"
     }
   }
 };
@@ -54,11 +67,25 @@ async function cargarSheets() {
   try {
     const { data } = await listSheets();
 
+    if (DEBUG_INV_VIEW) {
+      const first = (data?.data || [])[0];
+      console.groupCollapsed("[INV][VIEW] listSheets first raw");
+      console.log(first);
+      console.log("keys:", first ? Object.keys(first) : []);
+      console.log("purchase raw:", {
+        numFactura: first?.numFactura,
+        loteProducto: first?.loteProducto,
+        fechaCompra: first?.fechaCompra,
+        fechaCaducidad: first?.fechaCaducidad
+      });
+      console.groupEnd();
+    }
+
     const arr = (data?.data || []).map((s) => ({
       id: String(s._id),
       sku: s.sku,
       name: s.nombre,
-      //FIX: mapear desde s
+
       proveedor: s.proveedor && typeof s.proveedor === "object"
         ? { id: s.proveedor.id ?? null, name: String(s.proveedor.name ?? "") }
         : { id: null, name: "" },
@@ -70,6 +97,16 @@ async function cargarSheets() {
       tipo_matriz: s.tipo_matriz,
       baseKey: s.baseKey,
       material: s.material,
+
+      tratamiento: s.tratamiento ?? null,
+      variante: s.variante ?? null,
+
+      fechaCreacion: s.fechaCreacion ?? s.createdAt ?? null,
+      fechaCaducidad: s.fechaCaducidad ?? null,
+      fechaCompra: s.fechaCompra ?? null,
+      numFactura: s.numFactura ?? "",
+      loteProducto: s.loteProducto ?? "",
+
       tratamientos: s.tratamientos || [],
       tabs: s.tabs || [],
       meta: s.meta || { observaciones: "", notas: "" }
@@ -92,7 +129,7 @@ async function cargarSheets() {
 
 onMounted(cargarSheets);
 
-function crearNuevaPlanilla({ payload, result, tabs }) {
+function crearNuevaPlanilla({ result, tabs }) {
   const s = result;
   if (!s) return;
 
@@ -100,19 +137,28 @@ function crearNuevaPlanilla({ payload, result, tabs }) {
     id: String(s._id),
     sku: s.sku,
     name: s.nombre,
-    
-  //IX
-  proveedor: s.proveedor && typeof s.proveedor === "object"
-    ? { id: s.proveedor.id ?? null, name: String(s.proveedor.name ?? "") }
-    : { id: null, name: "" },
 
-  marca: s.marca && typeof s.marca === "object"
-    ? { id: s.marca.id ?? null, name: String(s.marca.name ?? "") }
-    : { id: null, name: "" },
+    proveedor: s.proveedor && typeof s.proveedor === "object"
+      ? { id: s.proveedor.id ?? null, name: String(s.proveedor.name ?? "") }
+      : { id: null, name: "" },
+
+    marca: s.marca && typeof s.marca === "object"
+      ? { id: s.marca.id ?? null, name: String(s.marca.name ?? "") }
+      : { id: null, name: "" },
 
     tipo_matriz: s.tipo_matriz,
     baseKey: s.baseKey,
     material: s.material,
+
+    tratamiento: s.tratamiento ?? null,
+    variante: s.variante ?? null,
+
+    fechaCreacion: s.fechaCreacion ?? s.createdAt ?? null,
+    fechaCaducidad: s.fechaCaducidad ?? null,
+    fechaCompra: s.fechaCompra ?? null,
+    numFactura: s.numFactura ?? "",
+    loteProducto: s.loteProducto ?? "",
+
     tratamientos: s.tratamientos || [],
     tabs: tabs || [],
     meta: s.meta || { observaciones: "", notas: "" }
@@ -133,16 +179,11 @@ function reordenarSheets({ oldIndex, newIndex }) {
 
 const resolverGrid = (tipo) => {
   switch (tipo) {
-    case "SPH_CYL":
-      return AgGridMonofocal;
-    case "SPH_ADD":
-      return AgGridBifocal;
-    case "BASE":
-      return AgGridBase;
-    case "BASE_ADD":
-      return AgGridProgresivo;
-    default:
-      return AgGridMonofocal;
+    case "SPH_CYL": return AgGridMonofocal;
+    case "SPH_ADD": return AgGridBifocal;
+    case "BASE": return AgGridBase;
+    case "BASE_ADD": return AgGridProgresivo;
+    default: return AgGridMonofocal;
   }
 };
 
@@ -183,20 +224,10 @@ const resolverGridProps = (sheet, activeInternal) => {
           @reorder="reordenarSheets"
         >
           <template #default="{ activeSheet: sheet, activeInternal }">
-            <!-- ✅ Transición suave al cambiar de PLANILLA / TIPO (no por vista interna) -->
             <Transition name="sheet" mode="out-in" appear>
-              <div
-                v-if="sheet && sheet.id !== 'nueva'"
-                :key="`${sheet.id}:${sheet.tipo_matriz}`"
-                class="contenido-planilla"
-              >
+              <div v-if="sheet && sheet.id !== 'nueva'" :key="`${sheet.id}:${sheet.tipo_matriz}`" class="contenido-planilla">
                 <div class="planilla-wrapper">
-                  <!-- ✅ Ya NO se remontea por activeInternal (evita lo brusco) -->
-                  <component
-                    :is="resolverGrid(sheet.tipo_matriz)"
-                    v-bind="resolverGridProps(sheet, activeInternal)"
-                    :actor="user"
-                  />
+                  <component :is="resolverGrid(sheet.tipo_matriz)" v-bind="resolverGridProps(sheet, activeInternal)" :actor="user" />
                 </div>
               </div>
             </Transition>
@@ -241,11 +272,9 @@ const resolverGridProps = (sheet, activeInternal) => {
   contain: paint;
 }
 
-/* ✅ Transición (sheet change) */
 .sheet-enter-active,
 .sheet-leave-active {
-  transition: opacity 180ms ease, transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1),
-    filter 220ms ease;
+  transition: opacity 180ms ease, transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1), filter 220ms ease;
   will-change: transform, opacity, filter;
 }
 
@@ -274,6 +303,7 @@ const resolverGridProps = (sheet, activeInternal) => {
 }
 
 @media (prefers-reduced-motion: reduce) {
+
   .sheet-enter-active,
   .sheet-leave-active {
     transition: none !important;

@@ -1,17 +1,15 @@
-<!-- src/components/laboratorio/PedidosTab.vue -->
 <template>
   <div class="columns is-multiline is-variable is-4">
-    <!-- Left: Inventario -->
     <div class="column is-8">
       <div class="panel">
         <div class="panel__head">
           <div>
             <h2 class="panel__title">
-              Inventario (mock)
+              Inventario
               <span class="panel__badge">{{ lab.selectedSheetLabel.value }}</span>
             </h2>
             <p class="panel__hint">
-              Aquí armas el pedido en base al inventario (mock). El barcode se usa después para surtir.
+              Arma el pedido desde inventario y luego surte por escaneo (salida).
             </p>
           </div>
 
@@ -24,7 +22,7 @@
               </b-select>
             </b-field>
 
-            <b-button type="is-light" icon-left="download" :disabled="!lab.selectedSheetId.value" @click="lab.noop">
+            <b-button type="is-light" icon-left="download" :disabled="!lab.selectedSheetId.value" @click="lab.exportInventoryCsv">
               CSV
             </b-button>
           </div>
@@ -63,7 +61,14 @@
             </div>
           </div>
 
-          <b-table :data="lab.filteredItems.value" :paginated="true" :per-page="10" hoverable mobile-cards class="nice-table">
+          <b-table
+            :data="lab.filteredItems.value"
+            :paginated="true"
+            :per-page="10"
+            hoverable
+            mobile-cards
+            class="nice-table"
+          >
             <b-table-column field="existencias" label="PZAS." width="110" v-slot="props">
               <span class="qty-pill" :class="props.row.existencias > 0 ? 'qty-pill--ok' : 'qty-pill--zero'">
                 {{ props.row.existencias }}
@@ -126,9 +131,7 @@
       </div>
     </div>
 
-    <!-- Right: Crear/Surtir + Recientes + Pendientes -->
     <div class="column is-4">
-      <!-- Modo -->
       <div class="panel panel--sticky">
         <div class="panel__head panel__head--compact">
           <div>
@@ -152,12 +155,11 @@
         </div>
       </div>
 
-      <!-- CREAR -->
       <div v-if="lab.mode.value === 'crear'" class="panel mt-4">
         <div class="panel__head panel__head--compact">
           <div>
             <h3 class="panel__title mb-0"><i class="fas fa-shopping-cart mr-2"></i>Pedido en curso</h3>
-            <p class="panel__hint mt-1">Mock local. Se crea un pedido “entrante” en la lista.</p>
+            <p class="panel__hint mt-1">Se crea un pedido real en DB.</p>
           </div>
 
           <b-button size="is-small" type="is-light" icon-left="trash" :disabled="!lab.draftLines.value.length" @click="lab.clearDraft">
@@ -166,11 +168,11 @@
         </div>
 
         <div class="panel__body">
-          <b-field label="Cliente (mock)" class="mb-2">
+          <b-field label="Cliente" class="mb-2">
             <b-input v-model="lab.draftCliente.value" placeholder="Ej: Óptica Rivera" icon="building" />
           </b-field>
 
-          <b-field label="Referencia/nota (mock)" class="mb-2">
+          <b-field label="Referencia/nota" class="mb-2">
             <b-input v-model="lab.draftNote.value" placeholder="Opcional" icon="sticky-note" />
           </b-field>
 
@@ -206,8 +208,8 @@
           </div>
 
           <div class="mt-3">
-            <b-button type="is-primary" expanded icon-left="clipboard-check" :disabled="!lab.draftLines.value.length || !lab.selectedSheetId.value" @click="lab.createOrderFromDraft">
-              Crear pedido (mock)
+            <b-button type="is-primary" expanded icon-left="clipboard-check" :disabled="!lab.canCreateOrder.value" @click="lab.createOrderFromDraft">
+              Crear pedido
             </b-button>
 
             <b-button class="mt-2" type="is-light" expanded outlined icon-left="exchange-alt" :disabled="!lab.ordersDB.value.length" @click="lab.mode.value = 'surtir'">
@@ -217,12 +219,11 @@
         </div>
       </div>
 
-      <!-- SURTIR -->
       <div v-else class="panel mt-4">
         <div class="panel__head panel__head--compact">
           <div>
             <h3 class="panel__title mb-0"><i class="fas fa-qrcode mr-2"></i>Surtir por escaneo</h3>
-            <p class="panel__hint mt-1">Escanea el código de barras → marca salida → avanza líneas del pedido.</p>
+            <p class="panel__hint mt-1">Escanea el código → salida en inventario + progreso del pedido (DB).</p>
           </div>
         </div>
 
@@ -251,6 +252,19 @@
             </div>
             <div class="mini-order-sub mt-1">
               Progreso: <b>{{ lab.orderPickedCount(lab.selectedOrder.value) }}</b>/<b>{{ lab.orderTotalCount(lab.selectedOrder.value) }}</b>
+            </div>
+
+            <div class="columns is-mobile is-variable is-2 mt-2">
+              <div class="column">
+                <b-button type="is-light" expanded icon-left="download" @click="lab.exportOrderCsv(lab.selectedOrder.value)">
+                  CSV pedido
+                </b-button>
+              </div>
+              <div class="column">
+                <b-button type="is-light" expanded icon-left="print" @click="lab.printOrder(lab.selectedOrder.value)">
+                  Imprimir / PDF
+                </b-button>
+              </div>
             </div>
           </div>
 
@@ -292,11 +306,18 @@
 
             <div class="mt-3">
               <b-button type="is-light" expanded icon-left="redo" @click="lab.resetPickedForSelectedOrder" :disabled="!lab.selectedOrder.value">
-                Reiniciar surtido (mock)
+                Reiniciar surtido
               </b-button>
 
-              <b-button class="mt-2" type="is-primary" expanded icon-left="lock" :disabled="!lab.selectedOrder.value || !lab.isOrderComplete(lab.selectedOrder.value)" @click="lab.closeOrderMock">
-                Cerrar pedido (mock)
+              <b-button
+                class="mt-2"
+                type="is-primary"
+                expanded
+                icon-left="lock"
+                :disabled="!lab.selectedOrder.value || !lab.isOrderComplete(lab.selectedOrder.value)"
+                @click="lab.closeSelectedOrder"
+              >
+                Cerrar pedido
               </b-button>
 
               <b-button class="mt-2" type="is-danger" expanded outlined icon-left="exclamation-triangle" :disabled="!lab.selectedOrder.value" @click="lab.correctionOpen.value = true">
@@ -312,15 +333,12 @@
           </div>
         </div>
       </div>
-
-
     </div>
   </div>
 </template>
 
 <script setup>
 import { inject } from "vue";
-
 
 const lab = inject("lab");
 if (!lab) throw new Error("PedidosTab necesita provide('lab', ...)");

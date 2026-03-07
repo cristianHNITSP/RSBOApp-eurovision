@@ -1,12 +1,9 @@
-<!-- src/components/laboratorio/BandejaTab.vue -->
 <template>
   <div class="columns is-multiline is-variable is-4">
-    <!-- Left: Inbox + logs (standalone) -->
     <div class="column is-8">
       <PendingOrdersPanel :standalone="true" />
     </div>
 
-    <!-- Right: Recientes + accesos rápidos -->
     <div class="column is-4">
       <div class="panel panel--sticky">
         <div class="panel__head">
@@ -15,7 +12,7 @@
               <i class="fas fa-bolt mr-2"></i>
               Accesos rápidos
             </h2>
-            <p class="panel__hint">Ir directo a crear o a surtir sin mezclar vistas.</p>
+            <p class="panel__hint">Ir directo a crear o a surtir.</p>
           </div>
         </div>
 
@@ -35,7 +32,6 @@
         </div>
       </div>
 
-      <!-- Recientes -->
       <div class="panel mt-4">
         <div class="panel__head panel__head--compact">
           <h3 class="panel__title mb-0"><i class="fas fa-history mr-2"></i>Últimos registros</h3>
@@ -92,7 +88,7 @@ function goSurtir() {
 }
 function pickSheet(id) {
   lab.selectedSheetId.value = id;
-  lab.activeMainTab.value = "pedidos"; // opcional: te llevo a donde se usa el inventario
+  lab.activeMainTab.value = "pedidos";
   lab.mode.value = "crear";
 }
 </script>

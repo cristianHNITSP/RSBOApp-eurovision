@@ -88,6 +88,10 @@ const InventorySheetSchema = new mongoose.Schema(
     loteProducto: { type: String, trim: true, default: "" },
     fechaCompra: { type: Date, default: null },
 
+
+/** ✅ Precio de venta (actual) */
+precioVenta: { type: Number, default: null, min: 0 },
+
     ranges: {
       type: RangesSchema,
       default: function () {
@@ -131,7 +135,8 @@ InventorySheetSchema.pre("validate", function (next) {
       loteProducto: this.loteProducto,
       fechaCompra: this.fechaCompra,
       fechaCaducidad: this.fechaCaducidad,
-      fechaCreacion: this.fechaCreacion
+      fechaCreacion: this.fechaCreacion,
+       precioVenta: this.precioVenta
     });
   }
 

@@ -28,20 +28,26 @@
             rows="5"
           />
         </b-field>
-
-        <p class="help">Esto es mock.</p>
       </section>
 
       <footer class="modal-card-foot">
         <b-button @click="lab.correctionOpen.value = false">Cancelar</b-button>
-        <b-button type="is-danger" icon-left="paper-plane" @click="lab.submitCorrectionMock">Enviar (mock)</b-button>
+        <b-button type="is-danger" icon-left="paper-plane" :disabled="!canSend" @click="lab.submitCorrection">
+          Enviar
+        </b-button>
       </footer>
     </div>
   </b-modal>
 </template>
 
 <script setup>
-import { inject } from "vue";
+import { inject, computed } from "vue";
 const lab = inject("lab");
 if (!lab) throw new Error("CorrectionModal necesita provide('lab', ...)");
+
+const canSend = computed(() => {
+  const msg = String(lab.correction.message || "").trim();
+  const orderId = lab.correction.orderId || lab.selectedOrderId?.value;
+  return !!orderId && msg.length >= 3;
+});
 </script>

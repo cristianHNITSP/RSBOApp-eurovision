@@ -106,7 +106,16 @@ app.get("/health", (_req, res) => {
  * Rutas principales de inventario
  * - /api/inventory: recursos de inventario y plantillas
  */
-app.use("/api/inventory", require("./routes/inventory.routes"));
+
+const inventoryRoutes = require("./routes/inventory.routes");
+app.use("/api/inventory", inventoryRoutes);
+
+
+const laboratoryRoutes = require("./routes/laboratory.routes");
+app.use("/api/laboratory", laboratoryRoutes);
+
+// si tu API usa prefijo /api:
+// app.use("/api/laboratory", laboratoryRoutes);
 
 /**
  * Manejo centralizado de errores

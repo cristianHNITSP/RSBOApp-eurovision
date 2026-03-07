@@ -106,6 +106,7 @@ async function cargarSheets() {
       fechaCompra: s.fechaCompra ?? null,
       numFactura: s.numFactura ?? "",
       loteProducto: s.loteProducto ?? "",
+      precioVenta: s.precioVenta ?? null,
 
       tratamientos: s.tratamientos || [],
       tabs: s.tabs || [],
@@ -158,6 +159,7 @@ function crearNuevaPlanilla({ result, tabs }) {
     fechaCompra: s.fechaCompra ?? null,
     numFactura: s.numFactura ?? "",
     loteProducto: s.loteProducto ?? "",
+    precioVenta: s.precioVenta ?? null,
 
     tratamientos: s.tratamientos || [],
     tabs: tabs || [],
@@ -205,29 +207,27 @@ const resolverGridProps = (sheet, activeInternal) => {
 
 <template>
   <section class="section section-matriz-dioptrias" v-motion-fade-visible-once>
+
     <span class="inventario-pill">
       <b-icon icon="life-ring" size="is-small" class="mr-1" />
       Inventario
     </span>
 
+
+    <!--  <b-button class="is-primary" size="is-small" outlined rounded icon-left="delete" >Crear venta</b-button>  -->
+
     <div class="columns is-multiline">
       <div class="column is-12">
-        <TabsManager
-          :initial-sheets="dynamicSheets"
-          :active-id="activeSheet"
-          :configuracion="configuracion"
-          :actor="user"
-          :loading-tabs="loadingSheets"
-          @update:active="activeSheet = $event"
-          @update:internal="activeInternalTab = $event"
-          @crear="crearNuevaPlanilla"
-          @reorder="reordenarSheets"
-        >
+        <TabsManager :initial-sheets="dynamicSheets" :active-id="activeSheet" :configuracion="configuracion"
+          :actor="user" :loading-tabs="loadingSheets" @update:active="activeSheet = $event"
+          @update:internal="activeInternalTab = $event" @crear="crearNuevaPlanilla" @reorder="reordenarSheets">
           <template #default="{ activeSheet: sheet, activeInternal }">
             <Transition name="sheet" mode="out-in" appear>
-              <div v-if="sheet && sheet.id !== 'nueva'" :key="`${sheet.id}:${sheet.tipo_matriz}`" class="contenido-planilla">
+              <div v-if="sheet && sheet.id !== 'nueva'" :key="`${sheet.id}:${sheet.tipo_matriz}`"
+                class="contenido-planilla">
                 <div class="planilla-wrapper">
-                  <component :is="resolverGrid(sheet.tipo_matriz)" v-bind="resolverGridProps(sheet, activeInternal)" :actor="user" />
+                  <component :is="resolverGrid(sheet.tipo_matriz)" v-bind="resolverGridProps(sheet, activeInternal)"
+                    :actor="user" />
                 </div>
               </div>
             </Transition>

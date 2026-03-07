@@ -7,7 +7,7 @@
       </h1>
 
       <p class="lab-subtitle">
-        Mock en memoria: crear pedido desde inventario → surtir por escaneo (salida) → catálogo de códigos.
+        Pedidos reales: crear desde inventario → surtir por escaneo (salida) → catálogo/impresión.
       </p>
 
       <div class="lab-chips">
@@ -24,7 +24,7 @@
       </b-field>
 
       <div class="lab-hero__actions">
-        <b-button type="is-primary" icon-left="sync" @click="lab.resetMock">Recargar (mock)</b-button>
+        <b-button type="is-primary" icon-left="sync" @click="lab.refreshAll">Recargar</b-button>
         <b-button :type="lab.includeDeleted.value ? 'is-danger' : 'is-light'" icon-left="trash" @click="lab.includeDeleted.value = !lab.includeDeleted.value">
           {{ lab.includeDeleted.value ? "Mostrando papelera" : "Ocultar papelera" }}
         </b-button>

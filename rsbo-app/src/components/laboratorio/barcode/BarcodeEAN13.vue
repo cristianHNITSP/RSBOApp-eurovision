@@ -1,4 +1,3 @@
-<!-- src/components/barcode/BarcodeEAN13.vue -->
 <script>
 import { computed, defineComponent, h } from "vue";
 

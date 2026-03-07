@@ -15,6 +15,8 @@
 # sudo docker-compose down && docker-compose --profile dev up --build
 # producción: docker-compose --profile prod up --build
 
+# sudo docker compose down && sudo docker compose --profile dev up --build
+
 # duerme wsl hasta que lo vuelva abrir: wsl --shutdown
 
 # Se reconstruirá la imagen e instalará todas las dependencias nuevas, incluyendo cors.
@@ -36,6 +38,7 @@
 # sudo docker logs -f rsboapp-inventory
 # sudo docker logs rsboapp-inventory
 # sudo docker logs -f rsboapp-auth
+
 
 services:
   # =========================

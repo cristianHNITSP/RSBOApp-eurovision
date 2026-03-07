@@ -138,6 +138,7 @@ const proxyRequest = (serviceUrl) => async (req, res) => {
 app.use("/api/access", proxyRequest(SERVICES.auth));
 app.use("/api/users", proxyRequest(SERVICES.users));
 app.use("/api/inventory", proxyRequest(SERVICES.inventory));
+app.use("/api/laboratory", proxyRequest(SERVICES.inventory));
 app.use("/api/orders", proxyRequest(SERVICES.orders));
 app.use("/api/notification", proxyRequest(SERVICES.notification));
 

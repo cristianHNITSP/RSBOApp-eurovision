@@ -39,7 +39,8 @@ const pickPurchase = (obj) => ({
   numFactura: obj?.numFactura,
   loteProducto: obj?.loteProducto,
   fechaCompra: obj?.fechaCompra,
-  fechaCaducidad: obj?.fechaCaducidad
+  fechaCaducidad: obj?.fechaCaducidad,
+  precioVenta: obj?.precioVenta
 });
 
 const schemaHas = (path) => {
@@ -114,6 +115,14 @@ const parseOptionalDate = (v) => {
 
   const d = new Date(s);
   return Number.isFinite(d.getTime()) ? d : null;
+};
+
+const parseOptionalNumber = (v) => {
+  if (v === null || v === undefined) return null;
+  const s = String(v ?? "").trim();
+  if (!s) return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
 };
 
 // modelos agrupados
@@ -214,6 +223,10 @@ router.post(
   body("fechaCompra").optional({ nullable: true, checkFalsy: true }).isISO8601(),
   body("fechaCaducidad").optional({ nullable: true, checkFalsy: true }).isISO8601(),
 
+  body("precioVenta")
+  .optional({ nullable: true })
+  .custom((v) => v === null || String(v).trim() === "" || (Number.isFinite(Number(v)) && Number(v) >= 0)),
+
   body("actor").optional().isObject(),
   body("seed").optional().isBoolean(),
   body("sku").optional().isString().trim().isLength({ min: 6, max: 60 }),
@@ -253,6 +266,8 @@ router.post(
 
       const numFactura = String(req.body.numFactura || "").trim();
       const loteProducto = String(req.body.loteProducto || "").trim();
+
+      const precioVenta = parseOptionalNumber(req.body.precioVenta);
 
       if (DEBUG_INVENTORY) {
         console.log("[INV][POST /sheets] parsed purchase:", {
@@ -294,6 +309,7 @@ router.post(
         fechaCaducidad,
         numFactura,
         loteProducto,
+        precioVenta,
 
         meta: req.body.meta || {},
         owner: actor,
@@ -327,7 +343,8 @@ router.post(
           fechaCaducidad: sheet.fechaCaducidad,
           fechaCompra: sheet.fechaCompra,
           numFactura: sheet.numFactura,
-          loteProducto: sheet.loteProducto
+          loteProducto: sheet.loteProducto,
+          precioVenta: sheet.precioVenta
         },
         actor
       });
@@ -440,6 +457,9 @@ router.patch(
   body("loteProducto").optional({ nullable: true }).isString().trim(),
   body("fechaCompra").optional({ nullable: true, checkFalsy: true }).isISO8601(),
   body("fechaCaducidad").optional({ nullable: true, checkFalsy: true }).isISO8601(),
+  body("precioVenta")
+  .optional({ nullable: true })
+  .custom((v) => v === null || String(v).trim() === "" || (Number.isFinite(Number(v)) && Number(v) >= 0)),
 
   body("proveedor").optional({ nullable: true }).isObject(),
   body("proveedor.name").optional({ nullable: true, checkFalsy: true }).isString().trim(),
@@ -528,6 +548,11 @@ router.patch(
         if (DEBUG_INVENTORY) console.log("[INV][PATCH] set loteProducto:", sheet.loteProducto);
       }
 
+      if (Object.prototype.hasOwnProperty.call(req.body, "precioVenta")) {
+        sheet.precioVenta = parseOptionalNumber(req.body.precioVenta);
+        if (DEBUG_INVENTORY) console.log("[INV][PATCH] set precioVenta:", sheet.precioVenta);
+      }
+
       if (hasFechaCompra) {
         sheet.fechaCompra = parseOptionalDate(req.body.fechaCompra);
         if (DEBUG_INVENTORY) console.log("[INV][PATCH] set fechaCompra:", sheet.fechaCompra);
@@ -543,6 +568,8 @@ router.patch(
         sheet.fechaCaducidad = null;
         if (DEBUG_INVENTORY) console.log("[INV][PATCH] force recalc fechaCaducidad (set null)");
       }
+
+      
 
       if (isDef(req.body.proveedor)) sheet.proveedor = normalizeParty(req.body.proveedor);
       if (isDef(req.body.marca)) sheet.marca = normalizeParty(req.body.marca);
@@ -623,6 +650,7 @@ router.patch(
           fechaCompra: sheet.fechaCompra,
           numFactura: sheet.numFactura,
           loteProducto: sheet.loteProducto,
+          precioVenta: sheet.precioVenta,
 
           metaChanged: !!req.body.meta,
           skuBefore,

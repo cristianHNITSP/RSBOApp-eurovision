@@ -1,6 +1,3 @@
-<!-- src/views/Laboratorio.vue -->
-<!-- src/views/Laboratorio.vue -->
-<!-- src/views/Laboratorio.vue -->
 <template>
   <section class="lab-view laboratorio-section" v-motion-fade-visible-once>
     <LabHero />
@@ -11,7 +8,6 @@
           <PedidosTab />
         </b-tab-item>
 
-        <!-- ✅ Nuevo: Bandeja (pendientes + entradas/salidas + recientes) -->
         <b-tab-item value="bandeja" label="Bandeja" icon="inbox">
           <BandejaTab />
         </b-tab-item>
@@ -29,7 +25,7 @@
 
 <script setup>
 import { provide } from "vue";
-import { useLaboratorioMock } from "../../composables/useLaboratorioMock";
+import { useLaboratorioApi } from "../../composables/useLaboratorioApi";
 
 import LabHero from "../../components/laboratorio/LabHero.vue";
 import PedidosTab from "../../components/laboratorio/PedidosTab.vue";
@@ -39,7 +35,7 @@ import CatalogoTab from "../../components/laboratorio/CatalogoTab.vue";
 import BarcodeModal from "../../components/laboratorio/modals/BarcodeModal.vue";
 import CorrectionModal from "../../components/laboratorio/modals/CorrectionModal.vue";
 
-const lab = useLaboratorioMock();
+const lab = useLaboratorioApi();
 provide("lab", lab);
 </script>
 
@@ -59,7 +55,6 @@ provide("lab", lab);
   }
 }
 </style>
-
 
 <style>
 /* Evita “saltos” por scrollbar entre tabs/layout */

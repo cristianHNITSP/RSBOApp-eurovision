@@ -229,9 +229,9 @@ export function useLaboratorioApi() {
   const catalogPageSize = ref(18);
 
   // filtros backend (pedidos)
-  const orderStatusFilter = ref("pendiente");
-  const orderQuery = ref("");
-
+  const orderStatusFilter = ref("open"); // abiertos = pendiente + parcial  const orderQuery = ref("");
+  const orderQuery = ref("");   
+           //
   const selectedOrderId = ref("");
   const scanCode = ref("");
 
@@ -439,21 +439,33 @@ export function useLaboratorioApi() {
   async function loadOrders() {
     loadingOrders.value = true;
     try {
+      const statusUi = String(orderStatusFilter.value || "open");
+
+      // ✅ si es open, pedimos "all" al backend y filtramos aquí
+      const statusParam = statusUi === "open" ? "all" : statusUi;
+
       const params = {
-        status: String(orderStatusFilter.value || "all"),
+        status: statusParam,
         q: String(orderQuery.value || "").trim() || undefined,
         limit: 200,
       };
 
       const { data } = await listOrders(params);
       const arr = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
-      const mapped = arr.map(normalizeOrder);
+      let mapped = arr.map(normalizeOrder);
+
+      // ✅ open = pendiente + parcial
+      if (statusUi === "open") {
+        mapped = mapped.filter((o) => o.status === "pendiente" || o.status === "parcial");
+      }
 
       mapped.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
       ordersDB.value = mapped;
 
       if (!selectedOrderId.value && mapped.length) selectedOrderId.value = mapped[0].id;
-      if (selectedOrderId.value && !mapped.find((x) => x.id === selectedOrderId.value) && mapped.length) selectedOrderId.value = mapped[0].id;
+      if (selectedOrderId.value && !mapped.find((x) => x.id === selectedOrderId.value) && mapped.length) {
+        selectedOrderId.value = mapped[0].id;
+      }
 
       lastUpdatedAt.value = Date.now();
     } catch (e) {

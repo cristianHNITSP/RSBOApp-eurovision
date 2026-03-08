@@ -70,8 +70,9 @@ const ContentInner = defineComponent({
                   expanded: true,
                 },
                 () => [
-                  h("option", { value: "pendiente" }, "Pendientes"),
-                  h("option", { value: "parcial" }, "Parciales"),
+                  h("option", { value: "open" }, "Abiertos (pendiente + parcial)"),
+                  h("option", { value: "pendiente" }, "Solo pendientes"),
+                  h("option", { value: "parcial" }, "Solo parciales"),
                   h("option", { value: "cerrado" }, "Cerrados"),
                   h("option", { value: "all" }, "Todos"),
                 ]

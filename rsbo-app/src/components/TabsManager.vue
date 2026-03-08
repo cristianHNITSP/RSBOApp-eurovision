@@ -789,12 +789,12 @@ const actorRef = computed(() => {
 
 /** ✅ ESTO era lo que te faltaba */
 const tipoHuman = (t) =>
-  ({
-    BASE: "Monofocal (Base)",
-    SPH_CYL: "Monofocal (Esf/Cil)",
-    SPH_ADD: "Bifocal (SPH + ADD)",
-    BASE_ADD: "Progresivo (BASE + ADD)"
-  }[t] || t);
+({
+  BASE: "Monofocal (Base)",
+  SPH_CYL: "Monofocal (Esf/Cil)",
+  SPH_ADD: "Bifocal (SPH + ADD)",
+  BASE_ADD: "Progresivo (BASE + ADD)"
+}[t] || t);
 
 /* ===================== Crear ===================== */
 const selectedBase = ref(null);

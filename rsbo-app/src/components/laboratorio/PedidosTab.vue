@@ -212,7 +212,7 @@
               Crear pedido
             </b-button>
 
-            <b-button class="mt-2" type="is-light" expanded outlined icon-left="exchange-alt" :disabled="!lab.ordersDB.value.length" @click="lab.mode.value = 'surtir'">
+            <b-button class="mt-2" type="is-light" expanded icon-left="exchange-alt" :disabled="!lab.ordersDB.value.length" @click="lab.mode.value = 'surtir'">
               Ir a surtir
             </b-button>
           </div>

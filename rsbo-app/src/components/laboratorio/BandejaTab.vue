@@ -39,13 +39,8 @@
 
         <div class="panel__body">
           <div class="recent">
-            <a
-              v-for="s in lab.recentSheets.value"
-              :key="s.id"
-              class="recent__item"
-              href="#"
-              @click.prevent="pickSheet(s.id)"
-            >
+            <a v-for="s in lab.recentSheets.value" :key="s.id" class="recent__item" href="#"
+              @click.prevent="pickSheet(s.id)">
               <div class="recent__id">{{ (s.nombre || "SHEET").slice(0, 12) }}</div>
 
               <div class="recent__meta">

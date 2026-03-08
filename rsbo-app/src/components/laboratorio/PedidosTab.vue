@@ -22,7 +22,13 @@
               </b-select>
             </b-field>
 
-            <b-button type="is-light" icon-left="download" :disabled="!lab.selectedSheetId.value" @click="lab.exportInventoryCsv">
+            <b-button
+              type="is-light"
+              icon-left="download"
+              :disabled="!lab.selectedSheetId.value"
+              :loading="lab.loadingExportInv.value"
+              @click="lab.exportInventoryCsv"
+            >
               CSV
             </b-button>
           </div>
@@ -60,6 +66,9 @@
               </b-field>
             </div>
           </div>
+
+          <!-- Loading overlay para tabla -->
+          <b-loading :is-full-page="false" :active="lab.loadingItems.value" />
 
           <b-table
             :data="lab.filteredItems.value"
@@ -122,7 +131,7 @@
             </b-table-column>
           </b-table>
 
-          <div v-if="!lab.filteredItems.value.length" class="empty">
+          <div v-if="!lab.filteredItems.value.length && !lab.loadingItems.value" class="empty">
             <i class="fas fa-inbox empty__icon"></i>
             <p class="empty__title">No hay resultados</p>
             <p class="empty__text">Prueba cambiar el filtro o la búsqueda.</p>
@@ -131,6 +140,7 @@
       </div>
     </div>
 
+    <!-- Panel lateral: Modo + Crear / Surtir -->
     <div class="column is-4">
       <div class="panel panel--sticky">
         <div class="panel__head panel__head--compact">
@@ -140,21 +150,32 @@
               Modo
             </h3>
             <p class="panel__hint mt-1">
-              Crear pedido (desde inventario) o surtir (escaneo → salida).
+              Crear pedido o surtir por escaneo.
             </p>
           </div>
 
           <div class="panel__headActions">
-            <b-button size="is-small" :type="lab.mode.value === 'crear' ? 'is-primary' : 'is-light'" icon-left="cart-plus" @click="lab.mode.value = 'crear'">
+            <b-button
+              size="is-small"
+              :type="lab.mode.value === 'crear' ? 'is-primary' : 'is-light'"
+              icon-left="cart-plus"
+              @click="lab.mode.value = 'crear'"
+            >
               Crear
             </b-button>
-            <b-button size="is-small" :type="lab.mode.value === 'surtir' ? 'is-primary' : 'is-light'" icon-left="barcode" @click="lab.mode.value = 'surtir'">
+            <b-button
+              size="is-small"
+              :type="lab.mode.value === 'surtir' ? 'is-primary' : 'is-light'"
+              icon-left="barcode"
+              @click="lab.mode.value = 'surtir'"
+            >
               Surtir
             </b-button>
           </div>
         </div>
       </div>
 
+      <!-- ===== CREAR ===== -->
       <div v-if="lab.mode.value === 'crear'" class="panel mt-4">
         <div class="panel__head panel__head--compact">
           <div>
@@ -162,7 +183,13 @@
             <p class="panel__hint mt-1">Se crea un pedido real en DB.</p>
           </div>
 
-          <b-button size="is-small" type="is-light" icon-left="trash" :disabled="!lab.draftLines.value.length" @click="lab.clearDraft">
+          <b-button
+            size="is-small"
+            type="is-light"
+            icon-left="trash"
+            :disabled="!lab.draftLines.value.length"
+            @click="lab.clearDraft"
+          >
             Limpiar
           </b-button>
         </div>
@@ -179,7 +206,7 @@
           <div v-if="!lab.draftLines.value.length" class="empty empty--mini">
             <i class="fas fa-receipt empty__icon"></i>
             <p class="empty__title">Sin líneas</p>
-            <p class="empty__text">Agrega desde la tabla de inventario.</p>
+            <p class="empty__text">Agrega productos desde la tabla de inventario.</p>
           </div>
 
           <div v-else class="order-lines">
@@ -201,24 +228,46 @@
                   <b-input type="number" min="1" v-model.number="l.qty" class="qty-input" />
                   <b-button size="is-small" @click="lab.incDraftQty(l.key)" icon-left="plus" />
                 </div>
-
                 <span class="stock-hint">stock: <b>{{ l.stock }}</b></span>
               </div>
             </article>
           </div>
 
+          <!-- Resumen del draft -->
+          <div v-if="lab.draftLines.value.length" class="draft-summary">
+            <span>{{ lab.draftLines.value.length }} línea{{ lab.draftLines.value.length !== 1 ? 's' : '' }}</span>
+            <span>
+              {{ lab.draftLines.value.reduce((a, l) => a + Number(l.qty || 0), 0) }} piezas totales
+            </span>
+          </div>
+
           <div class="mt-3">
-            <b-button type="is-primary" expanded icon-left="clipboard-check" :disabled="!lab.canCreateOrder.value" @click="lab.createOrderFromDraft">
+            <b-button
+              type="is-primary"
+              expanded
+              icon-left="clipboard-check"
+              :disabled="!lab.canCreateOrder.value"
+              :loading="lab.loadingCreateOrder.value"
+              @click="lab.createOrderFromDraft"
+            >
               Crear pedido
             </b-button>
 
-            <b-button class="mt-2" type="is-light" expanded icon-left="exchange-alt" :disabled="!lab.ordersDB.value.length" @click="lab.mode.value = 'surtir'">
+            <b-button
+              class="mt-2"
+              type="is-light"
+              expanded
+              icon-left="exchange-alt"
+              :disabled="!lab.ordersDB.value.length"
+              @click="lab.mode.value = 'surtir'"
+            >
               Ir a surtir
             </b-button>
           </div>
         </div>
       </div>
 
+      <!-- ===== SURTIR ===== -->
       <div v-else class="panel mt-4">
         <div class="panel__head panel__head--compact">
           <div>
@@ -236,7 +285,8 @@
             </b-select>
           </b-field>
 
-          <div v-if="lab.selectedOrder.value" class="mini-order-head mb-2">
+          <!-- Order mini-summary -->
+          <div v-if="lab.selectedOrder.value" class="mini-order-head mb-3">
             <div class="mini-order-title">
               <b>{{ lab.selectedOrder.value.folio }}</b>
               <span class="tag is-light ml-2" :class="lab.statusTagClass(lab.selectedOrder.value.status)">
@@ -244,45 +294,87 @@
               </span>
             </div>
             <div class="mini-order-sub">
-              {{ lab.sheetNameById(lab.selectedOrder.value.sheetId) }} · {{ lab.selectedOrder.value.createdAtShort }}
+              {{ lab.sheetNameById(lab.selectedOrder.value.sheetId) }}
+              · {{ lab.selectedOrder.value.createdAtShort }}
             </div>
 
             <div class="progress-bar mt-2" aria-label="Progreso del pedido">
-              <div class="progress-bar__fill" :style="{ width: lab.orderProgressPct(lab.selectedOrder.value) + '%' }" />
+              <div
+                class="progress-bar__fill"
+                :style="{ width: lab.orderProgressPct(lab.selectedOrder.value) + '%' }"
+              />
             </div>
-            <div class="mini-order-sub mt-1">
-              Progreso: <b>{{ lab.orderPickedCount(lab.selectedOrder.value) }}</b>/<b>{{ lab.orderTotalCount(lab.selectedOrder.value) }}</b>
+            <div class="mini-order-sub mt-1 is-flex is-justify-content-space-between">
+              <span>
+                <b>{{ lab.orderPickedCount(lab.selectedOrder.value) }}</b>/<b>{{ lab.orderTotalCount(lab.selectedOrder.value) }}</b> surtidas
+              </span>
+              <span>{{ lab.orderProgressPct(lab.selectedOrder.value) }}%</span>
+            </div>
+
+            <!-- Complete badge -->
+            <div v-if="lab.isOrderComplete(lab.selectedOrder.value)" class="complete-badge mt-2">
+              <i class="fas fa-check-circle mr-2"></i>
+              ¡Pedido completado! Listo para cerrar.
             </div>
 
             <div class="columns is-mobile is-variable is-2 mt-2">
               <div class="column">
-                <b-button type="is-light" expanded icon-left="download" @click="lab.exportOrderCsv(lab.selectedOrder.value)">
-                  CSV pedido
+                <b-button
+                  type="is-light"
+                  expanded
+                  icon-left="download"
+                  @click="lab.exportOrderCsv(lab.selectedOrder.value)"
+                >
+                  CSV
                 </b-button>
               </div>
               <div class="column">
-                <b-button type="is-light" expanded icon-left="print" @click="lab.printOrder(lab.selectedOrder.value)">
-                  Imprimir / PDF
+                <b-button
+                  type="is-light"
+                  expanded
+                  icon-left="print"
+                  @click="lab.printOrder(lab.selectedOrder.value)"
+                >
+                  PDF
                 </b-button>
               </div>
             </div>
           </div>
 
+          <!-- Scan input -->
           <b-field label="Código (EAN-13)" class="mb-2">
-            <b-input v-model="lab.scanCode.value" placeholder="Ej: 2790000000011" icon="barcode" @keyup.enter="lab.scanAndDispatch" />
+            <b-input
+              v-model="lab.scanCode.value"
+              placeholder="Escanea o escribe el código…"
+              icon="barcode"
+              @keyup.enter="lab.scanAndDispatch"
+            />
           </b-field>
 
           <div class="columns is-mobile is-variable is-2">
             <div class="column">
-              <b-button type="is-primary" expanded icon-left="check" @click="lab.scanAndDispatch">
+              <b-button
+                type="is-primary"
+                expanded
+                icon-left="check"
+                :loading="lab.loadingScan.value"
+                :disabled="!lab.scanCode.value || !lab.selectedOrder.value"
+                @click="lab.scanAndDispatch"
+              >
                 Marcar salida
               </b-button>
             </div>
             <div class="column is-narrow">
-              <b-button type="is-light" icon-left="times" @click="lab.scanCode.value = ''" />
+              <b-button
+                type="is-light"
+                icon-left="times"
+                :disabled="!lab.scanCode.value"
+                @click="lab.scanCode.value = ''"
+              />
             </div>
           </div>
 
+          <!-- Order lines progress -->
           <div v-if="lab.selectedOrder.value" class="mt-3">
             <div class="order-lines">
               <article
@@ -296,16 +388,22 @@
                     {{ lab.lineHuman(l, lab.sheetById(lab.selectedOrder.value.sheetId)) }}
                     <span class="order-line__sub">{{ l.picked }}/{{ l.qty }} surtidas</span>
                   </div>
-
                   <span class="tag is-light qty-tag" :class="l.picked >= l.qty ? 'is-success' : ''">
-                    {{ l.picked >= l.qty ? "OK" : "Pendiente" }}
+                    {{ l.picked >= l.qty ? "✓ OK" : "Pendiente" }}
                   </span>
                 </div>
               </article>
             </div>
 
             <div class="mt-3">
-              <b-button type="is-light" expanded icon-left="redo" @click="lab.resetPickedForSelectedOrder" :disabled="!lab.selectedOrder.value">
+              <b-button
+                type="is-light"
+                expanded
+                icon-left="redo"
+                :loading="lab.loadingReset.value"
+                :disabled="!lab.selectedOrder.value"
+                @click="lab.resetPickedForSelectedOrder"
+              >
                 Reiniciar surtido
               </b-button>
 
@@ -315,12 +413,21 @@
                 expanded
                 icon-left="lock"
                 :disabled="!lab.selectedOrder.value || !lab.isOrderComplete(lab.selectedOrder.value)"
+                :loading="lab.loadingCloseOrder.value"
                 @click="lab.closeSelectedOrder"
               >
                 Cerrar pedido
               </b-button>
 
-              <b-button class="mt-2" type="is-danger" expanded outlined icon-left="exclamation-triangle" :disabled="!lab.selectedOrder.value" @click="lab.correctionOpen.value = true">
+              <b-button
+                class="mt-2"
+                type="is-danger"
+                expanded
+                outlined
+                icon-left="exclamation-triangle"
+                :disabled="!lab.selectedOrder.value"
+                @click="lab.correctionOpen.value = true"
+              >
                 Solicitar corrección
               </b-button>
             </div>
@@ -329,7 +436,7 @@
           <div v-else class="empty empty--mini">
             <i class="fas fa-hand-pointer empty__icon"></i>
             <p class="empty__title">Sin pedido seleccionado</p>
-            <p class="empty__text">Selecciona uno para surtir.</p>
+            <p class="empty__text">Selecciona uno arriba para surtir.</p>
           </div>
         </div>
       </div>
@@ -343,3 +450,30 @@ import { inject } from "vue";
 const lab = inject("lab");
 if (!lab) throw new Error("PedidosTab necesita provide('lab', ...)");
 </script>
+
+<style scoped>
+.draft-summary {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0.65rem;
+  margin-top: 0.6rem;
+  background: rgba(144, 111, 225, 0.08);
+  border: 1px solid rgba(144, 111, 225, 0.2);
+  border-radius: 12px;
+  font-size: 0.82rem;
+  font-weight: 900;
+  color: rgba(17, 24, 39, 0.85);
+}
+
+.complete-badge {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 0.65rem;
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: 12px;
+  font-size: 0.82rem;
+  font-weight: 900;
+  color: rgba(21, 128, 61, 0.9);
+}
+</style>

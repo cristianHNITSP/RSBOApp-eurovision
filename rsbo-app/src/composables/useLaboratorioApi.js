@@ -3,7 +3,7 @@ import { ref, reactive, computed, watch, onMounted } from "vue";
 import { listSheets as invListSheets, fetchItems as invFetchItems } from "@/services/inventory";
 import { listOrders, createOrder, scanOrder, closeOrder, resetOrder, listEvents, requestCorrection } from "@/services/laboratorio";
 
-/* ===================== Helpers ===================== */
+/* ===================== Helpers generales ===================== */
 
 const normTxt = (s) =>
   String(s || "")
@@ -37,13 +37,11 @@ function downloadBlob(filename, blob) {
 }
 
 function toCsv(rows, headers) {
-  // headers: [{ key, label, transform? }]
   const esc = (v) => {
     const s = String(v ?? "");
     if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
     return s;
   };
-
   const head = headers.map((h) => esc(h.label)).join(",");
   const body = rows
     .map((r) =>
@@ -55,15 +53,12 @@ function toCsv(rows, headers) {
         .join(",")
     )
     .join("\n");
-
   return `${head}\n${body}\n`;
 }
 
 function openPrintWindow({ title, bodyHtml }) {
   const w = window.open("", "_blank");
   if (!w) return;
-
-  // Sin CSS externo; solo inline mínimo para legibilidad en impresión.
   w.document.open();
   w.document.write(`<!doctype html>
 <html>
@@ -82,7 +77,6 @@ function openPrintWindow({ title, bodyHtml }) {
     .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
     .right{text-align:right}
     .badge{display:inline-block;border:1px solid #ddd;border-radius:999px;padding:2px 8px;font-size:12px;margin-left:8px}
-    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
     @media print{ .no-print{display:none} }
   </style>
 </head>
@@ -97,20 +91,15 @@ function openPrintWindow({ title, bodyHtml }) {
   w.focus();
 }
 
-/* ===================== Barcode (EAN-13) for printing ===================== */
+/* ===================== Barcode (EAN-13) ===================== */
 
 const onlyDigits = (s) => String(s || "").replace(/\D/g, "");
 
 function checksumEan13(d12) {
   const digits = d12.split("").map((x) => Number(x));
   let sum = 0;
-  for (let i = 0; i < 12; i++) {
-    const pos = i + 1;
-    const w = pos % 2 === 0 ? 3 : 1;
-    sum += digits[i] * w;
-  }
-  const mod = sum % 10;
-  return (10 - mod) % 10;
+  for (let i = 0; i < 12; i++) sum += digits[i] * (i % 2 === 0 ? 1 : 3);
+  return (10 - (sum % 10)) % 10;
 }
 
 function normalizeEan13(raw) {
@@ -123,98 +112,175 @@ function normalizeEan13(raw) {
 function isEan13(raw) {
   const d = onlyDigits(raw);
   if (d.length !== 13) return false;
-  const d12 = d.slice(0, 12);
-  const chk = Number(d[12]);
-  return chk === checksumEan13(d12);
+  return Number(d[12]) === checksumEan13(d.slice(0, 12));
 }
 
-// Genera SVG string (para impresión)
 function ean13SvgString(value, scale = 2, height = 90) {
   const quiet = 10;
-
   const L = ["0001101","0011001","0010011","0111101","0100011","0110001","0101111","0111011","0110111","0001011"];
   const G = ["0100111","0110011","0011011","0100001","0011101","0111001","0000101","0010001","0001001","0010111"];
   const R = ["1110010","1100110","1101100","1000010","1011100","1001110","1010000","1000100","1001000","1110100"];
   const PARITY = ["LLLLLL","LLGLGG","LLGGLG","LLGGGL","LGLLGG","LGGLLG","LGGGLL","LGLGLG","LGLGGL","LGGLGL"];
-
   const ean = normalizeEan13(value);
   if (!ean) return "";
-
   const first = Number(ean[0]);
   const left = ean.slice(1, 7).split("").map(Number);
   const right = ean.slice(7, 13).split("").map(Number);
-
   const parity = PARITY[first];
   let bits = "101";
-  for (let i = 0; i < 6; i++) {
-    const d = left[i];
-    bits += parity[i] === "L" ? L[d] : G[d];
-  }
+  for (let i = 0; i < 6; i++) bits += parity[i] === "L" ? L[left[i]] : G[left[i]];
   bits += "01010";
   for (let i = 0; i < 6; i++) bits += R[right[i]];
   bits += "101";
-
   const isGuardBit = (i) => (i >= 0 && i <= 2) || (i >= 45 && i <= 49) || (i >= 92 && i <= 94);
-
   const sc = Math.max(1, Number(scale || 2));
   const normalH = Math.max(40, Number(height || 90));
   const guardH = normalH + 10;
   const textH = 18;
-
-  const totalModules = bits.length + quiet * 2;
-  const w = totalModules * sc;
+  const w = (bits.length + quiet * 2) * sc;
   const hSvg = guardH + textH + 6;
-
-  let rects = [];
-  let runStart = -1;
-  let runGuard = false;
-
+  let rects = [], runStart = -1, runGuard = false;
   for (let i = 0; i < bits.length; i++) {
-    const bit = bits[i];
-    const guard = isGuardBit(i);
-
-    if (bit === "1" && runStart === -1) {
-      runStart = i;
-      runGuard = guard;
-    } else if (bit === "1" && runStart !== -1) {
-      if (runGuard !== guard) {
-        rects.push({ start: runStart, end: i - 1, guard: runGuard });
-        runStart = i;
-        runGuard = guard;
-      }
+    const bit = bits[i], guard = isGuardBit(i);
+    if (bit === "1" && runStart === -1) { runStart = i; runGuard = guard; }
+    else if (bit === "1" && runStart !== -1 && runGuard !== guard) {
+      rects.push({ start: runStart, end: i - 1, guard: runGuard });
+      runStart = i; runGuard = guard;
     } else if (bit === "0" && runStart !== -1) {
       rects.push({ start: runStart, end: i - 1, guard: runGuard });
       runStart = -1;
     }
   }
   if (runStart !== -1) rects.push({ start: runStart, end: bits.length - 1, guard: runGuard });
-
-  const rectsSvg = rects
-    .map((r) => {
-      const x = (quiet + r.start) * sc;
-      const y = 6;
-      const width = (r.end - r.start + 1) * sc;
-      const height = r.guard ? guardH : normalH;
-      return `<rect x="${x}" y="${y}" width="${width}" height="${height}" fill="#000" />`;
-    })
-    .join("");
-
-  return `
-<svg width="${w}" height="${hSvg}" viewBox="0 0 ${w} ${hSvg}" role="img" aria-label="Barcode EAN-13" style="display:block">
+  const rectsSvg = rects.map((r) =>
+    `<rect x="${(quiet + r.start) * sc}" y="6" width="${(r.end - r.start + 1) * sc}" height="${r.guard ? guardH : normalH}" fill="#000" />`
+  ).join("");
+  return `<svg width="${w}" height="${hSvg}" viewBox="0 0 ${w} ${hSvg}" role="img" aria-label="Barcode EAN-13" style="display:block">
   <rect x="0" y="0" width="${w}" height="${hSvg}" fill="#fff"></rect>
   ${rectsSvg}
   <text x="${w / 2}" y="${guardH + textH}" text-anchor="middle" font-size="14" fill="#111"
-    font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace">${ean}</text>
+    font-family="ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Liberation Mono','Courier New',monospace">${ean}</text>
 </svg>`;
 }
+
+/* ===================== Safe UI Error Handling ===================== */
+
+const stripHtml = (s) => String(s ?? "").replace(/<[^>]*>/g, "");
+const collapseWs = (s) => String(s ?? "").replace(/\s+/g, " ").trim();
+
+const looksLikeStackTrace = (s) => {
+  const t = String(s ?? "");
+  return (
+    /(\bat\s+.+\([^)]+\)\b)/.test(t) ||
+    /([A-Za-z]:\\|\/).+\.(js|ts|jsx|tsx|json|yml|yaml):\d+:\d+/.test(t) ||
+    /\b(node:internal|webpack|vite|chunk)\b/i.test(t)
+  );
+};
+
+const containsSensitive = (s) => {
+  const t = String(s ?? "");
+  if (!t) return false;
+  return [
+    /\bAuthorization:\s*Bearer\s+[A-Za-z0-9\-_\.]+\b/i,
+    /\bBearer\s+[A-Za-z0-9\-_\.]+\b/i,
+    /\beyJ[A-Za-z0-9\-_]+?\.[A-Za-z0-9\-_]+?\.[A-Za-z0-9\-_]+\b/,
+    /\bmongodb(\+srv)?:\/\/[^\s]+/i,
+    /\/\/[^/\s:]+:[^@\s]+@/i,
+    /\b(api[_-]?key|token|secret|password|passwd|pwd)\b\s*[:=]\s*["']?[^"'\s]+/i,
+    /\bPRIVATE KEY\b|\bBEGIN (RSA|EC|OPENSSH) PRIVATE KEY\b/i,
+    /\bAKIA[0-9A-Z]{16}\b/,
+  ].some((re) => re.test(t));
+};
+
+const sanitizeUserText = (raw, { maxLen = 160 } = {}) => {
+  if (raw == null) return "";
+  let s = collapseWs(stripHtml(raw));
+  if (!s) return "";
+  if (containsSensitive(s) || looksLikeStackTrace(s)) return "";
+  if (s.length > maxLen) s = s.slice(0, maxLen - 1).trimEnd() + "…";
+  return s;
+};
+
+const guessCategory = (status, rawMsg) => {
+  const msg = String(rawMsg ?? "").toLowerCase();
+  if (msg.includes("network error") || msg.includes("failed to fetch") || msg.includes("econnrefused") || msg.includes("timeout") || msg.includes("etimedout")) return "network";
+  if (status === 401) return "auth";
+  if (status === 403) return "forbidden";
+  if (status === 400 || status === 422) return "validation";
+  if (status === 404) return "notfound";
+  if (status === 409) return "conflict";
+  if (status === 429) return "ratelimit";
+  if (msg.includes("e11000") || msg.includes("duplicate key")) return "conflict";
+  if (msg.includes("casterror") || msg.includes("validationerror")) return "validation";
+  if (typeof status === "number" && status >= 500) return "server";
+  return "generic";
+};
+
+const categoryToPublicMessage = (category) => ({
+  network:    "No se pudo conectar con el servidor. Revisa tu red o intenta de nuevo.",
+  auth:       "Tu sesión expiró. Vuelve a iniciar sesión.",
+  forbidden:  "No tienes permisos para realizar esta acción.",
+  validation: "Hay datos inválidos o fuera de rango. Revisa los valores e intenta de nuevo.",
+  notfound:   "No se encontró el recurso solicitado.",
+  conflict:   "Conflicto: ese registro o valor ya existe o está en uso.",
+  ratelimit:  "Demasiadas solicitudes. Intenta nuevamente en unos segundos.",
+  server:     "Error interno del servidor. Intenta más tarde.",
+  generic:    "Ocurrió un error al procesar la operación. Intenta de nuevo.",
+}[category] || "Ocurrió un error al procesar la operación. Intenta de nuevo.");
+
+const normalizeAck = (ack, { successFallback = "Listo.", errorFallback = "Ocurrió un error." } = {}) => {
+  if (!ack) return null;
+  if (typeof ack === "string") {
+    const safe = sanitizeUserText(ack);
+    return { ok: false, status: null, message: safe || errorFallback, _raw: ack };
+  }
+  if (ack instanceof Error) {
+    const status = ack?.response?.status ?? ack?.status ?? null;
+    const rawMsg = ack?.response?.data?.message ?? ack?.message ?? String(ack);
+    const safeMsg = sanitizeUserText(rawMsg);
+    return { ok: false, status, message: safeMsg || categoryToPublicMessage(guessCategory(status, rawMsg)), _raw: rawMsg };
+  }
+  const status = ack?.status ?? ack?.statusCode ?? ack?.response?.status ?? ack?.response?.statusCode ?? null;
+  const ok = ack?.ok === true ? true : ack?.ok === false ? false : typeof status === "number" ? status < 400 : null;
+  const rawMsg = ack?.message ?? ack?.response?.data?.message ?? ack?.response?.data?.error ?? ack?.error ?? "";
+  if (ok === true) {
+    const safe = sanitizeUserText(rawMsg);
+    return { ok: true, status, message: safe || successFallback, _raw: rawMsg };
+  }
+  const safe = sanitizeUserText(rawMsg);
+  return { ok: ok === null ? false : ok, status, message: safe || categoryToPublicMessage(guessCategory(status, rawMsg)) || errorFallback, _raw: rawMsg };
+};
 
 /* ===================== Composable ===================== */
 
 export function useLaboratorioApi() {
-  // UI
+
+  /* ===== Sistema de notificaciones propio (sin Buefy toast) ===== */
+  let _notifIdCounter = 0;
+  const notifications = ref([]);
+
+  /**
+   * Muestra una notificación flotante (overlay propio estilo dirty-float).
+   * @param {string} message  Texto a mostrar (se sanitiza automáticamente).
+   * @param {"is-success"|"is-danger"|"is-warning"|"is-info"} type
+   * @param {number}  duration  Ms antes de auto-dismiss. 0 = no auto-dismiss.
+   */
+  const notify = (message, type = "is-info", duration = 4000) => {
+    const clean = sanitizeUserText(String(message ?? ""), { maxLen: 200 }) || "Listo.";
+    const id = ++_notifIdCounter;
+    notifications.value.push({ id, message: clean, type, duration });
+    if (duration > 0) {
+      setTimeout(() => dismissNotification(id), duration);
+    }
+  };
+
+  const dismissNotification = (id) => {
+    notifications.value = notifications.value.filter((n) => n.id !== id);
+  };
+
+  // ---- UI state ----
   const activeMainTab = ref("pedidos");
   const mode = ref("crear");
-
   const includeDeleted = ref(false);
   const sheetQuery = ref("");
 
@@ -228,17 +294,14 @@ export function useLaboratorioApi() {
   const catalogPage = ref(1);
   const catalogPageSize = ref(18);
 
-  // filtros backend (pedidos)
-  const orderStatusFilter = ref("open"); // abiertos = pendiente + parcial  const orderQuery = ref("");
-  const orderQuery = ref("");   
-           //
+  const orderStatusFilter = ref("open");
+  const orderQuery = ref("");
   const selectedOrderId = ref("");
   const scanCode = ref("");
 
   // modals
   const barcodeOpen = ref(false);
   const barcodeValue = ref("");
-
   const correctionOpen = ref(false);
   const correction = reactive({ orderId: "", codebar: "", message: "" });
 
@@ -246,21 +309,29 @@ export function useLaboratorioApi() {
   const sheetsDB = ref([]);
   const itemsDB = ref([]);
   const ordersDB = ref([]);
-
-  // eventos persistentes (DB)
   const entryEvents = ref([]);
   const exitEvents = ref([]);
   const correctionEvents = ref([]);
 
-  // loaders
+  // loaders globales
   const loadingSheets = ref(false);
   const loadingItems = ref(false);
   const loadingOrders = ref(false);
   const loadingEvents = ref(false);
 
+  // loaders de acciones
+  const loadingCreateOrder = ref(false);
+  const loadingCloseOrder = ref(false);
+  const loadingScan = ref(false);
+  const loadingReset = ref(false);
+  const loadingSubmitCorrection = ref(false);
+  const loadingRefreshAll = ref(false);
+  const loadingExportInv = ref(false);
+  const loadingExportCat = ref(false);
+  const loadingExportOrders = ref(false);
+
   const lastUpdatedAt = ref(Date.now());
 
-  // actor (sin hardcode: intenta sacar del storage; si no, backend usa system)
   const actorRef = () => {
     try {
       const raw = localStorage.getItem("user") || localStorage.getItem("auth_user") || "";
@@ -269,9 +340,7 @@ export function useLaboratorioApi() {
       const userId = u?.id || u?.userId || null;
       const name = u?.name || u?.nombre || null;
       return userId || name ? { userId, name } : undefined;
-    } catch {
-      return undefined;
-    }
+    } catch { return undefined; }
   };
 
   // helpers
@@ -291,7 +360,9 @@ export function useLaboratorioApi() {
   };
 
   const selectedSheet = computed(() => sheetById(selectedSheetId.value));
-  const selectedSheetLabel = computed(() => (selectedSheet.value ? sheetTitle(selectedSheet.value) : "Sin planilla"));
+  const selectedSheetLabel = computed(() =>
+    selectedSheet.value ? sheetTitle(selectedSheet.value) : "Sin planilla"
+  );
 
   const lastUpdatedHuman = computed(() => {
     const ms = Date.now() - Number(lastUpdatedAt.value || Date.now());
@@ -299,8 +370,7 @@ export function useLaboratorioApi() {
     if (s < 60) return `${s}s`;
     const m = Math.floor(s / 60);
     if (m < 60) return `${m}m`;
-    const h = Math.floor(m / 60);
-    return `${h}h`;
+    return `${Math.floor(m / 60)}h`;
   });
 
   // ======= Presentación de fila =======
@@ -328,12 +398,9 @@ export function useLaboratorioApi() {
     const updatedByName =
       s?.updatedBy?.name ||
       s?.updatedBy?.nombre ||
-      (typeof s?.updatedBy === "string" ? s.updatedBy : "") ||
-      "";
-
+      (typeof s?.updatedBy === "string" ? s.updatedBy : "") || "";
     return {
-      ...s,
-      id,
+      ...s, id,
       nombre: s?.nombre ?? s?.name ?? "",
       name: s?.nombre ?? s?.name ?? "",
       tratamientos: Array.isArray(s?.tratamientos) ? s.tratamientos : [],
@@ -348,24 +415,13 @@ export function useLaboratorioApi() {
         includeDeleted: includeDeleted.value ? "true" : "false",
         q: String(sheetQuery.value || "").trim() || undefined,
       };
-
       const { data } = await invListSheets(params);
-
-      // tu inventory suele regresar { ok, data: [...] } o { data: [...] }
       const arr = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
       const mapped = arr.map(normalizeSheet);
-
-      mapped.sort((a, b) => {
-        const da = new Date(a.updatedAt || a.createdAt || 0).getTime();
-        const db = new Date(b.updatedAt || b.createdAt || 0).getTime();
-        return db - da;
-      });
-
+      mapped.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime());
       sheetsDB.value = mapped;
-
       if (!selectedSheetId.value && mapped.length) selectedSheetId.value = mapped[0].id;
       if (selectedSheetId.value && !sheetById(selectedSheetId.value) && mapped.length) selectedSheetId.value = mapped[0].id;
-
       lastUpdatedAt.value = Date.now();
     } catch (e) {
       console.error("[LAB] loadSheets", e?.response?.data || e);
@@ -375,33 +431,25 @@ export function useLaboratorioApi() {
     }
   }
 
-  // ======= Items (DB) =======
+  // ======= Items =======
   async function loadItems(forceSheetId) {
     const sid = forceSheetId || selectedSheetId.value;
     const sheet = sheetById(sid);
-    if (!sheet?.id) {
-      itemsDB.value = [];
-      return;
-    }
-
+    if (!sheet?.id) { itemsDB.value = []; return; }
     loadingItems.value = true;
     try {
-      // Si tu backend ignora q/stock, no pasa nada.
       const params = {
         limit: Number(itemsLimit.value || 5000),
         q: String(itemQuery.value || "").trim() || undefined,
         stock: String(stockFilter.value || "") || undefined,
       };
-
       const { data } = await invFetchItems(sheet.id, params);
-
       const rows = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
       itemsDB.value = rows.map((r, idx) => ({
         ...r,
         _k: String(r.codebar || "") ? `${r.codebar}` : `row_${idx}`,
         existencias: Number(r.existencias || 0),
       }));
-
       lastUpdatedAt.value = Date.now();
     } catch (e) {
       console.error("[LAB] loadItems", e?.response?.data || e);
@@ -411,16 +459,13 @@ export function useLaboratorioApi() {
     }
   }
 
-  // ======= Orders (DB, filtros backend) =======
+  // ======= Orders =======
   const normalizeOrder = (o) => {
     const id = String(o?._id ?? o?.id ?? "");
     const sheetId = String(o?.sheet ?? o?.sheetId ?? "");
     const lines = Array.isArray(o?.lines) ? o.lines : [];
-
     return {
-      ...o,
-      id,
-      sheetId,
+      ...o, id, sheetId,
       createdAtShort: fmtShort(o?.createdAt),
       updatedAtShort: fmtShort(o?.updatedAt),
       lines: lines.map((l, i) => ({
@@ -440,33 +485,17 @@ export function useLaboratorioApi() {
     loadingOrders.value = true;
     try {
       const statusUi = String(orderStatusFilter.value || "open");
-
-      // ✅ si es open, pedimos "all" al backend y filtramos aquí
       const statusParam = statusUi === "open" ? "all" : statusUi;
-
-      const params = {
-        status: statusParam,
-        q: String(orderQuery.value || "").trim() || undefined,
-        limit: 200,
-      };
-
+      const params = { status: statusParam, q: String(orderQuery.value || "").trim() || undefined, limit: 200 };
       const { data } = await listOrders(params);
       const arr = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
       let mapped = arr.map(normalizeOrder);
-
-      // ✅ open = pendiente + parcial
-      if (statusUi === "open") {
-        mapped = mapped.filter((o) => o.status === "pendiente" || o.status === "parcial");
-      }
-
+      if (statusUi === "open") mapped = mapped.filter((o) => o.status === "pendiente" || o.status === "parcial");
       mapped.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
       ordersDB.value = mapped;
-
       if (!selectedOrderId.value && mapped.length) selectedOrderId.value = mapped[0].id;
-      if (selectedOrderId.value && !mapped.find((x) => x.id === selectedOrderId.value) && mapped.length) {
+      if (selectedOrderId.value && !mapped.find((x) => x.id === selectedOrderId.value) && mapped.length)
         selectedOrderId.value = mapped[0].id;
-      }
-
       lastUpdatedAt.value = Date.now();
     } catch (e) {
       console.error("[LAB] loadOrders", e?.response?.data || e);
@@ -478,7 +507,6 @@ export function useLaboratorioApi() {
 
   const selectedOrder = computed(() => ordersDB.value.find((o) => o.id === selectedOrderId.value) || null);
 
-  // si seleccionas pedido en surtir, cambia la planilla
   watch(selectedOrderId, (id) => {
     const o = ordersDB.value.find((x) => x.id === id);
     if (!o) return;
@@ -488,21 +516,15 @@ export function useLaboratorioApi() {
   // ======= Status helpers =======
   const statusHuman = (s) =>
     ({ pendiente: "Pendiente", parcial: "Parcial", cerrado: "Cerrado", cancelado: "Cancelado" }[s] || s);
-
   const statusTagClass = (s) =>
     ({ pendiente: "is-warning", parcial: "is-info", cerrado: "is-success", cancelado: "is-danger" }[s] || "is-light");
-
   const orderTotalCount = (o) => (o?.lines || []).reduce((acc, l) => acc + Number(l.qty || 0), 0);
   const orderPickedCount = (o) => (o?.lines || []).reduce((acc, l) => acc + Math.min(Number(l.picked || 0), Number(l.qty || 0)), 0);
-
   const orderProgressPct = (o) => {
     const t = orderTotalCount(o);
-    if (t <= 0) return 0;
-    return Math.round((orderPickedCount(o) / t) * 100);
+    return t <= 0 ? 0 : Math.round((orderPickedCount(o) / t) * 100);
   };
-
   const isOrderComplete = (o) => (o?.lines || []).every((l) => Number(l.picked || 0) >= Number(l.qty || 0));
-
   const lineHuman = (line, sheet) => {
     const t = sheet?.tipo_matriz;
     const p = line?.params || {};
@@ -514,207 +536,199 @@ export function useLaboratorioApi() {
     return String(line?.codebar || "Línea");
   };
 
-  // ======= Eventos (DB) =======
+  // ======= Eventos =======
   const mapEntryEvent = (e) => ({
-    id: String(e._id || e.id),
-    folio: e?.details?.folio || "—",
-    at: fmtShort(e?.createdAt),
+    id: String(e._id || e.id), folio: e?.details?.folio || "—", at: fmtShort(e?.createdAt),
     cliente: e?.details?.cliente || "—",
     sheetId: e?.details?.sheetId || (e?.sheet ? String(e.sheet) : null),
     linesTotal: Number(e?.details?.linesTotal || 0),
   });
-
   const mapExitEvent = (e) => ({
-    id: String(e._id || e.id),
-    folio: e?.details?.folio || "—",
-    at: fmtShort(e?.createdAt),
+    id: String(e._id || e.id), folio: e?.details?.folio || "—", at: fmtShort(e?.createdAt),
     sheetId: e?.details?.sheetId || (e?.sheet ? String(e.sheet) : null),
-    codebar: e?.details?.codebar || "",
-    title: e?.details?.title || "Salida",
+    codebar: e?.details?.codebar || "", title: e?.details?.title || "Salida",
   });
-
   const mapCorrectionEvent = (e) => ({
-    id: String(e._id || e.id),
-    folio: e?.details?.folio || "—",
-    at: fmtShort(e?.createdAt),
+    id: String(e._id || e.id), folio: e?.details?.folio || "—", at: fmtShort(e?.createdAt),
     sheetId: e?.details?.sheetId || (e?.sheet ? String(e.sheet) : null),
-    codebar: e?.details?.codebar || "",
-    message: e?.details?.message || "",
+    codebar: e?.details?.codebar || "", message: e?.details?.message || "",
   });
 
   async function loadEvents() {
     loadingEvents.value = true;
     try {
       const limit = 50;
-
       const [en, ex, co] = await Promise.all([
         listEvents({ type: "ORDER_CREATE", limit }),
         listEvents({ type: "EXIT_SCAN", limit }),
         listEvents({ type: "CORRECTION_REQUEST", limit }),
       ]);
-
       const ent = Array.isArray(en?.data?.data) ? en.data.data : Array.isArray(en?.data) ? en.data : [];
       const sal = Array.isArray(ex?.data?.data) ? ex.data.data : Array.isArray(ex?.data) ? ex.data : [];
       const cor = Array.isArray(co?.data?.data) ? co.data.data : Array.isArray(co?.data) ? co.data : [];
-
       entryEvents.value = ent.map(mapEntryEvent);
       exitEvents.value = sal.map(mapExitEvent);
       correctionEvents.value = cor.map(mapCorrectionEvent);
-
       lastUpdatedAt.value = Date.now();
     } catch (e) {
       console.error("[LAB] loadEvents", e?.response?.data || e);
-      entryEvents.value = [];
-      exitEvents.value = [];
-      correctionEvents.value = [];
+      entryEvents.value = []; exitEvents.value = []; correctionEvents.value = [];
     } finally {
       loadingEvents.value = false;
     }
   }
 
-  /* ===================== Draft (crear pedido) ===================== */
+  /* ===================== Draft ===================== */
 
   const draftCliente = ref("");
   const draftNote = ref("");
   const draftLines = ref([]);
 
-  const canCreateOrder = computed(() => {
-    return !!selectedSheetId.value && draftLines.value.length > 0 && String(draftCliente.value || "").trim().length > 0;
-  });
+  const canCreateOrder = computed(() =>
+    !!selectedSheetId.value &&
+    draftLines.value.length > 0 &&
+    String(draftCliente.value || "").trim().length > 0
+  );
 
   const clearDraft = () => (draftLines.value = []);
 
   const addToDraft = (row) => {
     const sheet = selectedSheet.value;
     if (!sheet?.id) return;
-
     const cb = String(row?.codebar || "").trim();
     if (!cb) return;
-
-    const key = cb;
-    const found = draftLines.value.find((x) => x.key === key);
+    const found = draftLines.value.find((x) => x.key === cb);
     if (found) {
-      const next = Math.min(Number(found.qty || 1) + 1, Number(found.stock || 999999));
-      found.qty = next;
+      found.qty = Math.min(Number(found.qty || 1) + 1, Number(found.stock || 999999));
+      notify(`+1 unidad de ${found.title}`, "is-info", 2000);
       return;
     }
-
-    draftLines.value.push({
-      key,
-      codebar: cb,
-      title: buildRowTitle(row, sheet),
-      qty: 1,
-      stock: Number(row.existencias || 0),
-    });
+    const title = buildRowTitle(row, sheet);
+    draftLines.value.push({ key: cb, codebar: cb, title, qty: 1, stock: Number(row.existencias || 0) });
+    notify(`Agregado: ${title}`, "is-info", 2000);
   };
 
-  const removeDraftLine = (key) => {
-    draftLines.value = draftLines.value.filter((x) => x.key !== key);
-  };
-
+  const removeDraftLine = (key) => { draftLines.value = draftLines.value.filter((x) => x.key !== key); };
   const incDraftQty = (key) => {
     const l = draftLines.value.find((x) => x.key === key);
-    if (!l) return;
-    const next = Math.min(Number(l.qty || 1) + 1, Number(l.stock || 999999));
-    l.qty = next;
+    if (l) l.qty = Math.min(Number(l.qty || 1) + 1, Number(l.stock || 999999));
   };
-
   const decDraftQty = (key) => {
     const l = draftLines.value.find((x) => x.key === key);
-    if (!l) return;
-    l.qty = Math.max(1, Number(l.qty || 1) - 1);
+    if (l) l.qty = Math.max(1, Number(l.qty || 1) - 1);
   };
 
   async function createOrderFromDraft() {
     const sheet = selectedSheet.value;
-    if (!sheet?.id) return;
-    if (!canCreateOrder.value) return;
-
-    const payload = {
-      sheetId: sheet.id,
-      cliente: String(draftCliente.value || "").trim(),
-      note: String(draftNote.value || "").trim(),
-      lines: draftLines.value.map((l) => ({ codebar: l.codebar, qty: Number(l.qty || 1) })),
-      actor: actorRef(),
-    };
-
-    const { data } = await createOrder(payload);
-    const order = normalizeOrder(data?.data);
-
-    await Promise.all([loadOrders(), loadEvents()]);
-
-    selectedOrderId.value = order.id;
-    mode.value = "surtir";
-    selectedSheetId.value = order.sheetId;
-
-    clearDraft();
-    draftCliente.value = "";
-    draftNote.value = "";
-
-    await loadItems(order.sheetId);
-    lastUpdatedAt.value = Date.now();
+    if (!sheet?.id || !canCreateOrder.value) return;
+    loadingCreateOrder.value = true;
+    try {
+      const payload = {
+        sheetId: sheet.id,
+        cliente: String(draftCliente.value || "").trim(),
+        note: String(draftNote.value || "").trim(),
+        lines: draftLines.value.map((l) => ({ codebar: l.codebar, qty: Number(l.qty || 1) })),
+        actor: actorRef(),
+      };
+      const { data } = await createOrder(payload);
+      const order = normalizeOrder(data?.data);
+      await Promise.all([loadOrders(), loadEvents()]);
+      selectedOrderId.value = order.id;
+      mode.value = "surtir";
+      selectedSheetId.value = order.sheetId;
+      clearDraft();
+      draftCliente.value = "";
+      draftNote.value = "";
+      await loadItems(order.sheetId);
+      lastUpdatedAt.value = Date.now();
+      notify(`Pedido ${order.folio || ""} creado para ${order.cliente}`, "is-success");
+    } catch (e) {
+      console.error("[LAB] createOrder", e?.response?.data || e);
+      const n = normalizeAck(e, { errorFallback: "No se pudo crear el pedido." });
+      notify(n?.message, "is-danger", 6000);
+    } finally {
+      loadingCreateOrder.value = false;
+    }
   }
 
-  /* ===================== Surtir / acciones ===================== */
+  /* ===================== Surtir ===================== */
 
   async function scanAndDispatch() {
     const order = selectedOrder.value;
     if (!order?.id) return;
-
     const cb = String(scanCode.value || "").trim();
     if (!cb) return;
-
-    const { data } = await scanOrder(order.id, { codebar: cb, qty: 1, actor: actorRef() });
-    const updated = normalizeOrder(data?.data);
-
-    const idx = ordersDB.value.findIndex((x) => x.id === updated.id);
-    if (idx >= 0) ordersDB.value[idx] = updated;
-
-    selectedSheetId.value = updated.sheetId;
-    await Promise.all([loadItems(updated.sheetId), loadEvents()]);
-
-    scanCode.value = "";
-    lastUpdatedAt.value = Date.now();
+    loadingScan.value = true;
+    try {
+      const { data } = await scanOrder(order.id, { codebar: cb, qty: 1, actor: actorRef() });
+      const updated = normalizeOrder(data?.data);
+      const idx = ordersDB.value.findIndex((x) => x.id === updated.id);
+      if (idx >= 0) ordersDB.value[idx] = updated;
+      selectedSheetId.value = updated.sheetId;
+      await Promise.all([loadItems(updated.sheetId), loadEvents()]);
+      scanCode.value = "";
+      lastUpdatedAt.value = Date.now();
+      if (isOrderComplete(updated)) {
+        notify(`Pedido ${updated.folio} completado. Listo para cerrar.`, "is-success", 5000);
+      } else {
+        notify(`Salida registrada: ${cb}`, "is-success", 2500);
+      }
+    } catch (e) {
+      console.error("[LAB] scanAndDispatch", e?.response?.data || e);
+      const n = normalizeAck(e, { errorFallback: "Código no encontrado en el pedido." });
+      notify(n?.message, "is-danger", 5000);
+    } finally {
+      loadingScan.value = false;
+    }
   }
 
   async function resetPickedForSelectedOrder() {
     const order = selectedOrder.value;
     if (!order?.id) return;
-
-    const { data } = await resetOrder(order.id, actorRef());
-    const updated = normalizeOrder(data?.data);
-
-    const idx = ordersDB.value.findIndex((x) => x.id === updated.id);
-    if (idx >= 0) ordersDB.value[idx] = updated;
-
-    selectedSheetId.value = updated.sheetId;
-    await Promise.all([loadItems(updated.sheetId), loadEvents()]);
-
-    lastUpdatedAt.value = Date.now();
+    loadingReset.value = true;
+    try {
+      const { data } = await resetOrder(order.id, actorRef());
+      const updated = normalizeOrder(data?.data);
+      const idx = ordersDB.value.findIndex((x) => x.id === updated.id);
+      if (idx >= 0) ordersDB.value[idx] = updated;
+      selectedSheetId.value = updated.sheetId;
+      await Promise.all([loadItems(updated.sheetId), loadEvents()]);
+      lastUpdatedAt.value = Date.now();
+      notify(`Surtido reiniciado para pedido ${updated.folio}`, "is-warning");
+    } catch (e) {
+      console.error("[LAB] resetOrder", e?.response?.data || e);
+      const n = normalizeAck(e, { errorFallback: "No se pudo reiniciar el surtido." });
+      notify(n?.message, "is-danger", 5000);
+    } finally {
+      loadingReset.value = false;
+    }
   }
 
   async function closeSelectedOrder() {
     const order = selectedOrder.value;
-    if (!order?.id) return;
-    if (!isOrderComplete(order)) return;
-
-    const { data } = await closeOrder(order.id, actorRef());
-    const updated = normalizeOrder(data?.data);
-
-    const idx = ordersDB.value.findIndex((x) => x.id === updated.id);
-    if (idx >= 0) ordersDB.value[idx] = updated;
-
-    await loadEvents();
-    lastUpdatedAt.value = Date.now();
+    if (!order?.id || !isOrderComplete(order)) return;
+    loadingCloseOrder.value = true;
+    try {
+      const { data } = await closeOrder(order.id, actorRef());
+      const updated = normalizeOrder(data?.data);
+      const idx = ordersDB.value.findIndex((x) => x.id === updated.id);
+      if (idx >= 0) ordersDB.value[idx] = updated;
+      await loadEvents();
+      lastUpdatedAt.value = Date.now();
+      notify(`Pedido ${updated.folio} cerrado correctamente.`, "is-success");
+    } catch (e) {
+      console.error("[LAB] closeOrder", e?.response?.data || e);
+      const n = normalizeAck(e, { errorFallback: "No se pudo cerrar el pedido." });
+      notify(n?.message, "is-danger", 5000);
+    } finally {
+      loadingCloseOrder.value = false;
+    }
   }
 
-  /* ===================== Correcciones (DB) ===================== */
+  /* ===================== Correcciones ===================== */
 
   watch(correctionOpen, (open) => {
-    if (open) {
-      // precarga order
-      correction.orderId = correction.orderId || selectedOrderId.value || "";
-    }
+    if (open) correction.orderId = correction.orderId || selectedOrderId.value || "";
   });
 
   async function submitCorrection() {
@@ -722,34 +736,37 @@ export function useLaboratorioApi() {
     const message = String(correction.message || "").trim();
     const codebar = String(correction.codebar || "").trim() || null;
     if (!orderId || message.length < 3) return;
-
-    await requestCorrection({ orderId, codebar, message, actor: actorRef() });
-
-    correctionOpen.value = false;
-    correction.orderId = "";
-    correction.codebar = "";
-    correction.message = "";
-
-    await loadEvents();
-    lastUpdatedAt.value = Date.now();
+    loadingSubmitCorrection.value = true;
+    try {
+      await requestCorrection({ orderId, codebar, message, actor: actorRef() });
+      correctionOpen.value = false;
+      correction.orderId = "";
+      correction.codebar = "";
+      correction.message = "";
+      await loadEvents();
+      lastUpdatedAt.value = Date.now();
+      notify("Solicitud de corrección enviada.", "is-info");
+    } catch (e) {
+      console.error("[LAB] submitCorrection", e?.response?.data || e);
+      const n = normalizeAck(e, { errorFallback: "No se pudo enviar la corrección." });
+      notify(n?.message, "is-danger", 5000);
+    } finally {
+      loadingSubmitCorrection.value = false;
+    }
   }
 
-  /* ===================== Computed: filtros UI (sobre datos DB) ===================== */
+  /* ===================== Computed: filtros UI ===================== */
 
   const filteredSheets = computed(() => sheetsDB.value);
 
   const filteredItems = computed(() => {
     const sheet = selectedSheet.value;
     const rows = Array.isArray(itemsDB.value) ? itemsDB.value : [];
-
     const q = normTxt(itemQuery.value);
     const filter = String(stockFilter.value || "withStock");
-
     let out = rows;
-
     if (filter === "withStock") out = out.filter((r) => Number(r.existencias || 0) > 0);
     else if (filter === "zero") out = out.filter((r) => Number(r.existencias || 0) === 0);
-
     if (q) {
       out = out.filter((r) => {
         const t = buildRowTitle(r, sheet);
@@ -758,7 +775,6 @@ export function useLaboratorioApi() {
         return normTxt(t).includes(q) || normTxt(p).includes(q) || normTxt(cb).includes(q);
       });
     }
-
     return out;
   });
 
@@ -768,12 +784,9 @@ export function useLaboratorioApi() {
     const sheet = selectedSheet.value;
     const rows = Array.isArray(itemsDB.value) ? itemsDB.value : [];
     const q = normTxt(catalogQuery.value);
-
     let out = rows;
-
     if (catalogFilter.value === "withStock") out = out.filter((r) => r.codebar && Number(r.existencias || 0) > 0);
     else if (catalogFilter.value === "allCodes") out = out.filter((r) => !!r.codebar);
-
     if (q) {
       out = out.filter((r) => {
         const title = buildRowTitle(r, sheet);
@@ -782,46 +795,37 @@ export function useLaboratorioApi() {
         return normTxt(title).includes(q) || normTxt(params).includes(q) || normTxt(cb).includes(q);
       });
     }
-
     return out.map((r, idx) => ({
       ...r,
       _k: String(r.codebar || "") ? `${r.codebar}__${idx}` : `row_${idx}`,
     }));
   });
 
-  const catalogPages = computed(() => {
-    const total = filteredCatalogRows.value.length;
-    return Math.max(1, Math.ceil(total / Number(catalogPageSize.value || 18)));
-  });
-
+  const catalogPages = computed(() =>
+    Math.max(1, Math.ceil(filteredCatalogRows.value.length / Number(catalogPageSize.value || 18)))
+  );
   const paginatedCatalog = computed(() => {
     const page = Math.min(Math.max(1, Number(catalogPage.value || 1)), catalogPages.value);
     const per = Number(catalogPageSize.value || 18);
-    const start = (page - 1) * per;
-    return filteredCatalogRows.value.slice(start, start + per);
+    return filteredCatalogRows.value.slice((page - 1) * per, (page - 1) * per + per);
   });
 
   const totalCodes = computed(() => {
-    const rows = itemsDB.value || [];
     let n = 0;
-    for (const r of rows) if (r?.codebar && isEan13(r.codebar)) n++;
+    for (const r of itemsDB.value || []) if (r?.codebar && isEan13(r.codebar)) n++;
     return n;
   });
 
-  const recentSheets = computed(() => {
-    const arr = (sheetsDB.value || []).slice(0, 10);
-    return arr.map((s) => ({
-      id: s.id,
-      nombre: s.nombre,
-      sku: s.sku || null,
-      material: s.material || "",
+  const recentSheets = computed(() =>
+    (sheetsDB.value || []).slice(0, 10).map((s) => ({
+      id: s.id, nombre: s.nombre, sku: s.sku || null, material: s.material || "",
       tratamientos: Array.isArray(s.tratamientos) ? s.tratamientos : [],
       updatedAtShort: fmtShort(s.updatedAt || s.createdAt),
       updatedBy: s.updatedByName || "—",
-    }));
-  });
+    }))
+  );
 
-  /* ===================== Acciones UI: Barcode modal ===================== */
+  /* ===================== Barcode modal ===================== */
 
   const openBarcode = (code) => {
     barcodeValue.value = String(code || "");
@@ -831,18 +835,22 @@ export function useLaboratorioApi() {
   const copyCodebar = async (code) => {
     const text = String(code || "");
     if (!text) return;
-
     try {
-      await navigator.clipboard.writeText(text);
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
+      notify(`Copiado: ${text}`, "is-info", 2000);
     } catch {
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      ta.style.position = "fixed";
-      ta.style.opacity = "0";
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      document.body.removeChild(ta);
+      notify("El navegador bloqueó el acceso al portapapeles.", "is-danger");
     }
   };
 
@@ -851,206 +859,167 @@ export function useLaboratorioApi() {
   function exportInventoryCsv() {
     const sheet = selectedSheet.value;
     if (!sheet?.id) return;
-
-    const rows = filteredItems.value; // lo que estás viendo
-    const tipo = sheet.tipo_matriz;
-
-    const baseHeaders = [
-      { key: "existencias", label: "existencias" },
-      { key: "codebar", label: "codebar" },
-      { key: "sku", label: "sku" },
-    ];
-
-    const tipoHeaders =
-      tipo === "BASE"
-        ? [{ key: "base", label: "base" }]
-        : tipo === "SPH_CYL"
-        ? [
-            { key: "sph", label: "sph" },
-            { key: "cyl", label: "cyl" },
-          ]
-        : tipo === "SPH_ADD"
-        ? [
-            { key: "eye", label: "eye" },
-            { key: "sph", label: "sph" },
-            { key: "add", label: "add" },
-            { key: "base_izq", label: "base_izq" },
-            { key: "base_der", label: "base_der" },
-          ]
-        : tipo === "BASE_ADD"
-        ? [
-            { key: "eye", label: "eye" },
-            { key: "base_izq", label: "base_izq" },
-            { key: "base_der", label: "base_der" },
-            { key: "add", label: "add" },
-          ]
+    loadingExportInv.value = true;
+    try {
+      const rows = filteredItems.value;
+      const tipo = sheet.tipo_matriz;
+      const baseHeaders = [
+        { key: "existencias", label: "existencias" },
+        { key: "codebar", label: "codebar" },
+        { key: "sku", label: "sku" },
+      ];
+      const tipoHeaders =
+        tipo === "BASE" ? [{ key: "base", label: "base" }]
+        : tipo === "SPH_CYL" ? [{ key: "sph", label: "sph" }, { key: "cyl", label: "cyl" }]
+        : tipo === "SPH_ADD" ? [{ key: "eye", label: "eye" }, { key: "sph", label: "sph" }, { key: "add", label: "add" }, { key: "base_izq", label: "base_izq" }, { key: "base_der", label: "base_der" }]
+        : tipo === "BASE_ADD" ? [{ key: "eye", label: "eye" }, { key: "base_izq", label: "base_izq" }, { key: "base_der", label: "base_der" }, { key: "add", label: "add" }]
         : [];
-
-    const headers = [...baseHeaders, ...tipoHeaders, { key: "_title", label: "title", transform: (r) => buildRowTitle(r, sheet) }];
-
-    const csv = toCsv(rows, headers);
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const safeName = String(sheet.nombre || sheet.name || "inventario").replace(/[^\w\-]+/g, "_");
-    downloadBlob(`inventario_${safeName}_${sheet.tipo_matriz}.csv`, blob);
+      const headers = [...baseHeaders, ...tipoHeaders, { key: "_title", label: "title", transform: (r) => buildRowTitle(r, sheet) }];
+      const csv = toCsv(rows, headers);
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      downloadBlob(`inventario_${String(sheet.nombre || "inventario").replace(/[^\w\-]+/g, "_")}_${sheet.tipo_matriz}.csv`, blob);
+      notify(`CSV exportado: ${rows.length} filas`, "is-success", 2500);
+    } catch (e) {
+      const n = normalizeAck(e, { errorFallback: "No se pudo exportar el CSV." });
+      notify(n?.message, "is-danger");
+    } finally {
+      loadingExportInv.value = false;
+    }
   }
 
   function exportCatalogCsv() {
     const sheet = selectedSheet.value;
     if (!sheet?.id) return;
-
-    const rows = filteredCatalogRows.value; // lo filtrado en catálogo
-    const headers = [
-      { key: "existencias", label: "existencias" },
-      { key: "codebar", label: "codebar" },
-      { key: "sku", label: "sku" },
-      { key: "_title", label: "title", transform: (r) => buildRowTitle(r, sheet) },
-      { key: "_params", label: "params", transform: (r) => buildRowParams(r, sheet) },
-    ];
-
-    const csv = toCsv(rows, headers);
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const safeName = String(sheet.nombre || sheet.name || "catalogo").replace(/[^\w\-]+/g, "_");
-    downloadBlob(`catalogo_${safeName}_${sheet.tipo_matriz}.csv`, blob);
+    loadingExportCat.value = true;
+    try {
+      const rows = filteredCatalogRows.value;
+      const headers = [
+        { key: "existencias", label: "existencias" },
+        { key: "codebar", label: "codebar" },
+        { key: "sku", label: "sku" },
+        { key: "_title", label: "title", transform: (r) => buildRowTitle(r, sheet) },
+        { key: "_params", label: "params", transform: (r) => buildRowParams(r, sheet) },
+      ];
+      const csv = toCsv(rows, headers);
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      downloadBlob(`catalogo_${String(sheet.nombre || "catalogo").replace(/[^\w\-]+/g, "_")}_${sheet.tipo_matriz}.csv`, blob);
+      notify(`CSV catálogo exportado: ${rows.length} filas`, "is-success", 2500);
+    } catch (e) {
+      const n = normalizeAck(e, { errorFallback: "No se pudo exportar el catálogo." });
+      notify(n?.message, "is-danger");
+    } finally {
+      loadingExportCat.value = false;
+    }
   }
 
   function exportOrdersCsv() {
-    const rows = ordersDB.value || [];
-    const headers = [
-      { key: "folio", label: "folio" },
-      { key: "cliente", label: "cliente" },
-      { key: "status", label: "status" },
-      { key: "sheetId", label: "sheetId" },
-      { key: "createdAt", label: "createdAt" },
-      { key: "_progress", label: "progress", transform: (o) => `${orderPickedCount(o)}/${orderTotalCount(o)}` },
-    ];
-    const csv = toCsv(rows, headers);
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    downloadBlob(`pedidos_${new Date().toISOString().slice(0, 10)}.csv`, blob);
+    loadingExportOrders.value = true;
+    try {
+      const rows = ordersDB.value || [];
+      const headers = [
+        { key: "folio", label: "folio" }, { key: "cliente", label: "cliente" },
+        { key: "status", label: "status" }, { key: "sheetId", label: "sheetId" },
+        { key: "createdAt", label: "createdAt" },
+        { key: "_progress", label: "progress", transform: (o) => `${orderPickedCount(o)}/${orderTotalCount(o)}` },
+      ];
+      const csv = toCsv(rows, headers);
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      downloadBlob(`pedidos_${new Date().toISOString().slice(0, 10)}.csv`, blob);
+      notify(`CSV pedidos exportado: ${rows.length} pedidos`, "is-success", 2500);
+    } catch (e) {
+      const n = normalizeAck(e, { errorFallback: "No se pudo exportar pedidos." });
+      notify(n?.message, "is-danger");
+    } finally {
+      loadingExportOrders.value = false;
+    }
   }
 
   function exportOrderCsv(order) {
     const o = order || selectedOrder.value;
     if (!o?.id) return;
-
-    const sheet = sheetById(o.sheetId);
-    const headers = [
-      { key: "codebar", label: "codebar" },
-      { key: "qty", label: "qty" },
-      { key: "picked", label: "picked" },
-      { key: "_human", label: "line", transform: (l) => lineHuman(l, sheet) },
-      { key: "eye", label: "eye" },
-      { key: "_params", label: "params", transform: (l) => JSON.stringify(l?.params || {}) },
-    ];
-
-    const csv = toCsv(o.lines || [], headers);
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    downloadBlob(`pedido_${String(o.folio || o.id)}.csv`, blob);
+    try {
+      const sheet = sheetById(o.sheetId);
+      const headers = [
+        { key: "codebar", label: "codebar" }, { key: "qty", label: "qty" },
+        { key: "picked", label: "picked" },
+        { key: "_human", label: "line", transform: (l) => lineHuman(l, sheet) },
+        { key: "eye", label: "eye" },
+        { key: "_params", label: "params", transform: (l) => JSON.stringify(l?.params || {}) },
+      ];
+      const csv = toCsv(o.lines || [], headers);
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      downloadBlob(`pedido_${String(o.folio || o.id)}.csv`, blob);
+      notify(`CSV pedido ${o.folio} exportado`, "is-success", 2500);
+    } catch (e) {
+      const n = normalizeAck(e, { errorFallback: "No se pudo exportar el pedido." });
+      notify(n?.message, "is-danger");
+    }
   }
 
   function printBarcode(code) {
     const cb = String(code || "").trim();
     if (!cb) return;
-
     const svg = isEan13(cb) ? ean13SvgString(cb, 3, 120) : "";
-    const bodyHtml = `
-      <h2>Código de barras</h2>
-      <div class="box">
-        <div class="mono" style="font-size:16px;margin-bottom:10px;">${cb}</div>
-        ${svg ? svg : `<div class="muted">Código inválido para EAN-13</div>`}
-      </div>
-    `;
-    openPrintWindow({ title: `Barcode ${cb}`, bodyHtml });
+    openPrintWindow({
+      title: `Barcode ${cb}`,
+      bodyHtml: `<h2>Código de barras</h2><div class="box"><div class="mono" style="font-size:16px;margin-bottom:10px;">${cb}</div>${svg || `<div class="muted">Código inválido para EAN-13</div>`}</div>`,
+    });
   }
 
   function printCatalogPage() {
     const sheet = selectedSheet.value;
     if (!sheet?.id) return;
-
     const rows = paginatedCatalog.value || [];
     const bodyHtml = `
       <h2>Catálogo (página ${catalogPage.value}/${catalogPages.value}) <span class="badge">${sheet.tipo_matriz}</span></h2>
       <div class="muted">${sheetTitle(sheet)} · ${sheet.material || ""} · ${prettyTrat(sheet.tratamientos)}</div>
       <div class="box">
         <table>
-          <thead>
-            <tr>
-              <th>existencias</th>
-              <th>producto</th>
-              <th>codebar</th>
-              <th>barcode</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rows
-              .map((r) => {
-                const cb = String(r.codebar || "");
-                const svg = cb && isEan13(cb) ? ean13SvgString(cb, 2, 80) : "";
-                return `
-                  <tr>
-                    <td class="right">${Number(r.existencias || 0)}</td>
-                    <td>${buildRowTitle(r, sheet)}<div class="muted">${buildRowParams(r, sheet)}</div></td>
-                    <td class="mono">${cb || "—"}</td>
-                    <td>${svg || `<span class="muted">—</span>`}</td>
-                  </tr>
-                `;
-              })
-              .join("")}
-          </tbody>
+          <thead><tr><th>existencias</th><th>producto</th><th>codebar</th><th>barcode</th></tr></thead>
+          <tbody>${rows.map((r) => {
+            const cb = String(r.codebar || "");
+            const svg = cb && isEan13(cb) ? ean13SvgString(cb, 2, 80) : "";
+            return `<tr>
+              <td class="right">${Number(r.existencias || 0)}</td>
+              <td>${buildRowTitle(r, sheet)}<div class="muted">${buildRowParams(r, sheet)}</div></td>
+              <td class="mono">${cb || "—"}</td>
+              <td>${svg || `<span class="muted">—</span>`}</td>
+            </tr>`;
+          }).join("")}</tbody>
         </table>
-      </div>
-    `;
+      </div>`;
     openPrintWindow({ title: `Catálogo ${sheetTitle(sheet)}`, bodyHtml });
   }
 
   function printOrder(order) {
     const o = order || selectedOrder.value;
     if (!o?.id) return;
-
     const sheet = sheetById(o.sheetId);
     const bodyHtml = `
       <h2>Pedido <span class="mono">${String(o.folio || o.id)}</span> <span class="badge">${statusHuman(o.status)}</span></h2>
-      <div class="muted">
-        Cliente: <b>${String(o.cliente || "—")}</b> · Planilla: <b>${sheetTitle(sheet)}</b> · Creado: ${o.createdAtShort || fmtShort(o.createdAt)}
-      </div>
-
-      ${o.note ? `<div class="box"><b>Nota:</b> ${String(o.note)}</div>` : ""}
-
+      <div class="muted">Cliente: <b>${String(o.cliente || "—")}</b> · Planilla: <b>${sheetTitle(sheet)}</b> · Creado: ${o.createdAtShort || fmtShort(o.createdAt)}</div>
+      ${o.note ? `<div class="box"><b>Nota:</b> ${sanitizeUserText(o.note)}</div>` : ""}
       <div class="box">
         <div class="muted">Progreso: <b>${orderPickedCount(o)}/${orderTotalCount(o)}</b> (${orderProgressPct(o)}%)</div>
         <table>
-          <thead>
-            <tr>
-              <th>Línea</th>
-              <th class="right">qty</th>
-              <th class="right">picked</th>
-              <th>codebar</th>
-              <th>barcode</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${(o.lines || [])
-              .map((l) => {
-                const cb = String(l.codebar || "");
-                const svg = cb && isEan13(cb) ? ean13SvgString(cb, 2, 70) : "";
-                return `
-                  <tr>
-                    <td>${lineHuman(l, sheet)}<div class="muted">${l.eye ? `eye=${l.eye} · ` : ""}${cb}</div></td>
-                    <td class="right">${Number(l.qty || 0)}</td>
-                    <td class="right">${Number(l.picked || 0)}</td>
-                    <td class="mono">${cb || "—"}</td>
-                    <td>${svg || `<span class="muted">—</span>`}</td>
-                  </tr>
-                `;
-              })
-              .join("")}
-          </tbody>
+          <thead><tr><th>Línea</th><th class="right">qty</th><th class="right">picked</th><th>codebar</th><th>barcode</th></tr></thead>
+          <tbody>${(o.lines || []).map((l) => {
+            const cb = String(l.codebar || "");
+            const svg = cb && isEan13(cb) ? ean13SvgString(cb, 2, 70) : "";
+            return `<tr>
+              <td>${lineHuman(l, sheet)}<div class="muted">${l.eye ? `eye=${l.eye} · ` : ""}${cb}</div></td>
+              <td class="right">${Number(l.qty || 0)}</td>
+              <td class="right">${Number(l.picked || 0)}</td>
+              <td class="mono">${cb || "—"}</td>
+              <td>${svg || `<span class="muted">—</span>`}</td>
+            </tr>`;
+          }).join("")}</tbody>
         </table>
-      </div>
-    `;
+      </div>`;
     openPrintWindow({ title: `Pedido ${String(o.folio || o.id)}`, bodyHtml });
   }
 
-  /* ===================== Watchers (reload real DB) ===================== */
+  /* ===================== Watchers ===================== */
 
   let tOrders = null;
   watch([orderStatusFilter, orderQuery], () => {
@@ -1068,116 +1037,77 @@ export function useLaboratorioApi() {
   watch([selectedSheetId, itemsLimit], () => loadItems());
 
   async function refreshAll() {
-    await Promise.all([loadSheets(), loadOrders(), loadItems(), loadEvents()]);
+    loadingRefreshAll.value = true;
+    try {
+      await Promise.all([loadSheets(), loadOrders(), loadItems(), loadEvents()]);
+      notify("Datos actualizados.", "is-success", 2000);
+    } catch (e) {
+      const n = normalizeAck(e, { errorFallback: "No se pudo recargar los datos." });
+      notify(n?.message, "is-danger");
+    } finally {
+      loadingRefreshAll.value = false;
+    }
   }
 
   async function refreshItems() {
     await loadItems();
+    notify("Inventario actualizado.", "is-info", 2000);
   }
 
   onMounted(async () => {
-    await refreshAll();
+    await Promise.all([loadSheets(), loadOrders(), loadItems(), loadEvents()]);
   });
 
   return {
+    // Notificaciones propias
+    notifications,
+    dismissNotification,
+
     // UI state
-    activeMainTab,
-    mode,
-    includeDeleted,
-    sheetQuery,
-    selectedSheetId,
-    itemsLimit,
-    itemQuery,
-    stockFilter,
-    catalogQuery,
-    catalogFilter,
-    catalogPage,
-    catalogPageSize,
-    catalogPages,
-    paginatedCatalog,
-    orderStatusFilter,
-    orderQuery,
-    selectedOrderId,
-    scanCode,
+    activeMainTab, mode, includeDeleted, sheetQuery,
+    selectedSheetId, itemsLimit, itemQuery, stockFilter,
+    catalogQuery, catalogFilter, catalogPage, catalogPageSize, catalogPages, paginatedCatalog,
+    orderStatusFilter, orderQuery, selectedOrderId, scanCode,
 
     // modals
-    barcodeOpen,
-    barcodeValue,
-    correctionOpen,
-    correction,
+    barcodeOpen, barcodeValue, correctionOpen, correction,
 
     // db data
-    sheetsDB,
-    itemsDB,
-    ordersDB,
-    entryEvents,
-    exitEvents,
-    correctionEvents,
+    sheetsDB, itemsDB, ordersDB,
+    entryEvents, exitEvents, correctionEvents,
 
-    // loaders
-    loadingSheets,
-    loadingItems,
-    loadingOrders,
-    loadingEvents,
+    // loaders globales
+    loadingSheets, loadingItems, loadingOrders, loadingEvents,
+
+    // loaders de acciones
+    loadingCreateOrder, loadingCloseOrder, loadingScan,
+    loadingReset, loadingSubmitCorrection, loadingRefreshAll,
+    loadingExportInv, loadingExportCat, loadingExportOrders,
 
     // computed
     lastUpdatedHuman,
-    filteredSheets,
-    selectedSheet,
-    selectedSheetLabel,
-    filteredItems,
-    filteredCatalogRows,
-    selectedOrder,
-    recentSheets,
-    totalCodes,
-    canCreateOrder,
+    filteredSheets, selectedSheet, selectedSheetLabel,
+    filteredItems, filteredCatalogRows,
+    selectedOrder, recentSheets, totalCodes, canCreateOrder,
 
     // helpers
-    sheetTitle,
-    prettyTrat,
-    sheetById,
-    sheetNameById,
-    buildRowTitle,
-    buildRowParams,
-    isEan13,
-    statusHuman,
-    statusTagClass,
-    orderTotalCount,
-    orderPickedCount,
-    orderProgressPct,
-    isOrderComplete,
-    lineHuman,
+    sheetTitle, prettyTrat, sheetById, sheetNameById,
+    buildRowTitle, buildRowParams,
+    isEan13, statusHuman, statusTagClass,
+    orderTotalCount, orderPickedCount, orderProgressPct,
+    isOrderComplete, lineHuman,
 
     // actions
-    refreshAll,
-    refreshItems,
-
-    openBarcode,
-    copyCodebar,
-
-    draftCliente,
-    draftNote,
-    draftLines,
-    addToDraft,
-    clearDraft,
-    removeDraftLine,
-    incDraftQty,
-    decDraftQty,
+    refreshAll, refreshItems,
+    openBarcode, copyCodebar,
+    draftCliente, draftNote, draftLines,
+    addToDraft, clearDraft, removeDraftLine, incDraftQty, decDraftQty,
     createOrderFromDraft,
-
-    scanAndDispatch,
-    resetPickedForSelectedOrder,
-    closeSelectedOrder,
-
+    scanAndDispatch, resetPickedForSelectedOrder, closeSelectedOrder,
     submitCorrection,
 
     // export/print
-    exportInventoryCsv,
-    exportCatalogCsv,
-    exportOrdersCsv,
-    exportOrderCsv,
-    printBarcode,
-    printCatalogPage,
-    printOrder,
+    exportInventoryCsv, exportCatalogCsv, exportOrdersCsv, exportOrderCsv,
+    printBarcode, printCatalogPage, printOrder,
   };
 }

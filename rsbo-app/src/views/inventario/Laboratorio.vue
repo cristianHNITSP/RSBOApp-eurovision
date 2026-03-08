@@ -3,7 +3,13 @@
     <LabHero />
 
     <div class="glass">
-      <b-tabs v-model="lab.activeMainTab.value" type="is-toggle" class="main-tabs" expanded :animated="false">
+      <b-tabs
+        v-model="lab.activeMainTab.value"
+        type="is-toggle"
+        class="main-tabs"
+        expanded
+        :animated="false"
+      >
         <b-tab-item value="pedidos" label="Pedidos" icon="clipboard-list">
           <PedidosTab />
         </b-tab-item>
@@ -20,6 +26,12 @@
 
     <BarcodeModal />
     <CorrectionModal />
+
+    <!-- ✅ Overlay de notificaciones (estilo dirty-float) -->
+    <LabToast
+      :notifications="lab.notifications.value"
+      @dismiss="lab.dismissNotification"
+    />
   </section>
 </template>
 
@@ -27,12 +39,13 @@
 import { provide } from "vue";
 import { useLaboratorioApi } from "../../composables/useLaboratorioApi";
 
-import LabHero from "../../components/laboratorio/LabHero.vue";
-import PedidosTab from "../../components/laboratorio/PedidosTab.vue";
-import BandejaTab from "../../components/laboratorio/BandejaTab.vue";
-import CatalogoTab from "../../components/laboratorio/CatalogoTab.vue";
+import LabHero       from "../../components/laboratorio/LabHero.vue";
+import PedidosTab    from "../../components/laboratorio/PedidosTab.vue";
+import BandejaTab    from "../../components/laboratorio/BandejaTab.vue";
+import CatalogoTab   from "../../components/laboratorio/CatalogoTab.vue";
+import LabToast      from "../../components/laboratorio/LabToast.vue";
 
-import BarcodeModal from "../../components/laboratorio/modals/BarcodeModal.vue";
+import BarcodeModal    from "../../components/laboratorio/modals/BarcodeModal.vue";
 import CorrectionModal from "../../components/laboratorio/modals/CorrectionModal.vue";
 
 const lab = useLaboratorioApi();
@@ -40,14 +53,11 @@ provide("lab", lab);
 </script>
 
 <style>
-/* ...tu CSS ORIGINAL (sin cambios obligatorios) ... */
-
 /* Mantén altura estable entre tabs */
 .main-tabs :deep(.tab-content) {
   min-height: 860px;
 }
 
-/* (Opcional) si 3 tabs te quedan muy apretados en móvil, esto ayuda */
 @media (max-width: 520px) {
   .main-tabs :deep(.tabs ul) {
     flex-wrap: wrap;
@@ -57,7 +67,6 @@ provide("lab", lab);
 </style>
 
 <style>
-/* Evita “saltos” por scrollbar entre tabs/layout */
 .laboratorio-section {
   border-radius: 14px;
   padding: 1.5rem;
@@ -69,7 +78,7 @@ provide("lab", lab);
   scrollbar-gutter: stable both-edges;
 }
 
-/* ============ Theme (RSBO-ish) ============ */
+/* ============ Theme ============ */
 .lab-view {
   --p: #906fe1;
   --p2: #7957d5;
@@ -127,6 +136,9 @@ provide("lab", lab);
   border-radius: 999px;
   font-weight: 800;
   color: rgba(17, 24, 39, 0.9);
+  font-size: 0.82rem;
+  display: inline-flex;
+  align-items: center;
 }
 
 .chip--soft {
@@ -156,7 +168,6 @@ provide("lab", lab);
   padding: 0.75rem;
 }
 
-/* Mantén altura estable entre tabs */
 .main-tabs :deep(.tab-content) {
   min-height: 860px;
 }
@@ -235,8 +246,10 @@ provide("lab", lab);
 
 .panel__body {
   padding: 1rem;
+  position: relative;
 }
 
+/* Tables */
 .nice-table :deep(.table) {
   border-radius: 14px;
   overflow: hidden;
@@ -266,13 +279,11 @@ provide("lab", lab);
 .qty-pill--ok {
   background: rgba(35, 209, 96, 0.12);
   border-color: rgba(35, 209, 96, 0.28);
-  color: rgba(17, 24, 39, 0.9);
 }
 
 .qty-pill--zero {
   background: rgba(255, 56, 96, 0.08);
   border-color: rgba(255, 56, 96, 0.22);
-  color: rgba(17, 24, 39, 0.86);
 }
 
 .prod__name {
@@ -297,10 +308,9 @@ provide("lab", lab);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
-.big-code {
-  font-weight: 1000;
-}
+.big-code { font-weight: 1000; }
 
+/* Order lines */
 .order-lines {
   display: grid;
   gap: 0.6rem;
@@ -362,50 +372,7 @@ provide("lab", lab);
   color: rgba(107, 114, 128, 0.95);
 }
 
-.recent {
-  display: grid;
-  gap: 0.4rem;
-}
-
-.recent__item {
-  position: relative;
-  display: grid;
-  grid-template-columns: 92px 1fr 18px;
-  gap: 0.75rem;
-  align-items: center;
-  padding: 0.65rem 0.75rem;
-  border-radius: 14px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  background: rgba(255, 255, 255, 0.75);
-  text-decoration: none;
-  transition: transform 120ms ease, box-shadow 120ms ease;
-}
-
-.recent__item:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow2);
-}
-
-.recent__id {
-  font-weight: 1000;
-  color: rgba(17, 24, 39, 0.88);
-}
-
-.recent__line {
-  font-weight: 800;
-  color: rgba(17, 24, 39, 0.84);
-  font-size: 0.86rem;
-}
-
-.recent__line--muted {
-  color: rgba(107, 114, 128, 0.95);
-  font-size: 0.8rem;
-}
-
-.recent__chev {
-  color: rgba(107, 114, 128, 0.85);
-}
-
+/* Sheet card */
 .sheet-card {
   border: 1px solid rgba(148, 163, 184, 0.18);
   background: rgba(255, 255, 255, 0.72);
@@ -443,6 +410,7 @@ provide("lab", lab);
   margin: 1rem 0;
 }
 
+/* QR Catalog grid */
 .qr-grid {
   display: grid;
   gap: 0.75rem;
@@ -450,15 +418,11 @@ provide("lab", lab);
 }
 
 @media (max-width: 1024px) {
-  .qr-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+  .qr-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 650px) {
-  .qr-grid {
-    grid-template-columns: 1fr;
-  }
+  .qr-grid { grid-template-columns: 1fr; }
 }
 
 .qr-card {
@@ -551,6 +515,7 @@ provide("lab", lab);
   border-radius: 999px;
 }
 
+/* Empty states */
 .empty {
   padding: 2.2rem 1rem;
   text-align: center;
@@ -577,6 +542,7 @@ provide("lab", lab);
   font-weight: 800;
 }
 
+/* Pager */
 .pager {
   display: flex;
   justify-content: center;
@@ -590,6 +556,7 @@ provide("lab", lab);
   color: rgba(17, 24, 39, 0.85);
 }
 
+/* Progress bar (surtir) */
 .progress-bar {
   height: 10px;
   border-radius: 999px;
@@ -602,8 +569,10 @@ provide("lab", lab);
   height: 100%;
   background: linear-gradient(135deg, rgba(144, 111, 225, 0.95), rgba(236, 72, 153, 0.75));
   border-radius: 999px;
+  transition: width 300ms ease;
 }
 
+/* Mini order head */
 .mini-order-head {
   border: 1px solid rgba(148, 163, 184, 0.18);
   background: rgba(255, 255, 255, 0.72);
@@ -623,24 +592,32 @@ provide("lab", lab);
   font-size: 0.82rem;
 }
 
+/* Barcode modal */
 .barcode-modal__code {
   font-weight: 1000;
-  font-size: 1rem;
-  margin-bottom: .75rem;
+  font-size: 1.1rem;
+  margin-bottom: .35rem;
   text-align: center;
+  color: rgba(17, 24, 39, 0.9);
 }
 
 .barcode-modal__img {
   display: flex;
   justify-content: center;
-  padding: .5rem;
+  padding: .75rem;
   border: 1px solid rgba(148, 163, 184, 0.18);
-  background: rgba(255, 255, 255, .85);
+  background: rgba(255, 255, 255, .9);
   border-radius: 16px;
 }
 
 .barcode-wrap svg {
   max-width: 100%;
   height: auto;
+}
+
+/* Muted utility */
+.muted {
+  color: rgba(107, 114, 128, 0.9);
+  font-weight: 700;
 }
 </style>

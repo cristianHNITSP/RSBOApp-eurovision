@@ -1,16 +1,45 @@
 <template>
   <teleport to="body">
-    <b-modal v-model="lab.barcodeOpen.value" has-modal-card trap-focus :destroy-on-hide="true">
-      <div class="modal-card">
+    <b-modal
+      v-model="lab.barcodeOpen.value"
+      has-modal-card
+      trap-focus
+      :destroy-on-hide="true"
+      aria-role="dialog"
+      aria-modal
+    >
+      <div class="modal-card" style="max-width: 420px; width: 100%;">
         <header class="modal-card-head">
-          <p class="modal-card-title"><i class="fas fa-barcode mr-2"></i>Código de barras</p>
+          <p class="modal-card-title">
+            <i class="fas fa-barcode mr-2" style="color: rgba(144, 111, 225, 0.9)"></i>
+            Código de barras
+          </p>
           <button class="delete" aria-label="close" @click="lab.barcodeOpen.value = false"></button>
         </header>
 
         <section class="modal-card-body">
           <div class="barcode-modal">
-            <div class="barcode-modal__code mono">{{ lab.barcodeValue.value || "—" }}</div>
+            <!-- Code display -->
+            <div class="barcode-modal__code mono">
+              {{ lab.barcodeValue.value || "—" }}
+            </div>
 
+            <!-- EAN-13 validity badge -->
+            <div class="barcode-modal__validity mb-3">
+              <span
+                v-if="lab.barcodeValue.value && lab.isEan13(lab.barcodeValue.value)"
+                class="tag is-success is-light"
+              >
+                <i class="fas fa-check-circle mr-1"></i>
+                EAN-13 válido
+              </span>
+              <span v-else-if="lab.barcodeValue.value" class="tag is-warning is-light">
+                <i class="fas fa-exclamation-circle mr-1"></i>
+                No es EAN-13 válido
+              </span>
+            </div>
+
+            <!-- Barcode image -->
             <div class="barcode-modal__img">
               <BarcodeEAN13
                 v-if="lab.barcodeValue.value && lab.isEan13(lab.barcodeValue.value)"
@@ -19,19 +48,40 @@
                 :height="120"
               />
               <div v-else class="barcode-fallback">
-                <i class="fas fa-exclamation-circle mr-1"></i>
+                <i class="fas fa-exclamation-circle mr-2"></i>
                 Código inválido para EAN-13
               </div>
             </div>
 
+            <!-- Copy feedback -->
+            <transition name="fade-slide">
+              <div v-if="copied" class="copy-feedback">
+                <i class="fas fa-check-circle mr-2"></i>
+                ¡Copiado al portapapeles!
+              </div>
+            </transition>
+
+            <!-- Actions -->
             <div class="columns is-mobile is-variable is-2 mt-3">
               <div class="column">
-                <b-button type="is-primary" expanded icon-left="copy" :disabled="!lab.barcodeValue.value" @click="lab.copyCodebar(lab.barcodeValue.value)">
-                  Copiar
+                <b-button
+                  :type="copied ? 'is-success' : 'is-primary'"
+                  expanded
+                  :icon-left="copied ? 'check' : 'copy'"
+                  :disabled="!lab.barcodeValue.value"
+                  @click="handleCopy"
+                >
+                  {{ copied ? "¡Copiado!" : "Copiar código" }}
                 </b-button>
               </div>
               <div class="column">
-                <b-button type="is-light" expanded icon-left="print" :disabled="!lab.barcodeValue.value" @click="lab.printBarcode(lab.barcodeValue.value)">
+                <b-button
+                  type="is-light"
+                  expanded
+                  icon-left="print"
+                  :disabled="!lab.barcodeValue.value"
+                  @click="lab.printBarcode(lab.barcodeValue.value)"
+                >
                   Imprimir / PDF
                 </b-button>
               </div>
@@ -48,9 +98,50 @@
 </template>
 
 <script setup>
-import { inject } from "vue";
+import { inject, ref } from "vue";
 import BarcodeEAN13 from "../barcode/BarcodeEAN13.vue";
 
 const lab = inject("lab");
 if (!lab) throw new Error("BarcodeModal necesita provide('lab', ...)");
+
+const copied = ref(false);
+
+async function handleCopy() {
+  if (!lab.barcodeValue.value) return;
+  await lab.copyCodebar(lab.barcodeValue.value);
+  copied.value = true;
+  setTimeout(() => (copied.value = false), 2500);
+}
 </script>
+
+<style scoped>
+.barcode-modal__validity {
+  display: flex;
+  justify-content: center;
+}
+
+.copy-feedback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0.75rem;
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 900;
+  color: rgba(21, 128, 61, 0.9);
+  margin-top: 0.6rem;
+}
+
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: all 250ms ease;
+}
+
+.fade-slide-enter-from,
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+</style>

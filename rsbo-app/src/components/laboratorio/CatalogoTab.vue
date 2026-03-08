@@ -30,16 +30,37 @@
             </div>
 
             <div class="sheet-card__actions">
-              <b-button type="is-primary" icon-left="sync" expanded @click="lab.refreshItems">Actualizar inventario</b-button>
+              <b-button
+                type="is-primary"
+                icon-left="sync"
+                expanded
+                :loading="lab.loadingItems.value"
+                @click="lab.refreshItems"
+              >
+                Actualizar inventario
+              </b-button>
 
               <div class="columns is-mobile is-variable is-2 mt-2">
                 <div class="column">
-                  <b-button type="is-light" expanded icon-left="print" :disabled="!lab.paginatedCatalog.value.length" @click="lab.printCatalogPage">
-                    Imprimir / PDF (página)
+                  <b-button
+                    type="is-light"
+                    expanded
+                    icon-left="print"
+                    :disabled="!lab.paginatedCatalog.value.length"
+                    @click="lab.printCatalogPage"
+                  >
+                    Imprimir / PDF
                   </b-button>
                 </div>
                 <div class="column">
-                  <b-button type="is-light" expanded icon-left="download" :disabled="!lab.filteredCatalogRows.value.length" @click="lab.exportCatalogCsv">
+                  <b-button
+                    type="is-light"
+                    expanded
+                    icon-left="download"
+                    :disabled="!lab.filteredCatalogRows.value.length"
+                    :loading="lab.loadingExportCat.value"
+                    @click="lab.exportCatalogCsv"
+                  >
                     CSV
                   </b-button>
                 </div>
@@ -50,7 +71,11 @@
           <hr class="soft-hr" />
 
           <b-field label="Filtrar códigos" class="mb-2">
-            <b-input v-model="lab.catalogQuery.value" icon="search" placeholder="Código, parámetros (SPH/CYL/ADD/BASE)…" />
+            <b-input
+              v-model="lab.catalogQuery.value"
+              icon="search"
+              placeholder="Código, parámetros (SPH/CYL/ADD/BASE)…"
+            />
           </b-field>
 
           <b-field label="Mostrar" class="mb-0">
@@ -72,18 +97,30 @@
               Códigos disponibles
               <span class="panel__badge">{{ lab.filteredCatalogRows.value.length }}</span>
             </h2>
-            <p class="panel__hint">Click para copiar el codebar. (EAN-13).</p>
+            <p class="panel__hint">Click para copiar el codebar (EAN-13).</p>
           </div>
 
           <div class="panel__headActions">
-            <b-button type="is-light" icon-left="sync" :disabled="!lab.selectedSheetId.value" @click="lab.refreshItems">
+            <b-button
+              type="is-light"
+              icon-left="sync"
+              :disabled="!lab.selectedSheetId.value"
+              :loading="lab.loadingItems.value"
+              @click="lab.refreshItems"
+            >
               Preparar / Recargar
             </b-button>
           </div>
         </div>
 
         <div class="panel__body">
-          <div v-if="!lab.filteredCatalogRows.value.length" class="empty">
+          <!-- Loading state -->
+          <div v-if="lab.loadingItems.value" class="catalog-loading">
+            <b-loading :is-full-page="false" :active="true" />
+            <div style="height: 220px;"></div>
+          </div>
+
+          <div v-else-if="!lab.filteredCatalogRows.value.length" class="empty">
             <i class="fas fa-qrcode empty__icon"></i>
             <p class="empty__title">Sin códigos para mostrar</p>
             <p class="empty__text">Cambia filtros o planilla.</p>
@@ -131,13 +168,25 @@
           </div>
 
           <nav v-if="lab.filteredCatalogRows.value.length > lab.catalogPageSize.value" class="pager">
-            <b-button size="is-small" type="is-light" icon-left="chevron-left" :disabled="lab.catalogPage.value === 1" @click="lab.catalogPage.value--">
+            <b-button
+              size="is-small"
+              type="is-light"
+              icon-left="chevron-left"
+              :disabled="lab.catalogPage.value === 1"
+              @click="lab.catalogPage.value--"
+            >
               Prev
             </b-button>
 
             <span class="pager__text">Página {{ lab.catalogPage.value }} / {{ lab.catalogPages.value }}</span>
 
-            <b-button size="is-small" type="is-light" icon-left="chevron-right" :disabled="lab.catalogPage.value === lab.catalogPages.value" @click="lab.catalogPage.value++">
+            <b-button
+              size="is-small"
+              type="is-light"
+              icon-right="chevron-right"
+              :disabled="lab.catalogPage.value === lab.catalogPages.value"
+              @click="lab.catalogPage.value++"
+            >
               Next
             </b-button>
           </nav>
@@ -154,3 +203,9 @@ import BarcodeEAN13 from "./barcode/BarcodeEAN13.vue";
 const lab = inject("lab");
 if (!lab) throw new Error("CatalogoTab necesita provide('lab', ...)");
 </script>
+
+<style scoped>
+.catalog-loading {
+  position: relative;
+}
+</style>

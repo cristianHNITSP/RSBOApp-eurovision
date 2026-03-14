@@ -4,7 +4,8 @@
   "main": "src/index.js",
   "scripts": {
     "start": "nodemon src/index.js",
-    "start:prod": "node src/index.js"
+    "start:prod": "node src/index.js",
+    "seed-templates": "node src/seeds/seed-inventory-sheets.js"
   },
   "dependencies": {
     "axios": "^1.7.2",

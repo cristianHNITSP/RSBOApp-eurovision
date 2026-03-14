@@ -1,10 +1,11 @@
-<!-- src/views/Inventario.vue -->
+<!-- src/views/inventario/Inventario.vue -->
 <script setup>
-import { reactive, ref, onMounted } from "vue";
+import { reactive, ref, onMounted, watch, nextTick } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import TabsManager from "@/components/TabsManager.vue";
 
-import AgGridBifocal from "@/components/ag-grid/templates/AgGridBifocal.vue";
-import AgGridBase from "@/components/ag-grid/templates/AgGridBase.vue";
+import AgGridBifocal   from "@/components/ag-grid/templates/AgGridBifocal.vue";
+import AgGridBase      from "@/components/ag-grid/templates/AgGridBase.vue";
 import AgGridMonofocal from "@/components/ag-grid/templates/AgGridMonofocal.vue";
 import AgGridProgresivo from "@/components/ag-grid/templates/AgGridProgresivo.vue";
 
@@ -16,11 +17,71 @@ const props = defineProps({
   user: { type: Object, required: false, default: null }
 });
 
-const dynamicSheets = reactive([{ id: "nueva", name: "+ Agregar" }]);
-const activeSheet = ref("nueva");
-const activeInternalTab = ref(null);
-const loadingSheets = ref(true);
+const route  = useRoute();
+const router = useRouter();
 
+const dynamicSheets      = reactive([{ id: "nueva", name: "+ Agregar" }]);
+const activeSheet        = ref("nueva");
+const activeInternalTab  = ref(null);
+const loadingSheets      = ref(true);
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Foco desde búsqueda global
+   Si la ruta llega con ?sheetId=<id> se activa esa planilla.
+   Limpiamos el query param de la URL después para que sea idempotente.
+───────────────────────────────────────────────────────────────────────── */
+function applySheetFocus(sheetId) {
+  if (!sheetId) return false;
+  const found = dynamicSheets.find(s => s.id === sheetId);
+  if (found) {
+    activeSheet.value = sheetId;
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Intenta activar la planilla indicada.
+ * Si todavía no está cargada (loadingSheets) reintenta con un pequeño
+ * ciclo de espera para no perder la señal del query param.
+ */
+async function focusSheetFromQuery(sheetId) {
+  if (!sheetId) return;
+
+  // Espera hasta que las planillas terminen de cargarse (máx 4 s)
+  let attempts = 0;
+  while (loadingSheets.value && attempts < 40) {
+    await new Promise(r => setTimeout(r, 100));
+    attempts++;
+  }
+
+  await nextTick();
+  const applied = applySheetFocus(sheetId);
+
+  if (!applied) {
+    // La planilla no está en la lista local todavía (rara vez ocurre si el
+    // seed aún corre) → fuerza recarga y vuelve a intentar una vez.
+    await cargarSheets();
+    await nextTick();
+    applySheetFocus(sheetId);
+  }
+
+  // Limpia el query param de la URL sin recargar
+  const newQuery = { ...route.query };
+  delete newQuery.sheetId;
+  router.replace({ query: Object.keys(newQuery).length ? newQuery : undefined });
+}
+
+// Reacciona al query param en la carga inicial y en navegaciones posteriores
+watch(
+  () => route.query.sheetId,
+  (id) => { if (id) focusSheetFromQuery(id); },
+  { immediate: true }
+);
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Configuración catálogo
+───────────────────────────────────────────────────────────────────────── */
 const configuracion = {
   bases: {
     monofocal: {
@@ -62,6 +123,9 @@ const configuracion = {
   }
 };
 
+/* ─────────────────────────────────────────────────────────────────────────
+   Carga de planillas
+───────────────────────────────────────────────────────────────────────── */
 async function cargarSheets() {
   loadingSheets.value = true;
   try {
@@ -73,17 +137,17 @@ async function cargarSheets() {
       console.log(first);
       console.log("keys:", first ? Object.keys(first) : []);
       console.log("purchase raw:", {
-        numFactura: first?.numFactura,
-        loteProducto: first?.loteProducto,
-        fechaCompra: first?.fechaCompra,
+        numFactura:    first?.numFactura,
+        loteProducto:  first?.loteProducto,
+        fechaCompra:   first?.fechaCompra,
         fechaCaducidad: first?.fechaCaducidad
       });
       console.groupEnd();
     }
 
     const arr = (data?.data || []).map((s) => ({
-      id: String(s._id),
-      sku: s.sku,
+      id:   String(s._id),
+      sku:  s.sku,
       name: s.nombre,
 
       proveedor: s.proveedor && typeof s.proveedor === "object"
@@ -94,31 +158,32 @@ async function cargarSheets() {
         ? { id: s.marca.id ?? null, name: String(s.marca.name ?? "") }
         : { id: null, name: "" },
 
-      tipo_matriz: s.tipo_matriz,
-      baseKey: s.baseKey,
-      material: s.material,
+      tipo_matriz:   s.tipo_matriz,
+      baseKey:       s.baseKey,
+      material:      s.material,
 
-      tratamiento: s.tratamiento ?? null,
-      variante: s.variante ?? null,
+      tratamiento:   s.tratamiento  ?? null,
+      variante:      s.variante     ?? null,
 
-      fechaCreacion: s.fechaCreacion ?? s.createdAt ?? null,
+      fechaCreacion: s.fechaCreacion  ?? s.createdAt ?? null,
       fechaCaducidad: s.fechaCaducidad ?? null,
-      fechaCompra: s.fechaCompra ?? null,
-      numFactura: s.numFactura ?? "",
-      loteProducto: s.loteProducto ?? "",
-      precioVenta: s.precioVenta ?? null,
+      fechaCompra:   s.fechaCompra    ?? null,
+      numFactura:    s.numFactura     ?? "",
+      loteProducto:  s.loteProducto   ?? "",
+      precioVenta:   s.precioVenta    ?? null,
 
       tratamientos: s.tratamientos || [],
-      tabs: s.tabs || [],
-      meta: s.meta || { observaciones: "", notas: "" }
+      tabs:         s.tabs         || [],
+      meta:         s.meta         || { observaciones: "", notas: "" }
     }));
 
-    const addIndex = dynamicSheets.findIndex((s) => s.id === "nueva");
+    const addIndex  = dynamicSheets.findIndex((s) => s.id === "nueva");
     const existentes = new Set(dynamicSheets.map((s) => s.id));
-    const aInsertar = arr.filter((s) => !existentes.has(s.id));
+    const aInsertar  = arr.filter((s) => !existentes.has(s.id));
     if (aInsertar.length) dynamicSheets.splice(addIndex, 0, ...aInsertar);
 
-    if (aInsertar.length && activeSheet.value === "nueva") {
+    // Solo ponemos el default a la primera si NO hay ningún sheetId pendiente
+    if (aInsertar.length && activeSheet.value === "nueva" && !route.query.sheetId) {
       activeSheet.value = aInsertar[0].id;
     }
   } catch (e) {
@@ -128,15 +193,25 @@ async function cargarSheets() {
   }
 }
 
-onMounted(cargarSheets);
+onMounted(async () => {
+  await cargarSheets();
 
+  // Si llegó con ?sheetId= y la carga terminó, intenta focusear ahora
+  if (route.query.sheetId) {
+    await focusSheetFromQuery(route.query.sheetId);
+  }
+});
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Handlers de TabsManager
+───────────────────────────────────────────────────────────────────────── */
 function crearNuevaPlanilla({ result, tabs }) {
   const s = result;
   if (!s) return;
 
   const newSheet = {
-    id: String(s._id),
-    sku: s.sku,
+    id:   String(s._id),
+    sku:  s.sku,
     name: s.nombre,
 
     proveedor: s.proveedor && typeof s.proveedor === "object"
@@ -147,23 +222,23 @@ function crearNuevaPlanilla({ result, tabs }) {
       ? { id: s.marca.id ?? null, name: String(s.marca.name ?? "") }
       : { id: null, name: "" },
 
-    tipo_matriz: s.tipo_matriz,
-    baseKey: s.baseKey,
-    material: s.material,
+    tipo_matriz:   s.tipo_matriz,
+    baseKey:       s.baseKey,
+    material:      s.material,
 
-    tratamiento: s.tratamiento ?? null,
-    variante: s.variante ?? null,
+    tratamiento:   s.tratamiento  ?? null,
+    variante:      s.variante     ?? null,
 
-    fechaCreacion: s.fechaCreacion ?? s.createdAt ?? null,
+    fechaCreacion: s.fechaCreacion  ?? s.createdAt ?? null,
     fechaCaducidad: s.fechaCaducidad ?? null,
-    fechaCompra: s.fechaCompra ?? null,
-    numFactura: s.numFactura ?? "",
-    loteProducto: s.loteProducto ?? "",
-    precioVenta: s.precioVenta ?? null,
+    fechaCompra:   s.fechaCompra    ?? null,
+    numFactura:    s.numFactura     ?? "",
+    loteProducto:  s.loteProducto   ?? "",
+    precioVenta:   s.precioVenta    ?? null,
 
     tratamientos: s.tratamientos || [],
-    tabs: tabs || [],
-    meta: s.meta || { observaciones: "", notas: "" }
+    tabs:         tabs            || [],
+    meta:         s.meta         || { observaciones: "", notas: "" }
   };
 
   const addIndex = dynamicSheets.findIndex((x) => x.id === "nueva");
@@ -179,13 +254,16 @@ function reordenarSheets({ oldIndex, newIndex }) {
   if (activeSheet.value === moved.id) activeSheet.value = moved.id;
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   Resolvers de grilla
+───────────────────────────────────────────────────────────────────────── */
 const resolverGrid = (tipo) => {
   switch (tipo) {
-    case "SPH_CYL": return AgGridMonofocal;
-    case "SPH_ADD": return AgGridBifocal;
-    case "BASE": return AgGridBase;
+    case "SPH_CYL":  return AgGridMonofocal;
+    case "SPH_ADD":  return AgGridBifocal;
+    case "BASE":     return AgGridBase;
     case "BASE_ADD": return AgGridProgresivo;
-    default: return AgGridMonofocal;
+    default:         return AgGridMonofocal;
   }
 };
 
@@ -196,11 +274,9 @@ const resolverGridProps = (sheet, activeInternal) => {
   if (sheet.tipo_matriz === "SPH_ADD" || sheet.tipo_matriz === "SPH_CYL") {
     return { ...base, sphType: activeInternal || "sph-neg" };
   }
-
   if (sheet.tipo_matriz === "BASE" || sheet.tipo_matriz === "BASE_ADD") {
     return { ...base, sphType: activeInternal || "base-neg" };
   }
-
   return base;
 };
 </script>
@@ -213,21 +289,32 @@ const resolverGridProps = (sheet, activeInternal) => {
       Inventario
     </span>
 
-
-    <!--  <b-button class="is-primary" size="is-small" outlined rounded icon-left="delete" >Crear venta</b-button>  -->
-
     <div class="columns is-multiline">
       <div class="column is-12">
-        <TabsManager :initial-sheets="dynamicSheets" :active-id="activeSheet" :configuracion="configuracion"
-          :actor="user" :loading-tabs="loadingSheets" @update:active="activeSheet = $event"
-          @update:internal="activeInternalTab = $event" @crear="crearNuevaPlanilla" @reorder="reordenarSheets">
+        <TabsManager
+          :initial-sheets="dynamicSheets"
+          :active-id="activeSheet"
+          :configuracion="configuracion"
+          :actor="user"
+          :loading-tabs="loadingSheets"
+          @update:active="activeSheet = $event"
+          @update:internal="activeInternalTab = $event"
+          @crear="crearNuevaPlanilla"
+          @reorder="reordenarSheets"
+        >
           <template #default="{ activeSheet: sheet, activeInternal }">
             <Transition name="sheet" mode="out-in" appear>
-              <div v-if="sheet && sheet.id !== 'nueva'" :key="`${sheet.id}:${sheet.tipo_matriz}`"
-                class="contenido-planilla">
+              <div
+                v-if="sheet && sheet.id !== 'nueva'"
+                :key="`${sheet.id}:${sheet.tipo_matriz}`"
+                class="contenido-planilla"
+              >
                 <div class="planilla-wrapper">
-                  <component :is="resolverGrid(sheet.tipo_matriz)" v-bind="resolverGridProps(sheet, activeInternal)"
-                    :actor="user" />
+                  <component
+                    :is="resolverGrid(sheet.tipo_matriz)"
+                    v-bind="resolverGridProps(sheet, activeInternal)"
+                    :actor="user"
+                  />
                 </div>
               </div>
             </Transition>
@@ -303,7 +390,6 @@ const resolverGridProps = (sheet, activeInternal) => {
 }
 
 @media (prefers-reduced-motion: reduce) {
-
   .sheet-enter-active,
   .sheet-leave-active {
     transition: none !important;

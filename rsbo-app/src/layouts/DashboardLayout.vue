@@ -5,10 +5,13 @@ import { useRoute } from "vue-router";
 
 import Sidebar from "../components/Sidebar.vue";
 import NotificationPanel from "../components/NotificationPanel.vue";
+import GlobalSearch from "../components/GlobalSearch.vue";
+
 
 import { useSidebarState } from "../composables/useSidebarState";
 import { useMotionEffects } from "../composables/useMotionEffects";
 import { useNotifications } from "../composables/useNotificationsState";
+
 
 /* =========================
    Helpers perf
@@ -465,9 +468,7 @@ export default {
 
             <!-- CENTER -->
             <div class="dashboard-toolbar__center">
-              <b-field class="dashboard-search" position="is-centered">
-                <b-input placeholder="Buscar en el panel..." rounded expanded icon-pack="fas" icon="search" />
-              </b-field>
+               <GlobalSearch />
             </div>
 
             <!-- RIGHT -->

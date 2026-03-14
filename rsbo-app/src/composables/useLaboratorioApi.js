@@ -1,9 +1,19 @@
-// src/composables/useLaboratorioApi.js
 import { ref, reactive, computed, watch, onMounted } from "vue";
 import { listSheets as invListSheets, fetchItems as invFetchItems } from "@/services/inventory";
-import { listOrders, createOrder, scanOrder, closeOrder, resetOrder, listEvents, requestCorrection } from "@/services/laboratorio";
+import {
+  listOrders,
+  createOrder,
+  scanOrder,
+  closeOrder,
+  resetOrder,
+  listEvents,
+  requestCorrection,
+  cancelOrder as cancelOrderService
+} from "@/services/laboratorio";
 
-/* ===================== Helpers generales ===================== */
+// ============================================================================
+// HELPERS GENERALES
+// ============================================================================
 
 const normTxt = (s) =>
   String(s || "")
@@ -21,7 +31,7 @@ const fmtShort = (v) => {
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
-    minute: "2-digit",
+    minute: "2-digit"
   });
 };
 
@@ -67,21 +77,21 @@ function openPrintWindow({ title, bodyHtml }) {
   <title>${String(title || "Impresión")}</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-    body{font-family:Arial,Helvetica,sans-serif;padding:16px;color:#111}
-    h1,h2,h3{margin:0 0 10px}
-    .muted{color:#555}
-    .box{border:1px solid #ddd;border-radius:10px;padding:12px;margin:10px 0}
-    table{width:100%;border-collapse:collapse;margin-top:10px}
-    th,td{border:1px solid #ddd;padding:8px;font-size:12px;vertical-align:top}
-    th{background:#f5f5f5;text-align:left}
-    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
-    .right{text-align:right}
-    .badge{display:inline-block;border:1px solid #ddd;border-radius:999px;padding:2px 8px;font-size:12px;margin-left:8px}
-    @media print{ .no-print{display:none} }
+    body { font-family: Arial, Helvetica, sans-serif; padding: 16px; color: #111; }
+    h1, h2, h3 { margin: 0 0 10px; }
+    .muted { color: #555; }
+    .box { border: 1px solid #ddd; border-radius: 10px; padding: 12px; margin: 10px 0; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #ddd; padding: 8px; font-size: 12px; vertical-align: top; }
+    th { background: #f5f5f5; text-align: left; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .right { text-align: right; }
+    .badge { display: inline-block; border: 1px solid #ddd; border-radius: 999px; padding: 2px 8px; font-size: 12px; margin-left: 8px; }
+    @media print { .no-print { display: none; } }
   </style>
 </head>
 <body>
-  <div class="no-print" style="margin-bottom:10px;">
+  <div class="no-print" style="margin-bottom: 10px;">
     <button onclick="window.print()">Imprimir / Guardar como PDF</button>
   </div>
   ${bodyHtml || ""}
@@ -91,7 +101,9 @@ function openPrintWindow({ title, bodyHtml }) {
   w.focus();
 }
 
-/* ===================== Barcode (EAN-13) ===================== */
+// ============================================================================
+// BARCODE (EAN-13)
+// ============================================================================
 
 const onlyDigits = (s) => String(s || "").replace(/\D/g, "");
 
@@ -117,21 +129,25 @@ function isEan13(raw) {
 
 function ean13SvgString(value, scale = 2, height = 90) {
   const quiet = 10;
-  const L = ["0001101","0011001","0010011","0111101","0100011","0110001","0101111","0111011","0110111","0001011"];
-  const G = ["0100111","0110011","0011011","0100001","0011101","0111001","0000101","0010001","0001001","0010111"];
-  const R = ["1110010","1100110","1101100","1000010","1011100","1001110","1010000","1000100","1001000","1110100"];
-  const PARITY = ["LLLLLL","LLGLGG","LLGGLG","LLGGGL","LGLLGG","LGGLLG","LGGGLL","LGLGLG","LGLGGL","LGGLGL"];
+  const L = ["0001101", "0011001", "0010011", "0111101", "0100011", "0110001", "0101111", "0111011", "0110111", "0001011"];
+  const G = ["0100111", "0110011", "0011011", "0100001", "0011101", "0111001", "0000101", "0010001", "0001001", "0010111"];
+  const R = ["1110010", "1100110", "1101100", "1000010", "1011100", "1001110", "1010000", "1000100", "1001000", "1110100"];
+  const PARITY = ["LLLLLL", "LLGLGG", "LLGGLG", "LLGGGL", "LGLLGG", "LGGLLG", "LGGGLL", "LGLGLG", "LGLGGL", "LGGLGL"];
+
   const ean = normalizeEan13(value);
   if (!ean) return "";
+
   const first = Number(ean[0]);
   const left = ean.slice(1, 7).split("").map(Number);
   const right = ean.slice(7, 13).split("").map(Number);
   const parity = PARITY[first];
+
   let bits = "101";
   for (let i = 0; i < 6; i++) bits += parity[i] === "L" ? L[left[i]] : G[left[i]];
   bits += "01010";
   for (let i = 0; i < 6; i++) bits += R[right[i]];
   bits += "101";
+
   const isGuardBit = (i) => (i >= 0 && i <= 2) || (i >= 45 && i <= 49) || (i >= 92 && i <= 94);
   const sc = Math.max(1, Number(scale || 2));
   const normalH = Math.max(40, Number(height || 90));
@@ -139,22 +155,36 @@ function ean13SvgString(value, scale = 2, height = 90) {
   const textH = 18;
   const w = (bits.length + quiet * 2) * sc;
   const hSvg = guardH + textH + 6;
-  let rects = [], runStart = -1, runGuard = false;
+
+  let rects = [];
+  let runStart = -1;
+  let runGuard = false;
+
   for (let i = 0; i < bits.length; i++) {
-    const bit = bits[i], guard = isGuardBit(i);
-    if (bit === "1" && runStart === -1) { runStart = i; runGuard = guard; }
-    else if (bit === "1" && runStart !== -1 && runGuard !== guard) {
+    const bit = bits[i];
+    const guard = isGuardBit(i);
+
+    if (bit === "1" && runStart === -1) {
+      runStart = i;
+      runGuard = guard;
+    } else if (bit === "1" && runStart !== -1 && runGuard !== guard) {
       rects.push({ start: runStart, end: i - 1, guard: runGuard });
-      runStart = i; runGuard = guard;
+      runStart = i;
+      runGuard = guard;
     } else if (bit === "0" && runStart !== -1) {
       rects.push({ start: runStart, end: i - 1, guard: runGuard });
       runStart = -1;
     }
   }
   if (runStart !== -1) rects.push({ start: runStart, end: bits.length - 1, guard: runGuard });
-  const rectsSvg = rects.map((r) =>
-    `<rect x="${(quiet + r.start) * sc}" y="6" width="${(r.end - r.start + 1) * sc}" height="${r.guard ? guardH : normalH}" fill="#000" />`
-  ).join("");
+
+  const rectsSvg = rects
+    .map(
+      (r) =>
+        `<rect x="${(quiet + r.start) * sc}" y="6" width="${(r.end - r.start + 1) * sc}" height="${r.guard ? guardH : normalH}" fill="#000" />`
+    )
+    .join("");
+
   return `<svg width="${w}" height="${hSvg}" viewBox="0 0 ${w} ${hSvg}" role="img" aria-label="Barcode EAN-13" style="display:block">
   <rect x="0" y="0" width="${w}" height="${hSvg}" fill="#fff"></rect>
   ${rectsSvg}
@@ -163,7 +193,9 @@ function ean13SvgString(value, scale = 2, height = 90) {
 </svg>`;
 }
 
-/* ===================== Safe UI Error Handling ===================== */
+// ============================================================================
+// SAFE UI ERROR HANDLING
+// ============================================================================
 
 const stripHtml = (s) => String(s ?? "").replace(/<[^>]*>/g, "");
 const collapseWs = (s) => String(s ?? "").replace(/\s+/g, " ").trim();
@@ -188,7 +220,7 @@ const containsSensitive = (s) => {
     /\/\/[^/\s:]+:[^@\s]+@/i,
     /\b(api[_-]?key|token|secret|password|passwd|pwd)\b\s*[:=]\s*["']?[^"'\s]+/i,
     /\bPRIVATE KEY\b|\bBEGIN (RSA|EC|OPENSSH) PRIVATE KEY\b/i,
-    /\bAKIA[0-9A-Z]{16}\b/,
+    /\bAKIA[0-9A-Z]{16}\b/
   ].some((re) => re.test(t));
 };
 
@@ -203,7 +235,8 @@ const sanitizeUserText = (raw, { maxLen = 160 } = {}) => {
 
 const guessCategory = (status, rawMsg) => {
   const msg = String(rawMsg ?? "").toLowerCase();
-  if (msg.includes("network error") || msg.includes("failed to fetch") || msg.includes("econnrefused") || msg.includes("timeout") || msg.includes("etimedout")) return "network";
+  if (msg.includes("network error") || msg.includes("failed to fetch") || msg.includes("econnrefused") || msg.includes("timeout") || msg.includes("etimedout"))
+    return "network";
   if (status === 401) return "auth";
   if (status === 403) return "forbidden";
   if (status === 400 || status === 422) return "validation";
@@ -217,15 +250,15 @@ const guessCategory = (status, rawMsg) => {
 };
 
 const categoryToPublicMessage = (category) => ({
-  network:    "No se pudo conectar con el servidor. Revisa tu red o intenta de nuevo.",
-  auth:       "Tu sesión expiró. Vuelve a iniciar sesión.",
-  forbidden:  "No tienes permisos para realizar esta acción.",
+  network: "No se pudo conectar con el servidor. Revisa tu red o intenta de nuevo.",
+  auth: "Tu sesión expiró. Vuelve a iniciar sesión.",
+  forbidden: "No tienes permisos para realizar esta acción.",
   validation: "Hay datos inválidos o fuera de rango. Revisa los valores e intenta de nuevo.",
-  notfound:   "No se encontró el recurso solicitado.",
-  conflict:   "Conflicto: ese registro o valor ya existe o está en uso.",
-  ratelimit:  "Demasiadas solicitudes. Intenta nuevamente en unos segundos.",
-  server:     "Error interno del servidor. Intenta más tarde.",
-  generic:    "Ocurrió un error al procesar la operación. Intenta de nuevo.",
+  notfound: "No se encontró el recurso solicitado.",
+  conflict: "Conflicto: ese registro o valor ya existe o está en uso.",
+  ratelimit: "Demasiadas solicitudes. Intenta nuevamente en unos segundos.",
+  server: "Error interno del servidor. Intenta más tarde.",
+  generic: "Ocurrió un error al procesar la operación. Intenta de nuevo."
 }[category] || "Ocurrió un error al procesar la operación. Intenta de nuevo.");
 
 const normalizeAck = (ack, { successFallback = "Listo.", errorFallback = "Ocurrió un error." } = {}) => {
@@ -238,40 +271,74 @@ const normalizeAck = (ack, { successFallback = "Listo.", errorFallback = "Ocurri
     const status = ack?.response?.status ?? ack?.status ?? null;
     const rawMsg = ack?.response?.data?.message ?? ack?.message ?? String(ack);
     const safeMsg = sanitizeUserText(rawMsg);
-    return { ok: false, status, message: safeMsg || categoryToPublicMessage(guessCategory(status, rawMsg)), _raw: rawMsg };
+    return {
+      ok: false,
+      status,
+      message: safeMsg || categoryToPublicMessage(guessCategory(status, rawMsg)),
+      _raw: rawMsg
+    };
   }
   const status = ack?.status ?? ack?.statusCode ?? ack?.response?.status ?? ack?.response?.statusCode ?? null;
   const ok = ack?.ok === true ? true : ack?.ok === false ? false : typeof status === "number" ? status < 400 : null;
   const rawMsg = ack?.message ?? ack?.response?.data?.message ?? ack?.response?.data?.error ?? ack?.error ?? "";
+
   if (ok === true) {
     const safe = sanitizeUserText(rawMsg);
     return { ok: true, status, message: safe || successFallback, _raw: rawMsg };
   }
   const safe = sanitizeUserText(rawMsg);
-  return { ok: ok === null ? false : ok, status, message: safe || categoryToPublicMessage(guessCategory(status, rawMsg)) || errorFallback, _raw: rawMsg };
+  return {
+    ok: ok === null ? false : ok,
+    status,
+    message: safe || categoryToPublicMessage(guessCategory(status, rawMsg)) || errorFallback,
+    _raw: rawMsg
+  };
 };
 
-/* ===================== Composable ===================== */
+// ============================================================================
+// HELPERS DE MICAS
+// ============================================================================
+
+const getMicaTypeName = (tipoMatriz) => ({
+  BASE: "Monofocal (Base)",
+  SPH_CYL: "Monofocal",
+  SPH_ADD: "Bifocal",
+  BASE_ADD: "Progresivo"
+}[tipoMatriz] || tipoMatriz || "—");
+
+function getPeriodStart(period) {
+  const now = new Date();
+  switch (period) {
+    case "day":
+      return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    case "week": {
+      const d = new Date(now);
+      d.setDate(now.getDate() - now.getDay());
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
+    case "month":
+      return new Date(now.getFullYear(), now.getMonth(), 1);
+    case "year":
+      return new Date(now.getFullYear(), 0, 1);
+    default:
+      return new Date(0);
+  }
+}
+
+// ============================================================================
+// COMPOSABLE PRINCIPAL
+// ============================================================================
 
 export function useLaboratorioApi() {
-
-  /* ===== Sistema de notificaciones propio (sin Buefy toast) ===== */
   let _notifIdCounter = 0;
   const notifications = ref([]);
 
-  /**
-   * Muestra una notificación flotante (overlay propio estilo dirty-float).
-   * @param {string} message  Texto a mostrar (se sanitiza automáticamente).
-   * @param {"is-success"|"is-danger"|"is-warning"|"is-info"} type
-   * @param {number}  duration  Ms antes de auto-dismiss. 0 = no auto-dismiss.
-   */
   const notify = (message, type = "is-info", duration = 4000) => {
     const clean = sanitizeUserText(String(message ?? ""), { maxLen: 200 }) || "Listo.";
     const id = ++_notifIdCounter;
     notifications.value.push({ id, message: clean, type, duration });
-    if (duration > 0) {
-      setTimeout(() => dismissNotification(id), duration);
-    }
+    if (duration > 0) setTimeout(() => dismissNotification(id), duration);
   };
 
   const dismissNotification = (id) => {
@@ -285,9 +352,9 @@ export function useLaboratorioApi() {
   const sheetQuery = ref("");
 
   const selectedSheetId = ref("");
-  const itemsLimit = ref(5000);
+  const _itemsLimit = ref(5000);
   const itemQuery = ref("");
-  const stockFilter = ref("withStock");
+  const stockFilter = ref("all");
 
   const catalogQuery = ref("");
   const catalogFilter = ref("withStock");
@@ -329,6 +396,7 @@ export function useLaboratorioApi() {
   const loadingExportInv = ref(false);
   const loadingExportCat = ref(false);
   const loadingExportOrders = ref(false);
+  const loadingCancelOrder = ref(false);
 
   const lastUpdatedAt = ref(Date.now());
 
@@ -340,10 +408,11 @@ export function useLaboratorioApi() {
       const userId = u?.id || u?.userId || null;
       const name = u?.name || u?.nombre || null;
       return userId || name ? { userId, name } : undefined;
-    } catch { return undefined; }
+    } catch {
+      return undefined;
+    }
   };
 
-  // helpers
   const sheetById = (id) => sheetsDB.value.find((s) => String(s.id) === String(id)) || null;
   const sheetNameById = (id) => sheetById(id)?.nombre || sheetById(id)?.name || "—";
 
@@ -373,13 +442,13 @@ export function useLaboratorioApi() {
     return `${Math.floor(m / 60)}h`;
   });
 
-  // ======= Presentación de fila =======
   const buildRowTitle = (row, sheet) => {
     const t = sheet?.tipo_matriz;
     if (t === "BASE") return `BASE ${Number(row.base ?? 0).toFixed(2)}`;
     if (t === "SPH_CYL") return `SPH ${Number(row.sph ?? 0).toFixed(2)} · CYL ${Number(row.cyl ?? 0).toFixed(2)}`;
     if (t === "SPH_ADD") return `${row.eye || ""} · SPH ${Number(row.sph ?? 0).toFixed(2)} · ADD ${Number(row.add ?? 0).toFixed(2)}`;
-    if (t === "BASE_ADD") return `${row.eye || ""} · BI ${Number(row.base_izq ?? 0).toFixed(2)} · BD ${Number(row.base_der ?? 0).toFixed(2)} · ADD ${Number(row.add ?? 0).toFixed(2)}`;
+    if (t === "BASE_ADD")
+      return `${row.eye || ""} · BI ${Number(row.base_izq ?? 0).toFixed(2)} · BD ${Number(row.base_der ?? 0).toFixed(2)} · ADD ${Number(row.add ?? 0).toFixed(2)}`;
     return "Producto";
   };
 
@@ -387,24 +456,24 @@ export function useLaboratorioApi() {
     const t = sheet?.tipo_matriz;
     if (t === "BASE") return `base=${Number(row.base ?? 0).toFixed(2)}`;
     if (t === "SPH_CYL") return `sph=${Number(row.sph ?? 0).toFixed(2)} · cyl=${Number(row.cyl ?? 0).toFixed(2)}`;
-    if (t === "SPH_ADD") return `sph=${Number(row.sph ?? 0).toFixed(2)} · add=${Number(row.add ?? 0).toFixed(2)} · bi=${Number(row.base_izq ?? 0).toFixed(2)} · bd=${Number(row.base_der ?? 0).toFixed(2)}`;
-    if (t === "BASE_ADD") return `bi=${Number(row.base_izq ?? 0).toFixed(2)} · bd=${Number(row.base_der ?? 0).toFixed(2)} · add=${Number(row.add ?? 0).toFixed(2)}`;
+    if (t === "SPH_ADD")
+      return `sph=${Number(row.sph ?? 0).toFixed(2)} · add=${Number(row.add ?? 0).toFixed(2)} · bi=${Number(row.base_izq ?? 0).toFixed(2)} · bd=${Number(row.base_der ?? 0).toFixed(2)}`;
+    if (t === "BASE_ADD")
+      return `bi=${Number(row.base_izq ?? 0).toFixed(2)} · bd=${Number(row.base_der ?? 0).toFixed(2)} · add=${Number(row.add ?? 0).toFixed(2)}`;
     return "—";
   };
 
   // ======= Sheets =======
   const normalizeSheet = (s) => {
     const id = String(s?._id ?? s?.id ?? "");
-    const updatedByName =
-      s?.updatedBy?.name ||
-      s?.updatedBy?.nombre ||
-      (typeof s?.updatedBy === "string" ? s.updatedBy : "") || "";
+    const updatedByName = s?.updatedBy?.name || s?.updatedBy?.nombre || (typeof s?.updatedBy === "string" ? s.updatedBy : "") || "";
     return {
-      ...s, id,
+      ...s,
+      id,
       nombre: s?.nombre ?? s?.name ?? "",
       name: s?.nombre ?? s?.name ?? "",
       tratamientos: Array.isArray(s?.tratamientos) ? s.tratamientos : [],
-      updatedByName,
+      updatedByName
     };
   };
 
@@ -413,7 +482,7 @@ export function useLaboratorioApi() {
     try {
       const params = {
         includeDeleted: includeDeleted.value ? "true" : "false",
-        q: String(sheetQuery.value || "").trim() || undefined,
+        q: String(sheetQuery.value || "").trim() || undefined
       };
       const { data } = await invListSheets(params);
       const arr = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
@@ -431,24 +500,26 @@ export function useLaboratorioApi() {
     }
   }
 
-  // ======= Items =======
   async function loadItems(forceSheetId) {
     const sid = forceSheetId || selectedSheetId.value;
     const sheet = sheetById(sid);
-    if (!sheet?.id) { itemsDB.value = []; return; }
+    if (!sheet?.id) {
+      itemsDB.value = [];
+      return;
+    }
+
     loadingItems.value = true;
     try {
       const params = {
-        limit: Number(itemsLimit.value || 5000),
-        q: String(itemQuery.value || "").trim() || undefined,
-        stock: String(stockFilter.value || "") || undefined,
+        limit: Number(_itemsLimit.value || 5000),
+        q: String(itemQuery.value || "").trim() || undefined
       };
       const { data } = await invFetchItems(sheet.id, params);
       const rows = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
       itemsDB.value = rows.map((r, idx) => ({
         ...r,
         _k: String(r.codebar || "") ? `${r.codebar}` : `row_${idx}`,
-        existencias: Number(r.existencias || 0),
+        existencias: Number(r.existencias || 0)
       }));
       lastUpdatedAt.value = Date.now();
     } catch (e) {
@@ -465,7 +536,9 @@ export function useLaboratorioApi() {
     const sheetId = String(o?.sheet ?? o?.sheetId ?? "");
     const lines = Array.isArray(o?.lines) ? o.lines : [];
     return {
-      ...o, id, sheetId,
+      ...o,
+      id,
+      sheetId,
       createdAtShort: fmtShort(o?.createdAt),
       updatedAtShort: fmtShort(o?.updatedAt),
       lines: lines.map((l, i) => ({
@@ -477,7 +550,11 @@ export function useLaboratorioApi() {
         codebar: String(l?.codebar || ""),
         params: l?.params || {},
         eye: l?.eye ?? null,
-      })),
+        tipoMatriz: l?.tipo_matriz || null,
+        micaType: l?.micaType || getMicaTypeName(l?.tipo_matriz),
+        sheetNombre: l?.sheetNombre || "",
+        lineSheetId: l?.sheet ? String(l.sheet) : null
+      }))
     };
   };
 
@@ -486,7 +563,11 @@ export function useLaboratorioApi() {
     try {
       const statusUi = String(orderStatusFilter.value || "open");
       const statusParam = statusUi === "open" ? "all" : statusUi;
-      const params = { status: statusParam, q: String(orderQuery.value || "").trim() || undefined, limit: 200 };
+      const params = {
+        status: statusParam,
+        q: String(orderQuery.value || "").trim() || undefined,
+        limit: 200
+      };
       const { data } = await listOrders(params);
       const arr = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
       let mapped = arr.map(normalizeOrder);
@@ -514,10 +595,8 @@ export function useLaboratorioApi() {
   });
 
   // ======= Status helpers =======
-  const statusHuman = (s) =>
-    ({ pendiente: "Pendiente", parcial: "Parcial", cerrado: "Cerrado", cancelado: "Cancelado" }[s] || s);
-  const statusTagClass = (s) =>
-    ({ pendiente: "is-warning", parcial: "is-info", cerrado: "is-success", cancelado: "is-danger" }[s] || "is-light");
+  const statusHuman = (s) => ({ pendiente: "Pendiente", parcial: "Parcial", cerrado: "Cerrado", cancelado: "Cancelado" }[s] || s);
+  const statusTagClass = (s) => ({ pendiente: "is-warning", parcial: "is-info", cerrado: "is-success", cancelado: "is-danger" }[s] || "is-light");
   const orderTotalCount = (o) => (o?.lines || []).reduce((acc, l) => acc + Number(l.qty || 0), 0);
   const orderPickedCount = (o) => (o?.lines || []).reduce((acc, l) => acc + Math.min(Number(l.picked || 0), Number(l.qty || 0)), 0);
   const orderProgressPct = (o) => {
@@ -525,8 +604,9 @@ export function useLaboratorioApi() {
     return t <= 0 ? 0 : Math.round((orderPickedCount(o) / t) * 100);
   };
   const isOrderComplete = (o) => (o?.lines || []).every((l) => Number(l.picked || 0) >= Number(l.qty || 0));
+
   const lineHuman = (line, sheet) => {
-    const t = sheet?.tipo_matriz;
+    const t = line?.tipoMatriz || sheet?.tipo_matriz;
     const p = line?.params || {};
     const eye = line?.eye || "";
     if (t === "BASE") return `BASE ${Number(p.base ?? 0).toFixed(2)}`;
@@ -538,108 +618,159 @@ export function useLaboratorioApi() {
 
   // ======= Eventos =======
   const mapEntryEvent = (e) => ({
-    id: String(e._id || e.id), folio: e?.details?.folio || "—", at: fmtShort(e?.createdAt),
+    id: String(e._id || e.id),
+    folio: e?.details?.folio || "—",
+    at: fmtShort(e?.createdAt),
+    rawCreatedAt: e?.createdAt || null,
     cliente: e?.details?.cliente || "—",
     sheetId: e?.details?.sheetId || (e?.sheet ? String(e.sheet) : null),
     linesTotal: Number(e?.details?.linesTotal || 0),
+    micaSummary: e?.details?.micaSummary || null
   });
+
   const mapExitEvent = (e) => ({
-    id: String(e._id || e.id), folio: e?.details?.folio || "—", at: fmtShort(e?.createdAt),
+    id: String(e._id || e.id),
+    folio: e?.details?.folio || "—",
+    at: fmtShort(e?.createdAt),
+    rawCreatedAt: e?.createdAt || null,
     sheetId: e?.details?.sheetId || (e?.sheet ? String(e.sheet) : null),
-    codebar: e?.details?.codebar || "", title: e?.details?.title || "Salida",
+    codebar: e?.details?.codebar || "",
+    title: e?.details?.title || "Salida",
+    micaType: e?.details?.micaType || "—"
   });
+
   const mapCorrectionEvent = (e) => ({
-    id: String(e._id || e.id), folio: e?.details?.folio || "—", at: fmtShort(e?.createdAt),
+    id: String(e._id || e.id),
+    folio: e?.details?.folio || "—",
+    at: fmtShort(e?.createdAt),
+    rawCreatedAt: e?.createdAt || null,
     sheetId: e?.details?.sheetId || (e?.sheet ? String(e.sheet) : null),
-    codebar: e?.details?.codebar || "", message: e?.details?.message || "",
+    orderId: e?.order ? String(e.order) : null,
+    codebar: e?.details?.codebar || "",
+    message: e?.details?.message || "",
+    actorName: e?.actor?.name || "—"
   });
 
   async function loadEvents() {
     loadingEvents.value = true;
     try {
-      const limit = 50;
+      const limit = 200;
       const [en, ex, co] = await Promise.all([
         listEvents({ type: "ORDER_CREATE", limit }),
         listEvents({ type: "EXIT_SCAN", limit }),
-        listEvents({ type: "CORRECTION_REQUEST", limit }),
+        listEvents({ type: "CORRECTION_REQUEST", limit })
       ]);
+
       const ent = Array.isArray(en?.data?.data) ? en.data.data : Array.isArray(en?.data) ? en.data : [];
       const sal = Array.isArray(ex?.data?.data) ? ex.data.data : Array.isArray(ex?.data) ? ex.data : [];
       const cor = Array.isArray(co?.data?.data) ? co.data.data : Array.isArray(co?.data) ? co.data : [];
+
       entryEvents.value = ent.map(mapEntryEvent);
       exitEvents.value = sal.map(mapExitEvent);
       correctionEvents.value = cor.map(mapCorrectionEvent);
       lastUpdatedAt.value = Date.now();
     } catch (e) {
       console.error("[LAB] loadEvents", e?.response?.data || e);
-      entryEvents.value = []; exitEvents.value = []; correctionEvents.value = [];
+      entryEvents.value = [];
+      exitEvents.value = [];
+      correctionEvents.value = [];
     } finally {
       loadingEvents.value = false;
     }
   }
 
-  /* ===================== Draft ===================== */
+  // Entradas del día
+  const todayEntries = computed(() => {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    return entryEvents.value.filter((e) => {
+      if (!e.rawCreatedAt) return false;
+      return new Date(e.rawCreatedAt) >= start;
+    });
+  });
 
+  // ======= Draft (multi-planilla) =======
   const draftCliente = ref("");
   const draftNote = ref("");
   const draftLines = ref([]);
 
   const canCreateOrder = computed(() =>
-    !!selectedSheetId.value &&
-    draftLines.value.length > 0 &&
-    String(draftCliente.value || "").trim().length > 0
+    draftLines.value.length > 0 && String(draftCliente.value || "").trim().length > 0
   );
 
-  const clearDraft = () => (draftLines.value = []);
+  const clearDraft = () => {
+    draftLines.value = [];
+  };
 
   const addToDraft = (row) => {
     const sheet = selectedSheet.value;
     if (!sheet?.id) return;
     const cb = String(row?.codebar || "").trim();
     if (!cb) return;
-    const found = draftLines.value.find((x) => x.key === cb);
+
+    const lineKey = `${sheet.id}__${cb}`;
+    const found = draftLines.value.find((x) => x.key === lineKey);
     if (found) {
       found.qty = Math.min(Number(found.qty || 1) + 1, Number(found.stock || 999999));
-      notify(`+1 unidad de ${found.title}`, "is-info", 2000);
+      notify(`+1 mica: ${found.title}`, "is-info", 2000);
       return;
     }
+
     const title = buildRowTitle(row, sheet);
-    draftLines.value.push({ key: cb, codebar: cb, title, qty: 1, stock: Number(row.existencias || 0) });
-    notify(`Agregado: ${title}`, "is-info", 2000);
+    const micaType = getMicaTypeName(sheet.tipo_matriz);
+    draftLines.value.push({
+      key: lineKey,
+      codebar: cb,
+      title,
+      qty: 1,
+      stock: Number(row.existencias || 0),
+      sheetId: sheet.id,
+      sheetName: sheet.nombre || sheet.name || "—",
+      tipoMatriz: sheet.tipo_matriz,
+      micaType
+    });
+    notify(`Agregada: ${title} (${micaType})`, "is-info", 2000);
   };
 
-  const removeDraftLine = (key) => { draftLines.value = draftLines.value.filter((x) => x.key !== key); };
+  const removeDraftLine = (key) => {
+    draftLines.value = draftLines.value.filter((x) => x.key !== key);
+  };
+
   const incDraftQty = (key) => {
     const l = draftLines.value.find((x) => x.key === key);
     if (l) l.qty = Math.min(Number(l.qty || 1) + 1, Number(l.stock || 999999));
   };
+
   const decDraftQty = (key) => {
     const l = draftLines.value.find((x) => x.key === key);
     if (l) l.qty = Math.max(1, Number(l.qty || 1) - 1);
   };
 
   async function createOrderFromDraft() {
-    const sheet = selectedSheet.value;
-    if (!sheet?.id || !canCreateOrder.value) return;
+    if (!canCreateOrder.value) return;
     loadingCreateOrder.value = true;
     try {
       const payload = {
-        sheetId: sheet.id,
+        sheetId: draftLines.value[0]?.sheetId || undefined,
         cliente: String(draftCliente.value || "").trim(),
         note: String(draftNote.value || "").trim(),
-        lines: draftLines.value.map((l) => ({ codebar: l.codebar, qty: Number(l.qty || 1) })),
-        actor: actorRef(),
+        lines: draftLines.value.map((l) => ({
+          codebar: l.codebar,
+          qty: Number(l.qty || 1),
+          sheetId: l.sheetId
+        })),
+        actor: actorRef()
       };
       const { data } = await createOrder(payload);
       const order = normalizeOrder(data?.data);
       await Promise.all([loadOrders(), loadEvents()]);
       selectedOrderId.value = order.id;
       mode.value = "surtir";
-      selectedSheetId.value = order.sheetId;
+      if (order.sheetId) selectedSheetId.value = order.sheetId;
       clearDraft();
       draftCliente.value = "";
       draftNote.value = "";
-      await loadItems(order.sheetId);
+      if (order.sheetId) await loadItems(order.sheetId);
       lastUpdatedAt.value = Date.now();
       notify(`Pedido ${order.folio || ""} creado para ${order.cliente}`, "is-success");
     } catch (e) {
@@ -651,28 +782,25 @@ export function useLaboratorioApi() {
     }
   }
 
-  /* ===================== Surtir ===================== */
-
+  // ======= Surtir =======
   async function scanAndDispatch() {
     const order = selectedOrder.value;
     if (!order?.id) return;
     const cb = String(scanCode.value || "").trim();
     if (!cb) return;
+
     loadingScan.value = true;
     try {
       const { data } = await scanOrder(order.id, { codebar: cb, qty: 1, actor: actorRef() });
       const updated = normalizeOrder(data?.data);
       const idx = ordersDB.value.findIndex((x) => x.id === updated.id);
       if (idx >= 0) ordersDB.value[idx] = updated;
-      selectedSheetId.value = updated.sheetId;
+      if (updated.sheetId) selectedSheetId.value = updated.sheetId;
       await Promise.all([loadItems(updated.sheetId), loadEvents()]);
       scanCode.value = "";
       lastUpdatedAt.value = Date.now();
-      if (isOrderComplete(updated)) {
-        notify(`Pedido ${updated.folio} completado. Listo para cerrar.`, "is-success", 5000);
-      } else {
-        notify(`Salida registrada: ${cb}`, "is-success", 2500);
-      }
+      if (isOrderComplete(updated)) notify(`Pedido ${updated.folio} completado. Listo para cerrar.`, "is-success", 5000);
+      else notify(`Salida registrada: ${cb}`, "is-success", 2500);
     } catch (e) {
       console.error("[LAB] scanAndDispatch", e?.response?.data || e);
       const n = normalizeAck(e, { errorFallback: "Código no encontrado en el pedido." });
@@ -685,13 +813,14 @@ export function useLaboratorioApi() {
   async function resetPickedForSelectedOrder() {
     const order = selectedOrder.value;
     if (!order?.id) return;
+
     loadingReset.value = true;
     try {
       const { data } = await resetOrder(order.id, actorRef());
       const updated = normalizeOrder(data?.data);
       const idx = ordersDB.value.findIndex((x) => x.id === updated.id);
       if (idx >= 0) ordersDB.value[idx] = updated;
-      selectedSheetId.value = updated.sheetId;
+      if (updated.sheetId) selectedSheetId.value = updated.sheetId;
       await Promise.all([loadItems(updated.sheetId), loadEvents()]);
       lastUpdatedAt.value = Date.now();
       notify(`Surtido reiniciado para pedido ${updated.folio}`, "is-warning");
@@ -707,6 +836,7 @@ export function useLaboratorioApi() {
   async function closeSelectedOrder() {
     const order = selectedOrder.value;
     if (!order?.id || !isOrderComplete(order)) return;
+
     loadingCloseOrder.value = true;
     try {
       const { data } = await closeOrder(order.id, actorRef());
@@ -725,8 +855,31 @@ export function useLaboratorioApi() {
     }
   }
 
-  /* ===================== Correcciones ===================== */
+  // ======= Cancelar/Eliminar orden =======
+  async function cancelOrderById(orderId) {
+    if (!orderId) return;
+    loadingCancelOrder.value = true;
+    try {
+      await cancelOrderService(orderId, actorRef());
+      const idx = ordersDB.value.findIndex((o) => o.id === orderId);
+      if (idx >= 0) ordersDB.value[idx] = { ...ordersDB.value[idx], status: "cancelado" };
+      if (selectedOrderId.value === orderId) {
+        const open = ordersDB.value.find((o) => o.status !== "cancelado");
+        selectedOrderId.value = open?.id || "";
+      }
+      await loadEvents();
+      lastUpdatedAt.value = Date.now();
+      notify("Entrada cancelada y stock devuelto.", "is-warning");
+    } catch (e) {
+      console.error("[LAB] cancelOrder", e?.response?.data || e);
+      const n = normalizeAck(e, { errorFallback: "No se pudo cancelar la entrada." });
+      notify(n?.message, "is-danger", 5000);
+    } finally {
+      loadingCancelOrder.value = false;
+    }
+  }
 
+  // ======= Correcciones =======
   watch(correctionOpen, (open) => {
     if (open) correction.orderId = correction.orderId || selectedOrderId.value || "";
   });
@@ -736,6 +889,7 @@ export function useLaboratorioApi() {
     const message = String(correction.message || "").trim();
     const codebar = String(correction.codebar || "").trim() || null;
     if (!orderId || message.length < 3) return;
+
     loadingSubmitCorrection.value = true;
     try {
       await requestCorrection({ orderId, codebar, message, actor: actorRef() });
@@ -755,18 +909,19 @@ export function useLaboratorioApi() {
     }
   }
 
-  /* ===================== Computed: filtros UI ===================== */
-
+  // ======= Computed: filtros UI =======
   const filteredSheets = computed(() => sheetsDB.value);
 
   const filteredItems = computed(() => {
     const sheet = selectedSheet.value;
     const rows = Array.isArray(itemsDB.value) ? itemsDB.value : [];
     const q = normTxt(itemQuery.value);
-    const filter = String(stockFilter.value || "withStock");
+    const filter = String(stockFilter.value || "all");
     let out = rows;
+
     if (filter === "withStock") out = out.filter((r) => Number(r.existencias || 0) > 0);
     else if (filter === "zero") out = out.filter((r) => Number(r.existencias || 0) === 0);
+
     if (q) {
       out = out.filter((r) => {
         const t = buildRowTitle(r, sheet);
@@ -775,18 +930,23 @@ export function useLaboratorioApi() {
         return normTxt(t).includes(q) || normTxt(p).includes(q) || normTxt(cb).includes(q);
       });
     }
+
     return out;
   });
 
-  watch([catalogQuery, catalogFilter], () => (catalogPage.value = 1));
+  watch([catalogQuery, catalogFilter], () => {
+    catalogPage.value = 1;
+  });
 
   const filteredCatalogRows = computed(() => {
     const sheet = selectedSheet.value;
     const rows = Array.isArray(itemsDB.value) ? itemsDB.value : [];
     const q = normTxt(catalogQuery.value);
     let out = rows;
+
     if (catalogFilter.value === "withStock") out = out.filter((r) => r.codebar && Number(r.existencias || 0) > 0);
     else if (catalogFilter.value === "allCodes") out = out.filter((r) => !!r.codebar);
+
     if (q) {
       out = out.filter((r) => {
         const title = buildRowTitle(r, sheet);
@@ -795,15 +955,17 @@ export function useLaboratorioApi() {
         return normTxt(title).includes(q) || normTxt(params).includes(q) || normTxt(cb).includes(q);
       });
     }
+
     return out.map((r, idx) => ({
       ...r,
-      _k: String(r.codebar || "") ? `${r.codebar}__${idx}` : `row_${idx}`,
+      _k: String(r.codebar || "") ? `${r.codebar}__${idx}` : `row_${idx}`
     }));
   });
 
   const catalogPages = computed(() =>
     Math.max(1, Math.ceil(filteredCatalogRows.value.length / Number(catalogPageSize.value || 18)))
   );
+
   const paginatedCatalog = computed(() => {
     const page = Math.min(Math.max(1, Number(catalogPage.value || 1)), catalogPages.value);
     const per = Number(catalogPageSize.value || 18);
@@ -818,15 +980,17 @@ export function useLaboratorioApi() {
 
   const recentSheets = computed(() =>
     (sheetsDB.value || []).slice(0, 10).map((s) => ({
-      id: s.id, nombre: s.nombre, sku: s.sku || null, material: s.material || "",
+      id: s.id,
+      nombre: s.nombre,
+      sku: s.sku || null,
+      material: s.material || "",
       tratamientos: Array.isArray(s.tratamientos) ? s.tratamientos : [],
       updatedAtShort: fmtShort(s.updatedAt || s.createdAt),
-      updatedBy: s.updatedByName || "—",
+      updatedBy: s.updatedByName || "—"
     }))
   );
 
-  /* ===================== Barcode modal ===================== */
-
+  // ======= Barcode modal =======
   const openBarcode = (code) => {
     barcodeValue.value = String(code || "");
     barcodeOpen.value = true;
@@ -854,11 +1018,11 @@ export function useLaboratorioApi() {
     }
   };
 
-  /* ===================== Export / Print ===================== */
-
+  // ======= Export / Print =======
   function exportInventoryCsv() {
     const sheet = selectedSheet.value;
     if (!sheet?.id) return;
+
     loadingExportInv.value = true;
     try {
       const rows = filteredItems.value;
@@ -866,22 +1030,47 @@ export function useLaboratorioApi() {
       const baseHeaders = [
         { key: "existencias", label: "existencias" },
         { key: "codebar", label: "codebar" },
-        { key: "sku", label: "sku" },
+        { key: "sku", label: "sku" }
       ];
+
       const tipoHeaders =
-        tipo === "BASE" ? [{ key: "base", label: "base" }]
-        : tipo === "SPH_CYL" ? [{ key: "sph", label: "sph" }, { key: "cyl", label: "cyl" }]
-        : tipo === "SPH_ADD" ? [{ key: "eye", label: "eye" }, { key: "sph", label: "sph" }, { key: "add", label: "add" }, { key: "base_izq", label: "base_izq" }, { key: "base_der", label: "base_der" }]
-        : tipo === "BASE_ADD" ? [{ key: "eye", label: "eye" }, { key: "base_izq", label: "base_izq" }, { key: "base_der", label: "base_der" }, { key: "add", label: "add" }]
-        : [];
-      const headers = [...baseHeaders, ...tipoHeaders, { key: "_title", label: "title", transform: (r) => buildRowTitle(r, sheet) }];
+        tipo === "BASE"
+          ? [{ key: "base", label: "base" }]
+          : tipo === "SPH_CYL"
+          ? [
+              { key: "sph", label: "sph" },
+              { key: "cyl", label: "cyl" }
+            ]
+          : tipo === "SPH_ADD"
+          ? [
+              { key: "eye", label: "eye" },
+              { key: "sph", label: "sph" },
+              { key: "add", label: "add" },
+              { key: "base_izq", label: "base_izq" },
+              { key: "base_der", label: "base_der" }
+            ]
+          : tipo === "BASE_ADD"
+          ? [
+              { key: "eye", label: "eye" },
+              { key: "base_izq", label: "base_izq" },
+              { key: "base_der", label: "base_der" },
+              { key: "add", label: "add" }
+            ]
+          : [];
+
+      const headers = [
+        ...baseHeaders,
+        ...tipoHeaders,
+        { key: "_title", label: "title", transform: (r) => buildRowTitle(r, sheet) }
+      ];
       const csv = toCsv(rows, headers);
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-      downloadBlob(`inventario_${String(sheet.nombre || "inventario").replace(/[^\w\-]+/g, "_")}_${sheet.tipo_matriz}.csv`, blob);
+      downloadBlob(
+        `inventario_${String(sheet.nombre || "inventario").replace(/[^\w\-]+/g, "_")}_${sheet.tipo_matriz}.csv`,
+        new Blob([csv], { type: "text/csv;charset=utf-8" })
+      );
       notify(`CSV exportado: ${rows.length} filas`, "is-success", 2500);
     } catch (e) {
-      const n = normalizeAck(e, { errorFallback: "No se pudo exportar el CSV." });
-      notify(n?.message, "is-danger");
+      notify(normalizeAck(e, { errorFallback: "No se pudo exportar el CSV." })?.message, "is-danger");
     } finally {
       loadingExportInv.value = false;
     }
@@ -890,6 +1079,7 @@ export function useLaboratorioApi() {
   function exportCatalogCsv() {
     const sheet = selectedSheet.value;
     if (!sheet?.id) return;
+
     loadingExportCat.value = true;
     try {
       const rows = filteredCatalogRows.value;
@@ -898,15 +1088,16 @@ export function useLaboratorioApi() {
         { key: "codebar", label: "codebar" },
         { key: "sku", label: "sku" },
         { key: "_title", label: "title", transform: (r) => buildRowTitle(r, sheet) },
-        { key: "_params", label: "params", transform: (r) => buildRowParams(r, sheet) },
+        { key: "_params", label: "params", transform: (r) => buildRowParams(r, sheet) }
       ];
       const csv = toCsv(rows, headers);
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-      downloadBlob(`catalogo_${String(sheet.nombre || "catalogo").replace(/[^\w\-]+/g, "_")}_${sheet.tipo_matriz}.csv`, blob);
+      downloadBlob(
+        `catalogo_${String(sheet.nombre || "catalogo").replace(/[^\w\-]+/g, "_")}_${sheet.tipo_matriz}.csv`,
+        new Blob([csv], { type: "text/csv;charset=utf-8" })
+      );
       notify(`CSV catálogo exportado: ${rows.length} filas`, "is-success", 2500);
     } catch (e) {
-      const n = normalizeAck(e, { errorFallback: "No se pudo exportar el catálogo." });
-      notify(n?.message, "is-danger");
+      notify(normalizeAck(e, { errorFallback: "No se pudo exportar el catálogo." })?.message, "is-danger");
     } finally {
       loadingExportCat.value = false;
     }
@@ -917,42 +1108,92 @@ export function useLaboratorioApi() {
     try {
       const rows = ordersDB.value || [];
       const headers = [
-        { key: "folio", label: "folio" }, { key: "cliente", label: "cliente" },
-        { key: "status", label: "status" }, { key: "sheetId", label: "sheetId" },
+        { key: "folio", label: "folio" },
+        { key: "cliente", label: "cliente" },
+        { key: "status", label: "status" },
         { key: "createdAt", label: "createdAt" },
-        { key: "_progress", label: "progress", transform: (o) => `${orderPickedCount(o)}/${orderTotalCount(o)}` },
+        { key: "_progress", label: "progreso", transform: (o) => `${orderPickedCount(o)}/${orderTotalCount(o)}` },
+        { key: "_micas", label: "micas", transform: (o) => String(o.lines?.length || 0) }
       ];
-      const csv = toCsv(rows, headers);
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-      downloadBlob(`pedidos_${new Date().toISOString().slice(0, 10)}.csv`, blob);
+      downloadBlob(
+        `pedidos_${new Date().toISOString().slice(0, 10)}.csv`,
+        new Blob([toCsv(rows, headers)], { type: "text/csv;charset=utf-8" })
+      );
       notify(`CSV pedidos exportado: ${rows.length} pedidos`, "is-success", 2500);
     } catch (e) {
-      const n = normalizeAck(e, { errorFallback: "No se pudo exportar pedidos." });
-      notify(n?.message, "is-danger");
+      notify(normalizeAck(e, { errorFallback: "No se pudo exportar pedidos." })?.message, "is-danger");
     } finally {
       loadingExportOrders.value = false;
+    }
+  }
+
+  async function exportEntriesCsv(period = "day") {
+    try {
+      const from = getPeriodStart(period);
+      const { data } = await listEvents({ type: "ORDER_CREATE", from: from.toISOString(), limit: 2000 });
+      const rows = (Array.isArray(data?.data) ? data.data : []).map(mapEntryEvent);
+      const headers = [
+        { key: "folio", label: "folio" },
+        { key: "cliente", label: "cliente" },
+        { key: "at", label: "fecha" },
+        { key: "linesTotal", label: "micas" }
+      ];
+      const periodName = { day: "hoy", week: "semana", month: "mes", year: "año" }[period] || period;
+      downloadBlob(
+        `entradas_${periodName}_${new Date().toISOString().slice(0, 10)}.csv`,
+        new Blob([toCsv(rows, headers)], { type: "text/csv;charset=utf-8" })
+      );
+      notify(`Entradas (${periodName}): ${rows.length} registros exportados`, "is-success", 3000);
+    } catch (e) {
+      notify(normalizeAck(e, { errorFallback: "No se pudo exportar entradas." })?.message, "is-danger");
+    }
+  }
+
+  async function exportExitsCsv(period = "day") {
+    try {
+      const from = getPeriodStart(period);
+      const { data } = await listEvents({ type: "EXIT_SCAN", from: from.toISOString(), limit: 2000 });
+      const rows = (Array.isArray(data?.data) ? data.data : []).map(mapExitEvent);
+      const headers = [
+        { key: "folio", label: "folio" },
+        { key: "codebar", label: "codebar" },
+        { key: "title", label: "producto" },
+        { key: "micaType", label: "tipo_mica" },
+        { key: "at", label: "fecha" }
+      ];
+      const periodName = { day: "hoy", week: "semana", month: "mes", year: "año" }[period] || period;
+      downloadBlob(
+        `salidas_${periodName}_${new Date().toISOString().slice(0, 10)}.csv`,
+        new Blob([toCsv(rows, headers)], { type: "text/csv;charset=utf-8" })
+      );
+      notify(`Salidas (${periodName}): ${rows.length} registros exportados`, "is-success", 3000);
+    } catch (e) {
+      notify(normalizeAck(e, { errorFallback: "No se pudo exportar salidas." })?.message, "is-danger");
     }
   }
 
   function exportOrderCsv(order) {
     const o = order || selectedOrder.value;
     if (!o?.id) return;
+
     try {
       const sheet = sheetById(o.sheetId);
       const headers = [
-        { key: "codebar", label: "codebar" }, { key: "qty", label: "qty" },
+        { key: "codebar", label: "codebar" },
+        { key: "qty", label: "qty" },
         { key: "picked", label: "picked" },
-        { key: "_human", label: "line", transform: (l) => lineHuman(l, sheet) },
+        { key: "_human", label: "mica", transform: (l) => lineHuman(l, sheet) },
+        { key: "micaType", label: "tipo_mica" },
         { key: "eye", label: "eye" },
-        { key: "_params", label: "params", transform: (l) => JSON.stringify(l?.params || {}) },
+        { key: "_params", label: "params", transform: (l) => JSON.stringify(l?.params || {}) }
       ];
-      const csv = toCsv(o.lines || [], headers);
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-      downloadBlob(`pedido_${String(o.folio || o.id)}.csv`, blob);
+      downloadBlob(
+        `pedido_${String(o.folio || o.id)}.csv`,
+        new Blob([toCsv(o.lines || [], headers)], { type: "text/csv;charset=utf-8" })
+      );
       notify(`CSV pedido ${o.folio} exportado`, "is-success", 2500);
     } catch (e) {
-      const n = normalizeAck(e, { errorFallback: "No se pudo exportar el pedido." });
-      notify(n?.message, "is-danger");
+      notify(normalizeAck(e, { errorFallback: "No se pudo exportar el pedido." })?.message, "is-danger");
     }
   }
 
@@ -962,65 +1203,53 @@ export function useLaboratorioApi() {
     const svg = isEan13(cb) ? ean13SvgString(cb, 3, 120) : "";
     openPrintWindow({
       title: `Barcode ${cb}`,
-      bodyHtml: `<h2>Código de barras</h2><div class="box"><div class="mono" style="font-size:16px;margin-bottom:10px;">${cb}</div>${svg || `<div class="muted">Código inválido para EAN-13</div>`}</div>`,
+      bodyHtml: `<h2>Código de barras</h2><div class="box"><div class="mono" style="font-size:16px;margin-bottom:10px;">${cb}</div>${
+        svg || `<div class="muted">Código inválido para EAN-13</div>`
+      }</div>`
     });
   }
 
   function printCatalogPage() {
     const sheet = selectedSheet.value;
     if (!sheet?.id) return;
+
     const rows = paginatedCatalog.value || [];
-    const bodyHtml = `
-      <h2>Catálogo (página ${catalogPage.value}/${catalogPages.value}) <span class="badge">${sheet.tipo_matriz}</span></h2>
+    const bodyHtml = `<h2>Catálogo (página ${catalogPage.value}/${catalogPages.value}) <span class="badge">${sheet.tipo_matriz}</span></h2>
       <div class="muted">${sheetTitle(sheet)} · ${sheet.material || ""} · ${prettyTrat(sheet.tratamientos)}</div>
-      <div class="box">
-        <table>
-          <thead><tr><th>existencias</th><th>producto</th><th>codebar</th><th>barcode</th></tr></thead>
-          <tbody>${rows.map((r) => {
-            const cb = String(r.codebar || "");
-            const svg = cb && isEan13(cb) ? ean13SvgString(cb, 2, 80) : "";
-            return `<tr>
-              <td class="right">${Number(r.existencias || 0)}</td>
-              <td>${buildRowTitle(r, sheet)}<div class="muted">${buildRowParams(r, sheet)}</div></td>
-              <td class="mono">${cb || "—"}</td>
-              <td>${svg || `<span class="muted">—</span>`}</td>
-            </tr>`;
-          }).join("")}</tbody>
-        </table>
-      </div>`;
+      <div class="box"><table><thead><tr><th>existencias</th><th>producto</th><th>codebar</th><th>barcode</th></tr></thead>
+      <tbody>${rows
+        .map((r) => {
+          const cb = String(r.codebar || "");
+          const svg = cb && isEan13(cb) ? ean13SvgString(cb, 2, 80) : "";
+          return `<tr><td class="right">${Number(r.existencias || 0)}</td><td>${buildRowTitle(r, sheet)}<div class="muted">${buildRowParams(r, sheet)}</div></td><td class="mono">${cb || "—"}</td><td>${svg || `<span class="muted">—</span>`}</td></tr>`;
+        })
+        .join("")}</tbody></table></div>`;
+
     openPrintWindow({ title: `Catálogo ${sheetTitle(sheet)}`, bodyHtml });
   }
 
   function printOrder(order) {
     const o = order || selectedOrder.value;
     if (!o?.id) return;
+
     const sheet = sheetById(o.sheetId);
-    const bodyHtml = `
-      <h2>Pedido <span class="mono">${String(o.folio || o.id)}</span> <span class="badge">${statusHuman(o.status)}</span></h2>
+    const bodyHtml = `<h2>Pedido <span class="mono">${String(o.folio || o.id)}</span> <span class="badge">${statusHuman(o.status)}</span></h2>
       <div class="muted">Cliente: <b>${String(o.cliente || "—")}</b> · Planilla: <b>${sheetTitle(sheet)}</b> · Creado: ${o.createdAtShort || fmtShort(o.createdAt)}</div>
       ${o.note ? `<div class="box"><b>Nota:</b> ${sanitizeUserText(o.note)}</div>` : ""}
-      <div class="box">
-        <div class="muted">Progreso: <b>${orderPickedCount(o)}/${orderTotalCount(o)}</b> (${orderProgressPct(o)}%)</div>
-        <table>
-          <thead><tr><th>Línea</th><th class="right">qty</th><th class="right">picked</th><th>codebar</th><th>barcode</th></tr></thead>
-          <tbody>${(o.lines || []).map((l) => {
-            const cb = String(l.codebar || "");
-            const svg = cb && isEan13(cb) ? ean13SvgString(cb, 2, 70) : "";
-            return `<tr>
-              <td>${lineHuman(l, sheet)}<div class="muted">${l.eye ? `eye=${l.eye} · ` : ""}${cb}</div></td>
-              <td class="right">${Number(l.qty || 0)}</td>
-              <td class="right">${Number(l.picked || 0)}</td>
-              <td class="mono">${cb || "—"}</td>
-              <td>${svg || `<span class="muted">—</span>`}</td>
-            </tr>`;
-          }).join("")}</tbody>
-        </table>
-      </div>`;
+      <div class="box"><div class="muted">Progreso: <b>${orderPickedCount(o)}/${orderTotalCount(o)}</b> (${orderProgressPct(o)}%)</div>
+      <table><thead><tr><th>Mica</th><th>Tipo</th><th class="right">qty</th><th class="right">picked</th><th>codebar</th><th>barcode</th></tr></thead>
+      <tbody>${(o.lines || [])
+        .map((l) => {
+          const cb = String(l.codebar || "");
+          const svg = cb && isEan13(cb) ? ean13SvgString(cb, 2, 70) : "";
+          return `<tr><td>${lineHuman(l, sheet)}</td><td>${l.micaType || "—"}</td><td class="right">${Number(l.qty || 0)}</td><td class="right">${Number(l.picked || 0)}</td><td class="mono">${cb || "—"}</td><td>${svg || `<span class="muted">—</span>`}</td></tr>`;
+        })
+        .join("")}</tbody></table></div>`;
+
     openPrintWindow({ title: `Pedido ${String(o.folio || o.id)}`, bodyHtml });
   }
 
-  /* ===================== Watchers ===================== */
-
+  // ======= Watchers =======
   let tOrders = null;
   watch([orderStatusFilter, orderQuery], () => {
     if (tOrders) clearTimeout(tOrders);
@@ -1028,13 +1257,13 @@ export function useLaboratorioApi() {
   });
 
   let tItems = null;
-  watch([itemQuery, stockFilter], () => {
+  watch([itemQuery], () => {
     if (tItems) clearTimeout(tItems);
     tItems = setTimeout(() => loadItems(), 250);
   });
 
   watch([includeDeleted, sheetQuery], () => loadSheets());
-  watch([selectedSheetId, itemsLimit], () => loadItems());
+  watch([selectedSheetId], () => loadItems());
 
   async function refreshAll() {
     loadingRefreshAll.value = true;
@@ -1042,8 +1271,7 @@ export function useLaboratorioApi() {
       await Promise.all([loadSheets(), loadOrders(), loadItems(), loadEvents()]);
       notify("Datos actualizados.", "is-success", 2000);
     } catch (e) {
-      const n = normalizeAck(e, { errorFallback: "No se pudo recargar los datos." });
-      notify(n?.message, "is-danger");
+      notify(normalizeAck(e, { errorFallback: "No se pudo recargar los datos." })?.message, "is-danger");
     } finally {
       loadingRefreshAll.value = false;
     }
@@ -1059,55 +1287,120 @@ export function useLaboratorioApi() {
   });
 
   return {
-    // Notificaciones propias
+    // Notificaciones
     notifications,
     dismissNotification,
 
     // UI state
-    activeMainTab, mode, includeDeleted, sheetQuery,
-    selectedSheetId, itemsLimit, itemQuery, stockFilter,
-    catalogQuery, catalogFilter, catalogPage, catalogPageSize, catalogPages, paginatedCatalog,
-    orderStatusFilter, orderQuery, selectedOrderId, scanCode,
+    activeMainTab,
+    mode,
+    includeDeleted,
+    sheetQuery,
+    selectedSheetId,
+    itemQuery,
+    stockFilter,
+    catalogQuery,
+    catalogFilter,
+    catalogPage,
+    catalogPageSize,
+    catalogPages,
+    paginatedCatalog,
+    orderStatusFilter,
+    orderQuery,
+    selectedOrderId,
+    scanCode,
 
     // modals
-    barcodeOpen, barcodeValue, correctionOpen, correction,
+    barcodeOpen,
+    barcodeValue,
+    correctionOpen,
+    correction,
 
     // db data
-    sheetsDB, itemsDB, ordersDB,
-    entryEvents, exitEvents, correctionEvents,
+    sheetsDB,
+    itemsDB,
+    ordersDB,
+    entryEvents,
+    exitEvents,
+    correctionEvents,
 
     // loaders globales
-    loadingSheets, loadingItems, loadingOrders, loadingEvents,
+    loadingSheets,
+    loadingItems,
+    loadingOrders,
+    loadingEvents,
 
     // loaders de acciones
-    loadingCreateOrder, loadingCloseOrder, loadingScan,
-    loadingReset, loadingSubmitCorrection, loadingRefreshAll,
-    loadingExportInv, loadingExportCat, loadingExportOrders,
+    loadingCreateOrder,
+    loadingCloseOrder,
+    loadingScan,
+    loadingReset,
+    loadingSubmitCorrection,
+    loadingRefreshAll,
+    loadingExportInv,
+    loadingExportCat,
+    loadingExportOrders,
+    loadingCancelOrder,
 
     // computed
     lastUpdatedHuman,
-    filteredSheets, selectedSheet, selectedSheetLabel,
-    filteredItems, filteredCatalogRows,
-    selectedOrder, recentSheets, totalCodes, canCreateOrder,
+    filteredSheets,
+    selectedSheet,
+    selectedSheetLabel,
+    filteredItems,
+    filteredCatalogRows,
+    selectedOrder,
+    recentSheets,
+    totalCodes,
+    canCreateOrder,
+    todayEntries,
 
     // helpers
-    sheetTitle, prettyTrat, sheetById, sheetNameById,
-    buildRowTitle, buildRowParams,
-    isEan13, statusHuman, statusTagClass,
-    orderTotalCount, orderPickedCount, orderProgressPct,
-    isOrderComplete, lineHuman,
+    sheetTitle,
+    prettyTrat,
+    sheetById,
+    sheetNameById,
+    buildRowTitle,
+    buildRowParams,
+    isEan13,
+    statusHuman,
+    statusTagClass,
+    orderTotalCount,
+    orderPickedCount,
+    orderProgressPct,
+    isOrderComplete,
+    lineHuman,
+    getMicaTypeName,
 
     // actions
-    refreshAll, refreshItems,
-    openBarcode, copyCodebar,
-    draftCliente, draftNote, draftLines,
-    addToDraft, clearDraft, removeDraftLine, incDraftQty, decDraftQty,
+    refreshAll,
+    refreshItems,
+    openBarcode,
+    copyCodebar,
+    draftCliente,
+    draftNote,
+    draftLines,
+    addToDraft,
+    clearDraft,
+    removeDraftLine,
+    incDraftQty,
+    decDraftQty,
     createOrderFromDraft,
-    scanAndDispatch, resetPickedForSelectedOrder, closeSelectedOrder,
+    scanAndDispatch,
+    resetPickedForSelectedOrder,
+    closeSelectedOrder,
+    cancelOrderById,
     submitCorrection,
 
     // export/print
-    exportInventoryCsv, exportCatalogCsv, exportOrdersCsv, exportOrderCsv,
-    printBarcode, printCatalogPage, printOrder,
+    exportInventoryCsv,
+    exportCatalogCsv,
+    exportOrdersCsv,
+    exportOrderCsv,
+    exportEntriesCsv,
+    exportExitsCsv,
+    printBarcode,
+    printCatalogPage,
+    printOrder
   };
 }

@@ -114,6 +114,9 @@ app.use("/api/inventory", inventoryRoutes);
 const laboratoryRoutes = require("./routes/laboratory.routes");
 app.use("/api/laboratory", laboratoryRoutes);
 
+const searchRoutes = require("./routes/Search.routes");
+app.use("/api/search", searchRoutes);
+
 // si tu API usa prefijo /api:
 // app.use("/api/laboratory", laboratoryRoutes);
 

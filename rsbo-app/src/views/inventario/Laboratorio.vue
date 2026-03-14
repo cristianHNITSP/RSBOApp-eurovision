@@ -3,13 +3,7 @@
     <LabHero />
 
     <div class="glass">
-      <b-tabs
-        v-model="lab.activeMainTab.value"
-        type="is-toggle"
-        class="main-tabs"
-        expanded
-        :animated="false"
-      >
+      <b-tabs v-model="lab.activeMainTab.value" type="is-toggle" class="main-tabs" expanded :animated="false">
         <b-tab-item value="pedidos" label="Pedidos" icon="clipboard-list">
           <PedidosTab />
         </b-tab-item>
@@ -21,6 +15,11 @@
         <b-tab-item value="catalogo" label="Catálogo" icon="qrcode">
           <CatalogoTab />
         </b-tab-item>
+
+        <!-- Después del b-tab-item de catálogo: -->
+        <b-tab-item value="correcciones" label="Correcciones" icon="tools">
+          <CorreccionesTab />
+        </b-tab-item>
       </b-tabs>
     </div>
 
@@ -28,10 +27,7 @@
     <CorrectionModal />
 
     <!-- ✅ Overlay de notificaciones (estilo dirty-float) -->
-    <LabToast
-      :notifications="lab.notifications.value"
-      @dismiss="lab.dismissNotification"
-    />
+    <LabToast :notifications="lab.notifications.value" @dismiss="lab.dismissNotification" />
   </section>
 </template>
 
@@ -39,13 +35,14 @@
 import { provide } from "vue";
 import { useLaboratorioApi } from "../../composables/useLaboratorioApi";
 
-import LabHero       from "../../components/laboratorio/LabHero.vue";
-import PedidosTab    from "../../components/laboratorio/PedidosTab.vue";
-import BandejaTab    from "../../components/laboratorio/BandejaTab.vue";
-import CatalogoTab   from "../../components/laboratorio/CatalogoTab.vue";
-import LabToast      from "../../components/laboratorio/LabToast.vue";
+import LabHero from "../../components/laboratorio/LabHero.vue";
+import PedidosTab from "../../components/laboratorio/PedidosTab.vue";
+import BandejaTab from "../../components/laboratorio/BandejaTab.vue";
+import CatalogoTab from "../../components/laboratorio/CatalogoTab.vue";
+import CorreccionesTab from "../../components/laboratorio/Correccionestab.vue";
+import LabToast from "../../components/laboratorio/LabToast.vue";
 
-import BarcodeModal    from "../../components/laboratorio/modals/BarcodeModal.vue";
+import BarcodeModal from "../../components/laboratorio/modals/BarcodeModal.vue";
 import CorrectionModal from "../../components/laboratorio/modals/CorrectionModal.vue";
 
 const lab = useLaboratorioApi();
@@ -115,12 +112,6 @@ provide("lab", lab);
   box-shadow: 0 0 0 4px rgba(144, 111, 225, 0.12);
 }
 
-.lab-subtitle {
-  margin: 0.35rem 0 0;
-  color: rgba(107, 114, 128, 0.95);
-  font-weight: 700;
-  font-size: 0.95rem;
-}
 
 .lab-chips {
   margin-top: 0.75rem;
@@ -308,7 +299,9 @@ provide("lab", lab);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
-.big-code { font-weight: 1000; }
+.big-code {
+  font-weight: 1000;
+}
 
 /* Order lines */
 .order-lines {
@@ -418,11 +411,15 @@ provide("lab", lab);
 }
 
 @media (max-width: 1024px) {
-  .qr-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .qr-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 650px) {
-  .qr-grid { grid-template-columns: 1fr; }
+  .qr-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .qr-card {

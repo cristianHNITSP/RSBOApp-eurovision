@@ -1,26 +1,25 @@
-// routes/laboratory.routes.js
 const express = require("express");
 const router = express.Router();
 const { body, param, query, validationResult } = require("express-validator");
 const mongoose = require("mongoose");
 
-// modelos inventario (existentes)
 const InventorySheet = require("../models/InventorySheet");
 const InventoryChangeLog = require("../models/InventoryChangeLog");
 const MatrixBase = require("../models/matrix/MatrixBase");
 const MatrixSphCyl = require("../models/matrix/MatrixSphCyl");
 const MatrixBifocal = require("../models/matrix/MatrixBifocal");
 const MatrixProgresivo = require("../models/matrix/MatrixProgresivo");
-
-// modelos laboratorio (nuevos)
 const LaboratoryOrder = require("../models/laboratory/LaboratoryOrder");
 const LaboratoryEvent = require("../models/laboratory/LaboratoryEvent");
 
-// utils inventario (ya existen en tu proyecto)
 const { actorFromBody } = require("../inventory/utils/normalize");
 const { denormNum, parseKey } = require("../inventory/utils/keys");
 
 const DEBUG_LAB = String(process.env.DEBUG_LAB || "") === "1";
+
+// ============================================================================
+// HELPERS
+// ============================================================================
 
 const handleValidation = (req, res, next) => {
   const errors = validationResult(req);
@@ -52,7 +51,7 @@ const safeMapEntries = (doc) => {
 };
 
 function escapeRx(s) {
-  return String(s || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return String(s || "").replace(/[.*+?^{}()|[\]\\]/g, "\\$&");
 }
 
 function lineTitle(tipo, params, eye, codebar) {
@@ -64,10 +63,16 @@ function lineTitle(tipo, params, eye, codebar) {
   return String(codebar || "");
 }
 
-/**
- * Resolver codebar dentro de la matriz de una planilla.
- * Regresa ubicación exacta: { matrixKey, eye, params, existencias, sku }
- */
+function micaTypeName(tipo) {
+  const map = {
+    BASE: "Monofocal (Base)",
+    SPH_CYL: "Monofocal",
+    SPH_ADD: "Bifocal",
+    BASE_ADD: "Progresivo"
+  };
+  return map[tipo] || tipo || "—";
+}
+
 async function resolveCodebarLocation(sheet, codebar) {
   const Model = getMatrixModel(sheet.tipo_matriz);
   if (!Model) return null;
@@ -78,7 +83,6 @@ async function resolveCodebarLocation(sheet, codebar) {
   const cb = String(codebar || "").trim();
   if (!cb) return null;
 
-  // BASE / SPH_CYL: cell.codebar directo
   if (sheet.tipo_matriz === "BASE" || sheet.tipo_matriz === "SPH_CYL") {
     for (const [k, cell] of safeMapEntries(doc)) {
       if (!cell) continue;
@@ -90,7 +94,6 @@ async function resolveCodebarLocation(sheet, codebar) {
           params.sph = sph;
           params.cyl = cyl;
         }
-
         return {
           matrixKey: String(k),
           eye: null,
@@ -103,18 +106,20 @@ async function resolveCodebarLocation(sheet, codebar) {
     return null;
   }
 
-  // SPH_ADD / BASE_ADD: codebar vive en cell.OD / cell.OI
+  // SPH_ADD o BASE_ADD
   for (const [k, cell] of safeMapEntries(doc)) {
     if (!cell) continue;
-
     const odCb = String(cell?.OD?.codebar || "");
     const oiCb = String(cell?.OI?.codebar || "");
+    let eye = null, node = null;
 
-    let eye = null;
-    let node = null;
-
-    if (odCb === cb) { eye = "OD"; node = cell.OD; }
-    else if (oiCb === cb) { eye = "OI"; node = cell.OI; }
+    if (odCb === cb) {
+      eye = "OD";
+      node = cell.OD;
+    } else if (oiCb === cb) {
+      eye = "OI";
+      node = cell.OI;
+    }
 
     if (!eye || !node) continue;
 
@@ -160,8 +165,7 @@ async function applyDeltaToInventory(sheet, loc, qtySigned, actor, reasonType) {
   const q = Number(qtySigned || 0);
   if (!Number.isFinite(q) || q === 0) throw new Error("qty inválido");
 
-  let before = 0;
-  let after = 0;
+  let before = 0, after = 0;
 
   if (sheet.tipo_matriz === "BASE" || sheet.tipo_matriz === "SPH_CYL") {
     before = Number(cell.existencias || 0);
@@ -173,12 +177,10 @@ async function applyDeltaToInventory(sheet, loc, qtySigned, actor, reasonType) {
   } else {
     const eye = loc.eye;
     if (eye !== "OD" && eye !== "OI") throw new Error("eye requerido (OD/OI)");
-
     cell[eye] = cell[eye] || {};
     before = Number(cell[eye].existencias || 0);
     after = before + q;
     if (after < 0) return { ok: false, reason: "NO_STOCK", before, after };
-
     cell[eye].existencias = after;
     cell.updatedBy = actor;
     doc.cells.set(key, cell);
@@ -187,7 +189,6 @@ async function applyDeltaToInventory(sheet, loc, qtySigned, actor, reasonType) {
   doc.markModified("cells");
   await doc.save();
 
-  // auditoría inventario
   try {
     await InventoryChangeLog.create({
       sheet: sheet._id,
@@ -218,25 +219,26 @@ async function applyEntryToInventory(sheet, loc, qty, actor) {
   return applyDeltaToInventory(sheet, loc, Math.abs(Number(qty || 0)), actor, "LAB_ENTRY");
 }
 
-/* ===================== EVENTS ===================== */
+// ============================================================================
+// ROUTES: EVENTS
+// ============================================================================
 
-// GET /laboratory/events?type=EXIT_SCAN&limit=30
 router.get(
   "/events",
   query("type").optional().isString(),
   query("orderId").optional().isMongoId(),
   query("sheetId").optional().isMongoId(),
   query("q").optional().isString(),
-  query("limit").optional().isInt({ min: 1, max: 200 }),
+  query("limit").optional().isInt({ min: 1, max: 2000 }),
+  query("from").optional().isISO8601(),
+  query("to").optional().isISO8601(),
   handleValidation,
   async (req, res) => {
     try {
       const typeRaw = String(req.query.type || "").trim();
-      const types = typeRaw
-        ? typeRaw.split(",").map((x) => x.trim()).filter(Boolean)
-        : [];
+      const types = typeRaw ? typeRaw.split(",").map((x) => x.trim()).filter(Boolean) : [];
+      const allowed = new Set(["ORDER_CREATE", "EXIT_SCAN", "ORDER_CLOSE", "ORDER_RESET", "CORRECTION_REQUEST", "ORDER_CANCEL"]);
 
-      const allowed = new Set(["ORDER_CREATE", "EXIT_SCAN", "ORDER_CLOSE", "ORDER_RESET", "CORRECTION_REQUEST"]);
       for (const t of types) {
         if (!allowed.has(t)) return res.status(400).json({ ok: false, message: `type inválido: ${t}` });
       }
@@ -245,6 +247,12 @@ router.get(
       if (types.length) filter.type = { $in: types };
       if (req.query.orderId) filter.order = new mongoose.Types.ObjectId(req.query.orderId);
       if (req.query.sheetId) filter.sheet = new mongoose.Types.ObjectId(req.query.sheetId);
+
+      if (req.query.from || req.query.to) {
+        filter.createdAt = {};
+        if (req.query.from) filter.createdAt.$gte = new Date(req.query.from);
+        if (req.query.to) filter.createdAt.$lte = new Date(req.query.to);
+      }
 
       const q = String(req.query.q || "").trim();
       if (q) {
@@ -259,12 +267,8 @@ router.get(
         ];
       }
 
-      const limit = Number(req.query.limit || 40);
-
-      const rows = await LaboratoryEvent.find(filter)
-        .sort({ createdAt: -1 })
-        .limit(limit)
-        .lean();
+      const limit = Number(req.query.limit || 200);
+      const rows = await LaboratoryEvent.find(filter).sort({ createdAt: -1 }).limit(limit).lean();
 
       return res.json({ ok: true, data: rows });
     } catch (e) {
@@ -274,9 +278,10 @@ router.get(
   }
 );
 
-/* ===================== ORDERS ===================== */
+// ============================================================================
+// ROUTES: ORDERS
+// ============================================================================
 
-// GET /laboratory/orders?status=pendiente&q=...
 router.get(
   "/orders",
   query("status").optional().isIn(["pendiente", "parcial", "cerrado", "cancelado", "all"]),
@@ -291,7 +296,6 @@ router.get(
 
       const filter = {};
       if (status !== "all") filter.status = status;
-
       if (q) {
         const rx = new RegExp(escapeRx(q), "i");
         filter.$or = [{ folio: rx }, { cliente: rx }, { note: rx }];
@@ -306,42 +310,66 @@ router.get(
   }
 );
 
-// POST /laboratory/orders
+// POST /laboratory/orders — crear pedido (soporta micas de múltiples planillas)
 router.post(
   "/orders",
-  body("sheetId").isMongoId(),
+  body("sheetId").optional({ nullable: true }).isMongoId(),
   body("cliente").isString().trim().notEmpty(),
   body("note").optional({ nullable: true }).isString(),
   body("lines").isArray({ min: 1 }),
   body("lines.*.codebar").isString().trim().notEmpty(),
   body("lines.*.qty").isInt({ min: 1, max: 9999 }),
+  body("lines.*.sheetId").optional({ nullable: true }).isMongoId(),
   body("actor").optional().isObject(),
   handleValidation,
   async (req, res) => {
     const actor = actorFromBody(req) || { userId: null, name: "system" };
 
     try {
-      const sheet = await InventorySheet.findById(req.body.sheetId);
-      if (!sheet) return res.status(404).json({ ok: false, message: "Sheet no existe" });
-      if (sheet.isDeleted) return res.status(410).json({ ok: false, message: "Sheet eliminada" });
-
+      const fallbackSheetId = req.body.sheetId || null;
       const folio = genFolio();
       const cliente = String(req.body.cliente).trim();
       const note = String(req.body.note || "").trim();
 
-      // merge por codebar
+      // Deduplicar por (sheetId + codebar)
       const merged = new Map();
       for (const l of req.body.lines || []) {
         const cb = String(l.codebar || "").trim();
         const qty = Number(l.qty || 0);
+        const lineSheetId = String(l.sheetId || fallbackSheetId || "");
+
         if (!cb || !Number.isFinite(qty) || qty <= 0) continue;
-        merged.set(cb, (merged.get(cb) || 0) + qty);
+        if (!lineSheetId) continue;
+
+        const key = `${lineSheetId}__${cb}`;
+        if (!merged.has(key)) merged.set(key, { codebar: cb, qty, sheetId: lineSheetId });
+        else merged.get(key).qty += qty;
       }
+
+      if (!merged.size) {
+        return res.status(400).json({ ok: false, message: "No hay líneas válidas para crear el pedido" });
+      }
+
+      // Cargar todas las planillas necesarias
+      const uniqueSheetIds = [...new Set([...merged.values()].map((v) => v.sheetId))];
+      const sheetDocs = await InventorySheet.find({ _id: { $in: uniqueSheetIds } });
+      const sheetsById = Object.fromEntries(sheetDocs.map((s) => [String(s._id), s]));
 
       const errors = [];
       const lines = [];
+      let primarySheetDoc = null;
 
-      for (const [codebar, qty] of merged.entries()) {
+      for (const [, { codebar, qty, sheetId }] of merged.entries()) {
+        const sheet = sheetsById[sheetId];
+        if (!sheet) {
+          errors.push({ codebar, error: "SHEET_NO_ENCONTRADA", sheetId });
+          continue;
+        }
+        if (sheet.isDeleted) {
+          errors.push({ codebar, error: "SHEET_ELIMINADA", sheetId });
+          continue;
+        }
+
         const loc = await resolveCodebarLocation(sheet, codebar);
         if (!loc) {
           errors.push({ codebar, error: "NO_ENCONTRADO_EN_MATRIZ" });
@@ -351,6 +379,8 @@ router.post(
           errors.push({ codebar, error: "SIN_STOCK", stock: loc.existencias, qty });
           continue;
         }
+
+        if (!primarySheetDoc) primarySheetDoc = sheet;
 
         lines.push({
           lineId: new mongoose.Types.ObjectId().toString(),
@@ -362,7 +392,9 @@ router.post(
           eye: loc.eye || null,
           params: loc.params || {},
           qty,
-          picked: 0
+          picked: 0,
+          micaType: micaTypeName(sheet.tipo_matriz),
+          sheetNombre: sheet.nombre || sheet.name || ""
         });
       }
 
@@ -372,7 +404,7 @@ router.post(
 
       const order = await LaboratoryOrder.create({
         folio,
-        sheet: sheet._id,
+        sheet: primarySheetDoc?._id || null,
         cliente,
         note,
         status: "pendiente",
@@ -381,15 +413,26 @@ router.post(
         updatedBy: actor
       });
 
-      const event = await LaboratoryEvent.create({
+      const micaSummary = lines.reduce((acc, l) => {
+        acc[l.micaType] = (acc[l.micaType] || 0) + l.qty;
+        return acc;
+      }, {});
+
+      await LaboratoryEvent.create({
         order: order._id,
-        sheet: sheet._id,
+        sheet: primarySheetDoc?._id || null,
         type: "ORDER_CREATE",
-        details: { folio, cliente, sheetId: String(sheet._id), linesTotal: lines.length },
+        details: {
+          folio,
+          cliente,
+          sheetId: primarySheetDoc ? String(primarySheetDoc._id) : null,
+          linesTotal: lines.length,
+          micaSummary
+        },
         actor
       });
 
-      return res.status(201).json({ ok: true, data: order, event });
+      return res.status(201).json({ ok: true, data: order });
     } catch (e) {
       console.error("POST /laboratory/orders error:", e);
       res.status(500).json({ ok: false, message: "Error al crear pedido" });
@@ -397,7 +440,6 @@ router.post(
   }
 );
 
-// GET /laboratory/orders/:orderId
 router.get(
   "/orders/:orderId",
   param("orderId").isMongoId(),
@@ -414,7 +456,60 @@ router.get(
   }
 );
 
-// POST /laboratory/orders/:orderId/scan  (salida por escaneo)
+// POST /laboratory/orders/:orderId/cancel
+router.post(
+  "/orders/:orderId/cancel",
+  param("orderId").isMongoId(),
+  body("actor").optional().isObject(),
+  handleValidation,
+  async (req, res) => {
+    const actor = actorFromBody(req) || { userId: null, name: "system" };
+
+    try {
+      const order = await LaboratoryOrder.findById(req.params.orderId);
+      if (!order) return res.status(404).json({ ok: false, message: "Pedido no existe" });
+      if (order.status === "cancelado") {
+        return res.status(409).json({ ok: false, message: "El pedido ya está cancelado" });
+      }
+
+      // Rollback: devolver stock
+      for (const line of order.lines || []) {
+        const picked = Number(line.picked || 0);
+        if (picked <= 0) continue;
+
+        try {
+          const lineSheet = await InventorySheet.findById(line.sheet);
+          if (lineSheet && !lineSheet.isDeleted) {
+            const loc = { matrixKey: line.matrixKey, eye: line.eye || null, codebar: line.codebar };
+            await applyEntryToInventory(lineSheet, loc, picked, actor);
+          }
+        } catch (rollbackErr) {
+          if (DEBUG_LAB) console.warn("[LAB] cancel rollback warning:", rollbackErr?.message);
+        }
+      }
+
+      order.status = "cancelado";
+      order.updatedBy = actor;
+      order.updatedAt = new Date();
+      await order.save();
+
+      await LaboratoryEvent.create({
+        order: order._id,
+        sheet: order.sheet,
+        type: "ORDER_CANCEL",
+        details: { folio: order.folio, sheetId: order.sheet ? String(order.sheet) : null },
+        actor
+      });
+
+      return res.json({ ok: true, data: order });
+    } catch (e) {
+      console.error("POST /laboratory/orders/:id/cancel error:", e);
+      res.status(500).json({ ok: false, message: "Error al cancelar pedido" });
+    }
+  }
+);
+
+// POST /laboratory/orders/:orderId/scan
 router.post(
   "/orders/:orderId/scan",
   param("orderId").isMongoId(),
@@ -429,11 +524,12 @@ router.post(
       const order = await LaboratoryOrder.findById(req.params.orderId);
       if (!order) return res.status(404).json({ ok: false, message: "Pedido no existe" });
       if (order.status === "cerrado") return res.status(409).json({ ok: false, message: "Pedido ya está cerrado" });
+      if (order.status === "cancelado") return res.status(409).json({ ok: false, message: "Pedido cancelado" });
 
       const codebar = String(req.body.codebar).trim();
       const qtyReq = Number(req.body.qty || 1);
-
       const line = (order.lines || []).find((l) => String(l.codebar) === codebar);
+
       if (!line) return res.status(404).json({ ok: false, message: "Código no pertenece a este pedido" });
 
       const remaining = Number(line.qty || 0) - Number(line.picked || 0);
@@ -441,15 +537,20 @@ router.post(
 
       const qty = Math.min(remaining, qtyReq);
 
-      const sheet = await InventorySheet.findById(order.sheet);
-      if (!sheet) return res.status(404).json({ ok: false, message: "Sheet no existe (pedido corrupto)" });
+      const sheet = await InventorySheet.findById(line.sheet);
+      if (!sheet) return res.status(404).json({ ok: false, message: "Sheet de esta mica no encontrada" });
       if (sheet.isDeleted) return res.status(410).json({ ok: false, message: "Sheet eliminada" });
 
       const loc = { matrixKey: line.matrixKey, eye: line.eye || null, codebar: line.codebar };
-
       const inv = await applyExitToInventory(sheet, loc, qty, actor);
+
       if (!inv.ok && inv.reason === "NO_STOCK") {
-        return res.status(409).json({ ok: false, message: "No hay stock suficiente", before: inv.before, after: inv.after });
+        return res.status(409).json({
+          ok: false,
+          message: "No hay stock suficiente",
+          before: inv.before,
+          after: inv.after
+        });
       }
 
       line.picked = Number(line.picked || 0) + qty;
@@ -471,7 +572,7 @@ router.post(
 
       const title = lineTitle(sheet.tipo_matriz, line.params, line.eye, codebar);
 
-      const event = await LaboratoryEvent.create({
+      await LaboratoryEvent.create({
         order: order._id,
         sheet: sheet._id,
         type: "EXIT_SCAN",
@@ -484,12 +585,17 @@ router.post(
           after: inv.after,
           lineId: line.lineId,
           title,
-          status: order.status
+          status: order.status,
+          micaType: micaTypeName(sheet.tipo_matriz)
         },
         actor
       });
 
-      return res.json({ ok: true, data: order, event, scan: { codebar, qty, before: inv.before, after: inv.after } });
+      return res.json({
+        ok: true,
+        data: order,
+        scan: { codebar, qty, before: inv.before, after: inv.after }
+      });
     } catch (e) {
       console.error("POST /laboratory/orders/:id/scan error:", e);
       res.status(500).json({ ok: false, message: "Error al procesar escaneo" });
@@ -497,7 +603,7 @@ router.post(
   }
 );
 
-// POST /laboratory/orders/:orderId/reset  ✅ rollback real (regresa stock y pone picked=0)
+// POST /laboratory/orders/:orderId/reset
 router.post(
   "/orders/:orderId/reset",
   param("orderId").isMongoId(),
@@ -510,18 +616,16 @@ router.post(
       const order = await LaboratoryOrder.findById(req.params.orderId);
       if (!order) return res.status(404).json({ ok: false, message: "Pedido no existe" });
 
-      const sheet = await InventorySheet.findById(order.sheet);
-      if (!sheet) return res.status(404).json({ ok: false, message: "Sheet no existe (pedido corrupto)" });
-      if (sheet.isDeleted) return res.status(410).json({ ok: false, message: "Sheet eliminada" });
-
       let totalRollback = 0;
-
       for (const line of order.lines || []) {
         const picked = Number(line.picked || 0);
         if (picked <= 0) continue;
 
-        const loc = { matrixKey: line.matrixKey, eye: line.eye || null, codebar: line.codebar };
-        await applyEntryToInventory(sheet, loc, picked, actor);
+        const lineSheet = await InventorySheet.findById(line.sheet);
+        if (lineSheet && !lineSheet.isDeleted) {
+          const loc = { matrixKey: line.matrixKey, eye: line.eye || null, codebar: line.codebar };
+          await applyEntryToInventory(lineSheet, loc, picked, actor);
+        }
 
         line.picked = 0;
         totalRollback += picked;
@@ -532,18 +636,17 @@ router.post(
       order.closedBy = { userId: null, name: null };
       order.updatedBy = actor;
       order.updatedAt = new Date();
-
       await order.save();
 
-      const event = await LaboratoryEvent.create({
+      await LaboratoryEvent.create({
         order: order._id,
-        sheet: sheet._id,
+        sheet: order.sheet,
         type: "ORDER_RESET",
-        details: { folio: order.folio, sheetId: String(sheet._id), totalRollback },
+        details: { folio: order.folio, sheetId: order.sheet ? String(order.sheet) : null, totalRollback },
         actor
       });
 
-      return res.json({ ok: true, data: order, event });
+      return res.json({ ok: true, data: order });
     } catch (e) {
       console.error("POST /laboratory/orders/:id/reset error:", e);
       res.status(500).json({ ok: false, message: "Error al reiniciar surtido" });
@@ -570,15 +673,15 @@ router.post(
       order.updatedBy = actor;
       await order.save();
 
-      const event = await LaboratoryEvent.create({
+      await LaboratoryEvent.create({
         order: order._id,
         sheet: order.sheet,
         type: "ORDER_CLOSE",
-        details: { folio: order.folio, sheetId: String(order.sheet) },
+        details: { folio: order.folio, sheetId: order.sheet ? String(order.sheet) : null },
         actor
       });
 
-      res.json({ ok: true, data: order, event });
+      res.json({ ok: true, data: order });
     } catch (e) {
       console.error("POST /laboratory/orders/:id/close error:", e);
       res.status(500).json({ ok: false, message: "Error al cerrar pedido" });
@@ -586,9 +689,10 @@ router.post(
   }
 );
 
-/* ===================== CORRECTIONS ===================== */
+// ============================================================================
+// ROUTES: CORRECTIONS
+// ============================================================================
 
-// POST /laboratory/corrections
 router.post(
   "/corrections",
   body("orderId").isMongoId(),
@@ -612,7 +716,7 @@ router.post(
         type: "CORRECTION_REQUEST",
         details: {
           folio: order.folio,
-          sheetId: String(order.sheet),
+          sheetId: order.sheet ? String(order.sheet) : null,
           codebar,
           message
         },

@@ -12,7 +12,7 @@ const OrderLineSchema = new mongoose.Schema(
     codebar: { type: String, required: true, index: true },
     sku: { type: String, default: null },
 
-    sheet: { type: mongoose.Schema.Types.ObjectId, ref: "InventorySheet", required: true },
+    sheet: { type: mongoose.Schema.Types.ObjectId, ref: "InventorySheet", required: false, default: null, index: true },
     tipo_matriz: { type: String, enum: ["BASE", "SPH_CYL", "SPH_ADD", "BASE_ADD"], required: true },
 
     matrixKey: { type: String, required: true },

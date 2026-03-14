@@ -1566,6 +1566,36 @@ const handleTabClick = (id) => {
   if (props.loadingTabs) return;
   emit("update:active", id);
 };
+
+watch(
+  () => props.activeId,
+  async (id) => {
+    if (!id || id === "nueva") return;
+    await nextTick();
+
+    const container = tabsContainer.value;
+    if (!container) return;
+
+    const el = container.querySelector(`[data-id="${id}"]`);
+    if (!el) return;
+
+    // Scroll suave centrando la tab en el contenedor
+    const containerRect = container.getBoundingClientRect();
+    const elRect        = el.getBoundingClientRect();
+    const scrollLeft =
+      container.scrollLeft +
+      (elRect.left - containerRect.left) -
+      containerRect.width / 2 +
+      elRect.width / 2;
+
+    container.scrollTo({ left: scrollLeft, behavior: "smooth" });
+
+    // Parpadeo visual de foco (800 ms)
+    el.classList.add("tab-focus-pulse");
+    setTimeout(() => el.classList.remove("tab-focus-pulse"), 900);
+  },
+  { flush: "post" }
+);
 </script>
 
 <style scoped>
@@ -2070,5 +2100,17 @@ const handleTabClick = (id) => {
   .rsbo-actions-body {
     padding: 0.9rem;
   }
+}
+
+@keyframes tabFocusPulse {
+  0%   { box-shadow: 0 0 0 0   rgba(121, 87, 213, 0.55), 0 18px 50px rgba(15,23,42,0.12); }
+  35%  { box-shadow: 0 0 0 6px rgba(121, 87, 213, 0.28), 0 18px 50px rgba(15,23,42,0.16); }
+  70%  { box-shadow: 0 0 0 3px rgba(121, 87, 213, 0.15), 0 18px 50px rgba(15,23,42,0.12); }
+  100% { box-shadow: 0 0 0 0   rgba(121, 87, 213, 0),    0 18px 50px rgba(15,23,42,0.10); }
+}
+
+.tab-item.tab-focus-pulse {
+  animation: tabFocusPulse 0.9s ease forwards;
+  border-color: rgba(121, 87, 213, 0.55) !important;
 }
 </style>

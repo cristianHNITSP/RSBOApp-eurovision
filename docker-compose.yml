@@ -15,6 +15,7 @@
 # sudo docker-compose down && docker-compose --profile dev up --build
 # producción: docker-compose --profile prod up --build
 
+#BAJAR Y DESPLEGAR EN DEV:
 # sudo docker compose down && sudo docker compose --profile dev up --build
 
 # duerme wsl hasta que lo vuelva abrir: wsl --shutdown
@@ -33,6 +34,8 @@
 #Ejecutar la semillas de auth-service
 #sudo docker exec -it rsboapp-auth npm run seed-users
 
+#Ejecutar las semillas de rsboapp-inventory
+#sudo docker exec -it rsboapp-inventory npm run seed-templates
 
 # ver logs -f es para seguir los actualizados
 # sudo docker logs -f rsboapp-inventory

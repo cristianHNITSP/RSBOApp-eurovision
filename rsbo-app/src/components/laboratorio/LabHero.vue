@@ -5,9 +5,7 @@
         <span class="lab-title__dot" aria-hidden="true"></span>
         Laboratorio
       </h1>
-      <p class="lab-subtitle">
-        Pedidos reales: crear desde inventario → surtir por escaneo (salida) → catálogo/impresión.
-      </p>
+
       <div class="lab-chips">
         <span class="chip">
           <i class="fas fa-layer-group mr-2"></i>{{ lab.filteredSheets.value.length }} planillas

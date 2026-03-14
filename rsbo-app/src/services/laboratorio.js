@@ -37,3 +37,7 @@ export function listEvents(params = {}) {
 export function requestCorrection(payload) {
   return api.post(`${BASE}/corrections`, payload);
 }
+
+export function cancelOrder(orderId, actor) {
+  return api.post(`${BASE}/orders/${orderId}/cancel`, { actor });
+} 

@@ -932,13 +932,13 @@ const handleDiscard = () => {
 .navtools-card--ribbon {
   background:
     linear-gradient(120deg, rgba(121,87,213,0.10), rgba(154,109,255,0.08), rgba(236,72,153,0.06)),
-    rgba(255,255,255,0.92);
+    var(--surface-raised);
 }
 
 .navtools-card--fx {
   background:
     radial-gradient(circle at 0% 0%, rgba(121,87,213,0.08), transparent 55%),
-    rgba(255,255,255,0.92);
+    var(--surface-raised);
 }
 
 /* header row */
@@ -1021,7 +1021,7 @@ const handleDiscard = () => {
   background:
     radial-gradient(circle at 20% 0%, rgba(121,87,213,0.12), transparent 55%),
     linear-gradient(90deg, rgba(144,111,225,0.10), rgba(236,72,153,0.06)),
-    rgba(255,255,255,0.95);
+    var(--surface-solid);
   margin: 0.55rem 0.55rem 0.6rem;
 }
 
@@ -1029,9 +1029,9 @@ const handleDiscard = () => {
   border-radius: 999px;
   padding-inline: 0.9rem;
   font-weight: 900;
-  background: rgba(255,255,255,0.96);
-  color: #7957d5;
-  border: 1px solid rgba(121,87,213,0.18);
+  background: var(--bg-muted);
+  color: var(--c-primary);
+  border: 1px solid rgba(121,87,213,0.25);
 }
 
 .formula-input { flex: 1 1 260px; min-width: 120px; }
@@ -1039,7 +1039,7 @@ const handleDiscard = () => {
   border-radius: 999px;
   border-color: transparent;
   box-shadow: none;
-  background: rgba(255,255,255,0.98);
+  background: var(--surface-solid);
   height: 2.1rem;
   padding-inline: 0.9rem;
 }
@@ -1081,8 +1081,8 @@ const handleDiscard = () => {
   flex: 0 0 auto;
 }
 .dirty-float__texts { min-width: 0; }
-.dirty-float__title { font-weight: 900; letter-spacing: 0.01em; line-height: 1.1; color: #3b2a1a; }
-.dirty-float__subtitle { font-size: 0.78rem; line-height: 1.15; color: rgba(55, 65, 81, 0.88); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 52ch; }
+.dirty-float__title { font-weight: 900; letter-spacing: 0.01em; line-height: 1.1; color: var(--text-primary); }
+.dirty-float__subtitle { font-size: 0.78rem; line-height: 1.15; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 52ch; }
 .dirty-float__hint { margin-left: 0.35rem; opacity: 0.9; }
 .dirty-float__actions { display: flex; align-items: center; gap: 0.45rem; flex: 0 0 auto; }
 

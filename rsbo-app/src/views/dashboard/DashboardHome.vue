@@ -563,7 +563,7 @@ const lastSyncLabel = computed(() => {
 .section-user {
   padding: 1.5rem;
   border-bottom: 1px solid var(--border-solid);
-  background: radial-gradient(circle at top left, #f9f5ff 0, var(--surface-solid) 55%);
+  background: radial-gradient(circle at top left, var(--c-primary-alpha) 0, var(--surface-solid) 55%);
 }
 
 /* Avatar */

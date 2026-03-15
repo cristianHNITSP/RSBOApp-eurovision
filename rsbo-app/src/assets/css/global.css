@@ -40,21 +40,36 @@
 [data-theme="dark"] .input,
 [data-theme="dark"] .textarea,
 [data-theme="dark"] .select select {
-  background-color: var(--bg-muted);
-  border-color: var(--border-input);
-  color: var(--text-primary);
+  background-color: var(--bg-muted) !important;
+  border-color: var(--border-input) !important;
+  color: var(--text-primary) !important;
+  box-shadow: none !important;
 }
 
 [data-theme="dark"] .input::placeholder,
 [data-theme="dark"] .textarea::placeholder {
-  color: var(--text-subtle);
+  color: var(--text-subtle) !important;
 }
 
 [data-theme="dark"] .input:focus,
 [data-theme="dark"] .textarea:focus,
 [data-theme="dark"] .select select:focus {
-  border-color: var(--c-primary);
-  box-shadow: 0 0 0 2px var(--c-primary-alpha);
+  border-color: var(--c-primary) !important;
+  box-shadow: 0 0 0 2px var(--c-primary-alpha) !important;
+}
+
+/* Autofill dark mode (elimina la línea/fondo azul del browser) */
+[data-theme="dark"] input:-webkit-autofill,
+[data-theme="dark"] input:-webkit-autofill:hover,
+[data-theme="dark"] input:-webkit-autofill:focus,
+[data-theme="dark"] textarea:-webkit-autofill,
+[data-theme="dark"] textarea:-webkit-autofill:hover,
+[data-theme="dark"] textarea:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 100px var(--bg-muted) inset !important;
+  box-shadow: 0 0 0 100px var(--bg-muted) inset !important;
+  -webkit-text-fill-color: var(--text-primary) !important;
+  caret-color: var(--text-primary) !important;
+  border-color: var(--border-input) !important;
 }
 
 [data-theme="dark"] .label {
@@ -96,8 +111,36 @@
 }
 
 [data-theme="dark"] .button {
-  color: var(--text-primary);
-  border-color: var(--border-solid);
+  background-color: var(--bg-muted) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-solid) !important;
+}
+
+/* Re-apply colored buttons after the generic override above */
+[data-theme="dark"] .button.is-primary {
+  background: linear-gradient(135deg, var(--c-primary), var(--c-primary-dark)) !important;
+  border-color: transparent !important;
+  color: var(--text-on-primary) !important;
+}
+[data-theme="dark"] .button.is-success {
+  background-color: var(--c-success) !important;
+  border-color: var(--c-success) !important;
+  color: #fff !important;
+}
+[data-theme="dark"] .button.is-danger {
+  background-color: var(--c-danger) !important;
+  border-color: var(--c-danger) !important;
+  color: #fff !important;
+}
+[data-theme="dark"] .button.is-warning {
+  background-color: var(--c-warning) !important;
+  border-color: var(--c-warning) !important;
+  color: #fff !important;
+}
+[data-theme="dark"] .button.is-info {
+  background-color: var(--c-info) !important;
+  border-color: var(--c-info) !important;
+  color: #fff !important;
 }
 
 /* ----------------------------------------------------------
@@ -129,6 +172,27 @@
 
 [data-theme="dark"] .table-wrapper {
   background-color: var(--surface-solid);
+}
+
+/* Sticky header (b-table con sticky-header) dark mode */
+[data-theme="dark"] .b-table .table-wrapper.has-sticky-header {
+  background-color: var(--surface-solid) !important;
+}
+[data-theme="dark"] .b-table .table-wrapper.has-sticky-header thead tr {
+  background-color: var(--bg-subtle) !important;
+}
+[data-theme="dark"] .b-table .table-wrapper.has-sticky-header thead th {
+  background-color: var(--bg-subtle) !important;
+  border-color: var(--border-solid) !important;
+  color: var(--text-secondary) !important;
+}
+[data-theme="dark"] .b-table .table-wrapper.has-sticky-header thead th span {
+  color: var(--text-secondary) !important;
+}
+/* Span e iconos en encabezado de columnas */
+[data-theme="dark"] .b-table .table th .th-wrap span,
+[data-theme="dark"] .b-table .table th .th-wrap .icon {
+  color: var(--text-secondary) !important;
 }
 
 /* ----------------------------------------------------------
@@ -717,16 +781,38 @@ button.dropdown-item:hover {
 .dialog .modal-card-head .delete { display: none; }
 .dialog .button.is-primary { min-width: 100px; }
 
+/* --- Buefy .delete button (modal X close) dark mode --- */
+[data-theme="dark"] .delete {
+  background-color: rgba(255, 255, 255, 0.20);
+}
+[data-theme="dark"] .delete:hover {
+  background-color: rgba(255, 255, 255, 0.32);
+}
+[data-theme="dark"] .delete::before,
+[data-theme="dark"] .delete::after {
+  background-color: #ffffff;
+}
+
 /* ============================================================
    DARK MODE — Overrides adicionales de Buefy/Bulma
    ============================================================ */
 
 /* --- Bulma text helpers en dark mode --- */
 [data-theme="dark"] .has-text-grey,
-[data-theme="dark"] .has-text-grey-dark,
 [data-theme="dark"] .subtitle.is-6,
 [data-theme="dark"] .subtitle {
   color: var(--text-muted) !important;
+}
+
+/* has-text-grey-dark → en modo oscuro debe ser text-primary (no text-muted) */
+[data-theme="dark"] .has-text-grey-dark {
+  color: var(--text-primary) !important;
+}
+
+/* Bulma background helpers → usar tokens en dark mode */
+[data-theme="dark"] .has-background-light {
+  background-color: var(--bg-muted) !important;
+  color: var(--text-primary) !important;
 }
 [data-theme="dark"] .has-text-grey-light,
 [data-theme="dark"] .has-text-grey-lighter {
@@ -887,7 +973,9 @@ button.dropdown-item:hover {
 [data-reduced-effects="true"] .pill {
   backdrop-filter:         none !important;
   -webkit-backdrop-filter: none !important;
-  background:              var(--surface-solid) !important;
+  /* background eliminado: los tokens --surface ya aplican el valor sólido correcto.
+     Forzar surface-solid aquí causa que tarjetas desaparezcan en dark mode
+     porque --surface-solid == --bg-subtle == mismo color de fondo */
 }
 
 /* Eliminar animaciones decorativas con efectos reducidos */
@@ -895,7 +983,9 @@ button.dropdown-item:hover {
 [data-reduced-effects="true"] .pulse-animation,
 [data-reduced-effects="true"] .dot-pulse,
 [data-reduced-effects="true"] .lab-notif__bar-fill,
-[data-reduced-effects="true"] [class*="glow"] {
+[data-reduced-effects="true"] .um-glow,
+[data-reduced-effects="true"] .bg-glow,
+[data-reduced-effects="true"] .hero-glow {
   animation: none !important;
 }
 

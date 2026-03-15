@@ -1601,11 +1601,11 @@ watch(
 <style scoped>
 /* ✅ tu CSS tal cual lo traías (sin cambios) */
 .plantillas-contenedor {
-  background: rgba(255, 255, 255, 0.88);
-  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 14px;
   min-height: 140px;
-  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.10);
+  box-shadow: var(--shadow-lg);
   transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
   overflow: hidden;
 }
@@ -1618,12 +1618,12 @@ watch(
   overflow-y: hidden;
   gap: 0.35rem;
   padding: 0.55rem 0.55rem 0;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+  border-bottom: 1px solid var(--border);
   -webkit-overflow-scrolling: touch;
 }
 
 .tabs-wrapper--glass {
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--surface-overlay);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
@@ -1643,13 +1643,13 @@ watch(
 .tabs-wrapper::before {
   left: 0;
   margin-left: -0.55rem;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0));
+  background: linear-gradient(90deg, var(--surface-raised), transparent);
 }
 
 .tabs-wrapper::after {
   right: 0;
   margin-right: -0.55rem;
-  background: linear-gradient(270deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0));
+  background: linear-gradient(270deg, var(--surface-raised), transparent);
 }
 
 .tabs-wrapper::-webkit-scrollbar {
@@ -1675,17 +1675,17 @@ watch(
   border-radius: 12px 12px 0 0;
   cursor: pointer;
   user-select: none;
-  border: 1px solid rgba(148, 163, 184, 0.22);
+  border: 1px solid var(--border);
   border-bottom: none;
   transition: transform 0.16s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease;
   will-change: transform;
 }
 
 .tab-item--glass {
-  background: rgba(255, 255, 255, 0.78);
+  background: var(--surface-overlay);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  color: #0f172a;
+  color: var(--text-primary);
 }
 
 .tab-item:hover {
@@ -1695,9 +1695,9 @@ watch(
 
 .tab-item.active {
   background: linear-gradient(90deg, rgba(121, 87, 213, 0.18), rgba(236, 72, 153, 0.10));
-  color: #0f172a;
-  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.12);
-  border-color: rgba(121, 87, 213, 0.35);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--c-primary-alpha);
 }
 
 .tab-item.active::after {
@@ -1712,8 +1712,8 @@ watch(
 }
 
 .tab-agregar {
-  background: rgba(15, 23, 42, 0.92);
-  color: #fff;
+  background: var(--text-primary);
+  color: var(--text-on-primary);
   border-color: rgba(15, 23, 42, 0.25);
   padding-right: 0.85rem;
 }
@@ -1745,11 +1745,11 @@ watch(
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: rgba(15, 23, 42, 0.58);
+  color: var(--text-subtle);
 }
 
 .tab-item.active .tab-sku {
-  color: rgba(15, 23, 42, 0.70);
+  color: var(--text-muted);
 }
 
 .tab-sku--empty {
@@ -1762,8 +1762,8 @@ watch(
   right: 6px;
   top: 50%;
   transform: translateY(-50%);
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--border);
+  background: var(--surface-overlay);
   line-height: 1;
   cursor: pointer;
   font-size: 16px;
@@ -1780,8 +1780,8 @@ watch(
 .tab-menu-btn:hover {
   opacity: 1;
   transform: translateY(-50%) scale(1.03);
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.10);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-sm);
 }
 
 .skeleton-tab {
@@ -1829,8 +1829,8 @@ watch(
   display: flex;
   height: 38px;
   align-items: center;
-  border-top: 1px solid rgba(148, 163, 184, 0.22);
-  background: rgba(255, 255, 255, 0.66);
+  border-top: 1px solid var(--border);
+  background: var(--surface-overlay);
   padding: 0.2rem 0.35rem;
 }
 
@@ -1841,17 +1841,17 @@ watch(
   border-radius: 999px;
   cursor: pointer;
   transition: all 0.18s ease;
-  color: rgba(15, 23, 42, 0.70);
+  color: var(--text-muted);
 }
 
 .sheet-tab:hover {
-  background: rgba(121, 87, 213, 0.10);
+  background: var(--c-primary-alpha);
 }
 
 .sheet-tab.active {
-  background: rgba(121, 87, 213, 0.16);
-  color: rgba(15, 23, 42, 0.92);
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.10);
+  background: var(--c-primary-alpha);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
 }
 
 @keyframes shake {
@@ -1901,16 +1901,16 @@ watch(
   width: 100%;
   border-radius: 16px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.90);
-  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
   box-shadow: 0 28px 80px rgba(15, 23, 42, 0.22);
 }
 
 .rsbo-actions-head {
-  background: rgba(255, 255, 255, 0.70);
+  background: var(--surface-overlay);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+  border-bottom: 1px solid var(--border);
 }
 
 .pill-row {
@@ -1928,15 +1928,15 @@ watch(
   border-radius: 999px;
   font-weight: 800;
   font-size: 0.78rem;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  color: rgba(15, 23, 42, 0.78);
+  background: var(--surface-overlay);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
 }
 
 .pill.strong {
   background: linear-gradient(90deg, rgba(121, 87, 213, 0.16), rgba(236, 72, 153, 0.10));
   border-color: rgba(121, 87, 213, 0.35);
-  color: rgba(15, 23, 42, 0.88);
+  color: var(--text-primary);
 }
 
 .rsbo-actions-body {
@@ -1949,10 +1949,10 @@ watch(
   gap: 1rem;
   align-items: flex-start;
   padding: 1rem;
-  background: rgba(255, 255, 255, 0.86);
-  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 16px;
-  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.10);
+  box-shadow: var(--shadow-lg);
   margin-bottom: 1rem;
   transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.16s ease;
 }
@@ -1978,8 +1978,8 @@ watch(
   align-items: center;
   justify-content: center;
   border-radius: 14px;
-  background: rgba(121, 87, 213, 0.12);
-  color: rgba(121, 87, 213, 1);
+  background: var(--c-primary-alpha);
+  color: var(--c-primary);
 }
 
 .action-icon.danger {
@@ -2001,7 +2001,7 @@ watch(
 .action-desc {
   opacity: 0.85;
   font-size: 0.9rem;
-  color: rgba(15, 23, 42, 0.72);
+  color: var(--text-muted);
 }
 
 .meta-status {
@@ -2013,25 +2013,25 @@ watch(
   font-size: 0.76rem;
   font-weight: 800;
   border: 1px solid transparent;
-  background: rgba(248, 250, 252, 0.85);
-  color: rgba(15, 23, 42, 0.72);
+  background: var(--bg-subtle);
+  color: var(--text-muted);
 }
 
 .meta-status.saving {
-  border-color: rgba(59, 130, 246, 0.25);
-  background: rgba(59, 130, 246, 0.08);
+  border-color: var(--c-info-alpha);
+  background: var(--c-info-alpha);
 }
 
 .meta-status.saved {
-  border-color: rgba(34, 197, 94, 0.25);
-  background: rgba(34, 197, 94, 0.08);
-  color: rgba(15, 23, 42, 0.86);
+  border-color: var(--c-success-alpha);
+  background: var(--c-success-alpha);
+  color: var(--text-primary);
 }
 
 .meta-status.error {
-  border-color: rgba(220, 38, 38, 0.25);
-  background: rgba(220, 38, 38, 0.08);
-  color: rgba(15, 23, 42, 0.86);
+  border-color: var(--c-danger-alpha);
+  background: var(--c-danger-alpha);
+  color: var(--text-primary);
 }
 
 .dot-pulse {
@@ -2062,15 +2062,15 @@ watch(
 }
 
 .vendor-glow {
-  outline: 2px solid rgba(34, 197, 94, 0.25);
+  outline: 2px solid var(--c-success-alpha);
 }
 
 .rename-glow {
-  outline: 2px solid rgba(34, 197, 94, 0.25);
+  outline: 2px solid var(--c-success-alpha);
 }
 
 .meta-glow {
-  outline: 2px solid rgba(34, 197, 94, 0.25);
+  outline: 2px solid var(--c-success-alpha);
 }
 
 .confirm-inline {
@@ -2078,7 +2078,7 @@ watch(
   align-items: center;
   gap: 0.75rem;
   padding: 0.55rem 0.8rem;
-  background: rgba(220, 38, 38, 0.08);
+  background: var(--c-danger-alpha);
   border: 1px solid rgba(220, 38, 38, 0.20);
   border-radius: 14px;
 }

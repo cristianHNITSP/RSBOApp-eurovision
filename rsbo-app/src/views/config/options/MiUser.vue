@@ -378,9 +378,10 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch, onMounted, computed, getCurrentInstance } from "vue";
+import { ref, reactive, watch, onMounted, computed } from "vue";
 import { userService, utils } from "../../../services/myUserCRUD";
-import AvatarPicker from "../../../components/AvatarPicker.vue"; // ajusta la ruta
+import AvatarPicker from "../../../components/AvatarPicker.vue";
+import { labToast } from "@/composables/useLabToast";
 
 const avatarUrl = "https://cdn.jsdelivr.net/gh/alohe/avatars/png/vibrent_1.png";
 
@@ -388,9 +389,6 @@ const props = defineProps({
   user: { type: Object, default: null },
   loading: { type: Boolean, default: false },
 });
-
-const inst = getCurrentInstance();
-const $buefy = inst?.appContext?.config?.globalProperties?.$buefy;
 
 const userId = computed(() => props.user?._id || props.user?.id || "");
 
@@ -610,9 +608,9 @@ async function copyEmail() {
 
   try {
     await navigator.clipboard.writeText(email);
-    $buefy?.toast?.open?.({ message: "Correo copiado", type: "is-success", duration: 1800 });
+    labToast.success("Correo copiado", 1800);
   } catch (e) {
-    $buefy?.toast?.open?.({ message: "No se pudo copiar el correo", type: "is-danger", duration: 2200 });
+    labToast.danger("No se pudo copiar el correo", 2200);
   }
 }
 
@@ -626,12 +624,12 @@ onMounted(() => {});
    Base + glows (como tu UI actual)
    ========================= */
 .user-manager.um-root {
-  --primary: #4f46e5;
+  --primary: var(--c-primary);
   --c2: #9a6dff;
   --c3: #ec4899;
 
   --border: rgba(148, 163, 184, 0.22);
-  --shadow: 0 14px 36px rgba(15, 23, 42, 0.06);
+  --shadow: var(--shadow-soft);
   --shadow-2: 0 18px 50px rgba(15, 23, 42, 0.12);
 
   position: relative;
@@ -677,19 +675,19 @@ onMounted(() => {});
 }
 
 .um-card--glass {
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: var(--surface);
+  backdrop-filter: blur(var(--fx-blur));
+  -webkit-backdrop-filter: blur(var(--fx-blur));
 }
 
 .um-card--soft {
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--surface-overlay);
 }
 
 .um-card:hover {
   transform: translateY(-1px);
-  box-shadow: 0 26px 70px rgba(15, 23, 42, 0.14);
-  border-color: rgba(121, 87, 213, 0.28);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--c-primary-alpha);
 }
 
 /* estado (glow suave) */
@@ -710,13 +708,13 @@ onMounted(() => {});
   text-transform: uppercase;
   border-radius: 999px;
   padding: 0.22rem 0.55rem;
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  background: rgba(255, 255, 255, 0.70);
-  color: #111827;
+  border: 1px solid var(--border);
+  background: var(--surface-overlay);
+  color: var(--text-primary);
 }
 .pill--primary {
   color: var(--primary);
-  background: #eef2ff;
+  background: var(--c-primary-alpha);
   border-color: rgba(79, 70, 229, 0.18);
 }
 .pill--light {
@@ -727,17 +725,17 @@ onMounted(() => {});
 .pill--strong {
   background: linear-gradient(90deg, rgba(121,87,213,0.16), rgba(236,72,153,0.10));
   border-color: rgba(121,87,213,0.35);
-  color: rgba(15,23,42,0.88);
+  color: var(--text-primary);
 }
 .pill--ok {
   background: rgba(16, 185, 129, 0.10);
   border-color: rgba(16, 185, 129, 0.22);
-  color: rgba(15, 23, 42, 0.86);
+  color: var(--text-primary);
 }
 .pill--bad {
   background: rgba(239, 68, 68, 0.10);
   border-color: rgba(239, 68, 68, 0.22);
-  color: rgba(15, 23, 42, 0.86);
+  color: var(--text-primary);
 }
 
 .role-pill {
@@ -754,8 +752,8 @@ onMounted(() => {});
   gap: 0.75rem;
   flex-wrap: wrap;
   padding: 0.9rem 0.95rem 0.65rem;
-  background: radial-gradient(circle at 0 0, rgba(79, 70, 229, 0.10), transparent 55%), rgba(255, 255, 255, 0.75);
-  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+  background: radial-gradient(circle at 0 0, var(--c-primary-alpha), transparent 55%), var(--surface-overlay);
+  border-bottom: 1px solid var(--border);
 }
 
 .section-info {
@@ -785,7 +783,7 @@ onMounted(() => {});
 
 .um-title {
   font-weight: 900;
-  background: linear-gradient(90deg, #0f172a, rgba(15,23,42,0.85));
+  background: linear-gradient(90deg, var(--text-primary), var(--text-muted));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -806,7 +804,7 @@ onMounted(() => {});
 .btn-icon:hover {
   transform: translateY(-1px);
   box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
-  background: #fff;
+  background: var(--surface-solid);
 }
 
 .quick-stats {
@@ -816,14 +814,14 @@ onMounted(() => {});
   margin-top: 1rem;
 }
 .quick-stat {
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid var(--border);
+  background: var(--bg-subtle);
   border-radius: 16px;
   padding: 0.75rem;
   text-align: center;
 }
-.quick-stat__v { margin: 0; font-weight: 900; color: #111827; }
-.quick-stat__k { margin: 0.15rem 0 0; font-size: 0.75rem; color: #6b7280; font-weight: 800; }
+.quick-stat__v { margin: 0; font-weight: 900; color: var(--text-primary); }
+.quick-stat__k { margin: 0.15rem 0 0; font-size: 0.75rem; color: var(--text-muted); font-weight: 800; }
 
 /* status dot */
 .dot-status {
@@ -840,8 +838,8 @@ onMounted(() => {});
 /* security */
 .section-seguridad {
   margin-top: 0.25rem;
-  border-top: 1px solid rgba(148, 163, 184, 0.18);
-  background: rgba(255, 255, 255, 0.62);
+  border-top: 1px solid var(--border);
+  background: var(--surface-overlay);
   padding: 0.95rem;
 }
 
@@ -860,9 +858,9 @@ onMounted(() => {});
   gap: 0.45rem;
   font-size: 0.78rem;
   font-weight: 800;
-  color: rgba(15, 23, 42, 0.72);
-  background: rgba(79, 70, 229, 0.06);
-  border: 1px solid rgba(79, 70, 229, 0.12);
+  color: var(--text-muted);
+  background: var(--c-primary-alpha);
+  border: 1px solid var(--border);
   padding: 0.35rem 0.6rem;
   border-radius: 999px;
 }
@@ -877,7 +875,7 @@ onMounted(() => {});
   justify-content: space-between;
   gap: 0.85rem;
   padding-bottom: 0.85rem;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+  border-bottom: 1px solid var(--border);
   margin-bottom: 1rem;
 }
 .card-head__title { display: flex; flex-direction: column; gap: 0.2rem; }
@@ -894,7 +892,7 @@ onMounted(() => {});
   gap: 0.4rem;
   align-items: center;
   font-size: 0.82rem;
-  color: #6b7280;
+  color: var(--text-muted);
   background: rgba(79, 70, 229, 0.06);
   border: 1px solid rgba(79, 70, 229, 0.15);
   padding: 0.65rem 0.75rem;
@@ -917,9 +915,9 @@ onMounted(() => {});
   border-radius: 999px;
   font-size: 0.76rem;
   font-weight: 800;
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  background: rgba(255,255,255,0.72);
-  color: rgba(15,23,42,0.70);
+  border: 1px solid var(--border);
+  background: var(--surface-overlay);
+  color: var(--text-muted);
 }
 .dot-pulse {
   position: relative;

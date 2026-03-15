@@ -6,11 +6,10 @@ import { useRoute } from "vue-router";
 import Sidebar from "../components/Sidebar.vue";
 import NotificationPanel from "../components/NotificationPanel.vue";
 import GlobalSearch from "../components/GlobalSearch.vue";
-
-
 import { useSidebarState } from "../composables/useSidebarState";
 import { useMotionEffects } from "../composables/useMotionEffects";
 import { useNotifications } from "../composables/useNotificationsState";
+import { useAccessibility } from "../composables/useAccessibility";
 
 
 /* =========================
@@ -47,107 +46,12 @@ const currentRouteName = computed(() => route.meta.breadcrumb || route.name || "
 const pageTitle = computed(() => "Panel de Control");
 
 /* =========================
-   Dark mode (persistente)
+   Accesibilidad (dark mode, font size, efectos)
+   Delegado al composable useAccessibility que maneja
+   localStorage, eventos rsbo:ui y estado reactivo.
    ========================= */
-const DARK_KEY = "dark-mode";
-const isDark = ref(false);
-
-function applyDark(enabled) {
-  const html = document.documentElement;
-  const next = enabled ? "dark" : "light";
-  html.setAttribute("data-theme", next);
-  html.style.colorScheme = next;
-  isDark.value = enabled;
-}
-
-(function applyDarkImmediately() {
-  try {
-    const saved = localStorage.getItem(DARK_KEY);
-    applyDark(saved === "true");
-  } catch {
-    applyDark(false);
-  }
-})();
-
-function setDarkMode(enabled) {
-  const on = !!enabled;
-  try {
-    localStorage.setItem(DARK_KEY, on ? "true" : "false");
-  } catch { }
-  applyDark(on);
-}
-
-function toggleDarkMode() {
-  setDarkMode(!isDark.value);
-}
-
-/* =========================
-   Font size (persistente)
-   ========================= */
-const FONT_SIZE_KEY = "user-font-size";
-const sizes = { xs: "85%", sm: "92.5%", md: "100%", lg: "112.5%" };
-const fontSize = ref("md");
-
-function applyFontSize(sizeKey) {
-  const k = sizes[sizeKey] ? sizeKey : "md";
-  fontSize.value = k;
-  document.documentElement.style.fontSize = sizes[k];
-}
-
-(function applyFontSizeImmediately() {
-  try {
-    const saved = localStorage.getItem(FONT_SIZE_KEY);
-    applyFontSize(saved && sizes[saved] ? saved : "md");
-  } catch {
-    applyFontSize("md");
-  }
-})();
-
-function setFontSize(val) {
-  // ✅ robust: por si llega event / objeto
-  const raw = val?.target?.value ?? val?.detail?.value ?? val;
-  const next = sizes[raw] ? raw : "md";
-  try {
-    localStorage.setItem(FONT_SIZE_KEY, next);
-  } catch { }
-  applyFontSize(next);
-}
-
-/* =========================
-   Reduce effects (persistente)
-   ========================= */
-const REDUCED_EFFECTS_KEY = "ui-reduced-effects";
-const reducedEffects = ref(false);
-
-function applyReducedEffects(enabled) {
-  const html = document.documentElement;
-  if (enabled) html.setAttribute("data-reduced-effects", "true");
-  else html.removeAttribute("data-reduced-effects");
-}
-
-(function applyReducedEffectsImmediately() {
-  try {
-    const enabled = localStorage.getItem(REDUCED_EFFECTS_KEY) === "true";
-    reducedEffects.value = enabled;
-    applyReducedEffects(enabled);
-  } catch {
-    reducedEffects.value = false;
-    applyReducedEffects(false);
-  }
-})();
-
-function setReducedEffects(val) {
-  const enabled = !!val;
-  reducedEffects.value = enabled;
-  try {
-    localStorage.setItem(REDUCED_EFFECTS_KEY, enabled ? "true" : "false");
-  } catch { }
-  applyReducedEffects(enabled);
-}
-
-function toggleReducedEffects() {
-  setReducedEffects(!reducedEffects.value);
-}
+const { state: a11y } = useAccessibility();
+const isDark = computed(() => a11y.resolvedTheme === "dark");
 
 /* =========================
    Online / Offline
@@ -320,33 +224,6 @@ function closePanelFromOverlay() {
 }
 
 /* =========================
-   ✅ Bridge de eventos desde Preferencias.vue
-   ========================= */
-const UI_EVENT = "rsbo:ui";
-
-function normalizeValue(v) {
-  return v?.target?.value ?? v?.detail?.value ?? v;
-}
-
-function handleUiEvent(e) {
-  try {
-    const detail = e?.detail || {};
-    const type = detail.type;
-    const value = normalizeValue(detail.value);
-
-    if (type === "toggle-dark") return toggleDarkMode();
-    if (type === "set-dark") return setDarkMode(!!value);
-
-    if (type === "set-font") return setFontSize(value);
-
-    if (type === "toggle-reduced-effects") return toggleReducedEffects();
-    if (type === "set-reduced-effects") return setReducedEffects(!!value);
-  } catch (err) {
-    console.error("[rsbo:ui] handler error:", err);
-  }
-}
-
-/* =========================
    Mount / Unmount
    ========================= */
 onMounted(() => {
@@ -360,9 +237,6 @@ onMounted(() => {
 
   if (mql.addEventListener) mql.addEventListener("change", onMediaChange);
   else mql.addListener(onMediaChange);
-
-  // ✅ escucha eventos de Preferencias.vue
-  window.addEventListener(UI_EVENT, handleUiEvent);
 });
 
 onBeforeUnmount(() => {
@@ -373,8 +247,6 @@ onBeforeUnmount(() => {
 
   if (mql.removeEventListener) mql.removeEventListener("change", onMediaChange);
   else mql.removeListener(onMediaChange);
-
-  window.removeEventListener(UI_EVENT, handleUiEvent);
 });
 </script>
 
@@ -672,25 +544,9 @@ export default {
 
 <style scoped>
 /* =========
-  Layout tokens
+  Layout
 ========= */
 .app-layout {
-  /* FX tokens (por defecto: premium glass/gradientes) */
-  --fx-surface-a: 0.88;
-  --fx-blur: 12px;
-
-  --fx-grad-a1: 0.12;
-  --fx-grad-a2: 0.10;
-  --fx-grad-a3: 0.10;
-
-  --fx-shadow-a: 0.12;
-
-  --surface: rgba(255, 255, 255, var(--fx-surface-a));
-  --border: rgba(148, 163, 184, 0.22);
-  --text: #0f172a;
-  --muted: rgba(15, 23, 42, 0.62);
-  --shadow: 0 18px 50px rgba(15, 23, 42, var(--fx-shadow-a));
-
   display: flex;
   flex-direction: column;
   height: calc(var(--vh, 1vh) * 100);
@@ -700,18 +556,13 @@ export default {
   overflow: hidden;
 }
 
-/* soft background like banner system */
+/* soft background — usa el token de gradiente (cambia en dark) */
 .layout-bg {
   position: absolute;
   inset: 0;
   z-index: 0;
   pointer-events: none;
-
-  background:
-    radial-gradient(circle at 0% 0%, rgba(121, 87, 213, var(--fx-grad-a1)), transparent 55%),
-    radial-gradient(circle at 100% 70%, rgba(236, 72, 153, var(--fx-grad-a2)), transparent 55%),
-    radial-gradient(circle at 40% 110%, rgba(249, 115, 22, var(--fx-grad-a3)), transparent 55%),
-    #ffffff;
+  background: var(--grad-header-bg);
 }
 
 /* ensure content above bg */
@@ -762,7 +613,7 @@ export default {
   background: var(--surface);
   backdrop-filter: blur(var(--fx-blur));
   -webkit-backdrop-filter: blur(var(--fx-blur));
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+  box-shadow: var(--shadow-sm);
 }
 
 .dashboard-header::after {
@@ -959,7 +810,7 @@ export default {
 .mobile-title {
   font-weight: 900;
   font-size: 0.98rem;
-  color: #111827;
+  color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -967,7 +818,7 @@ export default {
 
 .mobile-subtitle {
   font-size: 0.78rem;
-  color: rgba(17, 24, 39, 0.65);
+  color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -984,7 +835,7 @@ export default {
   position: fixed;
   inset: 0;
   z-index: 1001;
-  background: rgba(255, 255, 255, 0.75);
+  background: var(--surface-overlay);
   backdrop-filter: blur(var(--fx-blur));
   -webkit-backdrop-filter: blur(var(--fx-blur));
   display: flex;
@@ -995,11 +846,11 @@ export default {
 
 .mobile-search-card {
   width: min(720px, 100%);
-  background: rgba(255, 255, 255, 0.92);
-  border-radius: 14px;
+  background: var(--surface-raised);
+  border-radius: var(--radius-lg);
   padding: 0.75rem;
-  border: 1px solid rgba(17, 24, 39, 0.08);
-  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
 }
 
 .mobile-search-head {
@@ -1011,13 +862,13 @@ export default {
 
 .mobile-search-title {
   font-weight: 900;
-  color: #111827;
+  color: var(--text-primary);
 }
 
 .mobile-search-hint {
   margin: 0.55rem 0 0;
   font-size: 0.8rem;
-  color: rgba(17, 24, 39, 0.6);
+  color: var(--text-muted);
 }
 
 .mobile-search-enter-active,
@@ -1040,14 +891,14 @@ export default {
 
 .dashboard-footer {
   padding: 0.75rem 1.25rem 1.25rem;
-  color: rgba(15, 23, 42, 0.65);
+  color: var(--text-muted);
 }
 
 /* Overlay notifs */
 .blur-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(255, 255, 255, 0.7);
+  background: var(--surface-overlay);
   backdrop-filter: blur(var(--fx-blur));
   -webkit-backdrop-filter: blur(var(--fx-blur));
   z-index: 9;
@@ -1145,21 +996,5 @@ export default {
   animation: mobileSidebtractionOut 0.3s forwards cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* =========================
-   ✅ MODO EFECTOS REDUCIDOS (global)
-   ========================= */
-:global(html[data-reduced-effects="true"]) {
-  --fx-surface-a: 0.98;
-  --fx-blur: 0px;
-
-  --fx-grad-a1: 0.03;
-  --fx-grad-a2: 0.02;
-  --fx-grad-a3: 0.02;
-
-  --fx-shadow-a: 0.08;
-}
-
-:global(html[data-reduced-effects="true"]) * {
-  transition-duration: 120ms !important;
-}
+/* Los efectos reducidos se manejan en tokens.css vía [data-reduced-effects="true"] */
 </style>

@@ -21,14 +21,24 @@ const InventorySheet = require('../models/InventorySheet');
 // ── Mapa estático de rutas de la aplicación ──────────────────────────────────
 // Mantén sincronizado con src/router/index.js del frontend.
 const APP_ROUTES = [
-  { id: 'r-home',        label: 'Inicio / Dashboard',    icon: 'home',           routeName: 'home',          keywords: ['inicio', 'home', 'dashboard', 'panel'] },
-  { id: 'r-inventario',  label: 'Inventario',             icon: 'box',            routeName: 'Inventario',    keywords: ['inventario', 'lentes', 'stock', 'planillas', 'plantillas'] },
-  { id: 'r-laboratorio', label: 'Laboratorio',            icon: 'flask',          routeName: 'Laboratorio',   keywords: ['laboratorio', 'lab', 'ordenes', 'órdenes', 'pedidos'] },
-  { id: 'r-usuarios',    label: 'Gestión de Usuarios',    icon: 'users',          routeName: 'usuarios',      keywords: ['usuarios', 'users', 'gestión', 'roles', 'permisos'] },
-  { id: 'r-config',      label: 'Configuración',          icon: 'cog',            routeName: 'configuración', keywords: ['config', 'configuración', 'ajustes', 'settings'] },
-  { id: 'r-perfil',      label: 'Mi Perfil',              icon: 'user-circle',    routeName: 'configuración', routeQuery: { tab: 'profile' }, keywords: ['perfil', 'profile', 'cuenta', 'contraseña'] },
-  { id: 'r-analiticas',  label: 'Analíticas',             icon: 'chart-bar',      routeName: 'Análiticas',    keywords: ['analíticas', 'analytics', 'estadísticas', 'reportes', 'graficas'] },
-  { id: 'r-ayuda',       label: 'Ayuda',                  icon: 'question-circle', routeName: 'Ayuda',         keywords: ['ayuda', 'help', 'soporte', 'faq'] },
+  { id: 'r-home',        label: 'Inicio / Dashboard',              icon: 'home',            routeName: 'home',                         routePath: '/layouts/home',                          keywords: ['inicio', 'home', 'dashboard', 'panel'] },
+
+  // Inventario
+  { id: 'r-inv-bm',      label: 'Inventario - Bases y Micas',     icon: 'glasses',         routeName: 'inventario-bases-micas',       routePath: '/layouts/inventario/bases-micas',        keywords: ['inventario', 'bases', 'micas', 'bases micas', 'oftálmicas', 'lentes', 'stock', 'planillas'] },
+  { id: 'r-inv-optica',  label: 'Inventario - Óptica',            icon: 'eye',             routeName: 'inventario-optica',            routePath: '/layouts/inventario/optica',             keywords: ['inventario', 'óptica', 'optica', 'stock', 'gafas', 'anteojos'] },
+  { id: 'r-inv-lc',      label: 'Inventario - Lentes Contacto',   icon: 'circle',          routeName: 'inventario-lentes-contacto',   routePath: '/layouts/inventario/lentes-contacto',    keywords: ['inventario', 'lentes', 'contacto', 'lentes de contacto', 'stock'] },
+
+  // Ventas
+  { id: 'r-ven-lab',     label: 'Ventas - Laboratorio',           icon: 'flask',           routeName: 'ventas-laboratorio',           routePath: '/layouts/ventas/laboratorio',            keywords: ['ventas', 'laboratorio', 'lab', 'órdenes', 'ordenes', 'pedidos'] },
+  { id: 'r-ven-bm',      label: 'Ventas - Bases y Micas',         icon: 'glasses',         routeName: 'ventas-bases-micas',           routePath: '/layouts/ventas/bases-micas',            keywords: ['ventas', 'bases', 'micas', 'bases micas', 'órdenes'] },
+  { id: 'r-ven-optica',  label: 'Ventas - Óptica',                icon: 'eye',             routeName: 'ventas-optica',                routePath: '/layouts/ventas/optica',                 keywords: ['ventas', 'óptica', 'optica', 'gafas', 'órdenes', 'anteojos'] },
+  { id: 'r-ven-lc',      label: 'Ventas - Lentes Contacto',       icon: 'circle',          routeName: 'ventas-lentes-contacto',       routePath: '/layouts/ventas/lentes-contacto',        keywords: ['ventas', 'lentes', 'contacto', 'lentes de contacto', 'órdenes'] },
+
+  { id: 'r-usuarios',    label: 'Gestión de Usuarios',            icon: 'users',           routeName: 'usuarios',                     routePath: '/layouts/usuarios',                      keywords: ['usuarios', 'users', 'gestión', 'roles', 'permisos'] },
+  { id: 'r-config',      label: 'Configuración',                  icon: 'cog',             routeName: 'configuración',                routePath: '/layouts/config.panel',                  keywords: ['config', 'configuración', 'ajustes', 'settings'] },
+  { id: 'r-perfil',      label: 'Mi Perfil',                      icon: 'user-circle',     routeName: 'configuración',                routePath: '/layouts/config.panel',                  routeQuery: { tab: 'profile' }, keywords: ['perfil', 'profile', 'cuenta', 'contraseña'] },
+  { id: 'r-analiticas',  label: 'Analíticas',                     icon: 'chart-bar',       routeName: 'Análiticas',                   routePath: '/layouts/analiticas',                    keywords: ['analíticas', 'analytics', 'estadísticas', 'reportes', 'graficas'] },
+  { id: 'r-ayuda',       label: 'Ayuda',                          icon: 'question-circle', routeName: 'Ayuda',                        routePath: '/layouts/ayuda',                         keywords: ['ayuda', 'help', 'soporte', 'faq'] },
 ];
 
 const TIPO_MATRIZ_LABELS = {

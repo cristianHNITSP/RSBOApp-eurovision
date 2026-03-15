@@ -214,11 +214,21 @@ export default {
           label: "Inventario",
           icon: "box-open",
           children: [
-            { label: "Inventario", icon: "boxes", path: "/layouts/inventario" },
-            { label: "Laboratorio", icon: "flask", path: "/layouts/laboratorio" },
+            { label: "Bases y Micas", icon: "glasses", path: "/layouts/inventario/bases-micas" },
+            { label: "Óptica", icon: "eye", path: "/layouts/inventario/optica" },
+            { label: "Lentes de Contacto", icon: "circle", path: "/layouts/inventario/lentes-contacto" },
           ],
         },
-        { label: "Pedidos", icon: "shopping-cart", path: "/orders", badge: "3" },
+        {
+          label: "Ventas",
+          icon: "shopping-cart",
+          children: [
+            { label: "Laboratorio", icon: "flask", path: "/layouts/ventas/laboratorio" },
+            { label: "Bases y Micas", icon: "glasses", path: "/layouts/ventas/bases-micas" },
+            { label: "Óptica", icon: "eye", path: "/layouts/ventas/optica" },
+            { label: "Lentes de Contacto", icon: "circle", path: "/layouts/ventas/lentes-contacto" },
+          ],
+        },
         { group: "Otros" },
         { label: "Ajustes", icon: "cog", path: "/layouts/config.panel" },
         { label: "Ayuda", icon: "question-circle", path: "/layouts/Ayuda" },
@@ -360,15 +370,9 @@ export default {
 </script>
 
 <style scoped lang="scss">
-$primary: #906fe1;
-$primary2: #7957d5;
-$primary3: #9a6dff;
+/* Colores de branding (banner/header) — no cambian con el tema */
 $warm1: #f97316;
 $pink1: #ec4899;
-
-$border: rgba(148, 163, 184, 0.22);
-$bg: #ffffff;
-$text: #0f172a;
 
 .sidebar-wrapper {
   position: relative;
@@ -381,13 +385,12 @@ $text: #0f172a;
   top: 0;
   left: 0;
   height: 100%;
-  background: $bg;
-  color: $text;
+  color: var(--text-primary);
   display: flex;
   flex-direction: column;
 
-  border-right: 1px solid $border;
-  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.10);
+  border-right: 1px solid var(--border);
+  box-shadow: var(--shadow-soft);
   transition: width 0.22s ease, transform 0.22s ease;
   z-index: 21;
 
@@ -395,7 +398,7 @@ $text: #0f172a;
   background:
     radial-gradient(circle at 0% 0%, rgba(121, 87, 213, 0.08), transparent 55%),
     radial-gradient(circle at 100% 80%, rgba(236, 72, 153, 0.06), transparent 55%),
-    $bg;
+    var(--surface-solid);
 
   /* overlays */
   .sidebar-decor {
@@ -462,7 +465,7 @@ $text: #0f172a;
 
   border-bottom: 1px solid rgba(255,255,255,0.18);
 
-  background: linear-gradient(120deg, $primary2, $primary3, $warm1, $pink1);
+  background: linear-gradient(120deg, var(--c-primary-dark), var(--c-primary-light), $warm1, $pink1);
   background-size: 200% 200%;
   color: #f9fafb;
 
@@ -507,6 +510,7 @@ $text: #0f172a;
 
   background: rgba(15, 23, 42, 0.18);
   backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   box-shadow: 0 0 0 1px rgba(255,255,255,0.22), 0 10px 20px rgba(15,23,42,0.18);
 
   display: flex;
@@ -590,7 +594,7 @@ $text: #0f172a;
   text-transform: uppercase;
   letter-spacing: 0.10em;
   font-weight: 900;
-  color: rgba(15,23,42,0.45);
+  color: var(--text-subtle);
 }
 
 .menu-group-divider {
@@ -606,7 +610,7 @@ $text: #0f172a;
   padding: 0.58rem 0.75rem;
   margin: 0.14rem 0;
 
-  color: rgba(15,23,42,0.82);
+  color: var(--text-secondary);
   text-decoration: none;
 
   border-radius: 12px;
@@ -627,10 +631,10 @@ $text: #0f172a;
   &.is-exact-active {
     background:
       radial-gradient(circle at 20% 0%, rgba(121,87,213,0.16), transparent 55%),
-      linear-gradient(90deg, rgba(144,111,225,0.18), rgba(236,72,153,0.10));
-    border-color: rgba(144, 111, 225, 0.35);
-    color: $primary;
-    box-shadow: 0 14px 30px rgba(88, 28, 135, 0.12);
+      linear-gradient(90deg, var(--c-primary-alpha), rgba(236,72,153,0.10));
+    border-color: var(--c-primary-alpha);
+    color: var(--c-primary);
+    box-shadow: var(--shadow-primary);
 
     position: relative;
 
@@ -642,12 +646,12 @@ $text: #0f172a;
       bottom: 10px;
       width: 4px;
       border-radius: 999px;
-      background: linear-gradient(180deg, $primary2, $primary3, $pink1);
-      box-shadow: 0 0 0 1px rgba(144,111,225,0.22);
+      background: linear-gradient(180deg, var(--c-primary-dark), var(--c-primary-light), $pink1);
+      box-shadow: 0 0 0 1px var(--c-primary-alpha);
     }
 
     .menu-item-label { font-weight: 800; }
-    .menu-item-icon { color: $primary; }
+    .menu-item-icon { color: var(--c-primary); }
   }
 }
 
@@ -668,7 +672,7 @@ $text: #0f172a;
 
   border-radius: 10px;
   background: rgba(148,163,184,0.12);
-  color: rgba(15,23,42,0.55);
+  color: var(--text-muted);
 
   box-shadow: inset 0 0 0 1px rgba(148,163,184,0.14);
   transition: transform 120ms ease, background-color 120ms ease;
@@ -702,25 +706,26 @@ $text: #0f172a;
 .menu-item-chevron {
   margin-left: 0.25rem;
   transition: transform 0.18s ease, color 0.18s ease;
-  color: rgba(15,23,42,0.55);
+  color: var(--text-muted);
 
   &.is-open {
     transform: rotate(90deg);
-    color: $primary;
+    color: var(--c-primary);
   }
 }
 
 /* ===== FOOTER ===== */
 .sidebar-footer {
   padding: 0.75rem 0.75rem;
-  border-top: 1px solid $border;
+  border-top: 1px solid var(--border);
 
   background:
     radial-gradient(circle at 0% 0%, rgba(121,87,213,0.10), transparent 55%),
     radial-gradient(circle at 100% 100%, rgba(236,72,153,0.08), transparent 60%),
-    rgba(249, 250, 251, 0.85);
+    var(--surface);
 
   backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
 .sidebar-footer-inner {
@@ -763,7 +768,7 @@ $text: #0f172a;
 .user-name {
   font-weight: 900;
   font-size: 0.86rem;
-  color: rgba(15,23,42,0.92);
+  color: var(--text-primary);
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
@@ -771,7 +776,7 @@ $text: #0f172a;
 
 .user-role {
   font-size: 0.74rem;
-  color: rgba(15,23,42,0.62);
+  color: var(--text-muted);
 }
 
 /* ===== SUBMENU PANEL (glass) ===== */
@@ -779,10 +784,11 @@ $text: #0f172a;
   background:
     radial-gradient(circle at 0 0, rgba(121,87,213,0.10), transparent 55%),
     radial-gradient(circle at 100% 100%, rgba(236,72,153,0.08), transparent 60%),
-    rgba(255,255,255,0.92);
+    var(--surface-raised);
 
   backdrop-filter: blur(10px);
-  border-left: 1px solid $border;
+  -webkit-backdrop-filter: blur(10px);
+  border-left: 1px solid var(--border);
   box-shadow: -18px 0 40px rgba(15,23,42,0.12);
   display: flex;
   flex-direction: column;
@@ -794,7 +800,7 @@ $text: #0f172a;
   justify-content: space-between;
 
   padding: 0.8rem 0.9rem;
-  border-bottom: 1px solid $border;
+  border-bottom: 1px solid var(--border);
 
   background: linear-gradient(120deg, rgba(121,87,213,0.14), rgba(236,72,153,0.10));
 }
@@ -812,16 +818,16 @@ $text: #0f172a;
   font-size: 0.68rem;
   text-transform: uppercase;
   letter-spacing: 0.10em;
-  background: rgba(15,23,42,0.06);
-  color: rgba(15,23,42,0.62);
-  box-shadow: inset 0 0 0 1px rgba(148,163,184,0.18);
+  background: var(--c-primary-alpha);
+  color: var(--text-muted);
+  box-shadow: inset 0 0 0 1px var(--border);
   width: fit-content;
 }
 
 .submenu-title {
   font-size: 0.95rem;
   font-weight: 900;
-  color: rgba(15,23,42,0.90);
+  color: var(--text-primary);
 }
 
 .submenu-close {
@@ -839,7 +845,7 @@ $text: #0f172a;
 
 .submenu-hint {
   font-size: 0.75rem;
-  color: rgba(15,23,42,0.60);
+  color: var(--text-muted);
   margin-bottom: 0.4rem;
 }
 
@@ -855,7 +861,7 @@ $text: #0f172a;
   padding: 0.55rem 0.6rem;
   font-size: 0.88rem;
   cursor: pointer;
-  color: rgba(15,23,42,0.82);
+  color: var(--text-secondary);
 
   text-decoration: none;
   border-radius: 12px;
@@ -873,15 +879,15 @@ $text: #0f172a;
   &.is-active {
     background:
       radial-gradient(circle at 20% 0%, rgba(121,87,213,0.16), transparent 55%),
-      linear-gradient(90deg, rgba(144,111,225,0.18), rgba(236,72,153,0.10));
-    border-color: rgba(144, 111, 225, 0.35);
-    color: $primary;
+      linear-gradient(90deg, var(--c-primary-alpha), rgba(236,72,153,0.10));
+    border-color: var(--c-primary-alpha);
+    color: var(--c-primary);
 
     .submenu-item-bar {
-      background: linear-gradient(180deg, $primary2, $primary3, $pink1);
+      background: linear-gradient(180deg, var(--c-primary-dark), var(--c-primary-light), $pink1);
     }
 
-    .submenu-item-icon { color: $primary; }
+    .submenu-item-icon { color: var(--c-primary); }
     .submenu-item-label { font-weight: 900; }
   }
 }
@@ -904,8 +910,8 @@ $text: #0f172a;
 
   border-radius: 10px;
   background: rgba(148,163,184,0.10);
-  color: rgba(15,23,42,0.55);
-  box-shadow: inset 0 0 0 1px rgba(148,163,184,0.14);
+  color: var(--text-muted);
+  box-shadow: inset 0 0 0 1px var(--border-light);
 }
 
 .submenu-item-label {
@@ -934,7 +940,7 @@ $text: #0f172a;
 
 @media screen and (max-width: 768px) {
   .sidebar {
-    border-right: 1px solid $border;
+    border-right: 1px solid var(--border);
   }
 }
 </style>

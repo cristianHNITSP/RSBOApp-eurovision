@@ -75,7 +75,7 @@ const isLoading = computed(() =>
 
 <style scoped>
 .chip--loading {
-  background: rgba(144, 111, 225, 0.12);
+  background: var(--c-primary-alpha);
   border-color: rgba(144, 111, 225, 0.3);
   display: inline-flex;
   align-items: center;
@@ -87,7 +87,7 @@ const isLoading = computed(() =>
   width: 7px;
   height: 7px;
   border-radius: 999px;
-  background: rgba(144, 111, 225, 0.9);
+  background: var(--c-primary);
   animation: blink 1s ease-in-out infinite;
 }
 

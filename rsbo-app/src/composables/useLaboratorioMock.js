@@ -1,5 +1,6 @@
 // src/composables/useLaboratorioMock.js
 import { computed, reactive, ref, watch } from "vue";
+import { labToast } from "@/composables/useLabToast.js";
 
 const deepClone = (x) => {
   try {
@@ -166,9 +167,8 @@ export function useLaboratorioMock() {
   const lastUpdatedHuman = computed(() => "5m"); // mock
 
   function toast(message, type = "is-primary") {
-    const b = window?.$buefy;
-    if (b?.toast?.open) b.toast.open({ message, type, duration: 2000 });
-    else console.log(`[toast:${type}]`, message);
+    const t = type === "is-primary" ? "is-info" : type;
+    labToast.show(message, t, 2000);
   }
 
   function noop() {

@@ -201,9 +201,9 @@ function confirmSelection() {
   height: 100%;
   border-radius: 999px;
   object-fit: cover;
-  background: #fff;
+  background: var(--surface-solid);
   display: block;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.95) inset;
+  box-shadow: 0 0 0 2px var(--surface-solid) inset;
 }
 
 /* overlay cámara */
@@ -213,7 +213,7 @@ function confirmSelection() {
   display: grid;
   place-items: center;
   background: rgba(15, 23, 42, 0.34);
-  color: #fff;
+  color: var(--text-on-primary);
   opacity: 0;
   transition: opacity 130ms ease;
 }
@@ -233,7 +233,7 @@ function confirmSelection() {
   overflow: hidden;
   box-shadow: 0 28px 70px rgba(0, 0, 0, 0.35);
   animation: pop-in 160ms ease-out;
-  background: #fff;
+  background: var(--surface-solid);
 }
 
 @keyframes pop-in {
@@ -250,7 +250,7 @@ function confirmSelection() {
 /* ✅ header sólido + layout correcto */
 .avatar-modal :deep(.modal-card-head),
 .avatar-modal-head {
-  background: #ffffff !important;
+  background: var(--surface-solid) !important;
   border-bottom: 1px solid rgba(148, 163, 184, 0.35);
   position: relative;
   z-index: 2;
@@ -287,13 +287,13 @@ function confirmSelection() {
 
 .head-left .modal-card-title {
   font-weight: 800;
-  color: #111827;
+  color: var(--text-primary);
   letter-spacing: -0.01em;
 }
 .head-left .subtitle {
   margin-top: 0.15rem;
   font-size: 0.85rem;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 /* ✅ boton cerrar literalmente al final arriba-derecha */
@@ -308,7 +308,7 @@ function confirmSelection() {
 .avatar-modal :deep(.modal-card),
 .avatar-modal :deep(.modal-card-body),
 .avatar-modal :deep(.modal-card-foot) {
-  background-color: #fff;
+  background-color: var(--surface-solid);
 }
 
 /* ===== Tabs ===== */
@@ -321,13 +321,13 @@ function confirmSelection() {
 .avatar-tabs :deep(.tabs li a) {
   font-weight: 700;
   font-size: 0.9rem;
-  color: #6b7280;
+  color: var(--text-muted);
   transition: color 140ms ease, transform 140ms ease, background-color 140ms ease;
   border-radius: 10px 10px 0 0;
 }
 .avatar-tabs :deep(.tabs li.is-active a) {
-  color: #6d28d9;
-  background: rgba(109, 40, 217, 0.06);
+  color: var(--c-primary);
+  background: var(--c-primary-alpha);
 }
 .avatar-tabs :deep(.tabs li a:hover) {
   color: #4f46e5;
@@ -393,11 +393,11 @@ function confirmSelection() {
   width: 26px;
   height: 26px;
   border-radius: 999px;
-  background: #6d28d9;
-  color: #fff;
+  background: var(--c-primary);
+  color: var(--text-on-primary);
   display: grid;
   place-items: center;
-  box-shadow: 0 10px 22px rgba(109, 40, 217, 0.35);
+  box-shadow: 0 10px 22px var(--c-primary-alpha);
   transform: scale(0.92);
   animation: badge-in 140ms ease-out;
 }
@@ -428,7 +428,7 @@ function confirmSelection() {
 .preview-label {
   font-size: 0.85rem;
   font-weight: 700;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 .preview-ring {
   width: 44px;
@@ -442,7 +442,7 @@ function confirmSelection() {
   height: 100%;
   border-radius: 999px;
   object-fit: cover;
-  background: #fff;
+  background: var(--surface-solid);
   display: block;
 }
 .actions {

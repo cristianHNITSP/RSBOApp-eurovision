@@ -71,14 +71,15 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick, onMounted } from "vue";
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from "vue";
 import { AgGridVue } from "ag-grid-vue3";
 import {
   AllCommunityModule,
   ModuleRegistry,
   themeQuartz,
   iconSetQuartzBold,
-  colorSchemeLight
+  colorSchemeLight,
+  colorSchemeDark
 } from "ag-grid-community";
 import navtools from "@/components/ag-grid/navtools.vue";
 import { fetchItems, saveChunk, reseedSheet, getSheet } from "@/services/inventory";
@@ -191,28 +192,34 @@ const physicalLimits = ref(null);
 const pendingChanges = ref(new Map());
 const cylValues = ref([]);
 
-/* ===================== theme / locale ===================== */
-const themeCustom = themeQuartz
-  .withPart(iconSetQuartzBold, colorSchemeLight)
-  .withParams({
-    accentColor: "#7957d5",
-    backgroundColor: "#ffffff",
-    foregroundColor: "#2d2242",
-    borderColor: "#e5e5f0",
-    borderRadius: 10,
-    wrapperBorder: true,
-    wrapperBorderRadius: 10,
-    columnBorder: true,
-    rowBorder: true,
-    headerBackgroundColor: "#f5f3ff",
-    headerTextColor: "#4527a0",
-    headerFontSize: 11,
-    headerFontWeight: 600,
-    fontFamily: "Satoshi, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-    fontSize: 12,
-    spacing: 3,
-    oddRowBackgroundColor: "#fbfbff"
-  });
+/* === AG-Grid tema reactivo al dark mode === */
+const _darkMode = ref(document.documentElement.getAttribute("data-theme") === "dark");
+const _themeObserver = new MutationObserver(() => {
+  _darkMode.value = document.documentElement.getAttribute("data-theme") === "dark";
+});
+onMounted(() => _themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] }));
+onBeforeUnmount(() => _themeObserver.disconnect());
+
+const themeCustom = computed(() => {
+  const d = _darkMode.value;
+  return themeQuartz
+    .withPart(iconSetQuartzBold, d ? colorSchemeDark : colorSchemeLight)
+    .withParams(d ? {
+      accentColor: "#a788f0", backgroundColor: "#161b22", foregroundColor: "#e2e8f0",
+      borderColor: "#2d3748", borderRadius: 10, wrapperBorder: true, wrapperBorderRadius: 10,
+      columnBorder: true, rowBorder: true, headerBackgroundColor: "#1a1f2e",
+      headerTextColor: "#c4b5fd", headerFontSize: 11, headerFontWeight: 600,
+      fontFamily: "Satoshi, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      fontSize: 12, spacing: 3, oddRowBackgroundColor: "#18202e",
+    } : {
+      accentColor: "#7957d5", backgroundColor: "#ffffff", foregroundColor: "#2d2242",
+      borderColor: "#e5e5f0", borderRadius: 10, wrapperBorder: true, wrapperBorderRadius: 10,
+      columnBorder: true, rowBorder: true, headerBackgroundColor: "#f5f3ff",
+      headerTextColor: "#4527a0", headerFontSize: 11, headerFontWeight: 600,
+      fontFamily: "Satoshi, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      fontSize: 12, spacing: 3, oddRowBackgroundColor: "#fbfbff",
+    });
+});
 
 const localeText = { noRowsToShow: "No hay filas para mostrar", loadingOoo: "Cargando..." };
 
@@ -830,7 +837,7 @@ function handleExport() {
 .buefy-balham-light {
   height: 100%;
   padding: 0.55rem;
-  background-color: #ffffff;
+  background-color: var(--ag-bg);
   border-radius: 0.9rem;
   box-shadow: 0 10px 22px rgba(17, 24, 39, 0.06);
   border: 1px solid rgba(15, 23, 42, 0.06);

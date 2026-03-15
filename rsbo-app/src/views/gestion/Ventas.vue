@@ -245,21 +245,21 @@ export default {
 
 <style scoped>
 .section-matriz-dioptrias {
-    border-bottom: 1px solid #ccc;
+    border-bottom: 1px solid var(--border);
     border-radius: 8px;
     padding: 1.5rem;
-    background-color: white;
- 
+    background-color: var(--surface-solid);
+
 }
 
 .revo-grid-container {
     border-radius: 8px;
     overflow: hidden;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--border);
 }
 
 .skeleton {
-    background: #e0e0e0;
+    background: var(--bg-muted);
     border-radius: 4px;
     animation: pulse 1.5s infinite ease-in-out;
 }

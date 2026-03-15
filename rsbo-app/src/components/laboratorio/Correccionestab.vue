@@ -172,7 +172,7 @@
         <div class="modal-card" style="max-width: 420px; width: 100%">
           <header class="modal-card-head" style="background: rgba(254, 226, 226, 0.9)">
             <p class="modal-card-title" style="color: rgba(127, 29, 29, 0.9)">
-              <i class="fas fa-exclamation-triangle mr-2" style="color: #ef4444"></i>
+              <i class="fas fa-exclamation-triangle mr-2" style="color: var(--c-danger)"></i>
               Confirmar cancelación
             </p>
             <button class="delete" @click="showConfirm = false"></button>
@@ -245,14 +245,14 @@ async function executeCancel() {
   border: 1.5px solid rgba(245, 158, 11, 0.2);
   border-radius: 16px;
   padding: 0.85rem;
-  background: rgba(255, 255, 255, 0.78);
+  background: var(--surface);
   transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
   cursor: pointer;
 }
 
 .corr-card:hover {
   transform: translateY(-1px);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.09);
+  box-shadow: var(--shadow-md);
 }
 
 .corr-card--selected {
@@ -279,33 +279,33 @@ async function executeCancel() {
 .corr-card__folio {
   font-size: 0.9rem;
   font-weight: 1000;
-  color: rgba(17, 24, 39, 0.9);
+  color: var(--text-primary);
 }
 
 .corr-card__actor {
   font-size: 0.76rem;
   font-weight: 800;
-  color: rgba(107, 114, 128, 0.9);
+  color: var(--text-muted);
 }
 
 .corr-card__date {
   font-size: 0.72rem;
   font-weight: 800;
-  color: rgba(107, 114, 128, 0.85);
+  color: var(--text-muted);
   white-space: nowrap;
 }
 
 .corr-card__code {
   font-size: 0.82rem;
   font-weight: 900;
-  color: rgba(17, 24, 39, 0.85);
+  color: var(--text-primary);
   margin-bottom: 0.3rem;
 }
 
 .corr-card__msg {
   font-size: 0.82rem;
   font-weight: 800;
-  color: rgba(55, 65, 81, 0.9);
+  color: var(--text-secondary);
   line-height: 1.4;
   margin-bottom: 0.5rem;
   padding: 0.4rem 0.55rem;
@@ -320,10 +320,10 @@ async function executeCancel() {
 }
 
 .corr-order-preview {
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  border: 1px solid var(--border);
   border-radius: 14px;
   padding: 0.85rem;
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--surface-overlay);
 }
 
 .corr-order-preview__head {
@@ -339,18 +339,18 @@ async function executeCancel() {
   gap: 0.25rem;
   font-size: 0.82rem;
   font-weight: 800;
-  color: rgba(107, 114, 128, 0.95);
+  color: var(--text-muted);
 }
 
 .corr-order-preview__rollback-hint {
   padding: 0.35rem 0.5rem;
   margin-top: 0.2rem;
-  background: rgba(239, 68, 68, 0.07);
+  background: var(--c-danger-alpha);
   border: 1px solid rgba(239, 68, 68, 0.18);
   border-radius: 8px;
   font-size: 0.78rem;
   font-weight: 900;
-  color: rgba(127, 29, 29, 0.85);
+  color: var(--c-danger);
 }
 
 .corr-micas-list {
@@ -367,18 +367,18 @@ async function executeCancel() {
   flex-wrap: wrap;
   font-size: 0.78rem;
   font-weight: 800;
-  color: rgba(55, 65, 81, 0.9);
+  color: var(--text-secondary);
   padding: 0.25rem 0;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+  border-bottom: 1px solid var(--border);
 }
 
 .corr-mica-qty {
   margin-left: auto;
   font-weight: 1000;
-  background: rgba(148, 163, 184, 0.15);
+  background: var(--border);
   padding: 0.05rem 0.35rem;
   border-radius: 999px;
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  border: 1px solid var(--border);
   font-size: 0.72rem;
 }
 
@@ -386,11 +386,11 @@ async function executeCancel() {
   display: inline-flex;
   padding: 0.05rem 0.35rem;
   border-radius: 999px;
-  background: rgba(144, 111, 225, 0.1);
+  background: var(--c-primary-alpha);
   border: 1px solid rgba(144, 111, 225, 0.2);
   font-size: 0.68rem;
   font-weight: 900;
-  color: rgba(88, 28, 135, 0.85);
+  color: var(--c-primary);
   flex-shrink: 0;
 }
 </style>

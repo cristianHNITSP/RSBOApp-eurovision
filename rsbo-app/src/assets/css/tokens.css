@@ -1,0 +1,323 @@
+/* ============================================================
+   RSBOApp Design Tokens — tokens.css
+   Importar en main.js ANTES de global.css y buefy.css
+   ============================================================ */
+
+/* ----------------------------------------------------------
+   LIGHT MODE — valores por defecto en :root
+   ---------------------------------------------------------- */
+:root {
+  /* === Brand / Estado === */
+  --c-primary:         #906fe1;
+  --c-primary-dark:    #7957d5;
+  --c-primary-light:   #9a6dff;
+  --c-primary-alpha:   rgba(144, 111, 225, 0.18);
+
+  --c-success:         #22c55e;
+  --c-success-alpha:   rgba(34, 197, 94, 0.16);
+  --c-warning:         #f59e0b;
+  --c-warning-alpha:   rgba(245, 158, 11, 0.18);
+  --c-danger:          #ef4444;
+  --c-danger-alpha:    rgba(239, 68, 68, 0.16);
+  --c-info:            #3b82f6;
+  --c-info-alpha:      rgba(59, 130, 246, 0.14);
+
+  /* === Fondos === */
+  --bg-base:           #ffffff;
+  --bg-subtle:         #f9fafb;
+  --bg-muted:          #f3f4f6;
+
+  /* === Superficies (cards, paneles, dropdowns) === */
+  --surface:           rgba(255, 255, 255, 0.88);
+  --surface-solid:     #ffffff;
+  --surface-raised:    rgba(255, 255, 255, 0.92);
+  --surface-overlay:   rgba(255, 255, 255, 0.75);
+
+  /* === Texto === */
+  --text-primary:      #0f172a;
+  --text-secondary:    rgba(15, 23, 42, 0.82);
+  --text-muted:        rgba(15, 23, 42, 0.62);
+  --text-subtle:       rgba(15, 23, 42, 0.45);
+  --text-disabled:     rgba(15, 23, 42, 0.28);
+  --text-on-primary:   #ffffff;
+
+  /* === Bordes === */
+  --border:            rgba(148, 163, 184, 0.22);
+  --border-light:      rgba(148, 163, 184, 0.14);
+  --border-strong:     rgba(148, 163, 184, 0.40);
+  --border-solid:      #e5e7eb;
+  --border-input:      #dbdbdb;
+
+  /* === Sombras === */
+  --shadow-xs:         0 1px 3px rgba(15, 23, 42, 0.06);
+  --shadow-sm:         0 4px 12px rgba(15, 23, 42, 0.06);
+  --shadow-md:         0 10px 30px rgba(15, 23, 42, 0.08);
+  --shadow-lg:         0 18px 50px rgba(15, 23, 42, 0.12);
+  --shadow-soft:       0 14px 40px rgba(15, 23, 42, 0.10);
+  --shadow-primary:    0 14px 30px rgba(88, 28, 135, 0.18);
+
+  /* === Glassmorphism FX (controlables por reduced-effects) === */
+  --fx-blur:           12px;
+  --fx-surface-a:      0.88;
+  --fx-grad-a1:        0.12;
+  --fx-grad-a2:        0.10;
+  --fx-grad-a3:        0.10;
+  --fx-shadow-a:       0.12;
+
+  /* === Gradiente de fondo de la app === */
+  --grad-header-bg:
+    radial-gradient(circle at 0% 0%,   rgba(121, 87, 213, 0.12), transparent 55%),
+    radial-gradient(circle at 100% 70%, rgba(236, 72, 153, 0.10), transparent 55%),
+    radial-gradient(circle at 40% 110%, rgba(249, 115, 22,  0.10), transparent 55%),
+    #ffffff;
+
+  /* === Border radius === */
+  --radius-sm:         8px;
+  --radius-md:         12px;
+  --radius-lg:         14px;
+  --radius-xl:         18px;
+  --radius-pill:       999px;
+
+  /* === Espaciado base === */
+  --space-xs:          0.25rem;
+  --space-sm:          0.5rem;
+  --space-md:          0.75rem;
+  --space-lg:          1rem;
+  --space-xl:          1.25rem;
+
+  /* === Transiciones === */
+  --transition-fast:   120ms ease;
+  --transition-base:   180ms ease;
+  --transition-slow:   300ms ease;
+
+  /* === Aliases de compatibilidad con variables locales existentes === */
+  --white:             #ffffff;
+  --hover-color-menus: #f5f5f5;
+
+  /* Alias con nombres que ya usan DashboardLayout y otros componentes */
+  --text:              var(--text-primary);
+  --muted:             var(--text-muted);
+  --shadow:            var(--shadow-lg);
+  --shadow-soft:       0 14px 40px rgba(15, 23, 42, 0.10);
+
+  /* Alias usados en Laboratorio.vue y componentes hijos */
+  --p:                 var(--c-primary);
+  --card:              var(--surface);
+  --card2:             var(--surface-overlay);
+
+  /* Alias border-light para backward compat */
+  --border-light-compat: #dbdbdb;
+
+  /* === AG-Grid tokens === */
+  --ag-bg:             #ffffff;
+  --ag-fg:             #2d2242;
+  --ag-border:         #e5e5f0;
+  --ag-header-bg:      #f5f3ff;
+  --ag-header-fg:      #4527a0;
+  --ag-odd-row:        #fbfbff;
+  --ag-row-hover:      #f3f0ff;
+  --ag-selected:       rgba(144, 111, 225, 0.12);
+  --ag-cell-border:    rgba(100, 149, 237, 0.30);
+}
+
+/* ----------------------------------------------------------
+   DARK MODE — overrides sobre :root
+   ---------------------------------------------------------- */
+[data-theme="dark"] {
+  /* === Brand / Estado (más brillantes para legibilidad en dark) === */
+  --c-primary:         #a788f0;
+  --c-primary-dark:    #9270e8;
+  --c-primary-light:   #b89df5;
+  --c-primary-alpha:   rgba(167, 136, 240, 0.20);
+
+  --c-success:         #34d66a;
+  --c-success-alpha:   rgba(52, 214, 106, 0.18);
+  --c-warning:         #fbbf24;
+  --c-warning-alpha:   rgba(251, 191, 36, 0.18);
+  --c-danger:          #f87171;
+  --c-danger-alpha:    rgba(248, 113, 113, 0.18);
+  --c-info:            #60a5fa;
+  --c-info-alpha:      rgba(96, 165, 250, 0.16);
+
+  /* === Fondos === */
+  --bg-base:           #0f1117;
+  --bg-subtle:         #161b22;
+  --bg-muted:          #1e2432;
+
+  /* === Superficies === */
+  --surface:           rgba(22, 27, 34, 0.92);
+  --surface-solid:     #161b22;
+  --surface-raised:    rgba(30, 36, 50, 0.95);
+  --surface-overlay:   rgba(22, 27, 34, 0.80);
+
+  /* === Texto === */
+  --text-primary:      #f0f4ff;
+  --text-secondary:    rgba(240, 244, 255, 0.88);
+  --text-muted:        rgba(240, 244, 255, 0.60);
+  --text-subtle:       rgba(240, 244, 255, 0.40);
+  --text-disabled:     rgba(240, 244, 255, 0.22);
+  --text-on-primary:   #ffffff;
+
+  /* === Bordes === */
+  --border:            rgba(148, 163, 184, 0.14);
+  --border-light:      rgba(148, 163, 184, 0.08);
+  --border-strong:     rgba(148, 163, 184, 0.28);
+  --border-solid:      #2d3748;
+  --border-input:      #374151;
+
+  /* === Sombras (más intensas en dark para dar profundidad) === */
+  --shadow-xs:         0 1px 3px rgba(0, 0, 0, 0.30);
+  --shadow-sm:         0 4px 12px rgba(0, 0, 0, 0.30);
+  --shadow-md:         0 10px 30px rgba(0, 0, 0, 0.40);
+  --shadow-lg:         0 18px 50px rgba(0, 0, 0, 0.50);
+  --shadow-soft:       0 14px 40px rgba(0, 0, 0, 0.38);
+  --shadow-primary:    0 14px 30px rgba(88, 28, 135, 0.45);
+
+  /* === FX tokens (glassmorphism dark: más opaco, mismo blur) === */
+  --fx-surface-a:      0.92;
+  --fx-grad-a1:        0.18;
+  --fx-grad-a2:        0.14;
+  --fx-grad-a3:        0.14;
+  --fx-shadow-a:       0.45;
+
+  /* === Gradiente de fondo (tonos más profundos) === */
+  --grad-header-bg:
+    radial-gradient(circle at 0% 0%,   rgba(121, 87, 213, 0.20), transparent 55%),
+    radial-gradient(circle at 100% 70%, rgba(236, 72, 153, 0.14), transparent 55%),
+    radial-gradient(circle at 40% 110%, rgba(249, 115, 22,  0.12), transparent 55%),
+    #0f1117;
+
+  /* === Aliases de compatibilidad === */
+  --white:             #161b22;
+  --hover-color-menus: #1e2432;
+  --text:              var(--text-primary);
+  --muted:             var(--text-muted);
+  --shadow:            var(--shadow-lg);
+  --p:                 var(--c-primary);
+  --card:              var(--surface);
+  --card2:             var(--surface-overlay);
+
+  /* === AG-Grid dark === */
+  --ag-bg:             #161b22;
+  --ag-fg:             #e2e8f0;
+  --ag-border:         #2d3748;
+  --ag-header-bg:      #1a1f2e;
+  --ag-header-fg:      #c4b5fd;
+  --ag-odd-row:        #18202e;
+  --ag-row-hover:      #1e2a40;
+  --ag-selected:       rgba(167, 136, 240, 0.16);
+  --ag-cell-border:    rgba(167, 136, 240, 0.30);
+}
+
+/* ----------------------------------------------------------
+   ALTO CONTRASTE
+   ---------------------------------------------------------- */
+[data-contrast="high"] {
+  --text-primary:    #000000;
+  --text-secondary:  #000000;
+  --text-muted:      #1a1a1a;
+  --border:          rgba(0, 0, 0, 0.50);
+  --border-solid:    #000000;
+  --shadow-md:       0 0 0 2px #000000;
+}
+
+[data-theme="dark"][data-contrast="high"] {
+  --text-primary:    #ffffff;
+  --text-secondary:  #ffffff;
+  --text-muted:      #f0f0f0;
+  --border:          rgba(255, 255, 255, 0.50);
+  --border-solid:    #ffffff;
+}
+
+/* ----------------------------------------------------------
+   ESCALA DE FUENTES
+   El composable aplica font-size al html element vía JS.
+   Estas reglas son fallback por si el JS tarda (evita flash).
+   ---------------------------------------------------------- */
+[data-font-size="xs"] { font-size: 85%;    }
+[data-font-size="sm"] { font-size: 92.5%;  }
+[data-font-size="md"] { font-size: 100%;   }
+[data-font-size="lg"] { font-size: 112.5%; }
+
+/* ----------------------------------------------------------
+   FUENTE LEGIBLE (readable-font mode)
+   ---------------------------------------------------------- */
+[data-readable-font="true"] body,
+[data-readable-font="true"] html,
+[data-readable-font="true"] #app {
+  font-family: 'Atkinson Hyperlegible', 'OpenDyslexic', 'Satoshi', sans-serif;
+  letter-spacing: 0.01em;
+  word-spacing: 0.05em;
+}
+
+/* ----------------------------------------------------------
+   EFECTOS REDUCIDOS (reduced-effects mode)
+   Elimina transparencias, blur y degradados decorativos.
+   NO toca duraciones de transición (eso causaría parpadeo).
+   ---------------------------------------------------------- */
+[data-reduced-effects="true"] {
+  --fx-blur:           0px;
+  --fx-surface-a:      1;
+  --fx-grad-a1:        0;
+  --fx-grad-a2:        0;
+  --fx-grad-a3:        0;
+  --fx-shadow-a:       0.06;
+  /* Sombras mínimas */
+  --shadow-xs:         0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm:         0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-md:         0 2px 6px rgba(0, 0, 0, 0.08);
+  --shadow-lg:         0 3px 8px rgba(0, 0, 0, 0.10);
+  --shadow-soft:       0 2px 6px rgba(0, 0, 0, 0.08);
+  --shadow-primary:    none;
+  /* Superficies sólidas — sin transparencia */
+  --surface:           var(--surface-solid);
+  --surface-raised:    var(--surface-solid);
+  --surface-overlay:   var(--bg-subtle);
+  /* Fondo sin degradado */
+  --grad-header-bg:    var(--bg-base);
+}
+
+/* Deshabilitar backdrop-filter en TODOS los elementos */
+[data-reduced-effects="true"] *,
+[data-reduced-effects="true"] *::before,
+[data-reduced-effects="true"] *::after {
+  backdrop-filter:         none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Deshabilitar glows y partículas decorativas */
+[data-reduced-effects="true"] .um-glow,
+[data-reduced-effects="true"] .avatar-ring,
+[data-reduced-effects="true"] .bg-glow,
+[data-reduced-effects="true"] [class*="glow"],
+[data-reduced-effects="true"] [class*="-particles"] {
+  display: none !important;
+}
+
+/* ----------------------------------------------------------
+   MOVIMIENTO REDUCIDO (reduced-motion mode)
+   Elimina TODAS las animaciones y transiciones CSS.
+   ---------------------------------------------------------- */
+[data-reduced-motion="true"] *,
+[data-reduced-motion="true"] *::before,
+[data-reduced-motion="true"] *::after {
+  animation-duration:        0.01ms !important;
+  animation-delay:           0ms    !important;
+  animation-iteration-count: 1      !important;
+  transition-duration:       0.01ms !important;
+  transition-delay:          0ms    !important;
+  scroll-behavior:           auto   !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration:        0.01ms !important;
+    animation-delay:           0ms    !important;
+    animation-iteration-count: 1      !important;
+    transition-duration:       0.01ms !important;
+    transition-delay:          0ms    !important;
+    scroll-behavior:           auto   !important;
+  }
+}

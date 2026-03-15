@@ -1,6 +1,7 @@
 // services/useAuth.js
 import { ref } from 'vue'
 import api from '../api/axios'
+import { labToast } from "../composables/useLabToast.js";
 
 const user = ref(null)
 
@@ -61,7 +62,7 @@ export function useAuth() {
 
         user.value = null
         router.push('/')
-        $buefy.toast.open('Sesión cerrada correctamente')
+        labToast.success('Sesión cerrada correctamente');
       }
     })
   }

@@ -420,12 +420,10 @@
 </template>
 
 <script setup>
-import { computed, getCurrentInstance, nextTick, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import AvatarPicker from "../../components/AvatarPicker.vue";
 import { usersService } from "../../services/usersService.js";
-
-const inst = getCurrentInstance();
-const $buefy = inst?.proxy?.$buefy;
+import { labToast } from "@/composables/useLabToast";
 
 const roles = ref([]);
 const usersRaw = ref([]);
@@ -514,7 +512,7 @@ const createForm = ref({
 });
 
 const toast = (message, type = "is-danger", duration = 3000) => {
-  $buefy?.toast?.open?.({ message, type, duration });
+  labToast.show(message, type, duration);
 };
 
 const FALLBACK_AVATAR =
@@ -980,9 +978,9 @@ onMounted(async () => {
 .panel-usuarios-section {
   border-radius: 12px;
   padding: 1.5rem;
-  background-color: #ffffff;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+  background-color: var(--surface-solid);
+  border: 1px solid var(--border-solid);
+  box-shadow: var(--shadow-md);
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -997,8 +995,8 @@ onMounted(async () => {
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #4f46e5;
-  background: #eef2ff;
+  color: var(--c-primary);
+  background: var(--c-primary-alpha);
   padding: 0.2rem 0.45rem;
   border-radius: 999px;
   margin-bottom: 0.35rem;
@@ -1243,28 +1241,28 @@ onMounted(async () => {
 }
 
 .chip--light {
-  background: #f9fafb;
-  color: #111827;
+  background: var(--bg-subtle);
+  color: var(--text-primary);
 }
 
 .chip--status-active {
-  background: #10b981;
+  background: var(--c-success);
   color: #ecfdf5;
 }
 
 .chip--status-inactive {
-  background: #f59e0b;
-  color: #111827;
+  background: var(--c-warning);
+  color: var(--text-primary);
 }
 
 .chip--info {
-  background: #e0f2fe;
-  color: #075985;
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
 }
 
 .chip:hover {
   transform: translateY(-1px);
-  box-shadow: 0 7px 18px rgba(15, 23, 42, 0.25);
+  box-shadow: var(--shadow-md);
 }
 
 /* TABLA */
@@ -1283,13 +1281,13 @@ onMounted(async () => {
 }
 
 :deep(.b-table .table tbody tr.is-selected td) {
-  color: #111827 !important;
+  color: var(--text-primary) !important;
 }
 
 :deep(.b-table .table tbody tr.is-selected .tag) {
-  background: #ffffff !important;
-  color: #111827 !important;
-  border: 1px solid rgba(148, 163, 184, 0.22) !important;
+  background: var(--surface-solid) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border) !important;
 }
 
 :deep(.b-table .table tbody tr.is-selected .b-tag) {
@@ -1333,7 +1331,7 @@ onMounted(async () => {
 }
 
 .user-row--inactive {
-  background-color: #fff5f5;
+  background-color: var(--c-danger-alpha);
   opacity: 0.95;
 }
 

@@ -343,9 +343,9 @@ function formatNumber(value) {
 .section-analiticas {
     border-radius: 12px;
     padding: 1.5rem;
-    background-color: #ffffff;
-    border: 1px solid #e5e7eb;
-    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+    background-color: var(--surface-solid);
+    border: 1px solid var(--border-solid);
+    box-shadow: var(--shadow-md);
     display: flex;
     flex-direction: column;
     gap: 1rem;
@@ -359,8 +359,8 @@ function formatNumber(value) {
     font-size: 0.7rem;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: #4f46e5;
-    background: #eef2ff;
+    color: var(--c-primary);
+    background: var(--c-primary-alpha);
     padding: 0.2rem 0.45rem;
     border-radius: 999px;
     margin-bottom: 0.35rem;
@@ -377,12 +377,12 @@ function formatNumber(value) {
 .analytics-title {
     font-size: 1.05rem;
     font-weight: 700;
-    color: #111827;
+    color: var(--text-primary);
 }
 
 .analytics-subtitle {
     font-size: 0.8rem;
-    color: #6b7280;
+    color: var(--text-muted);
 }
 
 .analytics-period {
@@ -392,19 +392,17 @@ function formatNumber(value) {
 
 /* Tarjetas */
 .analytics-card {
-    background-color: #ffffff;
+    background-color: var(--surface-solid);
     border-radius: 0.9rem;
     padding: 1rem 1.1rem;
-    box-shadow:
-        0 0 0 1px rgba(148, 163, 184, 0.16),
-        0 10px 30px rgba(15, 23, 42, 0.04);
+    box-shadow: var(--shadow-sm);
     margin-bottom: 0.7rem;
 }
 
 .analytics-card-header h3 {
     font-size: 0.9rem;
     font-weight: 600;
-    color: #111827;
+    color: var(--text-primary);
     margin-bottom: 0.1rem;
 }
 
@@ -420,12 +418,12 @@ function formatNumber(value) {
 .analytics-kpi {
     padding: 0.4rem 0.5rem;
     border-radius: 0.6rem;
-    background: #f9fafb;
+    background: var(--bg-subtle);
 }
 
 .analytics-kpi-label {
     font-size: 0.7rem;
-    color: #6b7280;
+    color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.06em;
 }
@@ -433,12 +431,12 @@ function formatNumber(value) {
 .analytics-kpi-value {
     font-size: 1.25rem;
     font-weight: 700;
-    color: #111827;
+    color: var(--text-primary);
 }
 
 .analytics-kpi-caption {
     font-size: 0.7rem;
-    color: #6b7280;
+    color: var(--text-muted);
 }
 
 /* Métricas secundarias */
@@ -455,18 +453,18 @@ function formatNumber(value) {
 
 .metric-label {
     font-size: 0.75rem;
-    color: #6b7280;
+    color: var(--text-muted);
 }
 
 .metric-value {
     font-size: 0.85rem;
-    color: #111827;
+    color: var(--text-primary);
     margin-top: 0.1rem;
 }
 
 .metric-caption {
     font-size: 0.72rem;
-    color: #6b7280;
+    color: var(--text-muted);
 }
 
 /* Familias */
@@ -488,11 +486,11 @@ function formatNumber(value) {
 }
 
 .family-name {
-    color: #374151;
+    color: var(--text-secondary);
 }
 
 .family-percentage {
-    color: #6b7280;
+    color: var(--text-muted);
 }
 
 /* Nivel de servicio */
@@ -531,7 +529,7 @@ function formatNumber(value) {
 .risk-item {
     border-radius: 0.6rem;
     padding: 0.55rem 0.6rem;
-    background: #f9fafb;
+    background: var(--bg-subtle);
 }
 
 .risk-header {
@@ -544,13 +542,13 @@ function formatNumber(value) {
 .risk-label {
     font-size: 0.8rem;
     font-weight: 600;
-    color: #111827;
+    color: var(--text-primary);
 }
 
 .risk-reason,
 .risk-action {
     font-size: 0.74rem;
-    color: #4b5563;
+    color: var(--text-secondary);
     margin-bottom: 0.1rem;
 }
 

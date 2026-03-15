@@ -152,8 +152,8 @@ function goCorrecciones() {
   width: 100%;
   padding: 0.85rem 1rem;
   border-radius: 16px;
-  border: 1.5px solid rgba(148, 163, 184, 0.22);
-  background: rgba(255, 255, 255, 0.75);
+  border: 1.5px solid var(--border);
+  background: var(--surface-overlay);
   cursor: pointer;
   text-align: left;
   transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
@@ -161,12 +161,12 @@ function goCorrecciones() {
 
 .quick-action-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.1);
+  box-shadow: var(--shadow-md);
 }
 
 .quick-action-btn--crear {
   border-color: rgba(144, 111, 225, 0.3);
-  background: linear-gradient(135deg, rgba(144, 111, 225, 0.08), rgba(255, 255, 255, 0.85));
+  background: linear-gradient(135deg, var(--c-primary-alpha), var(--surface-raised));
 }
 
 .quick-action-btn--crear:hover {
@@ -175,7 +175,7 @@ function goCorrecciones() {
 
 .quick-action-btn--surtir {
   border-color: rgba(34, 197, 94, 0.3);
-  background: linear-gradient(135deg, rgba(34, 197, 94, 0.07), rgba(255, 255, 255, 0.85));
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.07), var(--surface-raised));
 }
 
 .quick-action-btn--surtir:hover {
@@ -184,7 +184,7 @@ function goCorrecciones() {
 
 .quick-action-btn--corr {
   border-color: rgba(245, 158, 11, 0.3);
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.07), rgba(255, 255, 255, 0.85));
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.07), var(--surface-raised));
 }
 
 .quick-action-btn--corr:hover {
@@ -199,34 +199,34 @@ function goCorrecciones() {
 }
 
 .quick-action-btn--crear .quick-action-btn__icon {
-  color: rgba(144, 111, 225, 0.85);
+  color: var(--c-primary);
 }
 
 .quick-action-btn--surtir .quick-action-btn__icon {
-  color: rgba(34, 197, 94, 0.85);
+  color: var(--c-success);
 }
 
 .quick-action-btn--corr .quick-action-btn__icon {
-  color: rgba(245, 158, 11, 0.85);
+  color: var(--c-warning);
 }
 
 .quick-action-btn__label {
   font-weight: 1000;
   font-size: 0.9rem;
-  color: rgba(17, 24, 39, 0.9);
+  color: var(--text-primary);
 }
 
 .quick-action-btn__hint {
   font-size: 0.78rem;
   font-weight: 800;
-  color: rgba(107, 114, 128, 0.9);
+  color: var(--text-muted);
   margin-top: 0.1rem;
 }
 
 .quick-action-btn__chev {
   margin-left: auto;
   font-size: 0.75rem;
-  color: rgba(148, 163, 184, 0.75);
+  color: var(--text-subtle);
 }
 
 .export-period-row {
@@ -242,7 +242,7 @@ function goCorrecciones() {
 .export-period-label {
   font-size: 0.78rem;
   font-weight: 900;
-  color: rgba(21, 128, 61, 0.85);
+  color: var(--c-success);
 }
 
 .export-period-btns {
@@ -255,10 +255,10 @@ function goCorrecciones() {
   padding: 0.2rem 0.55rem;
   border-radius: 999px;
   border: 1px solid rgba(34, 197, 94, 0.3);
-  background: rgba(255, 255, 255, 0.8);
+  background: var(--surface);
   font-size: 0.76rem;
   font-weight: 900;
-  color: rgba(21, 128, 61, 0.9);
+  color: var(--c-success);
   cursor: pointer;
   transition: all 100ms ease;
 }
@@ -269,19 +269,19 @@ function goCorrecciones() {
 }
 
 .logs-badge {
-  background: rgba(255, 255, 255, 0.65);
-  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: var(--surface-overlay);
+  border: 1px solid var(--border);
   border-radius: 999px;
   padding: 0.05rem 0.45rem;
   font-size: 0.72rem;
   font-weight: 900;
-  color: rgba(17, 24, 39, 0.75);
+  color: var(--text-muted);
 }
 
 .logs-empty {
   font-size: 0.82rem;
   font-weight: 800;
-  color: rgba(107, 114, 128, 0.8);
+  color: var(--text-muted);
   padding: 0.6rem 0;
 }
 
@@ -335,18 +335,18 @@ function goCorrecciones() {
 .log-card__folio {
   font-weight: 1000;
   font-size: 0.82rem;
-  color: rgba(17, 24, 39, 0.9);
+  color: var(--text-primary);
 }
 
 .log-card__date {
   font-size: 0.72rem;
   font-weight: 800;
-  color: rgba(107, 114, 128, 0.85);
+  color: var(--text-muted);
 }
 
 .log-card__client {
   font-weight: 900;
-  color: rgba(17, 24, 39, 0.85);
+  color: var(--text-primary);
   margin-bottom: 0.15rem;
   white-space: nowrap;
   overflow: hidden;
@@ -356,15 +356,15 @@ function goCorrecciones() {
 .log-card__meta {
   display: flex;
   justify-content: space-between;
-  color: rgba(107, 114, 128, 0.9);
+  color: var(--text-muted);
   font-size: 0.76rem;
 }
 
 .log-card__pill {
-  background: rgba(148, 163, 184, 0.18);
+  background: var(--border);
   padding: 0.05rem 0.4rem;
   border-radius: 999px;
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  border: 1px solid var(--border);
 }
 
 .log-card__mica-summary {
@@ -377,10 +377,10 @@ function goCorrecciones() {
 .mica-chip {
   font-size: 0.7rem;
   font-weight: 900;
-  background: rgba(144, 111, 225, 0.1);
+  background: var(--c-primary-alpha);
   border: 1px solid rgba(144, 111, 225, 0.2);
   border-radius: 999px;
   padding: 0.05rem 0.35rem;
-  color: rgba(88, 28, 135, 0.85);
+  color: var(--c-primary);
 }
 </style>

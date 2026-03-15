@@ -805,9 +805,9 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
 .ayuda-section {
   border-radius: 14px;
   padding: 1.5rem;
-  background-color: #ffffff;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.06);
+  background-color: var(--surface-solid);
+  border: 1px solid var(--border-solid);
+  box-shadow: var(--shadow-soft);
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -826,20 +826,20 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
     radial-gradient(circle at 0 0, rgba(79, 70, 229, 0.12), transparent 55%),
     radial-gradient(circle at 100% 0, rgba(236, 72, 153, 0.10), transparent 55%),
     radial-gradient(circle at 60% 100%, rgba(249, 115, 22, 0.10), transparent 55%),
-    #ffffff;
-  border: 1px solid rgba(148, 163, 184, 0.25);
+    var(--surface-solid);
+  border: 1px solid var(--border);
 }
 
 .help-title-block h2 {
   font-size: 1.05rem;
   font-weight: 800;
-  color: #111827;
+  color: var(--text-primary);
   margin-bottom: 0.25rem;
 }
 
 .help-title-block p {
   font-size: 0.82rem;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 .help-pill {
@@ -849,8 +849,8 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #4f46e5;
-  background: #eef2ff;
+  color: var(--c-primary);
+  background: var(--c-primary-alpha);
   padding: 0.2rem 0.55rem;
   border-radius: 999px;
   margin-bottom: 0.45rem;
@@ -863,7 +863,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
   align-items: flex-end;
   gap: 0.25rem;
   font-size: 0.78rem;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 .help-meta-line {
@@ -884,11 +884,11 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
   display: flex;
   gap: 0.65rem;
   align-items: flex-start;
-  background: #ffffff;
-  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: var(--surface-solid);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 0.65rem 0.75rem;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+  box-shadow: var(--shadow-sm);
 }
 
 .help-quick__icon {
@@ -897,8 +897,8 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
   border-radius: 10px;
   display: grid;
   place-items: center;
-  background: #eef2ff;
-  color: #4f46e5;
+  background: var(--c-primary-alpha);
+  color: var(--c-primary);
   border: 1px solid rgba(79, 70, 229, 0.18);
   flex: 0 0 auto;
 }
@@ -906,14 +906,14 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
 .help-quick__title {
   font-size: 0.78rem;
   font-weight: 800;
-  color: #111827;
+  color: var(--text-primary);
   margin: 0;
   line-height: 1.2;
 }
 
 .help-quick__text {
   font-size: 0.78rem;
-  color: #4b5563;
+  color: var(--text-secondary);
   margin: 0.15rem 0 0;
   line-height: 1.25;
 }
@@ -929,15 +929,15 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
 
 .help-search-hint {
   font-size: 0.7rem;
-  color: #9ca3af;
+  color: var(--text-muted);
   margin-top: 0.15rem;
 }
 
 /* Resultados */
 .help-results {
   margin-top: 0.35rem;
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  background: #fafafa;
+  border: 1px solid var(--border);
+  background: var(--bg-subtle);
   border-radius: 12px;
   padding: 0.55rem 0.65rem;
 }
@@ -945,7 +945,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
 .help-results__title {
   font-size: 0.75rem;
   font-weight: 900;
-  color: #111827;
+  color: var(--text-primary);
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
@@ -969,13 +969,13 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
 
 .help-index__label {
   font-size: 0.72rem;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 .help-index__chip {
-  border: 1px solid #e5e7eb;
-  background: #f9fafb;
-  color: #111827;
+  border: 1px solid var(--border-solid);
+  background: var(--bg-subtle);
+  color: var(--text-primary);
   font-size: 0.72rem;
   border-radius: 999px;
   padding: 0.28rem 0.6rem;
@@ -987,18 +987,16 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
 
 .help-index__chip:hover {
   transform: translateY(-1px);
-  background: #f5f3ff;
-  box-shadow: 0 10px 18px rgba(15, 23, 42, 0.08);
+  background: var(--c-primary-alpha);
+  box-shadow: var(--shadow-md);
 }
 
 /* Cards */
 .help-card {
-  background-color: #ffffff;
+  background-color: var(--surface-solid);
   border-radius: 1rem;
   padding: 0.95rem 1rem;
-  box-shadow:
-    0 0 0 1px rgba(148, 163, 184, 0.16),
-    0 12px 34px rgba(15, 23, 42, 0.04);
+  box-shadow: var(--shadow-sm);
   margin-bottom: 0.75rem;
 }
 
@@ -1006,7 +1004,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
   border: 1px solid rgba(79, 70, 229, 0.18);
   background:
     radial-gradient(circle at 0 0, rgba(79, 70, 229, 0.08), transparent 60%),
-    #ffffff;
+    var(--surface-solid);
 }
 
 .help-card-header {
@@ -1025,7 +1023,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
 .help-card-header h3 {
   font-size: 0.92rem;
   font-weight: 800;
-  color: #111827;
+  color: var(--text-primary);
 }
 
 /* Classic lists */
@@ -1033,7 +1031,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
   margin-left: 1.1rem;
   margin-top: 0.45rem;
   font-size: 0.79rem;
-  color: #4b5563;
+  color: var(--text-secondary);
   display: flex;
   flex-direction: column;
   gap: 0.32rem;
@@ -1044,7 +1042,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
   margin-left: 0.95rem;
   list-style: disc;
   font-size: 0.79rem;
-  color: #4b5563;
+  color: var(--text-secondary);
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
@@ -1052,7 +1050,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
 
 .help-text {
   font-size: 0.79rem;
-  color: #4b5563;
+  color: var(--text-secondary);
 }
 
 /* Numbered blocks */
@@ -1069,8 +1067,8 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
   align-items: flex-start;
   padding: 0.65rem 0.7rem;
   border-radius: 14px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  background: #fafafa;
+  border: 1px solid var(--border);
+  background: var(--bg-subtle);
 }
 
 .help-step2__n {
@@ -1081,8 +1079,8 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
   place-items: center;
   font-size: 0.78rem;
   font-weight: 800;
-  background: #eef2ff;
-  color: #4f46e5;
+  background: var(--c-primary-alpha);
+  color: var(--c-primary);
   border: 1px solid rgba(79, 70, 229, 0.20);
   flex: 0 0 auto;
 }
@@ -1091,13 +1089,13 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
   margin: 0;
   font-size: 0.82rem;
   font-weight: 800;
-  color: #111827;
+  color: var(--text-primary);
 }
 
 .help-step2__text {
   margin: 0.15rem 0 0;
   font-size: 0.79rem;
-  color: #4b5563;
+  color: var(--text-secondary);
   line-height: 1.25;
 }
 
@@ -1105,7 +1103,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
 .help-soft {
   margin-top: 0.7rem;
   border: 1px dashed rgba(79, 70, 229, 0.25);
-  background: #f5f3ff;
+  background: var(--c-primary-alpha);
   border-radius: 12px;
   padding: 0.65rem 0.7rem;
 }
@@ -1115,13 +1113,13 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
   font-weight: 800;
   display: inline-flex;
   align-items: center;
-  color: #111827;
+  color: var(--text-primary);
 }
 
 .help-soft__text {
   margin: 0.25rem 0 0;
   font-size: 0.78rem;
-  color: #374151;
+  color: var(--text-secondary);
   line-height: 1.25;
 }
 
@@ -1129,8 +1127,8 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
 .help-note {
   margin-top: 0.75rem;
   font-size: 0.78rem;
-  color: #374151;
-  background: #f5f3ff;
+  color: var(--text-secondary);
+  background: var(--c-primary-alpha);
   border: 1px solid #e9d5ff;
   padding: 0.55rem 0.65rem;
   border-radius: 0.75rem;
@@ -1148,8 +1146,8 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
 }
 
 .help-split__block {
-  border: 1px solid #e5e7eb;
-  background: #fafafa;
+  border: 1px solid var(--border-solid);
+  background: var(--bg-subtle);
   border-radius: 0.85rem;
   padding: 0.7rem 0.8rem;
 }
@@ -1163,17 +1161,17 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
 }
 
 .help-action {
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  border: 1px solid var(--border);
   border-radius: 14px;
-  background: #ffffff;
+  background: var(--surface-solid);
   padding: 0.7rem 0.8rem;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+  box-shadow: var(--shadow-sm);
 }
 
 .help-action__title {
   font-size: 0.82rem;
   font-weight: 900;
-  color: #111827;
+  color: var(--text-primary);
   display: inline-flex;
   align-items: center;
 }
@@ -1181,7 +1179,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
 .help-action__text {
   margin: 0.25rem 0 0;
   font-size: 0.79rem;
-  color: #4b5563;
+  color: var(--text-secondary);
   line-height: 1.25;
 }
 
@@ -1194,22 +1192,22 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
 }
 
 .help-fix {
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  border: 1px solid var(--border);
   border-radius: 14px;
   padding: 0.7rem 0.8rem;
-  background: #fafafa;
+  background: var(--bg-subtle);
 }
 
 .help-fix__q {
   font-size: 0.82rem;
   font-weight: 900;
-  color: #111827;
+  color: var(--text-primary);
 }
 
 .help-fix__a {
   margin-top: 0.25rem;
   font-size: 0.79rem;
-  color: #4b5563;
+  color: var(--text-secondary);
   line-height: 1.25;
 }
 
@@ -1232,22 +1230,22 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
   align-items: center;
   gap: 0.35rem;
   font-size: 0.82rem;
-  color: #111827;
+  color: var(--text-primary);
 }
 
 .help-faq-section__count {
   margin-left: 0.25rem;
   font-size: 0.72rem;
-  color: #6b7280;
-  background: #f3f4f6;
+  color: var(--text-muted);
+  background: var(--bg-muted);
   border-radius: 999px;
   padding: 0.05rem 0.45rem;
 }
 
 .help-faq-item {
   border-radius: 0.75rem;
-  border: 1px solid #e5e7eb;
-  background: #f9fafb;
+  border: 1px solid var(--border-solid);
+  background: var(--bg-subtle);
   padding: 0.5rem 0.6rem;
 }
 
@@ -1256,14 +1254,14 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
   justify-content: space-between;
   align-items: center;
   font-size: 0.79rem;
-  color: #111827;
+  color: var(--text-primary);
   cursor: pointer;
 }
 
 .help-faq-body {
   margin-top: 0.4rem;
   font-size: 0.78rem;
-  color: #4b5563;
+  color: var(--text-secondary);
 }
 
 .help-faq-body p+p {
@@ -1279,8 +1277,8 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
 
 .help-tag {
   font-size: 0.7rem;
-  color: #4f46e5;
-  background: #eef2ff;
+  color: var(--c-primary);
+  background: var(--c-primary-alpha);
   border-radius: 999px;
   padding: 0.1rem 0.45rem;
   border: 1px solid rgba(79, 70, 229, 0.15);
@@ -1295,7 +1293,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
   margin-top: 0.85rem;
   border-radius: 14px;
   border: 1px solid rgba(79, 70, 229, 0.18);
-  background: #eef2ff;
+  background: var(--c-primary-alpha);
   padding: 0.75rem 0.85rem;
 }
 
@@ -1305,8 +1303,8 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
   gap: 0.25rem;
   font-size: 0.72rem;
   font-weight: 900;
-  color: #111827;
-  background: rgba(255, 255, 255, 0.7);
+  color: var(--text-primary);
+  background: var(--surface-overlay);
   border: 1px solid rgba(79, 70, 229, 0.18);
   padding: 0.18rem 0.55rem;
   border-radius: 999px;
@@ -1316,7 +1314,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
   margin: 0.45rem 0 0;
   font-size: 0.98rem;
   font-weight: 900;
-  color: #111827;
+  color: var(--text-primary);
   letter-spacing: 0.01em;
 }
 

@@ -112,12 +112,12 @@ const messageType = computed(() => {
   align-items: flex-start;
   gap: 0.35rem;
   padding: 0.6rem 0.75rem;
-  background: rgba(59, 130, 246, 0.08);
+  background: var(--c-info-alpha);
   border: 1px solid rgba(59, 130, 246, 0.2);
   border-radius: 12px;
   font-size: 0.82rem;
   font-weight: 800;
-  color: rgba(29, 78, 216, 0.85);
+  color: var(--c-info);
 }
 
 .correction-notice i {

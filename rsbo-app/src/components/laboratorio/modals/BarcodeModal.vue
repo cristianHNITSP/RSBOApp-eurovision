@@ -11,7 +11,7 @@
       <div class="modal-card" style="max-width: 420px; width: 100%;">
         <header class="modal-card-head">
           <p class="modal-card-title">
-            <i class="fas fa-barcode mr-2" style="color: rgba(144, 111, 225, 0.9)"></i>
+            <i class="fas fa-barcode mr-2" style="color: var(--c-primary)"></i>
             Código de barras
           </p>
           <button class="delete" aria-label="close" @click="lab.barcodeOpen.value = false"></button>
@@ -125,12 +125,12 @@ async function handleCopy() {
   align-items: center;
   justify-content: center;
   padding: 0.5rem 0.75rem;
-  background: rgba(34, 197, 94, 0.1);
+  background: var(--c-success-alpha);
   border: 1px solid rgba(34, 197, 94, 0.3);
   border-radius: 12px;
   font-size: 0.85rem;
   font-weight: 900;
-  color: rgba(21, 128, 61, 0.9);
+  color: var(--c-success);
   margin-top: 0.6rem;
 }
 

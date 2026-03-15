@@ -78,7 +78,7 @@ export default {
     radial-gradient(circle at 0% 0%, rgba(121, 87, 213, 0.12), transparent 55%),
     radial-gradient(circle at 100% 70%, rgba(236, 72, 153, 0.10), transparent 55%),
     radial-gradient(circle at 40% 110%, rgba(249, 115, 22, 0.10), transparent 55%),
-    #ffffff;
+    var(--surface-solid);
 }
 
 /* ====== card ====== */
@@ -88,13 +88,13 @@ export default {
 
   width: min(980px, 100%);
   border-radius: 18px;
-  border: 1px solid rgba(148, 163, 184, 0.22);
+  border: 1px solid var(--border);
 
-  background: rgba(255, 255, 255, 0.88);
+  background: var(--surface);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 
-  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.12);
+  box-shadow: var(--shadow-lg);
   padding: 1.05rem 1.05rem;
 }
 
@@ -107,7 +107,7 @@ export default {
   padding: 0.25rem 0.65rem;
   border-radius: 999px;
 
-  background: rgba(248, 113, 113, 0.12);
+  background: var(--c-danger-alpha);
   border: 1px solid rgba(248, 113, 113, 0.22);
 }
 
@@ -115,7 +115,7 @@ export default {
   width: 8px;
   height: 8px;
   border-radius: 999px;
-  background: rgba(248, 113, 113, 0.9);
+  background: var(--c-danger);
   box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.14);
 }
 
@@ -124,7 +124,7 @@ export default {
   font-weight: 900;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: rgba(127, 29, 29, 0.9);
+  color: var(--c-danger);
 }
 
 /* ====== main layout ====== */
@@ -147,7 +147,7 @@ export default {
   font-size: clamp(3.1rem, 6vw, 4.3rem);
   line-height: 0.95;
 
-  color: #0f172a;
+  color: var(--text-primary);
   letter-spacing: -0.03em;
 }
 
@@ -155,13 +155,13 @@ export default {
   margin: 0.35rem 0 0;
   font-weight: 900;
   font-size: 1.25rem;
-  color: rgba(15, 23, 42, 0.92);
+  color: var(--text-secondary);
 }
 
 .notfound-subtitle {
   margin: 0.45rem 0 0;
   font-size: 0.95rem;
-  color: rgba(15, 23, 42, 0.62);
+  color: var(--text-muted);
   max-width: 62ch;
 }
 
@@ -178,13 +178,13 @@ export default {
   box-shadow: 0 0 0 1px rgba(148,163,184,0.18);
 }
 .notfound-actions :deep(.button.is-primary) {
-  box-shadow: 0 14px 30px rgba(88, 28, 135, 0.18);
+  box-shadow: var(--shadow-primary);
 }
 
 .notfound-hint {
   margin: 0.75rem 0 0;
   font-size: 0.85rem;
-  color: rgba(15, 23, 42, 0.55);
+  color: var(--text-subtle);
 }
 
 /* ====== right illustration ====== */
@@ -205,9 +205,9 @@ export default {
   border-radius: 16px;
   overflow: hidden;
 
-  background: rgba(15, 23, 42, 0.04);
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.10);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
 }
 
 .notfound-img {
@@ -247,10 +247,10 @@ export default {
 
 /* ====== reduced effects support (same methodology) ====== */
 :global(html[data-reduced-effects="true"]) .notfound-card {
-  background: rgba(255, 255, 255, 0.98);
+  background: var(--surface-solid);
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
+  box-shadow: var(--shadow-md);
 }
 
 :global(html[data-reduced-effects="true"]) .notfound-bg {
@@ -258,7 +258,7 @@ export default {
     radial-gradient(circle at 0% 0%, rgba(121, 87, 213, 0.03), transparent 55%),
     radial-gradient(circle at 100% 70%, rgba(236, 72, 153, 0.02), transparent 55%),
     radial-gradient(circle at 40% 110%, rgba(249, 115, 22, 0.02), transparent 55%),
-    #ffffff;
+    var(--surface-solid);
 }
 
 :global(html[data-reduced-effects="true"]) .notfound-glow {

@@ -49,27 +49,23 @@
 </template>
 
 <script setup>
-const props = defineProps({
-  notifications: { type: Array, default: () => [] }
-})
+import { useLabToast } from "@/composables/useLabToast.js";
 
-const emit = defineEmits(['dismiss'])
-
-const dismiss = (id) => emit('dismiss', id)
+const { notifications, dismiss } = useLabToast();
 
 const iconFor = (type) => ({
   'is-success': 'check-circle',
   'is-danger':  'times-circle',
   'is-warning': 'exclamation-triangle',
   'is-info':    'info-circle',
-}[type] ?? 'info-circle')
+}[type] ?? 'info-circle');
 
 const labelFor = (type) => ({
   'is-success': 'Listo',
   'is-danger':  'Error',
   'is-warning': 'Atención',
   'is-info':    'Información',
-}[type] ?? 'Aviso')
+}[type] ?? 'Aviso');
 </script>
 
 <style scoped>
@@ -97,26 +93,26 @@ const labelFor = (type) => ({
   pointer-events: auto;
   border-radius: 0.9rem;
   backdrop-filter: blur(10px);
-  box-shadow: 0 12px 28px rgba(17, 24, 39, 0.18);
+  box-shadow: var(--shadow-md);
   overflow: hidden;
 }
 
 /* Variantes de color — mismo patrón de gradiente que dirty-float */
 .lab-notif--is-success {
   border: 1px solid rgba(34, 197, 94, 0.35);
-  background: linear-gradient(90deg, rgba(34, 197, 94, 0.16), rgba(124, 58, 237, 0.08));
+  background: linear-gradient(90deg, var(--c-success-alpha), rgba(124, 58, 237, 0.08));
 }
 .lab-notif--is-danger {
   border: 1px solid rgba(239, 68, 68, 0.35);
-  background: linear-gradient(90deg, rgba(239, 68, 68, 0.16), rgba(124, 58, 237, 0.08));
+  background: linear-gradient(90deg, var(--c-danger-alpha), rgba(124, 58, 237, 0.08));
 }
 .lab-notif--is-warning {
   border: 1px solid rgba(245, 158, 11, 0.35);
-  background: linear-gradient(90deg, rgba(245, 158, 11, 0.16), rgba(124, 58, 237, 0.10));
+  background: linear-gradient(90deg, var(--c-warning-alpha), rgba(124, 58, 237, 0.10));
 }
 .lab-notif--is-info {
   border: 1px solid rgba(59, 130, 246, 0.30);
-  background: linear-gradient(90deg, rgba(59, 130, 246, 0.13), rgba(124, 58, 237, 0.08));
+  background: linear-gradient(90deg, var(--c-info-alpha), rgba(124, 58, 237, 0.08));
 }
 
 /* ===== Contenido (mismo layout que dirty-float__content) ===== */
@@ -139,24 +135,24 @@ const labelFor = (type) => ({
   flex: 0 0 auto;
 }
 .lab-notif--is-success .lab-notif__icon {
-  background: rgba(34, 197, 94, 0.18);
+  background: var(--c-success-alpha);
   border: 1px solid rgba(34, 197, 94, 0.28);
-  color: #166534;
+  color: var(--c-success);
 }
 .lab-notif--is-danger .lab-notif__icon {
-  background: rgba(239, 68, 68, 0.16);
+  background: var(--c-danger-alpha);
   border: 1px solid rgba(239, 68, 68, 0.28);
-  color: #991b1b;
+  color: var(--c-danger);
 }
 .lab-notif--is-warning .lab-notif__icon {
-  background: rgba(245, 158, 11, 0.18);
+  background: var(--c-warning-alpha);
   border: 1px solid rgba(245, 158, 11, 0.25);
-  color: #78350f;
+  color: var(--c-warning);
 }
 .lab-notif--is-info .lab-notif__icon {
-  background: rgba(59, 130, 246, 0.14);
+  background: var(--c-info-alpha);
   border: 1px solid rgba(59, 130, 246, 0.24);
-  color: #1e40af;
+  color: var(--c-info);
 }
 
 /* Textos (1:1 dirty-float__texts / __title / __subtitle) */
@@ -168,13 +164,13 @@ const labelFor = (type) => ({
   font-weight: 900;
   letter-spacing: 0.01em;
   line-height: 1.1;
-  color: #1e1b4b;
+  color: var(--text-primary);
   font-size: 0.82rem;
 }
 .lab-notif__subtitle {
   font-size: 0.78rem;
   line-height: 1.25;
-  color: rgba(55, 65, 81, 0.88);
+  color: var(--text-secondary);
   word-break: break-word;
 }
 
@@ -188,7 +184,7 @@ const labelFor = (type) => ({
 /* Barra de tiempo (auto-dismiss visual) */
 .lab-notif__bar {
   height: 2px;
-  background: rgba(148, 163, 184, 0.15);
+  background: var(--border);
   overflow: hidden;
 }
 .lab-notif__bar-fill {
@@ -197,10 +193,10 @@ const labelFor = (type) => ({
   transform-origin: left;
   animation: lab-notif-shrink linear forwards;
 }
-.lab-notif__bar-fill--is-success { background: rgba(34, 197, 94, 0.65); }
-.lab-notif__bar-fill--is-danger  { background: rgba(239, 68, 68, 0.60); }
-.lab-notif__bar-fill--is-warning { background: rgba(245, 158, 11, 0.65); }
-.lab-notif__bar-fill--is-info    { background: rgba(59, 130, 246, 0.55); }
+.lab-notif__bar-fill--is-success { background: var(--c-success); }
+.lab-notif__bar-fill--is-danger  { background: var(--c-danger); }
+.lab-notif__bar-fill--is-warning { background: var(--c-warning); }
+.lab-notif__bar-fill--is-info    { background: var(--c-info); }
 
 @keyframes lab-notif-shrink {
   from { transform: scaleX(1); }

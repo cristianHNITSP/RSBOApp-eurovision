@@ -272,24 +272,24 @@ function countByStatus(tabValue) {
   gap: 0.35rem;
   padding: 0.3rem 0.7rem;
   border-radius: 999px;
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid var(--border);
+  background: var(--surface-overlay);
   font-size: 0.82rem;
   font-weight: 800;
-  color: rgba(17, 24, 39, 0.75);
+  color: var(--text-muted);
   cursor: pointer;
   transition: all 120ms ease;
 }
 
 .status-tab:hover {
   border-color: rgba(144, 111, 225, 0.4);
-  background: rgba(144, 111, 225, 0.08);
+  background: var(--c-primary-alpha);
 }
 
 .status-tab--active {
   background: linear-gradient(135deg, rgba(144, 111, 225, 0.18), rgba(236, 72, 153, 0.10));
   border-color: rgba(144, 111, 225, 0.45);
-  color: rgba(17, 24, 39, 0.95);
+  color: var(--text-primary);
 }
 
 .status-tab__dot {
@@ -299,9 +299,9 @@ function countByStatus(tabValue) {
   flex-shrink: 0;
 }
 
-.dot--warning { background: #f59e0b; }
-.dot--info    { background: #3b82f6; }
-.dot--success { background: #22c55e; }
+.dot--warning { background: var(--c-warning); }
+.dot--info    { background: var(--c-info); }
+.dot--success { background: var(--c-success); }
 .dot--muted   { background: rgba(148, 163, 184, 0.6); }
 
 .status-tab__count {
@@ -312,13 +312,13 @@ function countByStatus(tabValue) {
   height: 18px;
   padding: 0 5px;
   border-radius: 999px;
-  background: rgba(148, 163, 184, 0.2);
+  background: var(--border);
   font-size: 0.72rem;
   font-weight: 900;
 }
 
 .status-tab--active .status-tab__count {
-  background: rgba(144, 111, 225, 0.22);
+  background: var(--c-primary-alpha);
 }
 
 /* ===== Skeleton loading ===== */
@@ -328,10 +328,10 @@ function countByStatus(tabValue) {
 }
 
 .order-skeleton-card {
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  border: 1px solid var(--border);
   border-radius: 16px;
   padding: 0.85rem;
-  background: rgba(255, 255, 255, 0.6);
+  background: var(--surface-overlay);
 }
 
 .skel {
@@ -360,10 +360,10 @@ function countByStatus(tabValue) {
   position: relative;
   text-align: left;
   width: 100%;
-  border: 1.5px solid rgba(148, 163, 184, 0.22);
+  border: 1.5px solid var(--border);
   border-radius: 16px;
   padding: 0.85rem;
-  background: rgba(255, 255, 255, 0.78);
+  background: var(--surface);
   cursor: pointer;
   transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
   overflow: hidden;
@@ -371,7 +371,7 @@ function countByStatus(tabValue) {
 
 .oci:hover {
   transform: translateY(-1px);
-  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.10);
+  box-shadow: var(--shadow-md);
 }
 
 .oci--active {
@@ -405,12 +405,12 @@ function countByStatus(tabValue) {
 .oci__folio {
   font-size: 0.95rem;
   font-weight: 1000;
-  color: rgba(17, 24, 39, 0.92);
+  color: var(--text-primary);
   letter-spacing: 0.01em;
 }
 
 .oci__icon {
-  color: rgba(144, 111, 225, 0.85);
+  color: var(--c-primary);
 }
 
 .oci__badge {
@@ -435,25 +435,25 @@ function countByStatus(tabValue) {
 .oci__client {
   font-size: 0.88rem;
   font-weight: 900;
-  color: rgba(17, 24, 39, 0.88);
+  color: var(--text-primary);
   margin-bottom: 0.2rem;
 }
 
 .oci__sheet {
   font-size: 0.8rem;
   font-weight: 800;
-  color: rgba(107, 114, 128, 0.95);
+  color: var(--text-muted);
 }
 
 .oci__meta-icon {
   font-size: 0.75rem;
-  color: rgba(144, 111, 225, 0.7);
+  color: var(--c-primary);
 }
 
 .oci__progress-track {
   height: 6px;
   border-radius: 999px;
-  background: rgba(148, 163, 184, 0.2);
+  background: var(--border);
   overflow: hidden;
   margin-bottom: 0.25rem;
 }
@@ -466,7 +466,7 @@ function countByStatus(tabValue) {
 }
 
 .oci__progress-fill--done {
-  background: linear-gradient(90deg, #22c55e, #16a34a);
+  background: linear-gradient(90deg, var(--c-success), #16a34a);
 }
 
 .oci__progress-label {
@@ -474,12 +474,12 @@ function countByStatus(tabValue) {
   justify-content: space-between;
   font-size: 0.76rem;
   font-weight: 800;
-  color: rgba(107, 114, 128, 0.95);
+  color: var(--text-muted);
 }
 
 .oci__pct {
   font-weight: 1000;
-  color: rgba(144, 111, 225, 0.9);
+  color: var(--c-primary);
 }
 
 .oci__footer {
@@ -488,14 +488,14 @@ function countByStatus(tabValue) {
   align-items: center;
   font-size: 0.75rem;
   font-weight: 800;
-  color: rgba(107, 114, 128, 0.85);
+  color: var(--text-muted);
 }
 
 .oci__lines-count {
-  background: rgba(148, 163, 184, 0.15);
+  background: var(--border);
   padding: 0.1rem 0.45rem;
   border-radius: 999px;
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  border: 1px solid var(--border);
   font-size: 0.72rem;
 }
 
@@ -504,7 +504,7 @@ function countByStatus(tabValue) {
   top: 0.6rem;
   right: 0.6rem;
   font-size: 0.9rem;
-  color: rgba(144, 111, 225, 0.9);
+  color: var(--c-primary);
   opacity: 0.85;
 }
 
@@ -535,32 +535,32 @@ function countByStatus(tabValue) {
 }
 
 .logs-head--in {
-  background: rgba(34, 197, 94, 0.1);
-  color: rgba(21, 128, 61, 0.9);
+  background: var(--c-success-alpha);
+  color: var(--c-success);
   border: 1px solid rgba(34, 197, 94, 0.22);
 }
 
 .logs-head--out {
-  background: rgba(59, 130, 246, 0.1);
-  color: rgba(29, 78, 216, 0.9);
+  background: var(--c-info-alpha);
+  color: var(--c-info);
   border: 1px solid rgba(59, 130, 246, 0.22);
 }
 
 .logs-badge {
   margin-left: auto;
-  background: rgba(255, 255, 255, 0.65);
-  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: var(--surface-overlay);
+  border: 1px solid var(--border);
   border-radius: 999px;
   padding: 0.05rem 0.45rem;
   font-size: 0.72rem;
   font-weight: 900;
-  color: rgba(17, 24, 39, 0.75);
+  color: var(--text-muted);
 }
 
 .logs-empty {
   font-size: 0.82rem;
   font-weight: 800;
-  color: rgba(107, 114, 128, 0.8);
+  color: var(--text-muted);
   padding: 0.6rem 0;
 }
 
@@ -619,18 +619,18 @@ function countByStatus(tabValue) {
 .log-card__folio {
   font-weight: 1000;
   font-size: 0.82rem;
-  color: rgba(17, 24, 39, 0.9);
+  color: var(--text-primary);
 }
 
 .log-card__date {
   font-size: 0.72rem;
   font-weight: 800;
-  color: rgba(107, 114, 128, 0.85);
+  color: var(--text-muted);
 }
 
 .log-card__client {
   font-weight: 900;
-  color: rgba(17, 24, 39, 0.85);
+  color: var(--text-primary);
   margin-bottom: 0.15rem;
   white-space: nowrap;
   overflow: hidden;
@@ -640,21 +640,21 @@ function countByStatus(tabValue) {
 .log-card__code {
   font-size: 0.78rem;
   font-weight: 900;
-  color: rgba(17, 24, 39, 0.88);
+  color: var(--text-primary);
   margin-bottom: 0.15rem;
 }
 
 .log-card__meta {
   display: flex;
   justify-content: space-between;
-  color: rgba(107, 114, 128, 0.9);
+  color: var(--text-muted);
   font-size: 0.76rem;
 }
 
 .log-card__pill {
-  background: rgba(148, 163, 184, 0.18);
+  background: var(--border);
   padding: 0.05rem 0.4rem;
   border-radius: 999px;
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  border: 1px solid var(--border);
 }
 </style>

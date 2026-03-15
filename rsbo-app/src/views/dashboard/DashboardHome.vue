@@ -562,15 +562,15 @@ const lastSyncLabel = computed(() => {
 
 .section-user {
   padding: 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
-  background: radial-gradient(circle at top left, #f9f5ff 0, #ffffff 55%);
+  border-bottom: 1px solid var(--border-solid);
+  background: radial-gradient(circle at top left, #f9f5ff 0, var(--surface-solid) 55%);
 }
 
 /* Avatar */
 .user-avatar-wrapper {
   border-radius: 50%;
   overflow: hidden;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
+  box-shadow: var(--shadow-md);
 }
 
 .user-avatar-img {
@@ -588,12 +588,10 @@ const lastSyncLabel = computed(() => {
 }
 
 .dashboard-card {
-  background-color: #ffffff;
+  background-color: var(--surface-solid);
   border-radius: 0.9rem;
   padding: 1rem 1.2rem;
-  box-shadow:
-    0 0 0 1px rgba(148, 163, 184, 0.12),
-    0 10px 30px rgba(15, 23, 42, 0.04);
+  box-shadow: var(--shadow-sm);
 }
 
 /* KPIs */
@@ -616,7 +614,7 @@ const lastSyncLabel = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(121, 87, 213, 0.08);
+  background: var(--c-primary-alpha);
   margin-right: 0.6rem;
 }
 
@@ -630,12 +628,12 @@ const lastSyncLabel = computed(() => {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #4a356f;
+  color: var(--c-primary);
 }
 
 .kpi-caption {
   font-size: 0.7rem;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 .kpi-body {
@@ -645,13 +643,13 @@ const lastSyncLabel = computed(() => {
 .kpi-value {
   font-size: 1.6rem;
   font-weight: 700;
-  color: #1f2933;
+  color: var(--text-primary);
   margin-bottom: 0.1rem;
 }
 
 .kpi-description {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 /* Card header-like */
@@ -665,12 +663,12 @@ const lastSyncLabel = computed(() => {
 .card-title {
   font-size: 0.95rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-primary);
 }
 
 .card-subtitle {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 /* Metric rows */
@@ -682,12 +680,12 @@ const lastSyncLabel = computed(() => {
 }
 
 .metric-label {
-  color: #4b5563;
+  color: var(--text-secondary);
 }
 
 .metric-value {
   font-weight: 500;
-  color: #111827;
+  color: var(--text-primary);
 }
 
 /* Quick actions */
@@ -708,11 +706,11 @@ const lastSyncLabel = computed(() => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 0.35rem;
-  color: #4b5563;
+  color: var(--text-secondary);
 }
 
 .system-meta li span:first-child {
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 /* Lista explicativa */
@@ -721,7 +719,7 @@ const lastSyncLabel = computed(() => {
   padding-left: 0;
   margin: 0;
   font-size: 0.8rem;
-  color: #4b5563;
+  color: var(--text-secondary);
 }
 
 .explanatory-list li {

@@ -90,61 +90,149 @@
 
 
             </div>
+
+            <!-- Accesibilidad: Movimiento -->
+            <div class="prefs-card prefs-card--wide">
+                <div class="prefs-card__head">
+                    <div class="prefs-title">
+                        <b-icon icon="running" size="is-small" class="mr-2" />
+                        Movimiento
+                    </div>
+                    <b-tag type="is-light" rounded size="is-small">A11Y</b-tag>
+                </div>
+                <div class="prefs-row">
+                    <div class="prefs-row__left">
+                        <p class="prefs-label">Reducir movimiento</p>
+                        <p class="prefs-help">Elimina animaciones de transición para reducir mareos (independiente de efectos).</p>
+                    </div>
+                    <div class="prefs-row__right">
+                        <b-button :type="reducedMotion ? 'is-primary' : 'is-light'" icon-pack="fas"
+                            :icon-left="reducedMotion ? 'ban' : 'arrows-alt'" @click="toggleMotion">
+                            {{ reducedMotion ? "ON" : "OFF" }}
+                        </b-button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Accesibilidad: Contraste y fuente -->
+            <div class="prefs-card">
+                <div class="prefs-card__head">
+                    <div class="prefs-title">
+                        <b-icon icon="adjust" size="is-small" class="mr-2" />
+                        Contraste
+                    </div>
+                    <b-tag type="is-light" rounded size="is-small">Visual</b-tag>
+                </div>
+                <div class="prefs-row">
+                    <div class="prefs-row__left">
+                        <p class="prefs-label">Alto contraste</p>
+                        <p class="prefs-help">Aumenta el contraste de texto y bordes.</p>
+                    </div>
+                    <div class="prefs-row__right">
+                        <b-button :type="highContrast ? 'is-primary' : 'is-light'" icon-pack="fas"
+                            :icon-left="highContrast ? 'circle' : 'circle'" @click="toggleHighContrast">
+                            {{ highContrast ? "ON" : "OFF" }}
+                        </b-button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Accesibilidad: Tipografía legible -->
+            <div class="prefs-card">
+                <div class="prefs-card__head">
+                    <div class="prefs-title">
+                        <b-icon icon="font" size="is-small" class="mr-2" />
+                        Legibilidad
+                    </div>
+                    <b-tag type="is-light" rounded size="is-small">Texto</b-tag>
+                </div>
+                <div class="prefs-row">
+                    <div class="prefs-row__left">
+                        <p class="prefs-label">Fuente legible</p>
+                        <p class="prefs-help">Usa una fuente diseñada para dislexia y baja visión.</p>
+                    </div>
+                    <div class="prefs-row__right">
+                        <b-button :type="readableFont ? 'is-primary' : 'is-light'" icon-pack="fas"
+                            :icon-left="readableFont ? 'check' : 'times'" @click="toggleFont">
+                            {{ readableFont ? "ON" : "OFF" }}
+                        </b-button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Accesibilidad: Focus outline -->
+            <div class="prefs-card prefs-card--wide">
+                <div class="prefs-card__head">
+                    <div class="prefs-title">
+                        <b-icon icon="mouse-pointer" size="is-small" class="mr-2" />
+                        Navegación por teclado
+                    </div>
+                    <b-tag type="is-light" rounded size="is-small">A11Y</b-tag>
+                </div>
+                <div class="prefs-row">
+                    <div class="prefs-row__left">
+                        <p class="prefs-label">Indicador de enfoque</p>
+                        <p class="prefs-help">Muestra un borde visible alrededor del elemento activo al navegar con teclado.</p>
+                    </div>
+                    <div class="prefs-row__right">
+                        <b-button :type="focusOutline ? 'is-primary' : 'is-light'" icon-pack="fas"
+                            :icon-left="focusOutline ? 'eye' : 'eye-slash'" @click="toggleFocus">
+                            {{ focusOutline ? "ON" : "OFF" }}
+                        </b-button>
+                    </div>
+                </div>
+            </div>
         </div>
     </section>
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from "vue";
+import { ref, computed, watch } from "vue";
+import { useAccessibility } from "@/composables/useAccessibility";
 
-const UI_EVENT = "rsbo:ui";
-const FONT_SIZE_KEY = "user-font-size";
-const REDUCED_EFFECTS_KEY = "ui-reduced-effects";
-const DARK_KEY = "dark-mode";
+const {
+    state: a11y,
+    toggleTheme,
+    setFontSize,
+    toggleReducedEffects,
+    toggleContrast,
+    toggleReadableFont,
+    toggleFocusOutline,
+    toggleReducedMotion,
+} = useAccessibility();
 
-const isDark = ref(false);
-const fontSize = ref("md");
-const reducedEffects = ref(false);
+const isDark = computed(() => a11y.resolvedTheme === "dark");
+const reducedEffects = computed(() => a11y.reducedEffects);
 
-function send(type, value) {
-    window.dispatchEvent(new CustomEvent(UI_EVENT, { detail: { type, value } }));
-}
+/* fontSize como ref mutable para el v-model del b-select */
+const fontSize = ref(a11y.fontSize);
 
-function syncFromStorage() {
-    try {
-        isDark.value = localStorage.getItem(DARK_KEY) === "true";
-        fontSize.value = localStorage.getItem(FONT_SIZE_KEY) || "md";
-        reducedEffects.value = localStorage.getItem(REDUCED_EFFECTS_KEY) === "true";
-    } catch { }
-}
+/* Sincronizar el select cuando el estado externo cambie */
+watch(() => a11y.fontSize, (val) => { fontSize.value = val; });
 
-/* Botones (misma lógica que tú querías) */
-function toggleDark() {
-    send("toggle-dark");
-    syncFromStorage();
-}
+/* Propagar cambios del select al composable */
+watch(fontSize, (val) => { setFontSize(val); });
 
-function toggleReduced() {
-    send("toggle-reduced-effects");
-    syncFromStorage();
-}
+const highContrast = computed(() => a11y.contrast === "high");
+const readableFont = computed(() => a11y.readableFont);
+const focusOutline = computed(() => a11y.focusOutline);
+const reducedMotion = computed(() => a11y.resolvedReducedMotion);
 
-/* ✅ CLAVE: mandar SIEMPRE el string real (xs|sm|md|lg) */
-watch(fontSize, (val) => {
-    send("set-font", val);
-    syncFromStorage();
-});
-
-onMounted(syncFromStorage);
+function toggleDark() { toggleTheme(); }
+function toggleReduced() { toggleReducedEffects(); }
+function toggleHighContrast() { toggleContrast(); }
+function toggleFont() { toggleReadableFont(); }
+function toggleFocus() { toggleFocusOutline(); }
+function toggleMotion() { toggleReducedMotion(); }
 </script>
 
 <style scoped>
 .prefs-wrap {
     border-radius: 12px;
     padding: 1.25rem;
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-    border-bottom: 1px solid #ccc;
+    background: linear-gradient(135deg, var(--bg-subtle) 0%, var(--bg-muted) 100%);
+    box-shadow: var(--shadow-sm);
+    border-bottom: 1px solid var(--border-solid);
 }
 
 .config-pill {
@@ -154,8 +242,8 @@ onMounted(syncFromStorage);
     font-size: 0.7rem;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: #4f46e5;
-    background: #eef2ff;
+    color: var(--c-primary);
+    background: var(--c-primary-alpha);
     padding: 0.2rem 0.45rem;
     border-radius: 999px;
     margin-bottom: 1rem;
@@ -169,11 +257,11 @@ onMounted(syncFromStorage);
 
 .prefs-card {
     grid-column: span 6;
-    background: rgba(255, 255, 255, 0.86);
-    border: 1px solid rgba(17, 24, 39, 0.08);
+    background: var(--surface-solid);
+    border: 1px solid var(--border-solid);
     border-radius: 12px;
     padding: 0.95rem;
-    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+    box-shadow: var(--shadow-md);
 }
 
 .prefs-card--wide {
@@ -189,7 +277,7 @@ onMounted(syncFromStorage);
 
 .prefs-title {
     font-weight: 900;
-    color: #111827;
+    color: var(--text-primary);
     display: inline-flex;
     align-items: center;
 }
@@ -216,19 +304,19 @@ onMounted(syncFromStorage);
 .prefs-label {
     margin: 0;
     font-weight: 800;
-    color: #0f172a;
+    color: var(--text-primary);
 }
 
 .prefs-help {
     margin: 0.25rem 0 0;
     font-size: 0.85rem;
-    color: rgba(15, 23, 42, 0.62);
+    color: var(--text-muted);
 }
 
 .prefs-note {
     margin-top: 0.75rem;
     font-size: 0.82rem;
-    color: rgba(15, 23, 42, 0.62);
+    color: var(--text-muted);
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;

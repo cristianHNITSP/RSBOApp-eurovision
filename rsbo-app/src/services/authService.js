@@ -1,6 +1,7 @@
 // src/services/authService.js
 import api from "../api/axios";
 import router from "../router/index";
+import { labToast } from "@/composables/useLabToast.js";
 
 /* ============================ API (AUTH) ============================ */
 
@@ -78,11 +79,7 @@ export const useAuthService = ($buefy) => {
 
     // Validación de campos vacíos
     if (!credentials?.username || !credentials?.password) {
-      activeToast = $buefy.toast.open({
-        message: "Por favor ingresa tus credenciales",
-        type: "is-danger",
-        duration: 3000,
-      });
+      activeToast = labToast.show("Por favor ingresa tus credenciales", "is-danger", 3000);
       return;
     }
 
@@ -92,11 +89,7 @@ export const useAuthService = ($buefy) => {
         password: credentials.password,
       });
 
-      activeToast = $buefy.toast.open({
-        message: `Bienvenido ${data?.name ?? ""}!`,
-        type: "is-success",
-        duration: 3000,
-      });
+      activeToast = labToast.show(`Bienvenido ${data?.name ?? ""}!`, "is-success", 3000);
 
       // Cierra panel y purga credenciales
       if (showLoginPanel && typeof showLoginPanel === "object") {
@@ -114,11 +107,7 @@ export const useAuthService = ($buefy) => {
         // fallback si viene raro
         if (remainingSeconds === null) remainingSeconds = 60;
 
-        activeToast = $buefy.toast.open({
-          message: `Demasiados intentos. Intenta de nuevo en ${fmtMMSS(remainingSeconds)}.`,
-          type: "is-warning",
-          duration: 0, // persistente
-        });
+        activeToast = labToast.show(`Demasiados intentos. Intenta de nuevo en ${fmtMMSS(remainingSeconds)}.`, "is-warning", 0);
 
         toastInterval = setInterval(() => {
           remainingSeconds -= 1;
@@ -135,11 +124,7 @@ export const useAuthService = ($buefy) => {
           }
         }, 1000);
       } else {
-        activeToast = $buefy.toast.open({
-          message: err?.error || "Error al iniciar sesión",
-          type: "is-danger",
-          duration: 3000,
-        });
+        activeToast = labToast.show(err?.error || "Error al iniciar sesión", "is-danger", 3000);
       }
     }
   };

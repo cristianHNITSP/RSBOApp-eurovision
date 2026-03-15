@@ -101,9 +101,9 @@ watch(
 .section-config {
   border-radius: 12px;
   padding: 1.5rem;
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-  border-bottom: 1px solid #ccc;
+  background: linear-gradient(135deg, var(--bg-subtle) 0%, var(--bg-muted) 100%);
+  box-shadow: var(--shadow-sm);
+  border-bottom: 1px solid var(--border);
 }
 
 
@@ -131,8 +131,8 @@ watch(
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #4f46e5;
-  background: #eef2ff;
+  color: var(--c-primary);
+  background: var(--c-primary-alpha);
   padding: 0.2rem 0.45rem;
   border-radius: 999px;
   margin-bottom: 1rem;

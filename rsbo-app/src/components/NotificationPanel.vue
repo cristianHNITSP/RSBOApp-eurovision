@@ -1,5 +1,6 @@
 <script>
 import { ref } from 'vue'
+import { labToast } from "@/composables/useLabToast.js";
 export default {
   name: 'NotificationPanel',
   props: {
@@ -126,10 +127,7 @@ export default {
 
       // ✅ NO permitir eliminar si está fijada
       if (notif.pinned) {
-        this.$buefy.toast.open({
-          message: 'No puedes eliminar una notificación fijada.',
-          type: 'is-warning'
-        });
+        labToast.warning('No puedes eliminar una notificación fijada.');
         return;
       }
 
@@ -339,8 +337,8 @@ export default {
   z-index: 15;
   width: 285px;
   height: 100%;
-  background-color: white;
-  border-left: 1px solid #dbdbdb;
+  background-color: var(--surface-solid);
+  border-left: 1px solid var(--border-solid);
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -356,8 +354,8 @@ export default {
 
 .panel-heading {
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid #eaeaea;
-  background-color: #fafafa;
+  border-bottom: 1px solid var(--border-solid);
+  background-color: var(--bg-subtle);
   user-select: none;
 }
 
@@ -371,13 +369,13 @@ export default {
 .notification-item {
 
   border-radius: 6px;
-  background-color: #f5f5f5;
-  border: 1px solid #eaeaea;
+  background-color: var(--bg-muted);
+  border: 1px solid var(--border-solid);
   transition: background-color 0.2s ease;
 }
 
 .notification-item:hover {
-  background-color: #f0f0f0;
+  background-color: var(--bg-muted);
 }
 
 /*
@@ -390,7 +388,7 @@ export default {
 }
 
 b-icon.is-clickable:hover {
-  color: #3273dc !important;
+  color: var(--c-primary) !important;
 }
 </style>
 
@@ -476,8 +474,8 @@ b-icon.is-clickable:hover {
 }
 
 .notification-read {
-  background-color: #d1e7dd !important;
-  color: #0f5132 !important;
+  background-color: var(--c-success-alpha) !important;
+  color: var(--c-success) !important;
   transform: scale(1.01);
   box-shadow: 0 6px 16px rgba(16, 185, 129, 0.2);
   transition:
@@ -488,7 +486,7 @@ b-icon.is-clickable:hover {
 }
 
 .notification-read .b-icon {
-  color: #0f5132 !important;
+  color: var(--c-success) !important;
   transition: color 0.3s ease;
 }
 
@@ -517,7 +515,7 @@ b-icon.is-clickable:hover {
   top: 100%;
   right: 0;
   margin-top: 0.25rem;
-  background-color: white;
+  background-color: var(--surface-solid);
   border-radius: 0.5rem;
   padding: 0.5rem 0.75rem;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);

@@ -1,4 +1,5 @@
 import { ref, reactive, computed, watch, onMounted } from "vue";
+import { labToast } from "@/composables/useLabToast.js";
 import { listSheets as invListSheets, fetchItems as invFetchItems } from "@/services/inventory";
 import {
   listOrders,
@@ -331,18 +332,9 @@ function getPeriodStart(period) {
 // ============================================================================
 
 export function useLaboratorioApi() {
-  let _notifIdCounter = 0;
-  const notifications = ref([]);
-
   const notify = (message, type = "is-info", duration = 4000) => {
     const clean = sanitizeUserText(String(message ?? ""), { maxLen: 200 }) || "Listo.";
-    const id = ++_notifIdCounter;
-    notifications.value.push({ id, message: clean, type, duration });
-    if (duration > 0) setTimeout(() => dismissNotification(id), duration);
-  };
-
-  const dismissNotification = (id) => {
-    notifications.value = notifications.value.filter((n) => n.id !== id);
+    labToast.show(clean, type, duration);
   };
 
   // ---- UI state ----
@@ -1287,10 +1279,6 @@ export function useLaboratorioApi() {
   });
 
   return {
-    // Notificaciones
-    notifications,
-    dismissNotification,
-
     // UI state
     activeMainTab,
     mode,

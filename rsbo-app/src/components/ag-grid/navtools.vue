@@ -258,6 +258,7 @@
 
 <script setup>
 import { ref, watch, computed, defineProps, defineEmits, onMounted, onBeforeUnmount, getCurrentInstance } from 'vue'
+import { labToast } from "@/composables/useLabToast.js";
 
 const props = defineProps({
   modelValue: { type: [Number, String], default: '' },
@@ -394,11 +395,11 @@ const normalizeAck = (ack, { successFallback = 'Listo.', errorFallback = 'Ocurri
 
 const safeToast = (message, type = 'is-info') => {
   try {
-    $buefy?.toast.open({ message: sanitizeUserText(message, { maxLen: 180 }) || 'Listo.', type })
+    labToast.show(sanitizeUserText(message, { maxLen: 180 }) || 'Listo.', type);
   } catch {
-    console.warn('[navtools] toast failed')
+    console.warn('[navtools] toast failed');
   }
-}
+};
 
 const toastFromAck = (ack, { successFallback, errorFallback } = {}) => {
   const n = normalizeAck(ack, { successFallback, errorFallback })
@@ -913,18 +914,19 @@ const handleDiscard = () => {
 /* glass cards */
 .navtools-card {
   border-radius: 0.95rem;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: 0 10px 24px rgba(17, 24, 39, 0.06);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(10px);
+  background: var(--surface-raised);
+  backdrop-filter: blur(var(--fx-blur));
+  -webkit-backdrop-filter: blur(var(--fx-blur));
 }
 
 .navtools-card--meta {
   background:
     radial-gradient(circle at 0% 0%, rgba(121,87,213,0.10), transparent 55%),
     radial-gradient(circle at 100% 100%, rgba(236,72,153,0.08), transparent 60%),
-    rgba(255,255,255,0.92);
+    var(--surface-raised);
 }
 
 .navtools-card--ribbon {
@@ -1065,8 +1067,9 @@ const handleDiscard = () => {
   border-radius: 0.9rem;
   border: 1px solid rgba(245, 158, 11, 0.35);
   background: linear-gradient(90deg, rgba(245, 158, 11, 0.16), rgba(124, 58, 237, 0.10));
-  backdrop-filter: blur(10px);
-  box-shadow: 0 12px 28px rgba(17, 24, 39, 0.18);
+  backdrop-filter: blur(var(--fx-blur));
+  -webkit-backdrop-filter: blur(var(--fx-blur));
+  box-shadow: var(--shadow-md);
 }
 
 .dirty-float__left { display: flex; align-items: center; gap: 0.55rem; min-width: 0; }

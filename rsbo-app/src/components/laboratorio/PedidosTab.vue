@@ -484,24 +484,24 @@ const mixedTypes = computed(() => {
   justify-content: space-between;
   padding: 0.5rem 0.65rem;
   margin-top: 0.6rem;
-  background: rgba(144, 111, 225, 0.08);
+  background: var(--c-primary-alpha);
   border: 1px solid rgba(144, 111, 225, 0.2);
   border-radius: 12px;
   font-size: 0.82rem;
   font-weight: 900;
-  color: rgba(17, 24, 39, 0.85);
+  color: var(--text-primary);
 }
 
 .complete-badge {
   display: flex;
   align-items: center;
   padding: 0.5rem 0.65rem;
-  background: rgba(34, 197, 94, 0.1);
+  background: var(--c-success-alpha);
   border: 1px solid rgba(34, 197, 94, 0.3);
   border-radius: 12px;
   font-size: 0.82rem;
   font-weight: 900;
-  color: rgba(21, 128, 61, 0.9);
+  color: var(--c-success);
 }
 
 .mica-type-tag {
@@ -509,11 +509,11 @@ const mixedTypes = computed(() => {
   align-items: center;
   padding: 0.1rem 0.45rem;
   border-radius: 999px;
-  background: rgba(144, 111, 225, 0.12);
+  background: var(--c-primary-alpha);
   border: 1px solid rgba(144, 111, 225, 0.25);
   font-size: 0.72rem;
   font-weight: 900;
-  color: rgba(88, 28, 135, 0.9);
+  color: var(--c-primary);
 }
 
 .mica-type-tag--sm {
@@ -525,11 +525,11 @@ const mixedTypes = computed(() => {
   align-items: center;
   padding: 0.1rem 0.4rem;
   border-radius: 8px;
-  background: rgba(59, 130, 246, 0.1);
+  background: var(--c-info-alpha);
   border: 1px solid rgba(59, 130, 246, 0.2);
   font-size: 0.7rem;
   font-weight: 900;
-  color: rgba(29, 78, 216, 0.9);
+  color: var(--c-info);
   margin-left: 0.35rem;
 }
 
@@ -542,7 +542,7 @@ const mixedTypes = computed(() => {
 
 .mica-breakdown {
   background: rgba(148, 163, 184, 0.06);
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  border: 1px solid var(--border);
   border-radius: 10px;
   padding: 0.5rem 0.65rem;
   display: grid;
@@ -562,14 +562,14 @@ const mixedTypes = computed(() => {
   align-items: center;
   font-size: 0.82rem;
   font-weight: 1000;
-  color: rgba(17, 24, 39, 0.85);
+  color: var(--text-primary);
   letter-spacing: 0.03em;
   text-transform: uppercase;
 }
 
 .micas-count {
   margin-left: 0.4rem;
-  background: rgba(144, 111, 225, 0.15);
+  background: var(--c-primary-alpha);
   border: 1px solid rgba(144, 111, 225, 0.25);
   border-radius: 999px;
   padding: 0.05rem 0.45rem;

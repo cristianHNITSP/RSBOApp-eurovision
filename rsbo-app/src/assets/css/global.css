@@ -1,14 +1,14 @@
-/* 
-AJUSTE DE COLORES DE COMPONENTES ROTOS 
-*/
-:root {
-  --white: #ffffff;
-  --hover-color-menus: #f5f5f5;
-  --border-light: #dbdbdb;
-}
+/* ============================================================
+   global.css — Overrides de Buefy/Bulma + utilidades globales
+   Los tokens de color/sombra/tipografía están en tokens.css
+   ============================================================ */
 
+/* ----------------------------------------------------------
+   DROPDOWNS Y MENÚS BUEFY
+   ---------------------------------------------------------- */
 .dropmenu-is-light {
-  background-color: var(--white) !important;
+  background-color: var(--surface-solid) !important;
+  color: var(--text-primary) !important;
 }
 
 .dropmenu-is-light:hover {
@@ -17,16 +17,13 @@ AJUSTE DE COLORES DE COMPONENTES ROTOS
 
 .add-filter,
 .select-css {
-  background-color: var(--hover-color-menus) !important;
-  background: white;
-  color: black;
+  background-color: var(--surface-solid) !important;
+  color: var(--text-primary) !important;
 }
 
-
 .dropdown-content .dropdown-item {
-  background-color: var(--white) !important;
-  /* o el color que desees */
-
+  background-color: var(--surface-solid) !important;
+  color: var(--text-secondary) !important;
 }
 
 .dropdown-content .dropdown-item:hover {
@@ -37,89 +34,907 @@ AJUSTE DE COLORES DE COMPONENTES ROTOS
   bottom: auto !important;
 }
 
-
-/* Modo oscuro rápido con filtro invert
-NO TOCARRR
-*/
-[data-theme='dark'] {
-  filter: invert(1) hue-rotate(180deg);
-  background-color: #121212 !important;
-  transition: filter 0.3s ease;
+/* ----------------------------------------------------------
+   BUEFY INPUTS / SELECTS / TEXTAREA — DARK MODE
+   ---------------------------------------------------------- */
+[data-theme="dark"] .input,
+[data-theme="dark"] .textarea,
+[data-theme="dark"] .select select {
+  background-color: var(--bg-muted);
+  border-color: var(--border-input);
+  color: var(--text-primary);
 }
 
-/* Para que imágenes y videos no se inviertan */
-[data-theme='dark'] img,
-[data-theme='dark'] video {
-  filter: invert(1) hue-rotate(180deg);
+[data-theme="dark"] .input::placeholder,
+[data-theme="dark"] .textarea::placeholder {
+  color: var(--text-subtle);
 }
 
-/* Asegura scrollbars y controles nativos con color scheme */
-html {
-  color-scheme: light;
+[data-theme="dark"] .input:focus,
+[data-theme="dark"] .textarea:focus,
+[data-theme="dark"] .select select:focus {
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 2px var(--c-primary-alpha);
 }
 
-[data-theme='dark'] {
-  color-scheme: dark;
+[data-theme="dark"] .label {
+  color: var(--text-secondary);
 }
 
+[data-theme="dark"] .help {
+  color: var(--text-muted);
+}
+
+/* ----------------------------------------------------------
+   BUEFY BOTONES — DARK MODE
+   ---------------------------------------------------------- */
+[data-theme="dark"] .button.is-light {
+  background-color: var(--bg-muted);
+  border-color: var(--border-solid);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .button.is-light:hover {
+  background-color: var(--surface-raised);
+  border-color: var(--border-strong);
+}
+
+[data-theme="dark"] .button.is-primary {
+  background-color: var(--c-primary) !important;
+  border-color: var(--c-primary) !important;
+  color: var(--text-on-primary) !important;
+}
+
+[data-theme="dark"] .button.is-white {
+  background-color: var(--bg-muted);
+  color: var(--text-primary);
+  border-color: var(--border-solid);
+}
+
+[data-theme="dark"] .button.is-ghost {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .button {
+  color: var(--text-primary);
+  border-color: var(--border-solid);
+}
+
+/* ----------------------------------------------------------
+   BUEFY TABLAS — DARK MODE
+   ---------------------------------------------------------- */
+[data-theme="dark"] .table {
+  background-color: var(--surface-solid);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .table th {
+  background-color: var(--bg-subtle);
+  border-color: var(--border-solid);
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .table td {
+  border-color: var(--border-solid);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .table.is-striped tbody tr:not(.is-selected):nth-child(2n) {
+  background-color: var(--bg-subtle);
+}
+
+[data-theme="dark"] .table.is-hoverable tbody tr:not(.is-selected):hover {
+  background-color: var(--bg-muted);
+}
+
+[data-theme="dark"] .table-wrapper {
+  background-color: var(--surface-solid);
+}
+
+/* ----------------------------------------------------------
+   BUEFY MODALES Y DIÁLOGOS — DARK MODE
+   ---------------------------------------------------------- */
+[data-theme="dark"] .modal-card {
+  background-color: var(--surface-solid);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .modal-card-head {
+  background-color: var(--bg-subtle);
+  border-bottom-color: var(--border-solid);
+}
+
+[data-theme="dark"] .modal-card-title {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .modal-card-body {
+  background-color: var(--surface-solid);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .modal-card-foot {
+  background-color: var(--bg-subtle);
+  border-top-color: var(--border-solid);
+}
+
+/* ----------------------------------------------------------
+   BUEFY DROPDOWNS CONTENT — DARK MODE
+   ---------------------------------------------------------- */
+[data-theme="dark"] .dropdown-content {
+  background-color: var(--surface-solid);
+  border: 1px solid var(--border-solid);
+  box-shadow: var(--shadow-lg);
+}
+
+[data-theme="dark"] .dropdown-divider {
+  background-color: var(--border-solid);
+}
+
+[data-theme="dark"] .dropdown-item,
+[data-theme="dark"] a.dropdown-item,
+[data-theme="dark"] button.dropdown-item {
+  background-color: var(--surface-solid) !important;
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .dropdown-item:hover,
+[data-theme="dark"] a.dropdown-item:hover,
+[data-theme="dark"] button.dropdown-item:hover {
+  background-color: var(--bg-muted) !important;
+  color: var(--text-primary) !important;
+}
+
+/* ----------------------------------------------------------
+   BUEFY TABS — DARK MODE
+   ---------------------------------------------------------- */
+[data-theme="dark"] .tabs.is-boxed li a {
+  border-color: var(--border-solid);
+  background-color: var(--bg-subtle);
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .tabs.is-boxed li.is-active a {
+  background-color: var(--surface-solid);
+  border-bottom-color: var(--surface-solid);
+  color: var(--c-primary);
+}
+
+[data-theme="dark"] .tabs ul {
+  border-bottom-color: var(--border-solid);
+}
+
+[data-theme="dark"] .tabs a {
+  color: var(--text-secondary);
+  border-bottom-color: var(--border-solid);
+}
+
+[data-theme="dark"] .tabs li.is-active a {
+  border-bottom-color: var(--c-primary);
+  color: var(--c-primary);
+}
+
+/* ----------------------------------------------------------
+   BUEFY TAGS — DARK MODE
+   ---------------------------------------------------------- */
+[data-theme="dark"] .tag.is-light {
+  background-color: var(--bg-muted);
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .tag.is-white {
+  background-color: var(--bg-subtle);
+  color: var(--text-primary);
+}
+
+/* ----------------------------------------------------------
+   BUEFY PROGRESS — DARK MODE
+   ---------------------------------------------------------- */
+[data-theme="dark"] .progress {
+  background-color: var(--bg-muted);
+}
+
+/* ----------------------------------------------------------
+   BUEFY NOTIFICATIONS — DARK MODE
+   ---------------------------------------------------------- */
+[data-theme="dark"] .notification {
+  background-color: var(--bg-subtle);
+  color: var(--text-primary);
+}
+
+/* ----------------------------------------------------------
+   BUEFY SWITCH — DARK MODE
+   ---------------------------------------------------------- */
+[data-theme="dark"] .switch input[type="checkbox"]:checked + .check {
+  background-color: var(--c-primary);
+}
+
+/* ----------------------------------------------------------
+   BUEFY SELECT ARROW — DARK MODE
+   ---------------------------------------------------------- */
+[data-theme="dark"] .select:not(.is-multiple):not(.is-loading)::after {
+  border-color: var(--text-muted);
+}
+
+/* ----------------------------------------------------------
+   BUEFY PAGINATION — DARK MODE
+   ---------------------------------------------------------- */
+[data-theme="dark"] .pagination-link,
+[data-theme="dark"] .pagination-previous,
+[data-theme="dark"] .pagination-next {
+  background-color: var(--bg-subtle);
+  border-color: var(--border-solid);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .pagination-link.is-current {
+  background-color: var(--c-primary);
+  border-color: var(--c-primary);
+  color: var(--text-on-primary);
+}
+
+/* ----------------------------------------------------------
+   BUEFY SKELETON — DARK MODE
+   ---------------------------------------------------------- */
+[data-theme="dark"] .skeleton-item {
+  background: linear-gradient(
+    90deg,
+    var(--bg-muted) 25%,
+    var(--bg-subtle) 50%,
+    var(--bg-muted) 75%
+  );
+  background-size: 200% 100%;
+}
+
+/* ----------------------------------------------------------
+   BUEFY BREADCRUMB — DARK MODE
+   ---------------------------------------------------------- */
+[data-theme="dark"] .breadcrumb a {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .breadcrumb li.is-active a {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .breadcrumb li + li::before {
+  color: var(--text-subtle);
+}
+
+/* ----------------------------------------------------------
+   BULMA PANEL — DARK MODE
+   ---------------------------------------------------------- */
+[data-theme="dark"] .panel {
+  background-color: var(--surface-solid);
+  border-color: var(--border-solid);
+}
+
+[data-theme="dark"] .panel-heading {
+  background-color: var(--bg-subtle);
+  color: var(--text-primary);
+  border-bottom-color: var(--border-solid);
+}
+
+[data-theme="dark"] .panel-block {
+  border-color: var(--border-solid);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .panel-block:hover {
+  background-color: var(--bg-muted);
+}
+
+/* ----------------------------------------------------------
+   BULMA CARD — DARK MODE
+   ---------------------------------------------------------- */
+[data-theme="dark"] .card {
+  background-color: var(--surface-solid);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-md);
+}
+
+[data-theme="dark"] .card-header {
+  background-color: var(--bg-subtle);
+  border-bottom-color: var(--border-solid);
+}
+
+[data-theme="dark"] .card-header-title {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .card-footer {
+  border-top-color: var(--border-solid);
+}
+
+/* ----------------------------------------------------------
+   BULMA MENU — DARK MODE (sidebar/navs)
+   ---------------------------------------------------------- */
+[data-theme="dark"] .menu-label {
+  color: var(--text-subtle);
+}
+
+[data-theme="dark"] .menu-list a {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .menu-list a:hover {
+  background-color: var(--bg-muted);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .menu-list a.is-active {
+  background-color: var(--c-primary-alpha);
+  color: var(--c-primary);
+}
+
+/* ----------------------------------------------------------
+   BODY / HTML — DARK MODE
+   ---------------------------------------------------------- */
+[data-theme="dark"] body,
+[data-theme="dark"] html {
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+}
+
+/* ----------------------------------------------------------
+   COLOR-SCHEME PARA SCROLLBARS NATIVOS
+   ---------------------------------------------------------- */
+html[data-theme="light"] { color-scheme: light; }
+html[data-theme="dark"]  { color-scheme: dark; }
+
+/* ----------------------------------------------------------
+   BACKGROUNDS ESPECÍFICOS DE VISTAS
+   ---------------------------------------------------------- */
 .background-animated,
 .notfound-section {
-  background-color: white;
+  background-color: var(--bg-base);
 }
 
-
-
-/*
-ESTILO DE REJILLAS PARA AG UI EXCELL
-*/
-
+/* ----------------------------------------------------------
+   AG-GRID CUSTOM CELL SELECTION
+   ---------------------------------------------------------- */
 .ag-cell[col-id="esferica"] {
   pointer-events: none;
   cursor: default;
 }
 
 .buefy-balham-light .custom-cell-selected {
-  background-color: rgba(100, 149, 237, 0.3) !important;
-  transition: background-color 0.3s ease;
+  background-color: var(--ag-selected) !important;
+  transition: background-color var(--transition-base);
   box-sizing: border-box;
 }
 
 .buefy-balham-light .custom-cell-selected.border-top {
-  border-top: 2px solid rgb(100, 149, 237) !important;
+  border-top: 2px solid var(--ag-cell-border) !important;
 }
 
 .buefy-balham-light .custom-cell-selected.border-right {
-  border-right: 2px solid rgb(100, 149, 237) !important;
+  border-right: 2px solid var(--ag-cell-border) !important;
 }
 
 .buefy-balham-light .custom-cell-selected.border-bottom {
-  border-bottom: 2px solid rgb(100, 149, 237) !important;
+  border-bottom: 2px solid var(--ag-cell-border) !important;
 }
 
 .buefy-balham-light .custom-cell-selected.border-left {
-  border-left: 2px solid rgb(100, 149, 237) !important;
+  border-left: 2px solid var(--ag-cell-border) !important;
 }
 
 .buefy-balham-light .ag-cell {
   cursor: grab;
-  /* Cursor por defecto */
 }
 
-
-
-/*
-MENU PARA MOSTRAR EL RESUMEN DE LA SELECCION
-*/
-
-
-
+/* ----------------------------------------------------------
+   TRANSICIONES GLOBALES (Vue Transition)
+   ---------------------------------------------------------- */
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.2s;
+  transition: opacity var(--transition-base);
 }
-.fade-enter,
+
+.fade-enter-from,
 .fade-leave-to {
   opacity: 0;
 }
 
+/* ----------------------------------------------------------
+   FOCUS OUTLINE (accesibilidad)
+   ---------------------------------------------------------- */
+[data-focus-outline="true"] *:focus-visible {
+  outline: 2px solid var(--c-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
 
+[data-focus-outline="false"] *:focus {
+  outline: none;
+}
+
+/* ============================================================
+   BUEFY GLASSMORPHISM OVERRIDES — Unified component styling
+   ============================================================ */
+
+/* --- Inputs / Textareas --- */
+.input,
+.textarea {
+  border-radius: var(--radius-md) !important;
+  border-color: var(--border-input) !important;
+  background-color: var(--surface-solid) !important;
+  color: var(--text-primary) !important;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+.input:focus,
+.textarea:focus {
+  border-color: var(--c-primary) !important;
+  box-shadow: 0 0 0 3px var(--c-primary-alpha) !important;
+}
+.input::placeholder,
+.textarea::placeholder {
+  color: var(--text-subtle) !important;
+}
+
+/* --- Selects --- */
+.select select {
+  border-radius: var(--radius-md) !important;
+  border-color: var(--border-input) !important;
+  background-color: var(--surface-solid) !important;
+  color: var(--text-primary) !important;
+}
+.select select:focus {
+  border-color: var(--c-primary) !important;
+  box-shadow: 0 0 0 3px var(--c-primary-alpha) !important;
+}
+.select:not(.is-multiple):not(.is-loading)::after {
+  border-color: var(--c-primary) !important;
+}
+
+/* --- Buttons --- */
+.button {
+  border-radius: var(--radius-md) !important;
+  font-weight: 700 !important;
+  transition: all var(--transition-fast) !important;
+}
+.button.is-primary {
+  background: linear-gradient(135deg, var(--c-primary), var(--c-primary-dark)) !important;
+  border-color: transparent !important;
+  box-shadow: 0 4px 12px var(--c-primary-alpha);
+}
+.button.is-primary:hover:not([disabled]) {
+  filter: brightness(1.08);
+}
+.button.is-light {
+  background: var(--surface) !important;
+  border-color: var(--border-solid) !important;
+  color: var(--text-primary) !important;
+}
+.button.is-light:hover:not([disabled]) {
+  background: var(--bg-muted) !important;
+}
+.button.is-white {
+  background: var(--surface-solid) !important;
+  border-color: var(--border-solid) !important;
+  color: var(--text-primary) !important;
+}
+
+/* --- Tags / Pills --- */
+.tag {
+  border-radius: var(--radius-pill) !important;
+  font-weight: 700 !important;
+}
+.tag.is-light {
+  background: var(--bg-muted) !important;
+  color: var(--text-secondary) !important;
+}
+.tag.is-primary {
+  background: var(--c-primary-alpha) !important;
+  color: var(--c-primary) !important;
+}
+.tag.is-success {
+  background: var(--c-success-alpha) !important;
+  color: var(--c-success) !important;
+}
+.tag.is-warning {
+  background: var(--c-warning-alpha) !important;
+  color: var(--c-warning) !important;
+}
+.tag.is-danger {
+  background: var(--c-danger-alpha) !important;
+  color: var(--c-danger) !important;
+}
+.tag.is-info {
+  background: var(--c-info-alpha) !important;
+  color: var(--c-info) !important;
+}
+
+/* --- b-tabs is-toggle (used in Laboratorio) --- */
+.tabs.is-toggle ul {
+  border: none !important;
+}
+.tabs.is-toggle li a {
+  border-radius: var(--radius-md) !important;
+  border-color: var(--border-solid) !important;
+  background: var(--bg-subtle) !important;
+  color: var(--text-secondary) !important;
+  font-weight: 700 !important;
+  transition: all var(--transition-fast) !important;
+}
+.tabs.is-toggle li.is-active a {
+  background: linear-gradient(135deg, var(--c-primary-alpha), rgba(236, 72, 153, 0.10)) !important;
+  border-color: var(--c-primary-alpha) !important;
+  color: var(--c-primary) !important;
+}
+
+/* --- b-tabs default (underline style) --- */
+.tabs:not(.is-toggle):not(.is-boxed) a {
+  color: var(--text-secondary) !important;
+  border-bottom-color: var(--border-solid) !important;
+  font-weight: 700 !important;
+}
+.tabs:not(.is-toggle):not(.is-boxed) li.is-active a {
+  color: var(--c-primary) !important;
+  border-bottom-color: var(--c-primary) !important;
+}
+.tabs:not(.is-toggle):not(.is-boxed) ul {
+  border-bottom-color: var(--border-solid) !important;
+}
+
+/* --- Modal cards — glassmorphism --- */
+.modal-card {
+  border-radius: var(--radius-xl) !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: var(--shadow-lg) !important;
+}
+.modal-card-head {
+  border-bottom: 1px solid var(--border) !important;
+  padding: 1.25rem 1.5rem !important;
+}
+.modal-card-body {
+  padding: 1.25rem 1.5rem !important;
+}
+.modal-card-foot {
+  border-top: 1px solid var(--border) !important;
+  padding: 1rem 1.5rem !important;
+  gap: 0.5rem !important;
+}
+.modal-card-title {
+  font-weight: 900 !important;
+}
+
+/* --- Dropdown --- */
+.dropdown-content {
+  border-radius: var(--radius-lg) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: var(--shadow-lg) !important;
+  background: var(--surface-solid) !important;
+  padding: 0.35rem !important;
+}
+.dropdown-item,
+a.dropdown-item,
+button.dropdown-item {
+  border-radius: var(--radius-md) !important;
+  font-weight: 600 !important;
+  transition: background-color var(--transition-fast) !important;
+}
+.dropdown-item:hover,
+a.dropdown-item:hover,
+button.dropdown-item:hover {
+  background-color: var(--c-primary-alpha) !important;
+  color: var(--c-primary) !important;
+}
+.has-link a {
+  border-radius: var(--radius-md) !important;
+}
+
+/* --- Notification (fallback if used anywhere) --- */
+.notification {
+  border-radius: var(--radius-lg) !important;
+}
+.notification.is-success {
+  background: var(--c-success-alpha) !important;
+  color: var(--c-success) !important;
+  border: 1px solid rgba(34, 197, 94, 0.28) !important;
+}
+.notification.is-danger {
+  background: var(--c-danger-alpha) !important;
+  color: var(--c-danger) !important;
+  border: 1px solid rgba(239, 68, 68, 0.28) !important;
+}
+.notification.is-warning {
+  background: var(--c-warning-alpha) !important;
+  color: var(--c-warning) !important;
+  border: 1px solid rgba(245, 158, 11, 0.28) !important;
+}
+.notification.is-info {
+  background: var(--c-info-alpha) !important;
+  color: var(--c-info) !important;
+  border: 1px solid rgba(59, 130, 246, 0.28) !important;
+}
+
+/* --- Card (Buefy .card component) --- */
+.card {
+  border-radius: var(--radius-lg) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: var(--shadow-sm) !important;
+  background: var(--surface-solid) !important;
+}
+.card-header {
+  border-bottom: 1px solid var(--border) !important;
+  box-shadow: none !important;
+}
+.card-header-title {
+  font-weight: 800 !important;
+  color: var(--text-primary) !important;
+}
+.card-content {
+  color: var(--text-secondary) !important;
+}
+
+/* --- Checkbox and Radio --- */
+.b-checkbox.checkbox input[type="checkbox"] + .check,
+.b-radio.radio input[type="radio"] + .check {
+  border-color: var(--border-strong) !important;
+}
+.b-checkbox.checkbox input[type="checkbox"]:checked + .check {
+  background-color: var(--c-primary) !important;
+  border-color: var(--c-primary) !important;
+}
+.b-radio.radio input[type="radio"]:checked + .check {
+  border-color: var(--c-primary) !important;
+}
+
+/* --- Switch --- */
+.switch input[type="checkbox"] + .check {
+  background: var(--bg-muted) !important;
+  border: 1px solid var(--border-solid) !important;
+}
+.switch input[type="checkbox"]:checked + .check {
+  background: var(--c-primary) !important;
+  border-color: var(--c-primary) !important;
+}
+
+/* --- Field label --- */
+.field > .label {
+  color: var(--text-primary) !important;
+  font-weight: 700 !important;
+}
+.help {
+  color: var(--text-muted) !important;
+}
+
+/* --- Skeleton (loading) --- */
+.skeleton-block,
+.skeleton-lines .lines {
+  background: linear-gradient(
+    90deg,
+    var(--bg-muted) 25%,
+    var(--bg-subtle) 50%,
+    var(--bg-muted) 75%
+  ) !important;
+}
+
+/* --- Dialog modal specific --- */
+.dialog .modal-card-head .delete { display: none; }
+.dialog .button.is-primary { min-width: 100px; }
+
+/* ============================================================
+   DARK MODE — Overrides adicionales de Buefy/Bulma
+   ============================================================ */
+
+/* --- Bulma text helpers en dark mode --- */
+[data-theme="dark"] .has-text-grey,
+[data-theme="dark"] .has-text-grey-dark,
+[data-theme="dark"] .subtitle.is-6,
+[data-theme="dark"] .subtitle {
+  color: var(--text-muted) !important;
+}
+[data-theme="dark"] .has-text-grey-light,
+[data-theme="dark"] .has-text-grey-lighter {
+  color: var(--text-subtle) !important;
+}
+[data-theme="dark"] .has-text-dark,
+[data-theme="dark"] .has-text-black {
+  color: var(--text-primary) !important;
+}
+[data-theme="dark"] .title {
+  color: var(--text-primary) !important;
+}
+
+/* --- b-message component --- */
+[data-theme="dark"] .message {
+  background-color: var(--bg-muted) !important;
+  border-color: var(--border-solid) !important;
+}
+[data-theme="dark"] .message-header {
+  background-color: var(--bg-subtle) !important;
+  color: var(--text-primary) !important;
+}
+[data-theme="dark"] .message-body {
+  background-color: var(--bg-muted) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-solid) !important;
+}
+[data-theme="dark"] .message.is-success .message-body {
+  background-color: var(--c-success-alpha) !important;
+  color: var(--c-success) !important;
+  border-left-color: var(--c-success) !important;
+}
+[data-theme="dark"] .message.is-danger .message-body {
+  background-color: var(--c-danger-alpha) !important;
+  color: var(--c-danger) !important;
+  border-left-color: var(--c-danger) !important;
+}
+[data-theme="dark"] .message.is-warning .message-body {
+  background-color: var(--c-warning-alpha) !important;
+  color: var(--c-warning) !important;
+  border-left-color: var(--c-warning) !important;
+}
+[data-theme="dark"] .message.is-info .message-body {
+  background-color: var(--c-info-alpha) !important;
+  color: var(--c-info) !important;
+  border-left-color: var(--c-info) !important;
+}
+
+/* --- Bulma Box --- */
+[data-theme="dark"] .box {
+  background-color: var(--surface-solid) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-solid) !important;
+}
+
+/* --- Hero y Section --- */
+[data-theme="dark"] .hero {
+  background-color: var(--bg-base) !important;
+  color: var(--text-primary) !important;
+}
+[data-theme="dark"] .hero.is-light {
+  background-color: var(--bg-subtle) !important;
+  color: var(--text-primary) !important;
+}
+[data-theme="dark"] .hero-body .title,
+[data-theme="dark"] .hero-body .subtitle {
+  color: var(--text-primary) !important;
+}
+[data-theme="dark"] .section {
+  color: var(--text-primary) !important;
+}
+
+/* --- Buefy Autocomplete / Taginput --- */
+[data-theme="dark"] .autocomplete .dropdown-menu .dropdown-content {
+  background-color: var(--surface-solid) !important;
+}
+[data-theme="dark"] .taginput .taginput-container {
+  background-color: var(--bg-muted) !important;
+  border-color: var(--border-input) !important;
+}
+
+/* --- b-upload draggable --- */
+[data-theme="dark"] .upload .upload-draggable {
+  background-color: var(--bg-subtle) !important;
+  border-color: var(--border-solid) !important;
+  color: var(--text-primary) !important;
+}
+
+/* --- Bulma content (rich text areas) --- */
+[data-theme="dark"] .content {
+  color: var(--text-primary) !important;
+}
+[data-theme="dark"] .content h1,
+[data-theme="dark"] .content h2,
+[data-theme="dark"] .content h3,
+[data-theme="dark"] .content h4,
+[data-theme="dark"] .content h5,
+[data-theme="dark"] .content h6 {
+  color: var(--text-primary) !important;
+}
+[data-theme="dark"] .content p,
+[data-theme="dark"] .content li {
+  color: var(--text-secondary) !important;
+}
+
+/* --- b-loading overlay --- */
+[data-theme="dark"] .loading-overlay {
+  background-color: rgba(15, 17, 23, 0.75) !important;
+}
+
+/* --- Buefy tooltip --- */
+[data-theme="dark"] .b-tooltip .tooltip-content {
+  background-color: var(--bg-muted) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-solid) !important;
+}
+
+/* --- Buefy datepicker --- */
+[data-theme="dark"] .datepicker .datepicker-table .datepicker-cell {
+  color: var(--text-primary) !important;
+}
+[data-theme="dark"] .datepicker .datepicker-table .datepicker-cell.is-selected {
+  background-color: var(--c-primary) !important;
+  color: var(--text-on-primary) !important;
+}
+[data-theme="dark"] .datepicker-header {
+  background-color: var(--bg-subtle) !important;
+  border-color: var(--border-solid) !important;
+}
+
+/* --- Button outlined dark mode --- */
+[data-theme="dark"] .button.is-outlined {
+  background-color: transparent !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text-primary) !important;
+}
+[data-theme="dark"] .button.is-text {
+  color: var(--text-secondary) !important;
+  background-color: transparent !important;
+}
+[data-theme="dark"] .button.is-text:hover {
+  background-color: var(--bg-muted) !important;
+  color: var(--text-primary) !important;
+}
+
+/* ============================================================
+   EFECTOS REDUCIDOS — Overrides específicos de componentes
+   Desactiva glassmorphism en clases que usan blur hardcodeado
+   ============================================================ */
+[data-reduced-effects="true"] .um-card--glass,
+[data-reduced-effects="true"] .um-card--soft,
+[data-reduced-effects="true"] .lab-notif,
+[data-reduced-effects="true"] .submenu-panel,
+[data-reduced-effects="true"] .global-search-panel,
+[data-reduced-effects="true"] .notif-panel,
+[data-reduced-effects="true"] .profile-card__top,
+[data-reduced-effects="true"] .modal-card,
+[data-reduced-effects="true"] .pill {
+  backdrop-filter:         none !important;
+  -webkit-backdrop-filter: none !important;
+  background:              var(--surface-solid) !important;
+}
+
+/* Eliminar animaciones decorativas con efectos reducidos */
+[data-reduced-effects="true"] .avatar-ring,
+[data-reduced-effects="true"] .pulse-animation,
+[data-reduced-effects="true"] .dot-pulse,
+[data-reduced-effects="true"] .lab-notif__bar-fill,
+[data-reduced-effects="true"] [class*="glow"] {
+  animation: none !important;
+}
+
+/* ============================================================
+   UNIFIED TOAST — asegurar que .lab-notif sea el toast global
+   ============================================================ */
+/* Cuando se use b-toast nativo de Buefy, aplicar el mismo estilo */
+.notices .snackbar,
+.notices .toast {
+  border-radius: var(--radius-lg) !important;
+  backdrop-filter: blur(var(--fx-blur));
+  -webkit-backdrop-filter: blur(var(--fx-blur));
+  font-weight: 700 !important;
+}
+.notices .snackbar.is-success,
+.notices .toast.is-success {
+  background: linear-gradient(90deg, var(--c-success-alpha), var(--c-primary-alpha)) !important;
+  border: 1px solid rgba(34, 197, 94, 0.35) !important;
+  color: var(--c-success) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+.notices .snackbar.is-danger,
+.notices .toast.is-danger {
+  background: linear-gradient(90deg, var(--c-danger-alpha), var(--c-primary-alpha)) !important;
+  border: 1px solid rgba(239, 68, 68, 0.35) !important;
+  color: var(--c-danger) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+.notices .snackbar.is-warning,
+.notices .toast.is-warning {
+  background: linear-gradient(90deg, var(--c-warning-alpha), var(--c-primary-alpha)) !important;
+  border: 1px solid rgba(245, 158, 11, 0.35) !important;
+  color: var(--c-warning) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+.notices .snackbar.is-info,
+.notices .toast.is-info {
+  background: linear-gradient(90deg, var(--c-info-alpha), var(--c-primary-alpha)) !important;
+  border: 1px solid rgba(59, 130, 246, 0.30) !important;
+  color: var(--c-info) !important;
+  box-shadow: var(--shadow-md) !important;
+}

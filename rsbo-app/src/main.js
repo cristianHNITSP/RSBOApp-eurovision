@@ -9,6 +9,7 @@ import "@fortawesome/fontawesome-free/css/all.css";
 
 import ExtendedTooltip from "./global-components/ExtendedTooltip.js";
 
+import "./assets/css/tokens.css";
 import "./assets/css/global.css";
 import router from "./router";
 

@@ -1,4 +1,4 @@
-<!-- src/views/inventario/Inventario.vue -->
+<!-- src/views/inventario/BasesMicas.vue -->
 <script setup>
 import { reactive, ref, onMounted, watch, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -286,7 +286,7 @@ const resolverGridProps = (sheet, activeInternal) => {
 
     <span class="inventario-pill">
       <b-icon icon="life-ring" size="is-small" class="mr-1" />
-      Inventario
+      Bases y Micas - Inventario
     </span>
 
     <div class="columns is-multiline">
@@ -327,10 +327,10 @@ const resolverGridProps = (sheet, activeInternal) => {
 
 <style scoped>
 .section-matriz-dioptrias {
-  border-bottom: 1px solid #ccc;
+  border-bottom: 1px solid var(--border);
   border-radius: 8px;
   padding: 1.5rem;
-  background-color: #ffffff;
+  background-color: var(--surface-solid);
 }
 
 .inventario-pill {
@@ -340,8 +340,8 @@ const resolverGridProps = (sheet, activeInternal) => {
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #4f46e5;
-  background: #eef2ff;
+  color: var(--c-primary);
+  background: var(--c-primary-alpha);
   padding: 0.2rem 0.45rem;
   border-radius: 999px;
   margin-bottom: 1rem;

@@ -8,7 +8,7 @@
 .loading-bar-container {
   width: 100%;
   height: 6px;
-  background-color: #e6e6fa; /* lavanda claro */
+  background-color: var(--c-primary-alpha); /* lavanda claro */
   border-radius: 3px;
   overflow: hidden;
   margin-top: 1rem;
@@ -17,7 +17,7 @@
 .loading-bar {
   height: 100%;
   width: 30%;
-  background-color: #6b46c1; /* morado Buefy-ish */
+  background-color: var(--c-primary); /* morado Buefy-ish */
   border-radius: 3px;
   animation: loading 1.2s infinite ease-in-out;
 }

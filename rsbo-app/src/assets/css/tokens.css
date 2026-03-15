@@ -277,6 +277,15 @@
   --grad-header-bg:    var(--bg-base);
 }
 
+/* Dark mode + reduced-effects: superficies con contraste suficiente
+   En modo oscuro, --surface-solid == --bg-subtle (#161b22), haciendo las
+   tarjetas invisibles. Este override les da elevación visible. */
+[data-theme="dark"][data-reduced-effects="true"] {
+  --surface:           #1e2433;
+  --surface-raised:    #232b3e;
+  --surface-overlay:   #1a2030;
+}
+
 /* Deshabilitar backdrop-filter en TODOS los elementos */
 [data-reduced-effects="true"] *,
 [data-reduced-effects="true"] *::before,
@@ -285,11 +294,14 @@
   -webkit-backdrop-filter: none !important;
 }
 
-/* Deshabilitar glows y partículas decorativas */
+/* Deshabilitar glows y partículas decorativas
+   NOTA: NO usar [class*="glow"] — captura card-glow-ok/card-glow-bad y oculta tarjetas */
 [data-reduced-effects="true"] .um-glow,
 [data-reduced-effects="true"] .avatar-ring,
 [data-reduced-effects="true"] .bg-glow,
-[data-reduced-effects="true"] [class*="glow"],
+[data-reduced-effects="true"] .hero-glow,
+[data-reduced-effects="true"] .hero-glow--a,
+[data-reduced-effects="true"] .hero-glow--b,
 [data-reduced-effects="true"] [class*="-particles"] {
   display: none !important;
 }

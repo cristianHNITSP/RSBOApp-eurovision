@@ -1253,7 +1253,7 @@ onBeforeUnmount(() => {
   align-items: flex-start;
   gap: 0.35rem;
   background: var(--c-primary-alpha);
-  border: 1px solid #e9d5ff;
+  border: 1px solid var(--border-strong);
   padding: 0.55rem 0.65rem;
   border-radius: 12px;
 }

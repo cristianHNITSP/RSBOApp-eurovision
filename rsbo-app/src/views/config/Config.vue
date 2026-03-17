@@ -1,11 +1,40 @@
 <template>
   <section class="section-config" v-motion-fade-visible-once>
 
-    <span class="config-pill">
-      <b-icon icon="life-ring" size="is-small" class="mr-1" />
-      Configuración
-    </span>
+    <header class="page-section-header mb-4">
+      <div>
+        <span class="config-pill">
+          <b-icon icon="cog" size="is-small" class="mr-1" />
+          Configuración
+        </span>
+        <h2>Configuración del sistema</h2>
+        <p class="psh-desc">Gestiona tu perfil, preferencias visuales y seguridad de la cuenta.</p>
 
+        <div class="psh-quick mt-3">
+          <div class="psh-quick__card">
+            <div class="psh-quick__icon"><i class="fas fa-user-circle"></i></div>
+            <div>
+              <p class="psh-quick__title">Mi perfil</p>
+              <p class="psh-quick__text">Nombre, avatar y contraseña</p>
+            </div>
+          </div>
+          <div class="psh-quick__card">
+            <div class="psh-quick__icon"><i class="fas fa-sliders-h"></i></div>
+            <div>
+              <p class="psh-quick__title">Preferencias</p>
+              <p class="psh-quick__text">Tema, fuente y efectos visuales</p>
+            </div>
+          </div>
+          <div class="psh-quick__card">
+            <div class="psh-quick__icon"><i class="fas fa-shield-alt"></i></div>
+            <div>
+              <p class="psh-quick__title">Seguridad</p>
+              <p class="psh-quick__text">Opciones avanzadas de acceso</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
 
     <b-tabs v-model="activeTab" type="is-boxed" expanded animated>
       <!-- TAB PERFIL -->

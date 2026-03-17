@@ -9,7 +9,8 @@ import {
   resetOrder,
   listEvents,
   requestCorrection,
-  cancelOrder as cancelOrderService
+  cancelOrder as cancelOrderService,
+  updateOrder as updateOrderService
 } from "@/services/laboratorio";
 
 // ============================================================================
@@ -389,6 +390,7 @@ export function useLaboratorioApi() {
   const loadingExportCat = ref(false);
   const loadingExportOrders = ref(false);
   const loadingCancelOrder = ref(false);
+  const loadingEditOrder   = ref(false);
 
   const lastUpdatedAt = ref(Date.now());
 
@@ -871,6 +873,28 @@ export function useLaboratorioApi() {
     }
   }
 
+  // ======= Editar orden =======
+  async function editOrder(orderId, payload) {
+    if (!orderId) return;
+    loadingEditOrder.value = true;
+    try {
+      const { data } = await updateOrderService(orderId, { ...payload, actor: actorRef() });
+      const updated = normalizeOrder(data?.data);
+      const idx = ordersDB.value.findIndex((o) => o.id === updated.id);
+      if (idx >= 0) ordersDB.value[idx] = updated;
+      lastUpdatedAt.value = Date.now();
+      notify("Pedido actualizado correctamente.", "is-success");
+      return updated;
+    } catch (e) {
+      console.error("[LAB] editOrder", e?.response?.data || e);
+      const n = normalizeAck(e, { errorFallback: "No se pudo editar el pedido." });
+      notify(n?.message, "is-danger", 5000);
+      throw e;
+    } finally {
+      loadingEditOrder.value = false;
+    }
+  }
+
   // ======= Correcciones =======
   watch(correctionOpen, (open) => {
     if (open) correction.orderId = correction.orderId || selectedOrderId.value || "";
@@ -1329,6 +1353,7 @@ export function useLaboratorioApi() {
     loadingExportCat,
     loadingExportOrders,
     loadingCancelOrder,
+    loadingEditOrder,
 
     // computed
     lastUpdatedHuman,
@@ -1378,6 +1403,7 @@ export function useLaboratorioApi() {
     resetPickedForSelectedOrder,
     closeSelectedOrder,
     cancelOrderById,
+    editOrder,
     submitCorrection,
 
     // export/print

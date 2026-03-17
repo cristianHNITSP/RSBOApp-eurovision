@@ -1028,3 +1028,107 @@ button.dropdown-item:hover {
   color: var(--c-info) !important;
   box-shadow: var(--shadow-md) !important;
 }
+
+/* ----------------------------------------------------------
+   PAGE SECTION HEADER — patrón compartido entre todas las vistas
+   ---------------------------------------------------------- */
+.page-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.5rem;
+  padding: 1rem 1.25rem;
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 0 0,   rgba(79, 70, 229, 0.12),  transparent 55%),
+    radial-gradient(circle at 100% 0, rgba(236, 72, 153, 0.10), transparent 55%),
+    radial-gradient(circle at 60% 100%, rgba(249, 115, 22, 0.10), transparent 55%),
+    var(--surface-solid);
+  border: 1px solid var(--border);
+  margin-bottom: 1.5rem;
+}
+
+.page-section-header h2 {
+  font-size: 1.2rem;
+  font-weight: 900;
+  color: var(--text-primary);
+  margin: 0.3rem 0 0.2rem;
+  line-height: 1.2;
+}
+
+.page-section-header > div > p,
+.page-section-header .psh-desc {
+  font-size: 0.83rem;
+  color: var(--text-muted);
+  margin: 0;
+  font-weight: 700;
+}
+
+.page-section-header .psh-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.4rem;
+  flex-shrink: 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 800;
+}
+
+.page-section-header .psh-quick {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.65rem;
+}
+
+.page-section-header .psh-quick__card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-overlay);
+  flex: 1 1 160px;
+}
+
+.page-section-header .psh-quick__icon {
+  width: 1.6rem;
+  height: 1.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--c-primary-alpha);
+  color: var(--c-primary);
+  flex-shrink: 0;
+  font-size: 0.75rem;
+}
+
+.page-section-header .psh-quick__title {
+  font-size: 0.75rem;
+  font-weight: 900;
+  color: var(--text-primary);
+  margin: 0 0 0.1rem;
+}
+
+.page-section-header .psh-quick__text {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .page-section-header {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .page-section-header .psh-meta {
+    align-items: flex-start;
+  }
+  .page-section-header .psh-quick {
+    flex-direction: column;
+  }
+}

@@ -1,6 +1,6 @@
 <template>
   <div class="columns is-multiline is-variable is-4">
-    <!-- Columna principal: Inventario -->
+    <!-- Columna principal: Inventario de referencia -->
     <div class="column is-8">
       <div class="panel">
         <div class="panel__head">
@@ -10,7 +10,7 @@
               <span class="panel__badge">{{ lab.selectedSheetLabel.value }}</span>
             </h2>
             <p class="panel__hint">
-              Arma el pedido desde inventario. Puedes mezclar micas de distintas planillas en un mismo pedido.
+              Consulta el stock disponible mientras surtes los pedidos.
             </p>
           </div>
 
@@ -92,7 +92,7 @@
               </div>
             </b-table-column>
 
-            <b-table-column field="actions" label="" width="235" v-slot="props">
+            <b-table-column field="actions" label="" width="150" v-slot="props">
               <div class="is-flex is-justify-content-flex-end is-align-items-center" style="gap: 0.4rem">
                 <b-button
                   size="is-small"
@@ -113,16 +113,6 @@
                 >
                   Copiar
                 </b-button>
-
-                <b-button
-                  size="is-small"
-                  type="is-primary"
-                  icon-left="plus"
-                  :disabled="props.row.existencias <= 0"
-                  @click="lab.addToDraft(props.row)"
-                >
-                  Agregar
-                </b-button>
               </div>
             </b-table-column>
           </b-table>
@@ -136,181 +126,112 @@
       </div>
     </div>
 
-    <!-- Panel lateral: Modo + Crear / Surtir -->
+    <!-- Panel lateral: Pedidos y Surtir -->
     <div class="column is-4">
-      <div class="panel panel--sticky">
+
+      <!-- ── Lista de pedidos (selector de tarjetas) ── -->
+      <div class="panel">
         <div class="panel__head panel__head--compact">
           <div>
             <h3 class="panel__title mb-0">
-              <i class="fas fa-sliders-h mr-2"></i>
-              Modo
+              <i class="fas fa-clipboard-list mr-2"></i>
+              Pedidos
+              <span class="panel__badge">{{ lab.ordersDB.value.length }}</span>
             </h3>
-            <p class="panel__hint mt-1">Crear pedido o surtir por escaneo.</p>
+            <p class="panel__hint mt-1">Selecciona un pedido para surtirlo.</p>
           </div>
-
-          <div class="panel__headActions">
-            <b-button
-              size="is-small"
-              :type="lab.mode.value === 'crear' ? 'is-primary' : 'is-light'"
-              icon-left="cart-plus"
-              @click="lab.mode.value = 'crear'"
-            >
-              Crear
-            </b-button>
-            <b-button
-              size="is-small"
-              :type="lab.mode.value === 'surtir' ? 'is-primary' : 'is-light'"
-              icon-left="barcode"
-              @click="lab.mode.value = 'surtir'"
-            >
-              Surtir
-            </b-button>
-          </div>
-        </div>
-      </div>
-
-      <!-- ===== CREAR ===== -->
-      <div v-if="lab.mode.value === 'crear'" class="panel mt-4">
-        <div class="panel__head panel__head--compact">
-          <div>
-            <h3 class="panel__title mb-0"><i class="fas fa-shopping-cart mr-2"></i>Pedido en curso</h3>
-            <p class="panel__hint mt-1">Puedes agregar micas de distintas planillas.</p>
-          </div>
-
           <b-button
             size="is-small"
             type="is-light"
-            icon-left="trash"
-            :disabled="!lab.draftLines.value.length"
-            @click="lab.clearDraft"
-          >
-            Limpiar
-          </b-button>
+            icon-left="sync"
+            :loading="lab.loadingOrders.value"
+            @click="lab.refreshAll"
+          />
         </div>
 
-        <div class="panel__body">
-          <b-field label="Cliente" class="mb-2">
-            <b-input v-model="lab.draftCliente.value" placeholder="Ej: Óptica Rivera" icon="building" />
+        <div class="panel__body" style="padding: 0.65rem">
+          <!-- Filtro de estado -->
+          <b-field class="mb-2">
+            <b-select v-model="lab.orderStatusFilter.value" expanded size="is-small">
+              <option value="open">Pendientes / En proceso</option>
+              <option value="cerrado">Cerrados</option>
+              <option value="cancelado">Cancelados</option>
+              <option value="all">Todos</option>
+            </b-select>
           </b-field>
 
-          <b-field label="Referencia/nota" class="mb-2">
-            <b-input v-model="lab.draftNote.value" placeholder="Opcional" icon="sticky-note" />
-          </b-field>
-
-          <div v-if="!lab.draftLines.value.length" class="empty empty--mini">
-            <i class="fas fa-glasses empty__icon"></i>
-            <p class="empty__title">Sin micas</p>
-            <p class="empty__text">
-              Agrega micas desde la tabla de inventario. Puedes mezclar progresivos, bifocales y
-              monofocales.
-            </p>
+          <div v-if="lab.loadingOrders.value" class="empty empty--mini">
+            <b-loading :is-full-page="false" :active="true" />
+            <div style="height:60px"></div>
           </div>
 
-          <div v-else class="order-lines">
-            <article v-for="l in lab.draftLines.value" :key="l.key" class="order-line">
-              <div class="order-line__top">
-                <div class="order-line__title">
-                  {{ l.title }}
-                  <div class="mica-meta-row mt-1">
-                    <span class="mica-type-tag">{{ l.micaType }}</span>
-                    <span class="order-line__sub">
-                      <i class="fas fa-layer-group mr-1"></i>{{ l.sheetName }}
-                    </span>
-                  </div>
-                </div>
-                <b-button size="is-small" type="is-text" icon-left="times" @click="lab.removeDraftLine(l.key)" />
+          <div v-else-if="!lab.ordersDB.value.length" class="empty empty--mini">
+            <i class="fas fa-hand-pointer empty__icon"></i>
+            <p class="empty__title">Sin pedidos</p>
+            <p class="empty__text">Los pedidos creados desde Ventas aparecen aquí.</p>
+          </div>
+
+          <div v-else class="order-card-list">
+            <div
+              v-for="o in lab.ordersDB.value"
+              :key="o.id"
+              class="order-card"
+              :class="{
+                'order-card--active': lab.selectedOrderId.value === o.id,
+                'order-card--done': o.status === 'cerrado',
+                'order-card--cancelled': o.status === 'cancelado'
+              }"
+              @click="lab.selectedOrderId.value = o.id"
+            >
+              <div class="order-card__top">
+                <span class="order-card__folio mono">{{ o.folio }}</span>
+                <span class="tag is-light order-card__tag" :class="lab.statusTagClass(o.status)">
+                  {{ lab.statusHuman(o.status) }}
+                </span>
               </div>
-
-              <div class="order-line__bottom">
-                <div class="qty-control">
-                  <b-button size="is-small" @click="lab.decDraftQty(l.key)" icon-left="minus" />
-                  <b-input type="number" min="1" v-model.number="l.qty" class="qty-input" />
-                  <b-button size="is-small" @click="lab.incDraftQty(l.key)" icon-left="plus" />
-                </div>
-                <span class="stock-hint">stock: <b>{{ l.stock }}</b></span>
+              <div class="order-card__cliente">{{ o.cliente }}</div>
+              <div class="order-card__meta">
+                <span>{{ lab.orderPickedCount(o) }}/{{ lab.orderTotalCount(o) }} pzas</span>
+                <span>{{ o.createdAtShort }}</span>
               </div>
-            </article>
-          </div>
-
-          <!-- Resumen del draft -->
-          <div v-if="lab.draftLines.value.length" class="draft-summary">
-            <span>
-              {{ lab.draftLines.value.length }} mica{{ lab.draftLines.value.length !== 1 ? "s" : "" }}
-            </span>
-            <span>
-              {{ lab.draftLines.value.reduce((a, l) => a + Number(l.qty || 0), 0) }} piezas totales
-            </span>
-          </div>
-
-          <!-- Desglose por tipo -->
-          <div v-if="mixedTypes.length > 1" class="mica-breakdown mt-2">
-            <div v-for="t in mixedTypes" :key="t.type" class="mica-breakdown__row">
-              <span class="mica-type-tag mica-type-tag--sm">{{ t.type }}</span>
-              <span class="muted">{{ t.count }} mica{{ t.count !== 1 ? "s" : "" }} · {{ t.qty }} pzas</span>
+              <div class="progress-mini mt-1">
+                <div
+                  class="progress-mini__fill"
+                  :style="{ width: lab.orderProgressPct(o) + '%' }"
+                  :class="{ 'progress-mini__fill--done': o.status === 'cerrado' }"
+                />
+              </div>
             </div>
-          </div>
-
-          <div class="mt-3">
-            <b-button
-              type="is-primary"
-              expanded
-              icon-left="clipboard-check"
-              :disabled="!lab.canCreateOrder.value"
-              :loading="lab.loadingCreateOrder.value"
-              @click="lab.createOrderFromDraft"
-            >
-              Crear pedido
-            </b-button>
-
-            <b-button
-              class="mt-2"
-              type="is-light"
-              expanded
-              icon-left="exchange-alt"
-              :disabled="!lab.ordersDB.value.length"
-              @click="lab.mode.value = 'surtir'"
-            >
-              Ir a surtir
-            </b-button>
           </div>
         </div>
       </div>
 
-      <!-- ===== SURTIR ===== -->
-      <div v-else class="panel mt-4">
+      <!-- ── Detalle + Surtir ── -->
+      <div class="panel mt-4" v-if="lab.selectedOrder.value">
         <div class="panel__head panel__head--compact">
           <div>
-            <h3 class="panel__title mb-0"><i class="fas fa-qrcode mr-2"></i>Surtir por escaneo</h3>
-            <p class="panel__hint mt-1">Escanea el código → salida en inventario + progreso (DB).</p>
+            <h3 class="panel__title mb-0">
+              <i class="fas fa-qrcode mr-2"></i>
+              Surtir pedido
+            </h3>
+            <p class="panel__hint mt-1">
+              <b>{{ lab.selectedOrder.value.folio }}</b> ·
+              {{ lab.selectedOrder.value.cliente }}
+            </p>
           </div>
         </div>
 
         <div class="panel__body">
-          <b-field label="Selecciona pedido" class="mb-2">
-            <b-select v-model="lab.selectedOrderId.value" expanded>
-              <option v-for="o in lab.ordersDB.value" :key="o.id" :value="o.id">
-                {{ o.folio }} · {{ o.cliente }} · {{ lab.statusHuman(o.status) }}
-              </option>
-            </b-select>
-          </b-field>
-
-          <div v-if="lab.selectedOrder.value" class="mini-order-head mb-3">
-            <div class="mini-order-title">
-              <b>{{ lab.selectedOrder.value.folio }}</b>
-              <span class="tag is-light ml-2" :class="lab.statusTagClass(lab.selectedOrder.value.status)">
-                {{ lab.statusHuman(lab.selectedOrder.value.status) }}
-              </span>
-            </div>
-            <div class="mini-order-sub">
-              {{ lab.selectedOrder.value.cliente }}
-              · {{ lab.selectedOrder.value.createdAtShort }}
-            </div>
-
-            <div class="progress-bar mt-2">
+          <!-- Progress -->
+          <div class="mini-order-head mb-3">
+            <div class="progress-bar">
               <div class="progress-bar__fill" :style="{ width: lab.orderProgressPct(lab.selectedOrder.value) + '%' }" />
             </div>
             <div class="mini-order-sub mt-1 is-flex is-justify-content-space-between">
-              <span><b>{{ lab.orderPickedCount(lab.selectedOrder.value) }}</b>/<b>{{ lab.orderTotalCount(lab.selectedOrder.value) }}</b> surtidas</span>
+              <span>
+                <b>{{ lab.orderPickedCount(lab.selectedOrder.value) }}</b>/
+                <b>{{ lab.orderTotalCount(lab.selectedOrder.value) }}</b> surtidas
+              </span>
               <span>{{ lab.orderProgressPct(lab.selectedOrder.value) }}%</span>
             </div>
 
@@ -321,18 +242,17 @@
 
             <div class="columns is-mobile is-variable is-2 mt-2">
               <div class="column">
-                <b-button type="is-light" expanded icon-left="download" @click="lab.exportOrderCsv(lab.selectedOrder.value)">
-                  CSV
-                </b-button>
+                <b-button type="is-light" expanded icon-left="download" size="is-small"
+                  @click="lab.exportOrderCsv(lab.selectedOrder.value)">CSV</b-button>
               </div>
               <div class="column">
-                <b-button type="is-light" expanded icon-left="print" @click="lab.printOrder(lab.selectedOrder.value)">
-                  PDF
-                </b-button>
+                <b-button type="is-light" expanded icon-left="print" size="is-small"
+                  @click="lab.printOrder(lab.selectedOrder.value)">PDF</b-button>
               </div>
             </div>
           </div>
 
+          <!-- Scanner -->
           <b-field label="Código (EAN-13)" class="mb-2">
             <b-input
               v-model="lab.scanCode.value"
@@ -366,7 +286,7 @@
           </div>
 
           <!-- Micas del pedido -->
-          <div v-if="lab.selectedOrder.value" class="mt-3">
+          <div class="mt-3">
             <div class="micas-section-label">
               <i class="fas fa-glasses mr-2"></i>
               Micas del pedido
@@ -402,7 +322,7 @@
                 icon-left="redo"
                 :loading="lab.loadingReset.value"
                 :disabled="!lab.selectedOrder.value"
-                @click="lab.resetPickedForSelectedOrder"
+                @click="askReset"
               >
                 Reiniciar surtido
               </b-button>
@@ -414,7 +334,7 @@
                 icon-left="lock"
                 :disabled="!lab.selectedOrder.value || !lab.isOrderComplete(lab.selectedOrder.value)"
                 :loading="lab.loadingCloseOrder.value"
-                @click="lab.closeSelectedOrder"
+                @click="askClose"
               >
                 Cerrar pedido
               </b-button>
@@ -438,24 +358,81 @@
                 icon-left="tools"
                 @click="lab.activeMainTab.value = 'correcciones'"
               >
-                Gestionar / eliminar entradas
+                Gestionar / editar pedido
               </b-button>
             </div>
           </div>
+        </div>
+      </div>
 
-          <div v-else class="empty empty--mini">
+      <!-- Empty surtir state -->
+      <div v-else class="panel mt-4">
+        <div class="panel__body">
+          <div class="empty empty--mini">
             <i class="fas fa-hand-pointer empty__icon"></i>
             <p class="empty__title">Sin pedido seleccionado</p>
-            <p class="empty__text">Selecciona uno arriba para surtir.</p>
+            <p class="empty__text">Selecciona un pedido de la lista de arriba para surtirlo.</p>
           </div>
         </div>
       </div>
+
     </div>
   </div>
+
+  <!-- Confirmar: Reiniciar surtido -->
+  <teleport to="body">
+    <b-modal v-model="confirmResetOpen" has-modal-card :width="420" trap-focus scroll="keep">
+      <div class="modal-card">
+        <header class="modal-card-head">
+          <p class="modal-card-title">
+            <i class="fas fa-redo mr-2"></i>Reiniciar surtido
+          </p>
+        </header>
+        <section class="modal-card-body">
+          <p>
+            ¿Confirmas reiniciar el surtido del pedido
+            <strong>{{ lab.selectedOrder.value?.folio }}</strong>?
+            Se eliminarán todos los escaneos registrados y el pedido volverá a estado
+            <em>pendiente</em>.
+          </p>
+        </section>
+        <footer class="modal-card-foot" style="gap: 0.5rem">
+          <b-button type="is-warning" icon-left="redo" @click="doReset">
+            Sí, reiniciar
+          </b-button>
+          <b-button @click="confirmResetOpen = false">Cancelar</b-button>
+        </footer>
+      </div>
+    </b-modal>
+
+    <!-- Confirmar: Cerrar pedido -->
+    <b-modal v-model="confirmCloseOpen" has-modal-card :width="420" trap-focus scroll="keep">
+      <div class="modal-card">
+        <header class="modal-card-head">
+          <p class="modal-card-title">
+            <i class="fas fa-lock mr-2"></i>Cerrar pedido
+          </p>
+        </header>
+        <section class="modal-card-body">
+          <p>
+            ¿Confirmas cerrar el pedido
+            <strong>{{ lab.selectedOrder.value?.folio }}</strong>?
+            Esta acción es <strong>irreversible</strong> y marcará el pedido como completado.
+          </p>
+        </section>
+        <footer class="modal-card-foot" style="gap: 0.5rem">
+          <b-button type="is-primary" icon-left="lock" @click="doClose">
+            Sí, cerrar
+          </b-button>
+          <b-button @click="confirmCloseOpen = false">Cancelar</b-button>
+        </footer>
+      </div>
+    </b-modal>
+  </teleport>
 </template>
 
 <script setup>
-import { inject, ref, computed, watch } from "vue";
+import { inject, ref, watch } from "vue";
 
 const lab = inject("lab");
 if (!lab) throw new Error("PedidosTab necesita provide('lab', ...)");
@@ -465,33 +442,141 @@ watch([() => lab.itemQuery.value, () => lab.stockFilter.value, () => lab.selecte
   inventoryPage.value = 1;
 });
 
-const mixedTypes = computed(() => {
-  const map = new Map();
-  for (const l of lab.draftLines.value || []) {
-    const t = l.micaType || "—";
-    if (!map.has(t)) map.set(t, { type: t, count: 0, qty: 0 });
-    const entry = map.get(t);
-    entry.count += 1;
-    entry.qty += Number(l.qty || 0);
-  }
-  return [...map.values()];
-});
+// Confirmaciones para acciones destructivas
+const confirmResetOpen = ref(false);
+const confirmCloseOpen = ref(false);
+
+function askReset() {
+  if (!lab.selectedOrder.value) return;
+  confirmResetOpen.value = true;
+}
+
+function doReset() {
+  confirmResetOpen.value = false;
+  lab.resetPickedForSelectedOrder();
+}
+
+function askClose() {
+  if (!lab.selectedOrder.value || !lab.isOrderComplete(lab.selectedOrder.value)) return;
+  confirmCloseOpen.value = true;
+}
+
+function doClose() {
+  confirmCloseOpen.value = false;
+  lab.closeSelectedOrder();
+}
 </script>
 
 <style scoped>
-.draft-summary {
+/* Order card list */
+.order-card-list {
+  display: grid;
+  gap: 0.5rem;
+  max-height: 360px;
+  overflow-y: auto;
+  padding-right: 0.15rem;
+}
+
+.order-card {
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  padding: 0.7rem 0.85rem;
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease, box-shadow 120ms ease;
+}
+
+.order-card:hover {
+  border-color: rgba(144, 111, 225, 0.45);
+  background: var(--c-primary-alpha);
+}
+
+.order-card--active {
+  border-color: rgba(144, 111, 225, 0.7);
+  background: rgba(144, 111, 225, 0.08);
+  box-shadow: 0 0 0 3px rgba(144, 111, 225, 0.15);
+}
+
+.order-card--done {
+  border-color: rgba(34, 197, 94, 0.35);
+  background: rgba(34, 197, 94, 0.04);
+}
+
+.order-card--cancelled {
+  opacity: 0.55;
+}
+
+.order-card__top {
   display: flex;
   justify-content: space-between;
-  padding: 0.5rem 0.65rem;
-  margin-top: 0.6rem;
-  background: var(--c-primary-alpha);
-  border: 1px solid rgba(144, 111, 225, 0.2);
-  border-radius: 12px;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.2rem;
+}
+
+.order-card__folio {
   font-size: 0.82rem;
-  font-weight: 900;
+  font-weight: 1000;
   color: var(--text-primary);
 }
 
+.order-card__tag {
+  font-size: 0.7rem !important;
+  padding: 0.1rem 0.45rem !important;
+}
+
+.order-card__cliente {
+  font-size: 0.88rem;
+  font-weight: 900;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.order-card__meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  margin-top: 0.2rem;
+}
+
+/* Progress bars */
+.progress-mini {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.progress-mini__fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--c-primary);
+  transition: width 300ms ease;
+}
+
+.progress-mini__fill--done {
+  background: var(--c-success, #22c55e);
+}
+
+.progress-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.progress-bar__fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--c-primary), #ec4899);
+  border-radius: 999px;
+  transition: width 300ms ease;
+}
+
+/* Complete badge */
 .complete-badge {
   display: flex;
   align-items: center;
@@ -504,6 +589,7 @@ const mixedTypes = computed(() => {
   color: var(--c-success);
 }
 
+/* Mica type tags */
 .mica-type-tag {
   display: inline-flex;
   align-items: center;
@@ -514,10 +600,6 @@ const mixedTypes = computed(() => {
   font-size: 0.72rem;
   font-weight: 900;
   color: var(--c-primary);
-}
-
-.mica-type-tag--sm {
-  font-size: 0.68rem;
 }
 
 .mica-type-badge {
@@ -540,23 +622,6 @@ const mixedTypes = computed(() => {
   flex-wrap: wrap;
 }
 
-.mica-breakdown {
-  background: rgba(148, 163, 184, 0.06);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 0.5rem 0.65rem;
-  display: grid;
-  gap: 0.3rem;
-}
-
-.mica-breakdown__row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.8rem;
-  font-weight: 800;
-}
-
 .micas-section-label {
   display: flex;
   align-items: center;
@@ -576,4 +641,44 @@ const mixedTypes = computed(() => {
   font-size: 0.72rem;
   font-weight: 900;
 }
+
+.mini-order-sub {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--text-muted);
+}
+
+.order-lines { display: grid; gap: 0.5rem; }
+
+.order-line {
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  padding: 0.65rem 0.75rem;
+  background: var(--surface);
+  transition: border-color 120ms ease;
+}
+
+.order-line--done {
+  border-color: rgba(34, 197, 94, 0.4);
+  background: rgba(34, 197, 94, 0.04);
+}
+
+.order-line__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.order-line__title { font-weight: 950; color: var(--text-primary); font-size: 0.88rem; }
+
+.order-line__sub {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  margin-top: 0.1rem;
+}
+
+.qty-tag { font-size: 0.72rem !important; white-space: nowrap; }
 </style>

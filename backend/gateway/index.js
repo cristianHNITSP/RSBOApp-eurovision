@@ -59,6 +59,7 @@ const SERVICES = {
   auth: process.env.AUTH_SERVICE_URL,
   users: process.env.USERS_SERVICE_URL,
   inventory: process.env.INVENTORY_SERVICE_URL,
+  optica: process.env.OPTICA_SERVICE_URL,
   orders: process.env.ORDERS_SERVICE_URL,
   notification: process.env.NOTIFICATION_SERVICE_URL,
 };
@@ -139,7 +140,9 @@ app.use("/api/access", proxyRequest(SERVICES.auth));
 app.use("/api/users", proxyRequest(SERVICES.users));
 app.use("/api/inventory", proxyRequest(SERVICES.inventory));
 app.use("/api/laboratory", proxyRequest(SERVICES.inventory));
-app.use("/api/search", proxyRequest(SERVICES.inventory)); // <-- nueva ruta para búsqueda global
+app.use("/api/search", proxyRequest(SERVICES.inventory));
+app.use("/api/contactlenses", proxyRequest(SERVICES.inventory));
+app.use("/api/optica", proxyRequest(SERVICES.optica));
 app.use("/api/orders", proxyRequest(SERVICES.orders));
 app.use("/api/notification", proxyRequest(SERVICES.notification));
 

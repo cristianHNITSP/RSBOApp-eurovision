@@ -40,4 +40,8 @@ export function requestCorrection(payload) {
 
 export function cancelOrder(orderId, actor) {
   return api.post(`${BASE}/orders/${orderId}/cancel`, { actor });
-} 
+}
+
+export function updateOrder(orderId, payload) {
+  return api.patch(`${BASE}/orders/${orderId}`, payload);
+}

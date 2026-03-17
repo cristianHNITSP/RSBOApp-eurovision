@@ -20,6 +20,7 @@
         </div>
         <div class="panel__body">
           <div class="quick-actions">
+            <!--
             <button class="quick-action-btn quick-action-btn--crear" @click="goCrear">
               <i class="fas fa-cart-plus quick-action-btn__icon"></i>
               <div>
@@ -28,6 +29,7 @@
               </div>
               <i class="fas fa-chevron-right quick-action-btn__chev"></i>
             </button>
+            -->
 
             <button class="quick-action-btn quick-action-btn--surtir" @click="goSurtir">
               <i class="fas fa-barcode quick-action-btn__icon"></i>
@@ -124,10 +126,10 @@ import PendingOrdersPanel from "./PendingOrdersPanel.vue";
 const lab = inject("lab");
 if (!lab) throw new Error("BandejaTab necesita provide('lab', ...)");
 
-function goCrear() {
-  lab.activeMainTab.value = "pedidos";
-  lab.mode.value = "crear";
-}
+//function goCrear() {
+//  lab.activeMainTab.value = "pedidos";
+//  lab.mode.value = "crear";
+//}
 
 function goSurtir() {
   lab.activeMainTab.value = "pedidos";

@@ -92,6 +92,9 @@ const InventorySheetSchema = new mongoose.Schema(
 /** ✅ Precio de venta (actual) */
 precioVenta: { type: Number, default: null, min: 0 },
 
+/** ✅ Precio de compra (costo) */
+precioCompra: { type: Number, default: null, min: 0 },
+
     ranges: {
       type: RangesSchema,
       default: function () {

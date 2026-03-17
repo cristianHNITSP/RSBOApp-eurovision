@@ -1,6 +1,10 @@
 <template>
   <header class="lab-hero">
     <div class="lab-hero__left">
+      <span class="lab-pill">
+        <i class="fas fa-flask mr-1"></i>
+        Laboratorio
+      </span>
       <h1 class="lab-title">
         <span class="lab-title__dot" aria-hidden="true"></span>
         Laboratorio

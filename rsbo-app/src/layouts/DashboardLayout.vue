@@ -886,7 +886,7 @@ export default {
   Body + Footer
 ========= */
 .dashboard-body {
-  padding: 1rem 1.25rem 1.25rem;
+  padding: 0;
 }
 
 .dashboard-footer {
@@ -908,7 +908,7 @@ export default {
 /* ===== Mobile behavior fixes ===== */
 @media screen and (max-width: 768px) {
   .dashboard-body {
-    padding: 0.75rem 0.9rem 1rem;
+    padding: 0;
   }
 
   .dashboard-footer {

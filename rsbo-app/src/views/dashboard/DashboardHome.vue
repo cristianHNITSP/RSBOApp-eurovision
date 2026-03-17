@@ -30,7 +30,7 @@
           <!-- Nombre -->
           <h1 class="title is-size-3 has-text-weight-bold mb-4">
             <template v-if="!loading">
-              Hola, <b>{{ user?.name || 'Usuario' }}</b>
+              Bienvenido a Eurovisión, <b>{{ user?.name || 'Usuario' }}</b>
             </template>
             <template v-else>
               <b-skeleton :width="180" :height="32" animated />
@@ -583,7 +583,7 @@ const lastSyncLabel = computed(() => {
 
 /* Dashboard layout */
 .dashboard-section {
-  padding: 0;
+  padding: 1.5rem;
   margin-top: 1rem;
 }
 

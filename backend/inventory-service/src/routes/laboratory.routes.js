@@ -689,6 +689,99 @@ router.post(
   }
 );
 
+// PATCH /laboratory/orders/:orderId — editar cliente, nota, qty de líneas
+router.patch(
+  "/orders/:orderId",
+  param("orderId").isMongoId(),
+  body("cliente").optional().isString().trim().notEmpty(),
+  body("note").optional({ nullable: true }).isString(),
+  body("lines").optional().isArray(),
+  body("actor").optional().isObject(),
+  handleValidation,
+  async (req, res) => {
+    const actor = actorFromBody(req) || { userId: null, name: "system" };
+    try {
+      const order = await LaboratoryOrder.findById(req.params.orderId);
+      if (!order) return res.status(404).json({ ok: false, message: "Pedido no existe" });
+      if (order.status === "cerrado")
+        return res.status(409).json({ ok: false, message: "No se puede editar un pedido cerrado" });
+      if (order.status === "cancelado")
+        return res.status(409).json({ ok: false, message: "No se puede editar un pedido cancelado" });
+
+      if (req.body.cliente !== undefined) order.cliente = String(req.body.cliente).trim();
+      if (req.body.note !== undefined) order.note = String(req.body.note || "").trim();
+
+      if (Array.isArray(req.body.lines)) {
+        const removeIds = new Set();
+
+        for (const editLine of req.body.lines) {
+          const lineId = String(editLine.lineId || "");
+          const line = order.lines.find((l) => String(l.lineId) === lineId);
+          if (!line) continue;
+
+          if (editLine.remove === true) {
+            const picked = Number(line.picked || 0);
+            if (picked > 0) {
+              return res.status(400).json({
+                ok: false,
+                message: `No puedes eliminar "${line.codebar}": ya se surtieron ${picked} piezas`
+              });
+            }
+            removeIds.add(lineId);
+            continue;
+          }
+
+          if (editLine.qty !== undefined) {
+            const newQty = Number(editLine.qty);
+            const picked = Number(line.picked || 0);
+            if (!Number.isInteger(newQty) || newQty < 1) {
+              return res.status(400).json({ ok: false, message: "Cantidad mínima es 1" });
+            }
+            if (newQty < picked) {
+              return res.status(400).json({
+                ok: false,
+                message: `No puedes reducir "${line.codebar}" a ${newQty}: ya surtidas ${picked}`
+              });
+            }
+            line.qty = newQty;
+          }
+        }
+
+        if (removeIds.size > 0) {
+          order.lines = order.lines.filter((l) => !removeIds.has(String(l.lineId)));
+        }
+
+        if (order.lines.length === 0) {
+          return res.status(400).json({ ok: false, message: "El pedido debe tener al menos una línea" });
+        }
+      }
+
+      // Recalcular status
+      const total = order.lines.reduce((acc, l) => acc + Number(l.qty || 0), 0);
+      const pickedTotal = order.lines.reduce(
+        (acc, l) => acc + Math.min(Number(l.picked || 0), Number(l.qty || 0)),
+        0
+      );
+      if (pickedTotal <= 0) order.status = "pendiente";
+      else if (pickedTotal < total) order.status = "parcial";
+      else {
+        order.status = "cerrado";
+        order.closedAt = new Date();
+        order.closedBy = actor;
+      }
+
+      order.updatedBy = actor;
+      order.updatedAt = new Date();
+      await order.save();
+
+      return res.json({ ok: true, data: order });
+    } catch (e) {
+      console.error("PATCH /laboratory/orders/:id error:", e);
+      res.status(500).json({ ok: false, message: "Error al editar pedido" });
+    }
+  }
+);
+
 // ============================================================================
 // ROUTES: CORRECTIONS
 // ============================================================================

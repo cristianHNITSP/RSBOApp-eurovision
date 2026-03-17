@@ -40,7 +40,8 @@ const pickPurchase = (obj) => ({
   loteProducto: obj?.loteProducto,
   fechaCompra: obj?.fechaCompra,
   fechaCaducidad: obj?.fechaCaducidad,
-  precioVenta: obj?.precioVenta
+  precioVenta: obj?.precioVenta,
+  precioCompra: obj?.precioCompra
 });
 
 const schemaHas = (path) => {
@@ -227,6 +228,10 @@ router.post(
   .optional({ nullable: true })
   .custom((v) => v === null || String(v).trim() === "" || (Number.isFinite(Number(v)) && Number(v) >= 0)),
 
+  body("precioCompra")
+  .optional({ nullable: true })
+  .custom((v) => v === null || String(v).trim() === "" || (Number.isFinite(Number(v)) && Number(v) >= 0)),
+
   body("actor").optional().isObject(),
   body("seed").optional().isBoolean(),
   body("sku").optional().isString().trim().isLength({ min: 6, max: 60 }),
@@ -268,6 +273,7 @@ router.post(
       const loteProducto = String(req.body.loteProducto || "").trim();
 
       const precioVenta = parseOptionalNumber(req.body.precioVenta);
+      const precioCompra = parseOptionalNumber(req.body.precioCompra);
 
       if (DEBUG_INVENTORY) {
         console.log("[INV][POST /sheets] parsed purchase:", {
@@ -310,6 +316,7 @@ router.post(
         numFactura,
         loteProducto,
         precioVenta,
+        precioCompra,
 
         meta: req.body.meta || {},
         owner: actor,
@@ -344,7 +351,8 @@ router.post(
           fechaCompra: sheet.fechaCompra,
           numFactura: sheet.numFactura,
           loteProducto: sheet.loteProducto,
-          precioVenta: sheet.precioVenta
+          precioVenta: sheet.precioVenta,
+          precioCompra: sheet.precioCompra
         },
         actor
       });
@@ -461,6 +469,10 @@ router.patch(
   .optional({ nullable: true })
   .custom((v) => v === null || String(v).trim() === "" || (Number.isFinite(Number(v)) && Number(v) >= 0)),
 
+  body("precioCompra")
+  .optional({ nullable: true })
+  .custom((v) => v === null || String(v).trim() === "" || (Number.isFinite(Number(v)) && Number(v) >= 0)),
+
   body("proveedor").optional({ nullable: true }).isObject(),
   body("proveedor.name").optional({ nullable: true, checkFalsy: true }).isString().trim(),
   body("proveedor.id").optional({ nullable: true, checkFalsy: true }).isString().trim(),
@@ -551,6 +563,11 @@ router.patch(
       if (Object.prototype.hasOwnProperty.call(req.body, "precioVenta")) {
         sheet.precioVenta = parseOptionalNumber(req.body.precioVenta);
         if (DEBUG_INVENTORY) console.log("[INV][PATCH] set precioVenta:", sheet.precioVenta);
+      }
+
+      if (Object.prototype.hasOwnProperty.call(req.body, "precioCompra")) {
+        sheet.precioCompra = parseOptionalNumber(req.body.precioCompra);
+        if (DEBUG_INVENTORY) console.log("[INV][PATCH] set precioCompra:", sheet.precioCompra);
       }
 
       if (hasFechaCompra) {
@@ -651,6 +668,7 @@ router.patch(
           numFactura: sheet.numFactura,
           loteProducto: sheet.loteProducto,
           precioVenta: sheet.precioVenta,
+          precioCompra: sheet.precioCompra,
 
           metaChanged: !!req.body.meta,
           skuBefore,

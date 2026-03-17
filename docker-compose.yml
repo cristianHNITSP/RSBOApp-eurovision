@@ -103,6 +103,7 @@ services:
     depends_on:
       - auth-service
       - inventory-service
+      - optica-service
       - orders-service
       - notification-service
     expose:
@@ -171,6 +172,28 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${ORDERS_DB}?authSource=admin"
+    depends_on:
+      - mongo
+    expose:
+      - "3000"
+    restart: unless-stopped
+    networks:
+      - rsbo-net
+    profiles: ["prod", "dev"]
+
+  # =========================
+  # OPTICA SERVICE
+  # =========================
+  optica-service:
+    build:
+      context: ./backend/optica-service
+    container_name: rsboapp-optica
+    env_file:
+      - ./.env
+      - ./backend/optica-service/.env
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${OPTICA_DB}?authSource=admin"
     depends_on:
       - mongo
     expose:

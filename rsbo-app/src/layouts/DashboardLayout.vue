@@ -10,6 +10,8 @@ import { useSidebarState } from "../composables/useSidebarState";
 import { useMotionEffects } from "../composables/useMotionEffects";
 import { useNotifications } from "../composables/useNotificationsState";
 import { useAccessibility } from "../composables/useAccessibility";
+import { pendingOrdersCount } from "@/composables/useOrdersBadge.js";
+import { listOrders } from "@/services/laboratorio.js";
 
 
 /* =========================
@@ -226,6 +228,24 @@ function closePanelFromOverlay() {
 /* =========================
    Mount / Unmount
    ========================= */
+/* =========================
+   Pending orders badge (sidebar)
+   ========================= */
+async function refreshPendingCount() {
+  try {
+    const { data } = await listOrders({ status: "all", limit: 500 });
+    const orders = Array.isArray(data?.data) ? data.data : [];
+    pendingOrdersCount.value = orders.filter((o) => o.status === "pendiente" || o.status === "parcial").length;
+  } catch {}
+}
+
+function _onLabWs(e) {
+  const type = e?.detail?.type;
+  if (["LAB_ORDER_CREATE","LAB_ORDER_CANCEL","LAB_ORDER_CLOSE","LAB_ORDER_RESET"].includes(type)) {
+    refreshPendingCount();
+  }
+}
+
 onMounted(() => {
   setVhVar();
 
@@ -237,6 +257,9 @@ onMounted(() => {
 
   if (mql.addEventListener) mql.addEventListener("change", onMediaChange);
   else mql.addListener(onMediaChange);
+
+  refreshPendingCount();
+  window.addEventListener("lab:ws", _onLabWs);
 });
 
 onBeforeUnmount(() => {
@@ -247,6 +270,8 @@ onBeforeUnmount(() => {
 
   if (mql.removeEventListener) mql.removeEventListener("change", onMediaChange);
   else mql.removeListener(onMediaChange);
+
+  window.removeEventListener("lab:ws", _onLabWs);
 });
 </script>
 
@@ -307,7 +332,8 @@ export default {
     <div class="content-layout">
       <!-- Sidebar -->
       <Sidebar ref="sidebarmobile" class="sidebar-mobile-panel" v-if="!isMobile || isMobileSidebarVisible"
-        @toggle="setSidebarState" :collapsed="isSidebarCollapsed" :user="user" :loading="loading" />
+        @toggle="setSidebarState" :collapsed="isSidebarCollapsed" :user="user" :loading="loading"
+        :pending-orders="pendingOrdersCount" />
 
       <!-- Panel de notificaciones -->
       <NotificationPanel :visible="showPanel" @close="closePanel" @update-unread="unreadNotifications = $event" />

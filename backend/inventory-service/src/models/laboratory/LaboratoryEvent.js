@@ -13,7 +13,7 @@ const LaboratoryEventSchema = new mongoose.Schema(
 
     type: {
       type: String,
-      enum: ["ORDER_CREATE", "EXIT_SCAN", "ORDER_CLOSE", "ORDER_RESET", "CORRECTION_REQUEST"],
+      enum: ["ORDER_CREATE", "EXIT_SCAN", "ORDER_CLOSE", "ORDER_RESET", "CORRECTION_REQUEST", "ORDER_CANCEL"],
       required: true,
       index: true
     },

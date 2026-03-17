@@ -1,6 +1,7 @@
-import { ref, reactive, computed, watch, onMounted } from "vue";
+import { ref, reactive, computed, watch, onMounted, onBeforeUnmount } from "vue";
 import { labToast } from "@/composables/useLabToast.js";
 import { listSheets as invListSheets, fetchItems as invFetchItems } from "@/services/inventory";
+import { updatePendingCount } from "./useOrdersBadge.js";
 import {
   listOrders,
   createOrder,
@@ -565,6 +566,7 @@ export function useLaboratorioApi() {
       const { data } = await listOrders(params);
       const arr = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
       let mapped = arr.map(normalizeOrder);
+      updatePendingCount(arr.filter((o) => o.status === "pendiente" || o.status === "parcial").length);
       if (statusUi === "open") mapped = mapped.filter((o) => o.status === "pendiente" || o.status === "parcial");
       mapped.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
       ordersDB.value = mapped;
@@ -829,15 +831,13 @@ export function useLaboratorioApi() {
 
   async function closeSelectedOrder() {
     const order = selectedOrder.value;
-    if (!order?.id || !isOrderComplete(order)) return;
+    if (!order?.id || order.status === "cerrado" || order.status === "cancelado") return;
 
     loadingCloseOrder.value = true;
     try {
       const { data } = await closeOrder(order.id, actorRef());
       const updated = normalizeOrder(data?.data);
-      const idx = ordersDB.value.findIndex((x) => x.id === updated.id);
-      if (idx >= 0) ordersDB.value[idx] = updated;
-      await loadEvents();
+      await Promise.all([loadOrders(), loadEvents()]);
       lastUpdatedAt.value = Date.now();
       notify(`Pedido ${updated.folio} cerrado correctamente.`, "is-success");
     } catch (e) {
@@ -855,18 +855,12 @@ export function useLaboratorioApi() {
     loadingCancelOrder.value = true;
     try {
       await cancelOrderService(orderId, actorRef());
-      const idx = ordersDB.value.findIndex((o) => o.id === orderId);
-      if (idx >= 0) ordersDB.value[idx] = { ...ordersDB.value[idx], status: "cancelado" };
-      if (selectedOrderId.value === orderId) {
-        const open = ordersDB.value.find((o) => o.status !== "cancelado");
-        selectedOrderId.value = open?.id || "";
-      }
-      await loadEvents();
+      await Promise.all([loadOrders(), loadEvents()]);
       lastUpdatedAt.value = Date.now();
-      notify("Entrada cancelada y stock devuelto.", "is-warning");
+      notify("Pedido cancelado y stock devuelto.", "is-warning");
     } catch (e) {
       console.error("[LAB] cancelOrder", e?.response?.data || e);
-      const n = normalizeAck(e, { errorFallback: "No se pudo cancelar la entrada." });
+      const n = normalizeAck(e, { errorFallback: "No se pudo cancelar el pedido." });
       notify(n?.message, "is-danger", 5000);
     } finally {
       loadingCancelOrder.value = false;
@@ -1298,8 +1292,23 @@ export function useLaboratorioApi() {
     notify("Inventario actualizado.", "is-info", 2000);
   }
 
+  const LAB_WS_EVENTS = new Set(["LAB_ORDER_CREATE","LAB_ORDER_CANCEL","LAB_ORDER_CLOSE","LAB_ORDER_SCAN","LAB_ORDER_RESET"]);
+
+  function _onWsEvent(e) {
+    const type = e?.detail?.type;
+    if (LAB_WS_EVENTS.has(type)) {
+      loadOrders();
+      loadEvents();
+    }
+  }
+
   onMounted(async () => {
     await Promise.all([loadSheets(), loadOrders(), loadItems(), loadEvents()]);
+    window.addEventListener("lab:ws", _onWsEvent);
+  });
+
+  onBeforeUnmount(() => {
+    window.removeEventListener("lab:ws", _onWsEvent);
   });
 
   return {

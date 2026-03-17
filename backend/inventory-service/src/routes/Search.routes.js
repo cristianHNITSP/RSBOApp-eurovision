@@ -16,7 +16,8 @@
 const express      = require('express');
 const router       = express.Router();
 //const authMiddleware = require('../middlewares/auth.middleware');
-const InventorySheet = require('../models/InventorySheet');
+const InventorySheet     = require('../models/InventorySheet');
+const ContactLensesSheet = require('../models/ContactLensesSheet');
 
 // ── Mapa estático de rutas de la aplicación ──────────────────────────────────
 // Mantén sincronizado con src/router/index.js del frontend.
@@ -72,24 +73,25 @@ router.get('/'//, authMiddleware
     // ── 2. Planillas oftálmicas ───────────────────────────────────────────────
     const regex = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
 
-    const sheets = await InventorySheet.find(
-      {
-        isDeleted: { $ne: true },
-        $or: [
-          { nombre:      regex },
-          { material:    regex },
-          { tratamiento: regex },
-          { variante:    regex },
-          { sku:         regex },
-          { baseKey:     regex }
-        ]
-      },
-      { nombre: 1, material: 1, tipo_matriz: 1, tratamiento: 1, variante: 1, sku: 1, baseKey: 1 }
-    )
-      .lean()
-      .limit(limit);
+    const sheetQuery = {
+      isDeleted: { $ne: true },
+      $or: [
+        { nombre:      regex },
+        { material:    regex },
+        { tratamiento: regex },
+        { variante:    regex },
+        { sku:         regex },
+        { baseKey:     regex }
+      ]
+    };
+    const sheetFields = { nombre: 1, material: 1, tipo_matriz: 1, tratamiento: 1, variante: 1, sku: 1, baseKey: 1 };
 
-    const sheetsResult = sheets.map(s => ({
+    const [invSheets, clSheets] = await Promise.all([
+      InventorySheet.find(sheetQuery, sheetFields).lean().limit(limit),
+      ContactLensesSheet.find(sheetQuery, sheetFields).lean().limit(limit)
+    ]);
+
+    const mapSheet = (s, category) => ({
       id:          String(s._id),
       nombre:      s.nombre,
       material:    s.material,
@@ -98,8 +100,13 @@ router.get('/'//, authMiddleware
       tratamiento: s.tratamiento || '',
       variante:    s.variante    || '',
       sku:         s.sku         || '',
-      category:    'Plantillas oftálmicas'
-    }));
+      category
+    });
+
+    const sheetsResult = [
+      ...invSheets.map(s => mapSheet(s, 'Planillas oftálmicas')),
+      ...clSheets.map(s => mapSheet(s, 'Lentes de contacto'))
+    ].slice(0, limit);
 
     return res.json({ routes: matched, sheets: sheetsResult });
 

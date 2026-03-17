@@ -153,13 +153,31 @@
     </div>
 
     <!-- HEADER PANEL -->
-    <header class="panel-usuarios-header">
+    <header class="panel-usuarios-header page-section-header">
       <div>
         <span class="usuarios-pill">
-          <b-icon icon="life-ring" size="is-small" class="mr-1" />
-          Usuarios del sistema
+          <b-icon icon="users" size="is-small" class="mr-1" />
+          Gestión de usuarios
         </span>
-        <p class="subtitle is-6 m-0">Control de cuentas y accesos del personal.</p>
+        <h2>Usuarios del sistema</h2>
+        <p class="psh-desc">Control de cuentas, roles y accesos del personal. Crea, edita, activa o desactiva usuarios.</p>
+
+        <div class="psh-quick mt-3">
+          <div class="psh-quick__card">
+            <div class="psh-quick__icon"><i class="fas fa-user-plus"></i></div>
+            <div>
+              <p class="psh-quick__title">Crear usuario</p>
+              <p class="psh-quick__text">Asigna rol, nombre y correo</p>
+            </div>
+          </div>
+          <div class="psh-quick__card">
+            <div class="psh-quick__icon"><i class="fas fa-trash-restore"></i></div>
+            <div>
+              <p class="psh-quick__title">Papelera</p>
+              <p class="psh-quick__text">Los eliminados se pueden restaurar</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="panel-usuarios-summary">
@@ -1003,10 +1021,7 @@ onMounted(async () => {
 }
 
 .panel-usuarios-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
+  /* layout handled by .page-section-header */
 }
 
 .panel-usuarios-summary {

@@ -1,10 +1,16 @@
 <!-- rsbo-app/src/views/config/options/Preferencias.vue -->
 <template>
     <section class="prefs-wrap">
-        <span class="config-pill">
-            <b-icon icon="sliders-h" size="is-small" class="mr-1" />
-            Preferencias
-        </span>
+        <header class="page-section-header mb-4">
+          <div>
+            <span class="config-pill">
+              <b-icon icon="sliders-h" size="is-small" class="mr-1" />
+              Preferencias
+            </span>
+            <h2>Preferencias de apariencia</h2>
+            <p class="psh-desc">Personaliza el tema, tipografía, contraste y efectos visuales de la interfaz.</p>
+          </div>
+        </header>
 
         <div class="prefs-grid">
             <!-- Apariencia -->

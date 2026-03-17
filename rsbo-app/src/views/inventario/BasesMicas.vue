@@ -3,6 +3,7 @@
 import { reactive, ref, onMounted, watch, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import TabsManager from "@/components/TabsManager.vue";
+import { labToast } from "@/composables/useLabToast.js";
 
 import AgGridBifocal   from "@/components/ag-grid/templates/AgGridBifocal.vue";
 import AgGridBase      from "@/components/ag-grid/templates/AgGridBase.vue";
@@ -171,6 +172,7 @@ async function cargarSheets() {
       numFactura:    s.numFactura     ?? "",
       loteProducto:  s.loteProducto   ?? "",
       precioVenta:   s.precioVenta    ?? null,
+      precioCompra:  s.precioCompra   ?? null,
 
       tratamientos: s.tratamientos || [],
       tabs:         s.tabs         || [],
@@ -188,6 +190,7 @@ async function cargarSheets() {
     }
   } catch (e) {
     console.error("Error listSheets:", e?.response?.data || e);
+    labToast.danger("No se pudieron cargar las planillas. Verifica la conexión.");
   } finally {
     loadingSheets.value = false;
   }
@@ -235,6 +238,7 @@ function crearNuevaPlanilla({ result, tabs }) {
     numFactura:    s.numFactura     ?? "",
     loteProducto:  s.loteProducto   ?? "",
     precioVenta:   s.precioVenta    ?? null,
+    precioCompra:  s.precioCompra   ?? null,
 
     tratamientos: s.tratamientos || [],
     tabs:         tabs            || [],
@@ -244,6 +248,7 @@ function crearNuevaPlanilla({ result, tabs }) {
   const addIndex = dynamicSheets.findIndex((x) => x.id === "nueva");
   dynamicSheets.splice(addIndex >= 0 ? addIndex : dynamicSheets.length, 0, newSheet);
   activeSheet.value = newSheet.id;
+  labToast.success(`Planilla creada: ${newSheet.name}`);
 }
 
 function reordenarSheets({ oldIndex, newIndex }) {
@@ -284,10 +289,40 @@ const resolverGridProps = (sheet, activeInternal) => {
 <template>
   <section class="section section-matriz-dioptrias" v-motion-fade-visible-once>
 
-    <span class="inventario-pill">
-      <b-icon icon="life-ring" size="is-small" class="mr-1" />
-      Bases y Micas - Inventario
-    </span>
+    <header class="page-section-header">
+      <div>
+        <span class="inventario-pill">
+          <b-icon icon="glasses" size="is-small" class="mr-1" />
+          Inventario
+        </span>
+        <h2>Bases y Micas</h2>
+        <p class="psh-desc">Gestiona el stock de planillas oftálmicas: monofocal, bifocal, progresivo y base.</p>
+
+        <div class="psh-quick mt-3">
+          <div class="psh-quick__card">
+            <div class="psh-quick__icon"><i class="fas fa-plus-square"></i></div>
+            <div>
+              <p class="psh-quick__title">Agregar planilla</p>
+              <p class="psh-quick__text">Selecciona el tipo, material y tratamiento</p>
+            </div>
+          </div>
+          <div class="psh-quick__card">
+            <div class="psh-quick__icon"><i class="fas fa-save"></i></div>
+            <div>
+              <p class="psh-quick__title">Guardar cambios</p>
+              <p class="psh-quick__text">Edita el stock y pulsa "Guardar cambios"</p>
+            </div>
+          </div>
+          <div class="psh-quick__card">
+            <div class="psh-quick__icon"><i class="fas fa-file-export"></i></div>
+            <div>
+              <p class="psh-quick__title">Exportar CSV</p>
+              <p class="psh-quick__text">Descarga el inventario como archivo .csv</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
 
     <div class="columns is-multiline">
       <div class="column is-12">
@@ -344,7 +379,7 @@ const resolverGridProps = (sheet, activeInternal) => {
   background: var(--c-primary-alpha);
   padding: 0.2rem 0.45rem;
   border-radius: 999px;
-  margin-bottom: 1rem;
+  margin-bottom: 0.35rem;
 }
 
 .contenido-planilla {

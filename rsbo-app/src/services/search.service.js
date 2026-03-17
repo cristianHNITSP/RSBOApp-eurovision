@@ -38,10 +38,23 @@ export function flattenResults({ routes = [], sheets = [] }) {
     routes.forEach(r => items.push({ type: 'route', ...r }));
   }
 
-  if (sheets.length) {
-    items.push({ type: 'header', label: 'Plantillas oftálmicas', icon: 'glasses' });
-    sheets.forEach(s => items.push({ type: 'sheet', ...s }));
-  }
+  // Agrupar planillas por su categoría (oftálmicas vs lentes de contacto)
+  const byCategory = {};
+  sheets.forEach(s => {
+    const cat = s.category || 'Planillas oftálmicas';
+    if (!byCategory[cat]) byCategory[cat] = [];
+    byCategory[cat].push(s);
+  });
+
+  const catIcons = {
+    'Planillas oftálmicas': 'glasses',
+    'Lentes de contacto':   'eye'
+  };
+
+  Object.entries(byCategory).forEach(([label, group]) => {
+    items.push({ type: 'header', label, icon: catIcons[label] || 'glasses' });
+    group.forEach(s => items.push({ type: 'sheet', ...s }));
+  });
 
   return items;
 }

@@ -77,6 +77,28 @@ provide("lab", lab);
   align-items: flex-start;
   margin-bottom: 1rem;
   flex-wrap: wrap;
+  padding: 1rem 1.25rem;
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 0 0,   rgba(79, 70, 229, 0.12),  transparent 55%),
+    radial-gradient(circle at 100% 0, rgba(236, 72, 153, 0.10), transparent 55%),
+    radial-gradient(circle at 60% 100%, rgba(249, 115, 22, 0.10), transparent 55%),
+    var(--surface-solid);
+  border: 1px solid var(--border);
+}
+
+.lab-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--c-primary);
+  background: var(--c-primary-alpha);
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+  margin-bottom: 0.35rem;
 }
 
 .lab-title {

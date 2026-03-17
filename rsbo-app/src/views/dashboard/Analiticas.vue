@@ -1,19 +1,37 @@
 <template>
     <section class="section-analiticas" v-motion-fade-visible-once>
         <!-- Encabezado -->
-        <header class="analytics-header">
+        <header class="analytics-header page-section-header">
             <div>
                 <span class="analista-pill">
-                    <b-icon icon="life-ring" size="is-small" class="mr-1" />
-                    Analíticas de inventario
+                    <b-icon icon="chart-bar" size="is-small" class="mr-1" />
+                    Analíticas
                 </span>
 
-                <p class="analytics-subtitle">
+                <h2>Analíticas de inventario</h2>
+                <p class="analytics-subtitle psh-desc">
                     Resumen operativo del comportamiento del inventario en el periodo seleccionado.
                 </p>
+
+                <div class="psh-quick mt-3">
+                    <div class="psh-quick__card">
+                        <div class="psh-quick__icon"><i class="fas fa-calendar-alt"></i></div>
+                        <div>
+                            <p class="psh-quick__title">Periodo activo</p>
+                            <p class="psh-quick__text">Visualizando resultados de: <strong>{{ analytics.periodLabel }}</strong></p>
+                        </div>
+                    </div>
+                    <div class="psh-quick__card">
+                        <div class="psh-quick__icon"><i class="fas fa-boxes"></i></div>
+                        <div>
+                            <p class="psh-quick__title">Alcance</p>
+                            <p class="psh-quick__text">Monofocal, Bifocal, Progresivo y Base</p>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <div class="analytics-period">
+            <div class="psh-meta analytics-period">
                 <b-tag type="is-light" class="is-capitalized">
                     {{ analytics.periodLabel }}
                 </b-tag>
@@ -366,12 +384,9 @@ function formatNumber(value) {
     margin-bottom: 0.35rem;
 }
 
-/* Encabezado */
+/* Encabezado — layout adicional sobre .page-section-header */
 .analytics-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 1rem;
+    gap: 1.25rem;
 }
 
 .analytics-title {

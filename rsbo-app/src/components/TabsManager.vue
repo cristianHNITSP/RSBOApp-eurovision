@@ -161,6 +161,13 @@
                 </div>
 
                 <div class="column is-12-mobile is-6-tablet">
+                  <b-field label="Precio de compra (costo)">
+                    <b-input v-model="newPrecioCompra" type="number" min="0" step="0.01" placeholder="Ej. 850.00" />
+                    <p class="help is-light">Opcional. Costo del producto.</p>
+                  </b-field>
+                </div>
+
+                <div class="column is-12-mobile is-6-tablet">
                   <b-field label="Número de nota / factura">
                     <b-input v-model.trim="newNumFactura" placeholder="Ej. FAC-10293" />
                   </b-field>
@@ -291,14 +298,22 @@
                   </div>
 
                   <div class="column is-12-mobile is-6-tablet">
-                    <b-field label="Fecha de caducidad">
-                      <b-input v-model="editFechaCaducidad" type="date" :disabled="savingPurchase" />
+                    <b-field label="Precio de compra (costo)">
+                      <b-input v-model="editPrecioCompra" type="number" min="0" step="0.01"
+                        :disabled="savingPurchase" />
                     </b-field>
                   </div>
+
 
                   <div class="column is-12-mobile is-6-tablet">
                     <b-field label="Fecha de compra">
                       <b-input v-model="editFechaCompra" type="date" :disabled="savingPurchase" />
+                    </b-field>
+                  </div>
+
+                  <div class="column is-12-mobile is-6-tablet">
+                    <b-field label="Fecha de caducidad">
+                      <b-input v-model="editFechaCaducidad" type="date" :disabled="savingPurchase" />
                     </b-field>
                   </div>
 
@@ -652,6 +667,10 @@ const normalizeSheet = (s) => {
   const pvNum = pvRaw === null || pvRaw === undefined || String(pvRaw).trim() === "" ? null : Number(pvRaw);
   const precioVenta = Number.isFinite(pvNum) ? pvNum : null;
 
+  const pcRaw = s.precioCompra;
+  const pcNum = pcRaw === null || pcRaw === undefined || String(pcRaw).trim() === "" ? null : Number(pcRaw);
+  const precioCompra = Number.isFinite(pcNum) ? pcNum : null;
+
   return {
     ...s,
     id,
@@ -670,8 +689,8 @@ const normalizeSheet = (s) => {
     numFactura: s.numFactura ?? "",
     loteProducto: s.loteProducto ?? "",
 
-    // ✅ nuevo campo
     precioVenta,
+    precioCompra,
 
     tratamientos: Array.isArray(s.tratamientos) ? s.tratamientos : [],
     meta: s.meta && typeof s.meta === "object" ? s.meta : { observaciones: "", notas: "" },
@@ -818,6 +837,7 @@ const newLoteProducto = ref("");
 const newFechaCompra = ref("");
 const newFechaCaducidad = ref("");
 const newPrecioVenta = ref("");
+const newPrecioCompra = ref("");
 
 const resetPurchaseCreateDefaults = () => {
   const base = newFechaCompra.value && ISO_DATE_ONLY_RX.test(newFechaCompra.value) ? newFechaCompra.value : todayISO();
@@ -833,14 +853,15 @@ watch(
   }
 );
 
-watch([newNumFactura, newLoteProducto, newFechaCompra, newFechaCaducidad, newPrecioVenta], () => {
+watch([newNumFactura, newLoteProducto, newFechaCompra, newFechaCaducidad, newPrecioVenta, newPrecioCompra], () => {
   if (!DEBUG_PURCHASE) return;
   console.log("[INV][UI] create purchase fields changed", {
     newNumFactura: newNumFactura.value,
     newLoteProducto: newLoteProducto.value,
     newFechaCompra: newFechaCompra.value,
     newFechaCaducidad: newFechaCaducidad.value,
-    newPrecioVenta: newPrecioVenta.value
+    newPrecioVenta: newPrecioVenta.value,
+    newPrecioCompra: newPrecioCompra.value
   });
 });
 
@@ -997,8 +1018,8 @@ const handleCrear = async () => {
       fechaCompra: dateForCreate(newFechaCompra.value),
       fechaCaducidad: dateForCreate(cadFinal),
 
-      // ✅ nuevo campo
       precioVenta: numForCreate(newPrecioVenta.value),
+      precioCompra: numForCreate(newPrecioCompra.value),
 
       tipo_matriz,
       seed: true,
@@ -1044,6 +1065,7 @@ const handleCrear = async () => {
     resetPurchaseCreateDefaults();
 
     newPrecioVenta.value = "";
+    newPrecioCompra.value = "";
 
     createStatus.value = "saved";
     createStatusMessage.value = "Planilla creada correctamente";
@@ -1099,6 +1121,7 @@ const editLoteProducto = ref("");
 const editFechaCompra = ref("");
 const editFechaCaducidad = ref("");
 const editPrecioVenta = ref("");
+const editPrecioCompra = ref("");
 
 const savingPurchase = ref(false);
 const purchaseStatus = ref("idle");
@@ -1140,16 +1163,22 @@ const canSavePurchase = computed(() => {
       ? ""
       : String(selectedSheet.value.precioVenta);
 
+  const curPC =
+    selectedSheet.value?.precioCompra === null || selectedSheet.value?.precioCompra === undefined
+      ? ""
+      : String(selectedSheet.value.precioCompra);
+
   const nextNum = String(editNumFactura.value || "").trim();
   const nextLote = String(editLoteProducto.value || "").trim();
   const nextCompra = String(editFechaCompra.value || "").trim();
   const nextCad = String(editFechaCaducidad.value || "").trim();
   const nextPV = String(editPrecioVenta.value ?? "").trim();
+  const nextPC = String(editPrecioCompra.value ?? "").trim();
 
-  return nextNum !== curNum || nextLote !== curLote || nextCompra !== curCompra || nextCad !== curCad || nextPV !== curPV;
+  return nextNum !== curNum || nextLote !== curLote || nextCompra !== curCompra || nextCad !== curCad || nextPV !== curPV || nextPC !== curPC;
 });
 
-watch([editNumFactura, editLoteProducto, editFechaCompra, editFechaCaducidad, editPrecioVenta], () => {
+watch([editNumFactura, editLoteProducto, editFechaCompra, editFechaCaducidad, editPrecioVenta, editPrecioCompra], () => {
   if (!DEBUG_PURCHASE) return;
   console.log("[INV][UI] edit purchase changed", {
     editNumFactura: editNumFactura.value,
@@ -1157,6 +1186,7 @@ watch([editNumFactura, editLoteProducto, editFechaCompra, editFechaCaducidad, ed
     editFechaCompra: editFechaCompra.value,
     editFechaCaducidad: editFechaCaducidad.value,
     editPrecioVenta: editPrecioVenta.value,
+    editPrecioCompra: editPrecioCompra.value,
     canSavePurchase: canSavePurchase.value
   });
 });
@@ -1179,6 +1209,7 @@ const confirmSavePurchase = async () => {
       fechaCompra: dateForEdit(editFechaCompra.value),
       fechaCaducidad: dateForEdit(editFechaCaducidad.value),
       precioVenta: numForEdit(editPrecioVenta.value),
+      precioCompra: numForEdit(editPrecioCompra.value),
       actor: actorRef.value || undefined
     };
 
@@ -1204,6 +1235,10 @@ const confirmSavePurchase = async () => {
       selectedSheet.value?.precioVenta === null || selectedSheet.value?.precioVenta === undefined
         ? ""
         : String(selectedSheet.value.precioVenta);
+    editPrecioCompra.value =
+      selectedSheet.value?.precioCompra === null || selectedSheet.value?.precioCompra === undefined
+        ? ""
+        : String(selectedSheet.value.precioCompra);
 
     purchaseStatus.value = "saved";
     purchaseStatusMessage.value = "Datos guardados";
@@ -1547,6 +1582,11 @@ const openActions = async (sheet) => {
       ? ""
       : String(selectedSheet.value.precioVenta);
 
+  editPrecioCompra.value =
+    selectedSheet.value?.precioCompra === null || selectedSheet.value?.precioCompra === undefined
+      ? ""
+      : String(selectedSheet.value.precioCompra);
+
   if (!editFechaCaducidad.value && editFechaCompra.value) {
     editFechaCaducidad.value = addMonthsToISODate(editFechaCompra.value, DEFAULT_EXPIRY_MONTHS);
   }
@@ -1581,7 +1621,7 @@ watch(
 
     // Scroll suave centrando la tab en el contenedor
     const containerRect = container.getBoundingClientRect();
-    const elRect        = el.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
     const scrollLeft =
       container.scrollLeft +
       (elRect.left - containerRect.left) -
@@ -2103,10 +2143,21 @@ watch(
 }
 
 @keyframes tabFocusPulse {
-  0%   { box-shadow: 0 0 0 0   rgba(121, 87, 213, 0.55), 0 18px 50px rgba(15,23,42,0.12); }
-  35%  { box-shadow: 0 0 0 6px rgba(121, 87, 213, 0.28), 0 18px 50px rgba(15,23,42,0.16); }
-  70%  { box-shadow: 0 0 0 3px rgba(121, 87, 213, 0.15), 0 18px 50px rgba(15,23,42,0.12); }
-  100% { box-shadow: 0 0 0 0   rgba(121, 87, 213, 0),    0 18px 50px rgba(15,23,42,0.10); }
+  0% {
+    box-shadow: 0 0 0 0 rgba(121, 87, 213, 0.55), 0 18px 50px rgba(15, 23, 42, 0.12);
+  }
+
+  35% {
+    box-shadow: 0 0 0 6px rgba(121, 87, 213, 0.28), 0 18px 50px rgba(15, 23, 42, 0.16);
+  }
+
+  70% {
+    box-shadow: 0 0 0 3px rgba(121, 87, 213, 0.15), 0 18px 50px rgba(15, 23, 42, 0.12);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(121, 87, 213, 0), 0 18px 50px rgba(15, 23, 42, 0.10);
+  }
 }
 
 .tab-item.tab-focus-pulse {

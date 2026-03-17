@@ -16,6 +16,7 @@ const { actorFromBody } = require("../inventory/utils/normalize");
 const { denormNum, parseKey } = require("../inventory/utils/keys");
 
 const DEBUG_LAB = String(process.env.DEBUG_LAB || "") === "1";
+const { broadcast } = require("../ws");
 
 // ============================================================================
 // HELPERS
@@ -432,6 +433,8 @@ router.post(
         actor
       });
 
+      broadcast("LAB_ORDER_CREATE", { orderId: String(order._id), folio, cliente });
+
       return res.status(201).json({ ok: true, data: order });
     } catch (e) {
       console.error("POST /laboratory/orders error:", e);
@@ -492,6 +495,7 @@ router.post(
       order.updatedBy = actor;
       order.updatedAt = new Date();
       await order.save();
+      broadcast("LAB_ORDER_CANCEL", { orderId: String(order._id), folio: order.folio });
 
       await LaboratoryEvent.create({
         order: order._id,
@@ -561,14 +565,10 @@ router.post(
       const pickedTotal = order.lines.reduce((acc, l) => acc + Math.min(Number(l.picked || 0), Number(l.qty || 0)), 0);
 
       if (pickedTotal <= 0) order.status = "pendiente";
-      else if (pickedTotal < total) order.status = "parcial";
-      else {
-        order.status = "cerrado";
-        order.closedAt = new Date();
-        order.closedBy = actor;
-      }
+      else order.status = "parcial"; // All picked = parcial until explicit /close
 
       await order.save();
+      broadcast("LAB_ORDER_SCAN", { orderId: String(order._id), folio: order.folio, status: order.status });
 
       const title = lineTitle(sheet.tipo_matriz, line.params, line.eye, codebar);
 
@@ -637,6 +637,7 @@ router.post(
       order.updatedBy = actor;
       order.updatedAt = new Date();
       await order.save();
+      broadcast("LAB_ORDER_RESET", { orderId: String(order._id), folio: order.folio });
 
       await LaboratoryEvent.create({
         order: order._id,
@@ -672,6 +673,7 @@ router.post(
       order.closedBy = actor;
       order.updatedBy = actor;
       await order.save();
+      broadcast("LAB_ORDER_CLOSE", { orderId: String(order._id), folio: order.folio });
 
       await LaboratoryEvent.create({
         order: order._id,
@@ -763,12 +765,7 @@ router.patch(
         0
       );
       if (pickedTotal <= 0) order.status = "pendiente";
-      else if (pickedTotal < total) order.status = "parcial";
-      else {
-        order.status = "cerrado";
-        order.closedAt = new Date();
-        order.closedBy = actor;
-      }
+      else order.status = "parcial";
 
       order.updatedBy = actor;
       order.updatedAt = new Date();

@@ -132,6 +132,10 @@ app.use((err, _req, res, _next) => {
   res.status(status).json({ error: err.message || "Internal error" });
 });
 
+// Conectar al Gateway WebSocket para broadcasting
+const labWs = require("./ws");
+labWs.connect();
+
 /**
  * Inicio del servidor
  */

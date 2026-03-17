@@ -162,11 +162,33 @@ app.get("/api/health", (_req, res) => {
 const PORT = process.env.PORT || 3000;
 const server = http.createServer(app);
 
+// Frontend clients
+const frontendClients = new Set();
 const wss = new WebSocketServer({ server, path: "/ws" });
 wss.on("connection", (ws) => {
-  console.log("🔌 Cliente WebSocket conectado al Gateway");
-  ws.send(JSON.stringify({ type: "welcome", message: "WebSocket Gateway conectado ✅" }));
-  ws.on("close", () => console.log("❌ Cliente WebSocket desconectado del Gateway"));
+  frontendClients.add(ws);
+  console.log("🔌 Frontend WebSocket conectado");
+  ws.send(JSON.stringify({ type: "welcome" }));
+  ws.on("close", () => {
+    frontendClients.delete(ws);
+    console.log("❌ Frontend WebSocket desconectado");
+  });
+  ws.on("error", () => {});
+});
+
+// Internal service publishers (inventory-service, etc.)
+const wssInternal = new WebSocketServer({ server, path: "/ws-internal" });
+wssInternal.on("connection", (ws) => {
+  console.log("🔌 Servicio interno WS conectado");
+  ws.on("message", (data) => {
+    frontendClients.forEach((client) => {
+      if (client.readyState === 1) {
+        try { client.send(String(data)); } catch {}
+      }
+    });
+  });
+  ws.on("close", () => console.log("❌ Servicio interno WS desconectado"));
+  ws.on("error", () => {});
 });
 
 server.listen(PORT, () => console.log(`🟢 Gateway corriendo en puerto ${PORT}`));

@@ -59,13 +59,23 @@
             tabindex="0"
           >
             <div class="menu-item-inner">
-              <span class="menu-item-icon">
+              <span class="menu-item-icon" style="position:relative;">
                 <b-icon :icon="item.icon" size="is-small" />
+                <span v-if="item.badge && isCollapsed" class="menu-item-dot-badge">{{ item.badge }}</span>
               </span>
               <span v-if="!isCollapsed" class="menu-item-label">
                 {{ item.label }}
               </span>
             </div>
+
+            <b-tag
+              v-if="item.badge && !isCollapsed"
+              class="menu-item-badge"
+              rounded
+              :type="item.badgeType || 'is-primary'"
+            >
+              {{ item.badge }}
+            </b-tag>
 
             <b-icon
               v-if="!isCollapsed"
@@ -176,6 +186,13 @@
               <b-icon :icon="sub.icon" size="is-small" />
             </span>
             <span class="submenu-item-label">{{ sub.label }}</span>
+            <b-tag
+              v-if="sub.badge"
+              class="submenu-item-badge"
+              rounded
+              :type="sub.badgeType || 'is-warning'"
+              size="is-small"
+            >{{ sub.badge }}</b-tag>
           </a>
         </nav>
       </div>
@@ -194,6 +211,7 @@ export default {
     loading: { type: Boolean, default: false },
     collapsed: { type: Boolean, default: false },
     logoeuro: { type: String, default: "https://via.placeholder.com/150x50" },
+    pendingOrders: { type: Number, default: 0 },
   },
   data() {
     const saved = localStorage.getItem("sidebar-collapsed");
@@ -204,7 +222,20 @@ export default {
     return {
       isCollapsed: collapsed,
       activeSubmenu: null,
-      menuItems: [
+      avatarUrl: "https://github.com/octocat.png",
+      avatarLoaded: false,
+    };
+  },
+  computed: {
+    filteredUser() {
+      const name = this.user?.name || "Cargando...";
+      const role = this.user?.role?.name || this.user?.role || "Usuario";
+      return { name, role };
+    },
+    menuItems() {
+      const count = this.pendingOrders;
+      const labBadge = count > 0 ? String(count) : null;
+      return [
         { group: "Principal" },
         { label: "Dashboard", icon: "tachometer-alt", path: "/layouts/home" },
         { label: "Analíticas", icon: "chart-line", path: "/layouts/analiticas", badge: "Nuevo", badgeType: "is-success" },
@@ -222,8 +253,10 @@ export default {
         {
           label: "Ventas",
           icon: "shopping-cart",
+          badge: labBadge,
+          badgeType: "is-warning",
           children: [
-            { label: "Laboratorio", icon: "flask", path: "/layouts/ventas/laboratorio" },
+            { label: "Laboratorio", icon: "flask", path: "/layouts/ventas/laboratorio", badge: labBadge, badgeType: "is-warning" },
             { label: "Bases y Micas", icon: "glasses", path: "/layouts/ventas/bases-micas" },
             { label: "Óptica", icon: "eye", path: "/layouts/ventas/optica" },
             { label: "Lentes de Contacto", icon: "circle", path: "/layouts/ventas/lentes-contacto" },
@@ -232,16 +265,7 @@ export default {
         { group: "Otros" },
         { label: "Ajustes", icon: "cog", path: "/layouts/config.panel" },
         { label: "Ayuda", icon: "question-circle", path: "/layouts/Ayuda" },
-      ],
-      avatarUrl: "https://github.com/octocat.png",
-      avatarLoaded: false,
-    };
-  },
-  computed: {
-    filteredUser() {
-      const name = this.user?.name || "Cargando...";
-      const role = this.user?.role?.name || this.user?.role || "Usuario";
-      return { name, role };
+      ];
     },
     submenuStyles() {
       return {
@@ -942,5 +966,30 @@ $pink1: #ec4899;
   .sidebar {
     border-right: 1px solid var(--border);
   }
+}
+
+.menu-item-dot-badge {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  background: var(--c-warning, #f59e0b);
+  color: #fff;
+  border-radius: 999px;
+  font-size: 0.6rem;
+  font-weight: 900;
+  min-width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+  line-height: 1;
+}
+
+.submenu-item-badge {
+  margin-left: auto;
+  font-size: 0.65rem !important;
+  height: 18px !important;
+  min-width: 20px;
 }
 </style>

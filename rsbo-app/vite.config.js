@@ -56,7 +56,7 @@ export default defineConfig(() => {
           },
         },
 
-        "^/ws/.*": {
+        "/ws": {
           target: apiTarget,
           ws: true,
           changeOrigin: true,

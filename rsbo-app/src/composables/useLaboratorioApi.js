@@ -2,6 +2,7 @@ import { ref, reactive, computed, watch, onMounted, onBeforeUnmount } from "vue"
 import { labToast } from "@/composables/useLabToast.js";
 import { listSheets as invListSheets, fetchItems as invFetchItems } from "@/services/inventory";
 import { updatePendingCount } from "./useOrdersBadge.js";
+import { createGroupedNotification } from "@/services/notifications";
 import {
   listOrders,
   createOrder,
@@ -333,7 +334,7 @@ function getPeriodStart(period) {
 // COMPOSABLE PRINCIPAL
 // ============================================================================
 
-export function useLaboratorioApi() {
+export function useLaboratorioApi(getUser) {
   const notify = (message, type = "is-info", duration = 4000) => {
     const clean = sanitizeUserText(String(message ?? ""), { maxLen: 200 }) || "Listo.";
     labToast.show(clean, type, duration);
@@ -396,6 +397,16 @@ export function useLaboratorioApi() {
   const lastUpdatedAt = ref(Date.now());
 
   const actorRef = () => {
+    // Primero intentar con el usuario inyectado desde el prop del layout
+    if (typeof getUser === "function") {
+      const u = getUser();
+      if (u) {
+        const userId = u.id ?? u.userId ?? null;
+        const name   = u.name ?? u.nombre ?? null;
+        if (userId || name) return { userId, name };
+      }
+    }
+    // Fallback: localStorage (para compatibilidad con otros contextos)
     try {
       const raw = localStorage.getItem("user") || localStorage.getItem("auth_user") || "";
       if (!raw) return undefined;
@@ -910,6 +921,16 @@ export function useLaboratorioApi() {
       await loadEvents();
       lastUpdatedAt.value = Date.now();
       notify("Solicitud de corrección enviada.", "is-info");
+
+      // Notificar solo al supervisor (agrupado)
+      createGroupedNotification({
+        groupKey:        "pending_corrections",
+        title:           "Correcciones pendientes",
+        messageTemplate: "{count} solicitud(es) de corrección pendiente(s)",
+        type:            "danger",
+        priority:        "high",
+        targetRoles:     ["supervisor"],
+      }).catch(() => {});
     } catch (e) {
       console.error("[LAB] submitCorrection", e?.response?.data || e);
       const n = normalizeAck(e, { errorFallback: "No se pudo enviar la corrección." });

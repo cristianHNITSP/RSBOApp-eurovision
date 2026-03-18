@@ -49,11 +49,7 @@
       </b-tab-item>
 
       <b-tab-item label="Seguridad" icon="shield-alt" value="security">
-        <div class="box">
-          <p class="has-text-grey">
-            Aquí se agregarán opciones avanzadas de seguridad más adelante.
-          </p>
-        </div>
+        <Seguridad :user="props.user" />
       </b-tab-item>
     </b-tabs>
   </section>
@@ -62,8 +58,9 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import MiUser from '../../views/config/options/MiUser.vue'
+import MiUser     from '../../views/config/options/MiUser.vue'
 import Preferencias from '../../views/config/options/Preferencias.vue'
+import Seguridad   from '../../views/config/options/Seguridad.vue'
 
 // 🔹 Props que vienen del layout (por router-view): :user, :loading
 const props = defineProps({

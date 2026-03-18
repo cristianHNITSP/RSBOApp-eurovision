@@ -2,7 +2,8 @@
 import { ref, computed, watch, onMounted } from "vue";
 import { labToast } from "@/composables/useLabToast.js";
 import { listSheets as invListSheets, fetchItems as invFetchItems } from "@/services/inventory";
-import { createOrder, getOrder } from "@/services/laboratorio";
+import { createOrder, listOrders } from "@/services/laboratorio";
+import { createGroupedNotification } from "@/services/notifications";
 
 // ============================================================================
 // HELPERS
@@ -39,19 +40,6 @@ export const buildRowParams = (row, sheet) => {
   return "—";
 };
 
-function actorRef() {
-  try {
-    const raw = localStorage.getItem("user") || localStorage.getItem("auth_user") || "";
-    if (!raw) return undefined;
-    const u = JSON.parse(raw);
-    const userId = u?.id || u?.userId || null;
-    const name = u?.name || u?.nombre || null;
-    return userId || name ? { userId, name } : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 export function fmtDate(v) {
   if (!v) return "—";
   const d = new Date(v);
@@ -82,7 +70,38 @@ export const labStatusClass = (s) =>
 // COMPOSABLE
 // ============================================================================
 
-export function useBasesMicasVentas() {
+export function useBasesMicasVentas(getUser) {
+  // ── Actor helper (closure over getUser prop) ──────────────────────────────
+  function actorRef() {
+    if (typeof getUser === "function") {
+      const u = getUser();
+      if (u) {
+        const userId = u.id ?? u.userId ?? null;
+        const name   = u.name ?? u.nombre ?? null;
+        if (userId || name) return { userId, name };
+      }
+    }
+    try {
+      const raw = localStorage.getItem("user") || localStorage.getItem("auth_user") || "";
+      if (!raw) return undefined;
+      const u = JSON.parse(raw);
+      const userId = u?.id || u?.userId || null;
+      const name   = u?.name || u?.nombre || null;
+      return userId || name ? { userId, name } : undefined;
+    } catch { return undefined; }
+  }
+
+  // Reconstruye el título de una línea a partir de los datos almacenados en el pedido
+  function buildLineTitleFromApi(line) {
+    const t = line.tipo_matriz;
+    const p = line.params || {};
+    if (t === 'BASE')     return `BASE ${Number(p.base ?? 0).toFixed(2)}`;
+    if (t === 'SPH_CYL')  return `SPH ${Number(p.sph ?? 0).toFixed(2)} · CYL ${Number(p.cyl ?? 0).toFixed(2)}`;
+    if (t === 'SPH_ADD')  return `${line.eye || ''} · SPH ${Number(p.sph ?? 0).toFixed(2)} · ADD ${Number(p.add ?? 0).toFixed(2)}`;
+    if (t === 'BASE_ADD') return `${line.eye || ''} · BI ${Number(p.base_izq ?? 0).toFixed(2)} · BD ${Number(p.base_der ?? 0).toFixed(2)} · ADD ${Number(p.add ?? 0).toFixed(2)}`;
+    return line.codebar || 'Producto';
+  }
+
   // ── DB state ──────────────────────────────────────────────────────────────
   const sheetsDB   = ref([]);
   const itemsDB    = ref([]);
@@ -323,20 +342,24 @@ export function useBasesMicasVentas() {
         actor:       actor?.name || "Usuario"
       };
 
-      // Persist to localStorage
-      const history = (() => {
-        try { return JSON.parse(localStorage.getItem("rsbo_bm_sales") || "[]"); }
-        catch { return []; }
-      })();
-      history.unshift(voucher);
-      localStorage.setItem("rsbo_bm_sales", JSON.stringify(history.slice(0, 100)));
-      salesHistory.value = history.slice(0, 100);
-
       lastVoucher.value = voucher;
       voucherOpen.value = true;
       clearCart();
 
       labToast.success(`Pedido ${order?.folio || ""} enviado al laboratorio`);
+
+      // Notificar (agrupado) — isGlobal para que todos los roles la vean
+      createGroupedNotification({
+        groupKey:        "pending_orders",
+        title:           "Pedidos pendientes",
+        messageTemplate: "{count} pedido(s) pendiente(s) de atención en laboratorio",
+        type:            "warning",
+        priority:        "medium",
+        isGlobal:        true,
+      }).catch(() => {});
+
+      // Refrescar historial desde la BD
+      loadHistory().catch(() => {});
     } catch (e) {
       console.error("[BM-VENTAS] registrarVenta", e?.response?.data || e);
       // Surface backend validation errors (e.g. SIN_STOCK, NO_ENCONTRADO_EN_MATRIZ)
@@ -356,61 +379,50 @@ export function useBasesMicasVentas() {
     }
   }
 
-  // ── Lab status checking ────────────────────────────────────────────────────
+  // ── Load history desde la BD ──────────────────────────────────────────────
 
-  async function checkVoucherStatus(voucher) {
-    if (!voucher?.labOrderId) return;
-    try {
-      const { data } = await getOrder(voucher.labOrderId);
-      const order = data?.data;
-      if (order) {
-        labStatuses.value = {
-          ...labStatuses.value,
-          [voucher.labOrderId]: {
-            status:   order.status,
-            folio:    order.folio,
-            closedAt: order.closedAt || null
-          }
-        };
-      }
-    } catch (e) {
-      console.error("[BM-VENTAS] checkVoucherStatus", e);
-    }
-  }
-
-  async function loadLabStatuses() {
-    const withOrder = salesHistory.value.filter((v) => v.labOrderId);
-    if (!withOrder.length) return;
-
+  async function loadHistory() {
     loadingLabStatuses.value = true;
     try {
-      const results = await Promise.allSettled(
-        withOrder.slice(0, 30).map((v) => getOrder(v.labOrderId))
-      );
-      const statuses = { ...labStatuses.value };
-      for (const r of results) {
-        if (r.status === "fulfilled" && r.value?.data?.data) {
-          const o = r.value.data.data;
-          statuses[String(o._id)] = { status: o.status, folio: o.folio, closedAt: o.closedAt || null };
-        }
-      }
+      const { data } = await listOrders({ limit: 200, status: 'all' });
+      const orders = Array.isArray(data?.data) ? data.data : [];
+
+      const statuses = {};
+      salesHistory.value = orders.map((order) => {
+        const id = String(order._id);
+        statuses[id] = { status: order.status, folio: order.folio, closedAt: order.closedAt || null };
+        const totalPiezas = (order.lines || []).reduce((s, l) => s + (l.qty || 0), 0);
+        return {
+          id,
+          labOrderId:  id,
+          labFolio:    order.folio,
+          labStatus:   order.status,
+          fecha:       order.createdAt,
+          cliente:     order.cliente,
+          note:        order.note || '',
+          lineas:      (order.lines || []).map((l) => ({
+            title:       buildLineTitleFromApi(l),
+            params:      '',
+            codebar:     l.codebar || '',
+            qty:         l.qty || 0,
+            sheetNombre: '',
+          })),
+          totalPiezas,
+          actor: order.createdBy?.name || 'Sistema',
+        };
+      });
       labStatuses.value = statuses;
     } catch (e) {
-      console.error("[BM-VENTAS] loadLabStatuses", e);
+      console.error('[BM-VENTAS] loadHistory', e);
+      labToast.danger('Error al cargar el historial de pedidos');
     } finally {
       loadingLabStatuses.value = false;
     }
   }
 
-  // ── Load history ──────────────────────────────────────────────────────────
+  async function loadLabStatuses() { return loadHistory(); }
 
-  function loadHistory() {
-    try {
-      salesHistory.value = JSON.parse(localStorage.getItem("rsbo_bm_sales") || "[]");
-    } catch {
-      salesHistory.value = [];
-    }
-  }
+  async function checkVoucherStatus(_voucher) { return loadHistory(); }
 
   // ── Watchers ──────────────────────────────────────────────────────────────
 
@@ -432,8 +444,7 @@ export function useBasesMicasVentas() {
   // ── Init ──────────────────────────────────────────────────────────────────
 
   onMounted(async () => {
-    loadHistory();
-    await loadSheets();
+    await Promise.all([loadSheets(), loadHistory()]);
   });
 
   // ── Expose ────────────────────────────────────────────────────────────────

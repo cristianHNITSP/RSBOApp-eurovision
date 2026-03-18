@@ -116,7 +116,7 @@
             </div>
           </div>
 
-          <!-- Security -->
+          <!-- Security 
           <div class="section-seguridad">
             <div class="sec-head">
               <p class="has-text-weight-semibold mb-0">
@@ -215,6 +215,7 @@
               <span>Acciones registradas</span>
             </div>
           </div>
+          -->
         </div>
       </div>
 

@@ -23,14 +23,35 @@ function normalizePassword(password) {
   return String(password || "");
 }
 
-async function login({ email, password }) {
+function parseDeviceName(ua) {
+  const s = String(ua || '');
+  let browser = 'Otro';
+  let os      = 'Otro';
+  if (s.includes('Firefox/'))                               browser = 'Firefox';
+  else if (s.includes('Edg/') || s.includes('Edge/'))      browser = 'Edge';
+  else if (s.includes('OPR/') || s.includes('Opera/'))     browser = 'Opera';
+  else if (s.includes('SamsungBrowser/'))                   browser = 'Samsung Browser';
+  else if (s.includes('Chrome/'))                           browser = 'Chrome';
+  else if (s.includes('Safari/') && !s.includes('Chrome')) browser = 'Safari';
+
+  if      (s.includes('Windows NT'))   os = 'Windows';
+  else if (s.includes('Mac OS X'))     os = 'macOS';
+  else if (s.includes('Android'))      os = 'Android';
+  else if (s.includes('iPhone'))       os = 'iPhone';
+  else if (s.includes('iPad'))         os = 'iPad';
+  else if (s.includes('Linux'))        os = 'Linux';
+
+  return { browser, os, deviceName: `${browser} en ${os}` };
+}
+
+async function login({ email, password, ip, userAgent }) {
   const cleanEmail = sanitizeEmail(email);
   const cleanPassword = normalizePassword(password);
 
   // Trae flags necesarios para bloquear login + password/tokens para validar y sesión
-  const user = await User.findOne({ email: cleanEmail }).select(
-    "+password +tokens +isActive +deletedAt +role +email +name"
-  );
+  const user = await User.findOne({ email: cleanEmail })
+    .select("+password +tokens +isActive +deletedAt +role +email +name")
+    .populate("role", "name");
 
   if (!user) throw makeError(401, "Usuario o contraseña incorrectos");
 
@@ -49,13 +70,24 @@ async function login({ email, password }) {
 
   // Generar token
   const token = jwt.sign(
-    { id: user._id, email: user.email, role: user.role?.toString() },
+    {
+      id: user._id,
+      email: user.email,
+      role: user.role?._id?.toString() ?? user.role?.toString(),
+      roleName: user.role?.name ?? null,
+    },
     process.env.JWT_SECRET,
     { expiresIn: "8h" }
   );
 
   // Manejo de sesiones
-  user.tokens.push({ token });
+  const { browser, os, deviceName } = parseDeviceName(userAgent);
+  user.tokens.push({
+    token,
+    expiresAt:  new Date(Date.now() + 8 * 3600 * 1000),
+    lastUsedAt: new Date(),
+    deviceInfo: { ip: ip || null, userAgent: userAgent || null, deviceName, os, browser },
+  });
 
   if (user.tokens.length > 10) {
     user.tokens = user.tokens.slice(-10);
@@ -80,14 +112,7 @@ async function logout({ userId, tokenFromCookie }) {
   const user = await User.findById(userId).select("+tokens +isActive +deletedAt");
   if (!user) throw makeError(404, "Usuario no encontrado");
 
-  const initialTokensCount = user.tokens?.length || 0;
   user.tokens = (user.tokens || []).filter((t) => t.token !== tokenFromCookie);
-
-  // Si ya no tiene tokens, puedes marcar inactivo (solo si NO está en papelera)
-  if (user.tokens.length === 0 && initialTokensCount > 0) {
-    // Si está en papelera, ya debe estar inactivo por regla de negocio
-    if (!user.deletedAt) user.isActive = false;
-  }
 
   await user.save();
   return { success: true };
@@ -108,4 +133,5 @@ module.exports = {
   login,
   logout,
   buildSessionPayload,
+  parseDeviceName,
 };

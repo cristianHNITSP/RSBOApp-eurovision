@@ -117,9 +117,13 @@ const router = createRouter({
 
 // Mapa de código de error → razón usada en la query
 const ERROR_REASON_MAP = {
-  NO_TOKEN: "no-token",
+  NO_TOKEN:      "no-token",
   TOKEN_EXPIRED: "token-expired",
   INVALID_TOKEN: "invalid-token",
+  TOKEN_REVOKED: "token-revoked",
+  USER_NOT_FOUND:"no-token",
+  USER_DELETED:  "no-token",
+  USER_INACTIVE: "no-token",
 };
 
 const mapErrorToAuthReason = (code) => ERROR_REASON_MAP[code] || "unknown";

@@ -514,7 +514,13 @@ async function loadAll() {
   await switchViewReload();
 }
 
-onMounted(loadAll);
+// ── WebSocket: actualiza stock en tiempo real al surtir/cancelar/resetear ──
+const _WS_STOCK = new Set(["LAB_ORDER_SCAN", "LAB_ORDER_CANCEL", "LAB_ORDER_RESET"]);
+function _onLabWs(e) {
+  if (_WS_STOCK.has(e?.detail?.type)) loadRows();
+}
+onMounted(() => { loadAll(); window.addEventListener("lab:ws", _onLabWs); });
+onBeforeUnmount(() => window.removeEventListener("lab:ws", _onLabWs));
 
 watch(
   () => props.sphType,

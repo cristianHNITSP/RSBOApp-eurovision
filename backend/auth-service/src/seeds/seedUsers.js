@@ -1,4 +1,4 @@
-// backend/auth-service/seed/seed-users.js (o donde lo tengas)
+// backend/auth-service/src/seeds/seedUsers.js
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const User = require('../models/User');
@@ -6,7 +6,75 @@ const Role = require('../models/Role');
 
 const MONGO_URI =
   process.env.MONGO_URI ||
-  'mongodb://root:xqr5Dc93KMa24b@mongo:27017/rsboapp?authSource=admin';
+  'mongodb://root:xqr5Dc93KMa24b@mongo:27017/auth_db?authSource=admin';
+
+// ─── Definición de roles ────────────────────────────────────────────────────
+const ROLES_DATA = [
+  {
+    name: 'root',
+    description: 'Administrador del sistema con acceso total e irrestricto',
+    permissions: [
+      'manage_users',
+      'manage_inventory',
+      'manage_sales',
+      'view_reports',
+      'edit_settings',
+      'manage_roles',
+      'manage_system',
+    ],
+  },
+  {
+    name: 'eurovision',
+    description: 'Encargado de la óptica Eurovisión — gestión completa del negocio',
+    permissions: [
+      'manage_users',
+      'manage_inventory',
+      'manage_sales',
+      'view_reports',
+      'edit_settings',
+      'create_order',
+      'update_order_status',
+      'view_inventory',
+      'view_clients',
+    ],
+  },
+  {
+    name: 'supervisor',
+    description: 'Supervisor de operaciones — supervisa inventario, ventas y equipo',
+    permissions: [
+      'manage_inventory',
+      'manage_sales',
+      'view_reports',
+      'create_order',
+      'update_order_status',
+      'view_inventory',
+      'view_clients',
+    ],
+  },
+  {
+    name: 'ventas',
+    description: 'Personal de ventas y atención al cliente',
+    permissions: [
+      'create_order',
+      'update_order_status',
+      'view_inventory',
+      'view_clients',
+      'manage_sales',
+    ],
+  },
+  {
+    name: 'laboratorio',
+    description: 'Técnico de laboratorio — taller de pulido y montaje de lentes',
+    permissions: [
+      'view_orders',
+      'update_order_progress',
+      'mark_order_completed',
+    ],
+  },
+];
+
+// ─── Roles que ya no existen y deben eliminarse ──────────────────────────────
+const OBSOLETE_ROLES = ['administrador', 'moderador'];
 
 async function seed() {
   try {
@@ -16,100 +84,99 @@ async function seed() {
     });
     console.log('✅ Conectado a MongoDB');
 
-    // 1️⃣ Roles
-    const rolesData = [
-      {
-        name: 'administrador',
-        description: 'Administrador general de la óptica',
-        permissions: [
-          'manage_users',
-          'manage_inventory',
-          'manage_sales',
-          'view_reports',
-          'edit_settings',
-        ],
-      },
-      {
-        name: 'moderador',
-        description: 'Encargado de ventas y atención al cliente',
-        permissions: [
-          'create_order',
-          'update_order_status',
-          'view_inventory',
-          'view_clients',
-        ],
-      },
-      {
-        name: 'laboratorio',
-        description: 'Responsable del taller de lentes y pulido',
-        permissions: [
-          'view_orders',
-          'update_order_progress',
-          'mark_order_completed',
-        ],
-      },
-    ];
+    // 1️⃣  Eliminar roles obsoletos (solo si no tienen usuarios asignados)
+    for (const obsoleteName of OBSOLETE_ROLES) {
+      const obsolete = await Role.findOne({ name: obsoleteName });
+      if (!obsolete) continue;
 
-    for (const roleData of rolesData) {
-      const exists = await Role.findOne({ name: roleData.name });
-      if (!exists) {
-        await Role.create(roleData);
-        console.log(`✅ Rol "${roleData.name}" creado`);
+      const usersWithRole = await User.countDocuments({ role: obsolete._id });
+      if (usersWithRole > 0) {
+        console.log(`⚠️  Rol obsoleto "${obsoleteName}" tiene ${usersWithRole} usuario(s) — no se elimina`);
       } else {
-        console.log(`ℹ️ Rol "${roleData.name}" ya existe`);
+        await Role.deleteOne({ _id: obsolete._id });
+        console.log(`🗑️  Rol obsoleto "${obsoleteName}" eliminado`);
       }
     }
 
-    // 2️⃣ Usuarios iniciales
-    const adminRole = await Role.findOne({ name: 'administrador' });
-    const modRole = await Role.findOne({ name: 'moderador' });
-    const labRole = await Role.findOne({ name: 'laboratorio' });
+    // 2️⃣  Upsert de roles nuevos (crea o actualiza)
+    const roleRefs = {};
+    for (const roleData of ROLES_DATA) {
+      const role = await Role.findOneAndUpdate(
+        { name: roleData.name },
+        { $set: roleData },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+      roleRefs[roleData.name] = role._id;
+      console.log(`✅ Rol "${roleData.name}" listo`);
+    }
 
-    const usersData = [
+    // 3️⃣  Usuarios iniciales (idempotente)
+    const USERS_DATA = [
       {
-        email: 'admin@optica.com',
-        name: 'Administrador Óptica',
-        password: 'admin1234',
-        role: adminRole._id,
+        email: 'root@optica.com',
+        name: 'Root — Administrador del Sistema',
+        password: 'root1234',
+        role: roleRefs['root'],
         profile: {
           avatar: 'https://cdn.jsdelivr.net/gh/alohe/avatars/png/vibrent_6.png',
-          bio: 'Gestión completa del sistema de la óptica',
+          bio: 'Acceso total al sistema Eurovisión',
           phone: '000-000-0000',
         },
       },
       {
+        email: 'eurovision@optica.com',
+        name: 'Encargado Eurovisión',
+        password: 'euro1234',
+        role: roleRefs['eurovision'],
+        profile: {
+          avatar: 'https://cdn.jsdelivr.net/gh/alohe/avatars/png/vibrent_5.png',
+          bio: 'Encargado general de la óptica Eurovisión',
+          phone: '111-000-0000',
+        },
+      },
+      {
+        email: 'supervisor@optica.com',
+        name: 'Supervisor Eurovisión',
+        password: 'super1234',
+        role: roleRefs['supervisor'],
+        profile: {
+          avatar: 'https://cdn.jsdelivr.net/gh/alohe/avatars/png/vibrent_4.png',
+          bio: 'Supervisa operaciones e inventario',
+          phone: '222-000-0000',
+        },
+      },
+      {
         email: 'ventas@optica.com',
-        name: 'Encargado de Ventas',
+        name: 'Personal de Ventas',
         password: 'ventas1234',
-        role: modRole._id,
+        role: roleRefs['ventas'],
         profile: {
           avatar: 'https://cdn.jsdelivr.net/gh/alohe/avatars/png/vibrent_1.png',
-          bio: 'Atiende a clientes y gestiona ventas',
-          phone: '111-111-1111',
+          bio: 'Atención al cliente y gestión de ventas',
+          phone: '333-000-0000',
         },
       },
       {
         email: 'laboratorio@optica.com',
         name: 'Técnico de Laboratorio',
         password: 'lab1234',
-        role: labRole._id,
+        role: roleRefs['laboratorio'],
         profile: {
           avatar: 'https://cdn.jsdelivr.net/gh/alohe/avatars/png/vibrent_3.png',
-          bio: 'Encargado del pulido y montaje de lentes',
-          phone: '9993676541',
+          bio: 'Pulido y montaje de lentes',
+          phone: '444-000-0000',
         },
       },
     ];
 
-    for (const u of usersData) {
-      const existingUser = await User.findOne({ email: u.email });
-      if (!existingUser) {
+    for (const u of USERS_DATA) {
+      const existing = await User.findOne({ email: u.email });
+      if (!existing) {
         const hashedPassword = await bcrypt.hash(u.password, 10);
-
         await User.create({
           name: u.name,
           email: u.email,
-          password: hashedPassword, // 👈 ahora sí hash
+          password: hashedPassword,
           role: u.role,
           tokens: [],
           isActive: true,
@@ -117,13 +184,19 @@ async function seed() {
           deletedAt: null,
           profile: u.profile,
         });
-        console.log(`✅ Usuario "${u.email}" creado correctamente.`);
+        console.log(`✅ Usuario "${u.email}" creado`);
       } else {
-        console.log(`ℹ️ Usuario "${u.email}" ya existe.`);
+        console.log(`ℹ️  Usuario "${u.email}" ya existe — omitido`);
       }
     }
 
     console.log('\n🎉 Seed completado con éxito 🎉');
+    console.log('\nCredenciales iniciales:');
+    console.log('  root@optica.com         / root1234');
+    console.log('  eurovision@optica.com   / euro1234');
+    console.log('  supervisor@optica.com   / super1234');
+    console.log('  ventas@optica.com       / ventas1234');
+    console.log('  laboratorio@optica.com  / lab1234');
   } catch (err) {
     console.error('❌ Error en el seed:', err);
   } finally {

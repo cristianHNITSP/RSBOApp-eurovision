@@ -76,9 +76,9 @@
           <b-field label="Selecciona la Base">
             <div class="tabs tabs-opciones is-toggle is-small">
               <ul>
-                <li v-for="(val, key) in configuracion.bases" :key="key" :class="{ 'is-active': selectedBase === key }"
-                  @click="selectBase(key)">
-                  <a>{{ val.label }}</a>
+                <li v-for="base in props.catalog?.bases ?? []" :key="base.key" :class="{ 'is-active': selectedBase === base.key }"
+                  @click="selectBase(base.key)">
+                  <a>{{ base.label }}</a>
                 </li>
               </ul>
             </div>
@@ -599,36 +599,30 @@ const numForEdit = (v) => {
 };
 
 const props = defineProps({
-  initialSheets: { type: Array, required: true },
-  activeId: { type: String, required: true },
-  configuracion: { type: Object, required: true },
-  actor: { type: Object, default: null },
-  loadingTabs: { type: Boolean, default: false }
+  initialSheets:  { type: Array,   required: true },
+  activeId:       { type: String,  required: true },
+  catalog:        { type: Object,  default: () => ({ bases: [], treatments: [] }) },
+  catalogLoading: { type: Boolean, default: false },
+  actor:          { type: Object,  default: null },
+  loadingTabs:    { type: Boolean, default: false }
 });
 
 const emit = defineEmits(["update:active", "reorder", "crear", "update:internal", "deleted", "renamed"]);
 
-/* ===================== CATÁLOGO TRATAMIENTO/VARIANTE ===================== */
-const ESPEJO_COLORS = ["Verde", "Rojo", "Morado", "Plata", "Naranja"];
-const POLAR_BASES = ["Gris", "Café", "G15"];
+/* ===================== CATÁLOGO DESDE BD ===================== */
+// Mapa key → CatalogBase (para lookups O(1))
+const catalogBasesMap = computed(() => {
+  const map = {};
+  for (const b of props.catalog?.bases ?? []) map[b.key] = b;
+  return map;
+});
 
-const TREATMENTS = {
-  BCO: { label: "BCO", variants: [] },
-  AR: { label: "AR", variants: [] },
-  ANTIBLE: { label: "Antible", variants: ["sin AR", "con AR"] },
-  FOTO: { label: "Foto", variants: ["sin AR", "con AR"] },
-  FOTO_ANTIBLE: { label: "Foto + Antible", variants: ["sin AR", "con AR"] },
-  TRANSITIONS: {
-    label: "Transitions",
-    variantsByMaterial: { "CR-39": ["Gris", "Café", "Verde"], Policarbonato: ["Gris", "Café"] }
-  },
-  POLAR: { label: "Polarizado", variants: [...POLAR_BASES] },
-  POLAR_ESPEJO: {
-    label: "Polarizado + Espejado",
-    variants: POLAR_BASES.flatMap((b) => ESPEJO_COLORS.map((c) => `Base ${b} + Espejo ${c}`))
-  },
-  CRISTAL_FOTO: { label: "Fotocromático", variants: [] }
-};
+// Mapa key → CatalogTreatment (para lookups O(1))
+const catalogTreatmentsMap = computed(() => {
+  const map = {};
+  for (const t of props.catalog?.treatments ?? []) map[t.key] = t;
+  return map;
+});
 
 const composeTratamientoDisplay = (tratamiento, variante) => {
   const t = String(tratamiento || "").trim();
@@ -867,15 +861,14 @@ watch([newNumFactura, newLoteProducto, newFechaCompra, newFechaCaducidad, newPre
 
 const allMaterials = computed(() => {
   const all = new Set();
-  const bases = props.configuracion?.bases || {};
-  for (const key of Object.keys(bases)) {
-    (bases[key]?.materiales || []).forEach((m) => all.add(String(m)));
+  for (const b of props.catalog?.bases ?? []) {
+    (b.materiales || []).forEach((m) => all.add(String(m)));
   }
   return Array.from(all).sort((a, b) => a.localeCompare(b));
 });
 
 const baseLabel = computed(() => {
-  const b = selectedBase.value && props.configuracion.bases[selectedBase.value];
+  const b = selectedBase.value && catalogBasesMap.value[selectedBase.value];
   return b ? b.label : "";
 });
 
@@ -888,8 +881,8 @@ const selectBase = (base) => {
 
 const isMaterialAllowed = (mat) => {
   if (!selectedBase.value) return false;
-  const b = props.configuracion.bases[selectedBase.value];
-  return b && b.materiales.includes(mat);
+  const b = catalogBasesMap.value[selectedBase.value];
+  return b && (b.materiales || []).includes(mat);
 };
 
 const selectMaterial = (mat) => {
@@ -903,24 +896,18 @@ const hasAnyAllowedMaterial = computed(() => allMaterials.value.some((m) => isMa
 
 const allowedTratamientos = computed(() => {
   if (!selectedBase.value || !selectedMaterial.value) return [];
-  const baseCfg = props.configuracion.bases[selectedBase.value];
+  const baseCfg = catalogBasesMap.value[selectedBase.value];
   if (!baseCfg) return [];
 
-  if (String(selectedMaterial.value) === "Cristal") {
-    return ["BCO", "CRISTAL_FOTO"]
-      .filter((k) => baseCfg.tratamientos.includes(k))
-      .map((k) => ({ key: k, label: TREATMENTS[k]?.label || k }));
-  }
-
   return (baseCfg.tratamientos || [])
-    .filter((k) => k in TREATMENTS)
-    .filter((k) => {
-      if ((k === "POLAR" || k === "POLAR_ESPEJO") && !["monofocal", "monofocalEsfCil"].includes(selectedBase.value)) return false;
-      if (k === "TRANSITIONS" && !["CR-39", "Policarbonato"].includes(selectedMaterial.value)) return false;
-      if ((k === "POLAR" || k === "POLAR_ESPEJO") && !["CR-39", "Policarbonato"].includes(selectedMaterial.value)) return false;
+    .map((k) => catalogTreatmentsMap.value[k])
+    .filter((t) => {
+      if (!t) return false;
+      if (t.allowedMaterials?.length && !t.allowedMaterials.includes(selectedMaterial.value)) return false;
+      if (t.allowedBases?.length && !t.allowedBases.includes(selectedBase.value)) return false;
       return true;
     })
-    .map((k) => ({ key: k, label: TREATMENTS[k]?.label || k }));
+    .map((t) => ({ key: t.key, label: t.label }));
 });
 
 const selectTratamiento = (key) => {
@@ -932,13 +919,18 @@ const varianteOptions = computed(() => {
   const key = selectedTratamientoKey.value;
   if (!key) return [];
 
-  if (key === "TRANSITIONS") {
-    const mat = String(selectedMaterial.value || "");
-    return TREATMENTS.TRANSITIONS.variantsByMaterial?.[mat] || [];
+  const t = catalogTreatmentsMap.value[key];
+  if (!t) return [];
+
+  const mat = String(selectedMaterial.value || "");
+  if (t.variantsByMaterial && mat) {
+    const byMat = t.variantsByMaterial instanceof Map
+      ? t.variantsByMaterial.get(mat)
+      : t.variantsByMaterial[mat];
+    if (byMat?.length) return byMat;
   }
 
-  const obj = TREATMENTS[key];
-  return obj?.variants ? [...obj.variants] : [];
+  return t.variants ? [...t.variants] : [];
 });
 
 const selectVariante = (v) => {
@@ -946,11 +938,11 @@ const selectVariante = (v) => {
 };
 
 watch([selectedBase, selectedMaterial, selectedTratamientoKey, selectedVariante], () => {
-  const baseCfg = selectedBase.value && props.configuracion.bases[selectedBase.value];
+  const baseCfg = selectedBase.value && catalogBasesMap.value[selectedBase.value];
   const baseLabelTxt = baseCfg ? baseCfg.label : "";
   const materialLabel = selectedMaterial.value || "";
   const tKey = selectedTratamientoKey.value;
-  const tLabel = tKey ? (TREATMENTS[tKey]?.label || tKey) : "";
+  const tLabel = tKey ? (catalogTreatmentsMap.value[tKey]?.label || tKey) : "";
   const nameTrat = composeTratamientoDisplay(tLabel, selectedVariante.value || "");
   newSheetName.value = [baseLabelTxt, materialLabel, nameTrat].filter(Boolean).join(" | ");
 });
@@ -966,15 +958,8 @@ const canCreate = computed(() => {
 });
 
 const mapBaseToTipoMatriz = (baseKey) => {
-  const cfg = props.configuracion.bases[baseKey];
+  const cfg = catalogBasesMap.value[baseKey];
   if (cfg?.tipo_matriz) return cfg.tipo_matriz;
-
-  if (baseKey === "monofocal") return "BASE";
-  if (baseKey === "monofocalEsfCil") return "SPH_CYL";
-  if (baseKey === "bifocal") return "SPH_ADD";
-  if (baseKey === "bifocalFT") return "SPH_ADD";
-  if (baseKey === "bifocalYounger") return "SPH_ADD";
-  if (baseKey === "progresivo") return "BASE_ADD";
   return "SPH_CYL";
 };
 
@@ -987,11 +972,11 @@ const handleCrear = async () => {
   await nextTick();
 
   try {
-    const baseCfg = props.configuracion.bases[selectedBase.value];
+    const baseCfg = catalogBasesMap.value[selectedBase.value];
     const tipo_matriz = mapBaseToTipoMatriz(selectedBase.value);
 
     const tKey = selectedTratamientoKey.value;
-    const tratamientoLabel = tKey ? (TREATMENTS[tKey]?.label || tKey) : "";
+    const tratamientoLabel = tKey ? (catalogTreatmentsMap.value[tKey]?.label || tKey) : "";
     const varianteLabel = String(selectedVariante.value || "").trim();
 
     const tratamientoDisplay = composeTratamientoDisplay(tratamientoLabel, varianteLabel);

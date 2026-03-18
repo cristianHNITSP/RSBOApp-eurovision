@@ -33,6 +33,7 @@
 
 #Ejecutar la semillas de auth-service
 #sudo docker exec -it rsboapp-auth npm run seed-users
+#sudo docker exec rsboapp-inventory sh -c "node src/seeds/seed-catalog.js"
 
 #Ejecutar las semillas de rsboapp-inventory
 #sudo docker exec -it rsboapp-inventory npm run seed-templates
@@ -104,7 +105,6 @@ services:
       - auth-service
       - inventory-service
       - optica-service
-      - orders-service
       - notification-service
     expose:
       - "3000"                    # visible dentro de la red Docker
@@ -161,28 +161,6 @@ services:
     profiles: ["prod", "dev"]
 
   # =========================
-  # ORDERS SERVICE
-  # =========================
-  orders-service:
-    build:
-      context: ./backend/orders-service
-    container_name: rsboapp-orders
-    env_file:
-      - ./.env
-      - ./backend/orders-service/.env
-    environment:
-      NODE_ENV: ${NODE_ENV:-production}
-      MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${ORDERS_DB}?authSource=admin"
-    depends_on:
-      - mongo
-    expose:
-      - "3000"
-    restart: unless-stopped
-    networks:
-      - rsbo-net
-    profiles: ["prod", "dev"]
-
-  # =========================
   # OPTICA SERVICE
   # =========================
   optica-service:
@@ -217,6 +195,7 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${NOTIFICATION_DB}?authSource=admin"
+      GATEWAY_WS_URL: "ws://gateway:3000/ws-internal"
     depends_on:
       - mongo
     expose:

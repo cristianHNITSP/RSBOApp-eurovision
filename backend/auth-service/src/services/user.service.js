@@ -266,6 +266,64 @@ async function restoreUser(userId) {
   return { ok: true, restored: true };
 }
 
+async function getMeSessions(userId, currentToken) {
+  const user = await User.findById(userId).select('+tokens').lean();
+  if (!user) { const e = new Error('Usuario no encontrado'); e.statusCode = 404; throw e; }
+
+  return (user.tokens || [])
+    .map((t) => ({
+      id:         String(t._id),
+      isCurrent:  t.token === currentToken,
+      createdAt:  t.createdAt,
+      expiresAt:  t.expiresAt,
+      lastUsedAt: t.lastUsedAt,
+      deviceInfo: {
+        ip:         t.deviceInfo?.ip || null,
+        deviceName: t.deviceInfo?.deviceName || 'Dispositivo desconocido',
+        os:         t.deviceInfo?.os || null,
+        browser:    t.deviceInfo?.browser || null,
+      },
+    }))
+    .sort((a, b) => {
+      if (a.isCurrent && !b.isCurrent) return -1;
+      if (!a.isCurrent && b.isCurrent) return 1;
+      return new Date(b.lastUsedAt || b.createdAt || 0) - new Date(a.lastUsedAt || a.createdAt || 0);
+    });
+}
+
+async function revokeSession(userId, sessionId) {
+  const user = await User.findById(userId).select('+tokens');
+  if (!user) { const e = new Error('Usuario no encontrado'); e.statusCode = 404; throw e; }
+  const before = user.tokens.length;
+  user.tokens = user.tokens.filter((t) => String(t._id) !== sessionId);
+  if (user.tokens.length === before) { const e = new Error('Sesión no encontrada'); e.statusCode = 404; throw e; }
+  await user.save();
+  return { revoked: 1 };
+}
+
+async function revokeOtherSessions(userId, currentToken) {
+  const user = await User.findById(userId).select('+tokens');
+  if (!user) { const e = new Error('Usuario no encontrado'); e.statusCode = 404; throw e; }
+  const before = user.tokens.length;
+  user.tokens = user.tokens.filter((t) => t.token === currentToken);
+  await user.save();
+  return { revoked: before - user.tokens.length };
+}
+
+async function changePasswordSelf(userId, { currentPassword, newPassword }) {
+  const user = await User.findById(userId).select('+password +tokens');
+  if (!user) { const e = new Error('Usuario no encontrado'); e.statusCode = 404; throw e; }
+  const valid = await bcrypt.compare(String(currentPassword || ''), user.password);
+  if (!valid) { const e = new Error('Contraseña actual incorrecta'); e.statusCode = 401; throw e; }
+  if (String(newPassword || '').length < 8) {
+    const e = new Error('La nueva contraseña debe tener al menos 8 caracteres'); e.statusCode = 400; throw e;
+  }
+  user.password = await bcrypt.hash(String(newPassword), 12);
+  user.tokens   = []; // Invalidar todas las sesiones
+  await user.save();
+  return { success: true, sessionsRevoked: true };
+}
+
 module.exports = {
   getRoles,
   getMe,
@@ -275,4 +333,8 @@ module.exports = {
   updatePassword,
   deleteUser,
   restoreUser,
+  getMeSessions,
+  revokeSession,
+  revokeOtherSessions,
+  changePasswordSelf,
 };

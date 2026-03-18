@@ -11,6 +11,7 @@ import AgGridMonofocal from "@/components/ag-grid/templates/AgGridMonofocal.vue"
 import AgGridProgresivo from "@/components/ag-grid/templates/AgGridProgresivo.vue";
 
 import { listSheets } from "@/services/inventory";
+import { fetchCatalog } from "@/services/catalog";
 
 const DEBUG_INV_VIEW = true;
 
@@ -25,6 +26,10 @@ const dynamicSheets      = reactive([{ id: "nueva", name: "+ Agregar" }]);
 const activeSheet        = ref("nueva");
 const activeInternalTab  = ref(null);
 const loadingSheets      = ref(true);
+
+// Catálogo cargado desde BD
+const catalog        = ref({ bases: [], treatments: [] });
+const catalogLoading = ref(true);
 
 /* ─────────────────────────────────────────────────────────────────────────
    Foco desde búsqueda global
@@ -81,48 +86,20 @@ watch(
 );
 
 /* ─────────────────────────────────────────────────────────────────────────
-   Configuración catálogo
+   Carga del catálogo desde BD
 ───────────────────────────────────────────────────────────────────────── */
-const configuracion = {
-  bases: {
-    monofocal: {
-      label: "Monofocal (Base)",
-      materiales: ["Policarbonato", "CR-39", "1.56", "1.61 MR-8", "1.67", "1.74", "Cristal"],
-      tratamientos: ["BCO", "AR", "ANTIBLE", "FOTO", "FOTO_ANTIBLE", "TRANSITIONS", "POLAR", "POLAR_ESPEJO", "CRISTAL_FOTO"],
-      tipo_matriz: "BASE"
-    },
-    progresivo: {
-      label: "Progresivo (Base + ADD)",
-      materiales: ["Policarbonato", "CR-39", "1.56", "1.61 MR-8", "1.67", "1.74"],
-      tratamientos: ["BCO", "AR", "ANTIBLE", "FOTO", "FOTO_ANTIBLE", "TRANSITIONS"],
-      tipo_matriz: "BASE_ADD"
-    },
-    monofocalEsfCil: {
-      label: "Monofocal Esférico-Cilíndrico (SPH/CYL)",
-      materiales: ["Policarbonato", "CR-39", "1.56", "1.61 MR-8", "1.67", "1.74"],
-      tratamientos: ["BCO", "AR", "ANTIBLE", "FOTO", "FOTO_ANTIBLE", "TRANSITIONS", "POLAR", "POLAR_ESPEJO"],
-      tipo_matriz: "SPH_CYL"
-    },
-    bifocal: {
-      label: "Bifocal (SPH + ADD)",
-      materiales: ["Policarbonato", "CR-39", "1.56", "1.61 MR-8", "1.67", "1.74"],
-      tratamientos: ["BCO", "AR", "ANTIBLE", "FOTO", "FOTO_ANTIBLE", "TRANSITIONS"],
-      tipo_matriz: "SPH_ADD"
-    },
-    bifocalFT: {
-      label: "Bifocal F.T (SPH + ADD)",
-      materiales: ["Policarbonato", "CR-39"],
-      tratamientos: ["BCO", "AR", "ANTIBLE", "FOTO", "FOTO_ANTIBLE", "TRANSITIONS"],
-      tipo_matriz: "SPH_ADD"
-    },
-    bifocalYounger: {
-      label: "Bifocal Younger (SPH + ADD)",
-      materiales: ["Policarbonato", "CR-39"],
-      tratamientos: ["BCO", "AR", "ANTIBLE", "FOTO", "FOTO_ANTIBLE", "TRANSITIONS"],
-      tipo_matriz: "SPH_ADD"
-    }
+async function cargarCatalog() {
+  catalogLoading.value = true;
+  try {
+    const { data } = await fetchCatalog();
+    catalog.value = data?.data ?? { bases: [], treatments: [] };
+  } catch (e) {
+    console.error("Error al cargar catálogo:", e);
+    labToast.danger("No se pudo cargar el catálogo. Verifica la conexión.");
+  } finally {
+    catalogLoading.value = false;
   }
-};
+}
 
 /* ─────────────────────────────────────────────────────────────────────────
    Carga de planillas
@@ -197,7 +174,7 @@ async function cargarSheets() {
 }
 
 onMounted(async () => {
-  await cargarSheets();
+  await Promise.all([cargarCatalog(), cargarSheets()]);
 
   // Si llegó con ?sheetId= y la carga terminó, intenta focusear ahora
   if (route.query.sheetId) {
@@ -329,7 +306,8 @@ const resolverGridProps = (sheet, activeInternal) => {
         <TabsManager
           :initial-sheets="dynamicSheets"
           :active-id="activeSheet"
-          :configuracion="configuracion"
+          :catalog="catalog"
+          :catalog-loading="catalogLoading"
           :actor="user"
           :loading-tabs="loadingSheets"
           @update:active="activeSheet = $event"

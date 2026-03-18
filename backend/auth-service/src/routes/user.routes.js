@@ -31,6 +31,56 @@ router.post("/", authMiddleware, requirePermissions(["manage_users"]), async (re
   }
 });
 
+// ── Seguridad: sesiones activas ────────────────────────────────────────────
+
+router.get('/me/sessions', authMiddleware, async (req, res) => {
+  try {
+    const currentToken = req.cookies?.auth_token;
+    const sessions = await userService.getMeSessions(req.user.id, currentToken);
+    res.set('Cache-Control', 'no-store');
+    return res.json(sessions);
+  } catch (err) {
+    return res.status(err.statusCode || 500).json({ error: err.message || 'Error interno' });
+  }
+});
+
+router.delete('/me/sessions/others', authMiddleware, async (req, res) => {
+  try {
+    const currentToken = req.cookies?.auth_token;
+    const result = await userService.revokeOtherSessions(req.user.id, currentToken);
+    return res.json(result);
+  } catch (err) {
+    return res.status(err.statusCode || 500).json({ error: err.message || 'Error interno' });
+  }
+});
+
+router.delete('/me/sessions/:sessionId', authMiddleware, async (req, res) => {
+  try {
+    const result = await userService.revokeSession(req.user.id, req.params.sessionId);
+    return res.json(result);
+  } catch (err) {
+    return res.status(err.statusCode || 500).json({ error: err.message || 'Error interno' });
+  }
+});
+
+router.patch('/me/password', authMiddleware, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'currentPassword y newPassword son requeridos' });
+    }
+    const result = await userService.changePasswordSelf(req.user.id, { currentPassword, newPassword });
+    res.clearCookie('auth_token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+    });
+    return res.json(result);
+  } catch (err) {
+    return res.status(err.statusCode || 500).json({ error: err.message || 'Error interno' });
+  }
+});
+
 router.get("/me", authMiddleware, async (req, res) => {
   try {
     const me = await userService.getMe(req.user.id);

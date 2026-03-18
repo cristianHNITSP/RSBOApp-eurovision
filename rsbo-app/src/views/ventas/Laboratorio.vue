@@ -40,7 +40,12 @@ import CorreccionesTab from "@/components/laboratorio/Correccionestab.vue";
 import BarcodeModal from "@/components/laboratorio/modals/BarcodeModal.vue";
 import CorrectionModal from "@/components/laboratorio/modals/CorrectionModal.vue";
 
-const lab = useLaboratorioApi();
+const props = defineProps({
+  user: Object,
+  loading: Boolean,
+});
+
+const lab = useLaboratorioApi(() => props.user);
 provide("lab", lab);
 </script>
 

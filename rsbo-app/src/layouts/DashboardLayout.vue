@@ -39,6 +39,7 @@ const { motionRef, animateSidebarShift } = useMotionEffects();
    ========================= */
 const { showPanel, openPanel, closePanel } = useNotifications();
 const unreadNotifications = ref(0);
+const isPinnedPanel = ref(false);
 
 /* =========================
    Breadcrumb / título
@@ -150,12 +151,28 @@ function toggleMobileSidebar() {
   if (isMobileSidebarVisible.value) {
     hideSidebarMobile();
   } else {
+    // Cierra notificaciones si están abiertas antes de mostrar sidebar
+    if (showPanel.value) closePanel();
+
     isMobileSidebarVisible.value = true;
     try {
       localStorage.setItem("mobileSidebarVisible", "true");
     } catch { }
     nextTick(showSidebarMobile);
   }
+}
+
+// Colapsa la sidebar (70px) al hacer click fuera de ella en móvil
+function collapseSidebar() {
+  sidebarmobile.value?.collapse();
+}
+
+// Abre notificaciones y cierra sidebar móvil si está visible
+function openPanelMobile() {
+  if (isMobile.value && isMobileSidebarVisible.value) {
+    hideSidebarMobile();
+  }
+  openPanel();
 }
 
 /* Cuando cambias a desktop: fuerza visible */
@@ -171,10 +188,10 @@ watch(isMobile, (nowMobile) => {
   }
 });
 
-/* Sidebar collapse: animación + cerrar notifs */
+/* Sidebar collapse: animación + cerrar notifs (no si está fijado) */
 watch(isSidebarCollapsed, (newVal) => {
   animateSidebarShift(newVal);
-  if (!newVal) closePanel();
+  if (!newVal && !isPinnedPanel.value) closePanel();
 });
 
 /* =========================
@@ -222,7 +239,12 @@ const layoutStyleVars = computed(() => {
 });
 
 function closePanelFromOverlay() {
-  if (isMobile.value && showPanel.value) closePanel();
+  if (isMobile.value && showPanel.value && !isPinnedPanel.value) closePanel();
+}
+
+function handleClosePanel() {
+  isPinnedPanel.value = false;
+  closePanel();
 }
 
 /* =========================
@@ -336,7 +358,16 @@ export default {
         :pending-orders="pendingOrdersCount" />
 
       <!-- Panel de notificaciones -->
-      <NotificationPanel :visible="showPanel" @close="closePanel" @update-unread="unreadNotifications = $event" />
+      <NotificationPanel
+        :visible="showPanel"
+        :pinned="isPinnedPanel"
+        @close="handleClosePanel"
+        @toggle-pin="isPinnedPanel = !isPinnedPanel"
+        @update-unread="unreadNotifications = $event"
+      />
+
+      <!-- Overlay blur sidebar móvil: solo cuando está expandida; click colapsa (no oculta) -->
+      <div v-if="isMobile && isMobileSidebarVisible && !isSidebarCollapsed" class="blur-overlay sidebar-mobile-overlay" @click="collapseSidebar"></div>
 
       <!-- Overlay blur notificaciones móvil -->
       <div v-if="isMobile && showPanel" class="blur-overlay" @click="closePanelFromOverlay"></div>
@@ -375,7 +406,7 @@ export default {
                 <b-tooltip label="Notificaciones" position="is-bottom" append-to-body>
                   <div class="has-badge-wrapper">
                     <b-button class="toolbar-btn" type="is-light" :icon-right="showPanel ? 'close' : 'bell'"
-                      @click="showPanel ? closePanel() : openPanel()" />
+                      @click="showPanel ? handleClosePanel() : openPanelMobile()" />
                     <transition name="badge-fade">
                       <b-tag v-if="unreadNotifications > 0" type="is-primary" size="is-small" rounded class="is-badge">
                         {{ unreadNotifications }}
@@ -383,6 +414,7 @@ export default {
                     </transition>
                   </div>
                 </b-tooltip>
+
 
 
 
@@ -472,7 +504,7 @@ export default {
               <b-tooltip label="Notificaciones" position="is-bottom" append-to-body>
                 <div class="has-badge-wrapper">
                   <b-button class="toolbar-btn" type="is-light" :icon-right="showPanel ? 'close' : 'bell'"
-                    @click="showPanel ? closePanel() : openPanel()" />
+                    @click="showPanel ? closePanel() : openPanelMobile()" />
                   <transition name="badge-fade">
                     <b-tag v-if="unreadNotifications > 0" type="is-primary" size="is-small" rounded class="is-badge">
                       {{ unreadNotifications }}
@@ -929,6 +961,11 @@ export default {
   -webkit-backdrop-filter: blur(var(--fx-blur));
   z-index: 9;
   pointer-events: auto;
+}
+
+/* Overlay sidebar móvil: encima del contenido pero debajo del sidebar (z-index 21) */
+.sidebar-mobile-overlay {
+  z-index: 20;
 }
 
 /* ===== Mobile behavior fixes ===== */

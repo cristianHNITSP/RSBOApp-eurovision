@@ -2,26 +2,26 @@
  * @fileoverview Definición del modelo Role
  * Define el esquema y modelo de MongoDB para los roles de usuario en el sistema.
  * Se utiliza para controlar permisos y acceso por rol (RBAC).
- * 
+ *
+ * Roles del sistema Eurovisión:
+ *   root        — Administrador del sistema (acceso total)
+ *   eurovision  — Encargado de la óptica (acceso alto, sin gestión del sistema)
+ *   supervisor  — Supervisa operaciones e inventario
+ *   ventas      — Personal de ventas y atención al cliente
+ *   laboratorio — Técnico de taller y pulido de lentes
+ *
  * @module models/Role
  */
 
 const mongoose = require('mongoose');
 
-/**
- * Definición del esquema Role
- * @typedef {Object} RoleSchema
- * @property {string} name - Nombre del rol (ej.: 'administrador', 'moderador', 'user')
- * @property {string} description - Descripción y propósito del rol
- * @property {string[]} permissions - Array de identificadores de permisos
- */
 const roleSchema = new mongoose.Schema({
   name: {
     type: String,
     required: true,
     unique: true,
     lowercase: true,
-    enum: ['administrador', 'moderador', 'laboratorio',],
+    enum: ['root', 'eurovision', 'supervisor', 'ventas', 'laboratorio'],
     description: 'Nombre del rol, restringido a valores predefinidos'
   },
   description: {
@@ -30,7 +30,7 @@ const roleSchema = new mongoose.Schema({
   },
   permissions: [{
     type: String,
-    description: 'Array de identificadores de permiso (ej.: create_user, delete_user)'
+    description: 'Array de identificadores de permiso (ej.: manage_users, view_reports)'
   }]
 });
 

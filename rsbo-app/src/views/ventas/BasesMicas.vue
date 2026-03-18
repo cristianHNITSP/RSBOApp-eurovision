@@ -284,7 +284,7 @@
                     :loading="loadingSale"
                     :disabled="!cartItems.length || !cartCliente.trim()"
                     class="mt-3"
-                    @click="registrarVenta"
+                    @click="askSendToLab"
                   >
                     Enviar a Laboratorio
                   </b-button>
@@ -301,7 +301,7 @@
             <div class="panel__head">
               <div>
                 <h2 class="panel__title">Historial de Pedidos</h2>
-                <p class="panel__hint">Pedidos enviados al laboratorio desde este dispositivo (últimas 100).</p>
+                <p class="panel__hint">Pedidos enviados al laboratorio (últimos 200).</p>
               </div>
               <div class="panel__headActions">
                 <b-button
@@ -488,6 +488,32 @@
       </div>
     </b-modal></teleport>
 
+  <!-- Confirmar: Enviar a laboratorio -->
+  <teleport to="body">
+    <b-modal v-model="confirmLabOpen" has-modal-card :width="420" trap-focus scroll="keep">
+      <div class="modal-card">
+        <header class="modal-card-head">
+          <p class="modal-card-title">
+            <i class="fas fa-flask mr-2"></i>Confirmar envío al laboratorio
+          </p>
+        </header>
+        <section class="modal-card-body">
+          <p>
+            ¿Enviar <strong>{{ cartTotal }}</strong> pieza(s) para
+            <strong>{{ cartCliente }}</strong> al laboratorio?
+          </p>
+          <p class="mt-2" style="font-size:0.85rem;color:var(--text-muted)">
+            Se creará un pedido y se descontará del inventario.
+          </p>
+        </section>
+        <footer class="modal-card-foot" style="gap:0.5rem">
+          <b-button type="is-primary" icon-left="flask" @click="doSendToLab">Confirmar envío</b-button>
+          <b-button @click="confirmLabOpen = false">Cancelar</b-button>
+        </footer>
+      </div>
+    </b-modal>
+  </teleport>
+
   <!-- Confirmar: Limpiar carrito -->
   <teleport to="body">
     <b-modal v-model="confirmClearOpen" has-modal-card :width="400" trap-focus scroll="keep">
@@ -520,6 +546,11 @@ import {
   labStatusClass
 } from "@/composables/useBasesMicasVentas.js";
 
+const props = defineProps({
+  user:    { type: Object,  required: false, default: null },
+  loading: { type: Boolean, required: false, default: false },
+});
+
 const {
   sheetsDB, salesHistory,
   activeTab,
@@ -536,9 +567,10 @@ const {
   addToCart, removeFromCart, incCartQty, decCartQty, clearCart,
   registrarVenta, loadHistory,
   checkVoucherStatus, loadLabStatuses
-} = useBasesMicasVentas();
+} = useBasesMicasVentas(() => props.user);
 
 const confirmClearOpen = ref(false);
+const confirmLabOpen   = ref(false);
 
 function askClearCart() {
   if (!cartItems.value.length) return;
@@ -548,6 +580,16 @@ function askClearCart() {
 function doClearCart() {
   confirmClearOpen.value = false;
   clearCart();
+}
+
+function askSendToLab() {
+  if (!cartItems.value.length || !cartCliente.value.trim()) return;
+  confirmLabOpen.value = true;
+}
+
+function doSendToLab() {
+  confirmLabOpen.value = false;
+  registrarVenta();
 }
 
 function printVoucher() {

@@ -84,12 +84,17 @@ app.use(cookieParser());
  * Conexión a MongoDB
  * Usa MONGO_URI desde variables de entorno.
  */
+const { seedCatalog } = require("./services/catalog.seed");
+
 mongoose
   .connect(process.env.MONGO_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })
-  .then(() => console.log("✅ Connected to MongoDB (inventory)"))
+  .then(() => {
+    console.log("✅ Connected to MongoDB (inventory)");
+    seedCatalog();
+  })
   .catch((err) => {
     console.error("MongoDB connection error:", err);
     process.exit(1);
@@ -119,6 +124,9 @@ app.use("/api/search", searchRoutes);
 
 const contactlensesRoutes = require("./routes/contactlenses.routes");
 app.use("/api/contactlenses", contactlensesRoutes);
+
+const catalogRoutes = require("./routes/catalog.routes");
+app.use("/api/catalog", catalogRoutes);
 
 // si tu API usa prefijo /api:
 // app.use("/api/laboratory", laboratoryRoutes);

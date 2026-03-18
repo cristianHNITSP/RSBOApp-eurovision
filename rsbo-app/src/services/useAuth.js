@@ -11,17 +11,21 @@ export function useAuth() {
    */
   const fetchUser = async () => {
     try {
-      const res = await api.get('/users/me') // La cookie HttpOnly se envía automáticamente
+      const res = await api.get('/users/me')
       if (res.data) {
         user.value = res.data
-        console.log('Usuario completo obtenido:', user.value)
       } else {
         user.value = null
-        console.warn('No se recibió información de usuario')
       }
     } catch (err) {
-      console.error('Error al obtener usuario completo:', err)
       user.value = null
+      const status = err?.response?.status
+      // Si el servidor dice que no existe o no está autenticado → redirigir al landing
+      if (status === 401 || status === 403 || status === 404) {
+        // Borrar cookie desde el servidor (best-effort) y redirigir
+        try { await api.post('/access/logout', {}) } catch {}
+        window.location.href = '/'
+      }
     }
   }
 

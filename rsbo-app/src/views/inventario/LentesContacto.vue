@@ -1,6 +1,6 @@
 <!-- src/views/inventario/LentesContacto.vue -->
 <script setup>
-import { reactive, ref, onMounted, watch, nextTick } from "vue";
+import { reactive, ref, computed, onMounted, watch, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import TabsManager from "@/components/TabsManager.vue";
 import { labToast } from "@/composables/useLabToast.js";
@@ -71,34 +71,39 @@ watch(
 /* ─────────────────────────────────────────────────────────────────────────
    Configuración catálogo — categorías de lentes de contacto
 ───────────────────────────────────────────────────────────────────────── */
-const configuracion = {
-  bases: {
-    esferico: {
+const catalog = computed(() => ({
+  bases: [
+    {
+      key: "esferico",
       label: "Esférico",
       materiales: ["Hidrogel", "Silicona-Hidrogel", "HEMA", "Polímero"],
       tratamientos: ["Transparente", "Diario", "Quincenal", "Mensual", "Anual", "UV", "Humectante"],
       tipo_matriz: "BASE"
     },
-    colorido: {
+    {
+      key: "colorido",
       label: "Colorido (SPH/CYL)",
       materiales: ["Hidrogel", "Silicona-Hidrogel", "HEMA"],
       tratamientos: ["Color Opaco", "Color Realce", "Diario", "Mensual", "UV"],
       tipo_matriz: "SPH_CYL"
     },
-    torico: {
+    {
+      key: "torico",
       label: "Tórico (SPH + CYL)",
       materiales: ["Hidrogel", "Silicona-Hidrogel", "HEMA", "Polímero"],
       tratamientos: ["Transparente", "Diario", "Quincenal", "Mensual", "UV", "Humectante"],
       tipo_matriz: "SPH_ADD"
     },
-    multifocal: {
+    {
+      key: "multifocal",
       label: "Multifocal (Base + ADD)",
       materiales: ["Hidrogel", "Silicona-Hidrogel", "HEMA"],
       tratamientos: ["Transparente", "Diario", "Mensual", "UV", "Humectante"],
       tipo_matriz: "BASE_ADD"
     }
-  }
-};
+  ],
+  treatments: []
+}));
 
 /* ─────────────────────────────────────────────────────────────────────────
    Carga de planillas
@@ -290,7 +295,7 @@ const resolverGridProps = (sheet, activeInternal) => {
         <TabsManager
           :initial-sheets="dynamicSheets"
           :active-id="activeSheet"
-          :configuracion="configuracion"
+          :catalog="catalog"
           :actor="user"
           :loading-tabs="loadingSheets"
           @update:active="activeSheet = $event"

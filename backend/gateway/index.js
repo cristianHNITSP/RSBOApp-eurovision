@@ -52,6 +52,16 @@ app.use(
 );
 
 
+// ── Cabeceras de seguridad ────────────────────────────────────────────────
+app.use((_req, res, next) => {
+  res.set('X-Content-Type-Options',  'nosniff');
+  res.set('X-Frame-Options',          'SAMEORIGIN');
+  res.set('X-XSS-Protection',         '1; mode=block');
+  res.set('Referrer-Policy',          'strict-origin-when-cross-origin');
+  res.set('Permissions-Policy',       'camera=(), microphone=(), geolocation=()');
+  next();
+});
+
 app.use(express.json());
 
 // 🔹 URLs de microservicios
@@ -60,7 +70,6 @@ const SERVICES = {
   users: process.env.USERS_SERVICE_URL,
   inventory: process.env.INVENTORY_SERVICE_URL,
   optica: process.env.OPTICA_SERVICE_URL,
-  orders: process.env.ORDERS_SERVICE_URL,
   notification: process.env.NOTIFICATION_SERVICE_URL,
 };
 
@@ -138,12 +147,12 @@ const proxyRequest = (serviceUrl) => async (req, res) => {
 // 🔹 Rutas proxy
 app.use("/api/access", proxyRequest(SERVICES.auth));
 app.use("/api/users", proxyRequest(SERVICES.users));
+app.use("/api/catalog", proxyRequest(SERVICES.inventory));
 app.use("/api/inventory", proxyRequest(SERVICES.inventory));
 app.use("/api/laboratory", proxyRequest(SERVICES.inventory));
 app.use("/api/search", proxyRequest(SERVICES.inventory));
 app.use("/api/contactlenses", proxyRequest(SERVICES.inventory));
 app.use("/api/optica", proxyRequest(SERVICES.optica));
-app.use("/api/orders", proxyRequest(SERVICES.orders));
 app.use("/api/notification", proxyRequest(SERVICES.notification));
 
 // 🔹 Ruta principal
@@ -162,22 +171,33 @@ app.get("/api/health", (_req, res) => {
 const PORT = process.env.PORT || 3000;
 const server = http.createServer(app);
 
-// Frontend clients
+// Dos WS servers comparten el mismo HTTP server — hay que enrutar el upgrade manualmente
 const frontendClients = new Set();
-const wss = new WebSocketServer({ server, path: "/ws" });
+const wss         = new WebSocketServer({ noServer: true });
+const wssInternal = new WebSocketServer({ noServer: true });
+
+server.on("upgrade", (req, socket, head) => {
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  if (url.pathname === "/ws") {
+    wss.handleUpgrade(req, socket, head, (ws) => wss.emit("connection", ws, req));
+  } else if (url.pathname === "/ws-internal") {
+    wssInternal.handleUpgrade(req, socket, head, (ws) => wssInternal.emit("connection", ws, req));
+  } else {
+    socket.destroy();
+  }
+});
+
 wss.on("connection", (ws) => {
   frontendClients.add(ws);
-  console.log("🔌 Frontend WebSocket conectado");
+  console.log("🔌 Frontend WS conectado");
   ws.send(JSON.stringify({ type: "welcome" }));
   ws.on("close", () => {
     frontendClients.delete(ws);
-    console.log("❌ Frontend WebSocket desconectado");
+    console.log("❌ Frontend WS desconectado");
   });
   ws.on("error", () => {});
 });
 
-// Internal service publishers (inventory-service, etc.)
-const wssInternal = new WebSocketServer({ server, path: "/ws-internal" });
 wssInternal.on("connection", (ws) => {
   console.log("🔌 Servicio interno WS conectado");
   ws.on("message", (data) => {

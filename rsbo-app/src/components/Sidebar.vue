@@ -257,7 +257,7 @@ export default {
           badgeType: "is-warning",
           children: [
             { label: "Laboratorio", icon: "flask", path: "/layouts/ventas/laboratorio", badge: labBadge, badgeType: "is-warning" },
-            { label: "Bases y Micas", icon: "glasses", path: "/layouts/ventas/bases-micas" },
+            { label: "Bases y Micas", icon: "glasses", path: "/layouts/ventas/bases-micas", badge: labBadge, badgeType: "is-warning" },
             { label: "Óptica", icon: "eye", path: "/layouts/ventas/optica" },
             { label: "Lentes de Contacto", icon: "circle", path: "/layouts/ventas/lentes-contacto" },
           ],
@@ -374,6 +374,13 @@ export default {
         this.isCollapsed = true;
         this.$emit("toggle", this.isCollapsed);
         localStorage.setItem("sidebar-collapsed", "true");
+      }
+    },
+    collapse() {
+      if (!this.isCollapsed) {
+        this.isCollapsed = true;
+        localStorage.setItem("sidebar-collapsed", "true");
+        this.$emit("toggle", true);
       }
     },
     isActive(path) {
@@ -991,5 +998,17 @@ $pink1: #ec4899;
   font-size: 0.65rem !important;
   height: 18px !important;
   min-width: 20px;
+
+  /* Fuerza color sólido visible en modo claro y oscuro */
+  background: #d97706 !important;
+  border-color: #d97706 !important;
+  color: #fff !important;
+}
+
+.menu-item-badge {
+  /* Override Buefy is-warning (muy pálido en modo claro) */
+  background: #d97706 !important;
+  border-color: #d97706 !important;
+  color: #fff !important;
 }
 </style>

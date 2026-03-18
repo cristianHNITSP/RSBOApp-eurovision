@@ -37,73 +37,8 @@ try {
 const DRY_RUN = process.argv.includes('--dry-run');
 const FORCE   = process.argv.includes('--force');
 
-// ── Catálogo de tratamientos ──────────────────────────────────────────────────
-const POLAR_BASES   = ['Gris', 'Café', 'G15'];
-const ESPEJO_COLORS = ['Verde', 'Rojo', 'Morado', 'Plata', 'Naranja'];
-
-const TREATMENTS = {
-  BCO:          { label: 'BCO',            variants: [] },
-  AR:           { label: 'AR',             variants: [] },
-  ANTIBLE:      { label: 'Antible',        variants: ['sin AR', 'con AR'] },
-  FOTO:         { label: 'Foto',           variants: ['sin AR', 'con AR'] },
-  FOTO_ANTIBLE: { label: 'Foto + Antible', variants: ['sin AR', 'con AR'] },
-  TRANSITIONS: {
-    label: 'Transitions',
-    variantsByMaterial: {
-      'CR-39':         ['Gris', 'Café', 'Verde'],
-      'Policarbonato': ['Gris', 'Café']
-    }
-  },
-  POLAR: {
-    label: 'Polarizado',
-    variants: [...POLAR_BASES]
-  },
-  POLAR_ESPEJO: {
-    label: 'Polarizado + Espejado',
-    variants: POLAR_BASES.flatMap(b => ESPEJO_COLORS.map(c => `Base ${b} + Espejo ${c}`))
-  },
-  CRISTAL_FOTO: { label: 'Fotocromático', variants: [] }
-};
-
-// ── Configuración de bases ────────────────────────────────────────────────────
-const BASES_CONFIG = {
-  monofocal: {
-    label:        'Monofocal (Base)',
-    tipo_matriz:  'BASE',
-    materiales:   ['Policarbonato', 'CR-39', '1.56', '1.61 MR-8', '1.67', '1.74', 'Cristal'],
-    tratamientos: ['BCO', 'AR', 'ANTIBLE', 'FOTO', 'FOTO_ANTIBLE', 'TRANSITIONS', 'POLAR', 'POLAR_ESPEJO', 'CRISTAL_FOTO']
-  },
-  progresivo: {
-    label:        'Progresivo (Base + ADD)',
-    tipo_matriz:  'BASE_ADD',
-    materiales:   ['Policarbonato', 'CR-39', '1.56', '1.61 MR-8', '1.67', '1.74'],
-    tratamientos: ['BCO', 'AR', 'ANTIBLE', 'FOTO', 'FOTO_ANTIBLE', 'TRANSITIONS']
-  },
-  monofocalEsfCil: {
-    label:        'Monofocal Esférico-Cilíndrico (SPH/CYL)',
-    tipo_matriz:  'SPH_CYL',
-    materiales:   ['Policarbonato', 'CR-39', '1.56', '1.61 MR-8', '1.67', '1.74'],
-    tratamientos: ['BCO', 'AR', 'ANTIBLE', 'FOTO', 'FOTO_ANTIBLE', 'TRANSITIONS', 'POLAR', 'POLAR_ESPEJO']
-  },
-  bifocal: {
-    label:        'Bifocal (SPH + ADD)',
-    tipo_matriz:  'SPH_ADD',
-    materiales:   ['Policarbonato', 'CR-39', '1.56', '1.61 MR-8', '1.67', '1.74'],
-    tratamientos: ['BCO', 'AR', 'ANTIBLE', 'FOTO', 'FOTO_ANTIBLE', 'TRANSITIONS']
-  },
-  bifocalFT: {
-    label:        'Bifocal F.T (SPH + ADD)',
-    tipo_matriz:  'SPH_ADD',
-    materiales:   ['Policarbonato', 'CR-39'],
-    tratamientos: ['BCO', 'AR', 'ANTIBLE', 'FOTO', 'FOTO_ANTIBLE', 'TRANSITIONS']
-  },
-  bifocalYounger: {
-    label:        'Bifocal Younger (SPH + ADD)',
-    tipo_matriz:  'SPH_ADD',
-    materiales:   ['Policarbonato', 'CR-39'],
-    tratamientos: ['BCO', 'AR', 'ANTIBLE', 'FOTO', 'FOTO_ANTIBLE', 'TRANSITIONS']
-  }
-};
+// ── Catálogo compartido ───────────────────────────────────────────────────────
+const { TREATMENTS, BASES_CONFIG } = require('./catalog-data');
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const composeTratamientoDisplay = (tratamiento, variante) => {

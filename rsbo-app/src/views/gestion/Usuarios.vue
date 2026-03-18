@@ -583,17 +583,30 @@ async function onAvatarPicked(user, newAvatar) {
   }
 }
 
+const ROLE_LABELS = {
+  root:        "Root",
+  eurovision:  "Eurovisión",
+  supervisor:  "Supervisor",
+  ventas:      "Ventas",
+  laboratorio: "Laboratorio",
+};
+
+const ROLE_TAG_TYPES = {
+  root:        "is-dark",
+  eurovision:  "is-primary",
+  supervisor:  "is-info",
+  ventas:      "is-success",
+  laboratorio: "is-warning",
+};
+
 function formatRoleLabel(name) {
   if (!name || name === "sin-rol") return "Sin rol";
-  return name.charAt(0).toUpperCase() + name.slice(1).replace(/_/g, " ");
+  return ROLE_LABELS[String(name).toLowerCase()] ||
+    (name.charAt(0).toUpperCase() + name.slice(1).replace(/_/g, " "));
 }
 
 function roleTagType(roleName) {
-  const key = String(roleName || "").toLowerCase();
-  if (key === "administrador") return "is-primary";
-  if (key === "moderador") return "is-info";
-  if (key === "laboratorio") return "is-warning";
-  return "is-dark";
+  return ROLE_TAG_TYPES[String(roleName || "").toLowerCase()] || "is-light";
 }
 
 function formatPermissionLabel(code) {

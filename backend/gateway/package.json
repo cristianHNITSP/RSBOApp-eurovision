@@ -7,6 +7,7 @@
     "start:prod": "node src/index.js"
   },
   "dependencies": {
+    "http-proxy-middleware": "^3",
     "axios": "^1.7.2",
     "bcrypt": "^5.1.0",
     "cors": "^2.8.5",

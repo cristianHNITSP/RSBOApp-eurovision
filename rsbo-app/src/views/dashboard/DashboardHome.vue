@@ -117,9 +117,8 @@
   <section class="section dashboard-section" v-motion-fade-visible-once>
     <!-- KPIs principales -->
     <div class="columns is-multiline">
-
       <div
-        v-for="card in kpiCards"
+        v-for="card in visibleKpis"
         :key="card.key"
         class="column is-6-tablet is-3-desktop"
       >
@@ -135,7 +134,7 @@
           </header>
 
           <div class="kpi-body">
-            <template v-if="!loading">
+            <template v-if="!isLoading">
               <div class="kpi-value">
                 {{ card.formattedValue }}
               </div>
@@ -150,96 +149,66 @@
           </div>
         </div>
       </div>
-
     </div>
 
     <div class="columns mt-2">
 
-      <!-- Estado del inventario y explicación -->
+      <!-- Columna principal -->
       <div class="column is-8-desktop">
-        <div class="dashboard-card mb-4">
+
+        <!-- Estado del inventario — solo eurovision/root -->
+        <div v-if="canSeeInventory" class="dashboard-card mb-4">
           <header class="card-header-like">
             <div>
-              <h2 class="card-title">
-                Estado del inventario
-              </h2>
+              <h2 class="card-title">Estado del inventario</h2>
               <p class="card-subtitle">
-                Visión general de la cobertura, el nivel de existencias y las alertas de stock.
+                Cobertura, existencias y alertas de stock.
               </p>
             </div>
-            <b-tag type="is-success" v-if="!loading">
-              Operación estable
+            <b-tag v-if="!isLoading" :type="criticalAlerts > 0 ? 'is-warning' : 'is-success'">
+              {{ criticalAlerts > 0 ? criticalAlerts + ' alertas' : 'Operación estable' }}
             </b-tag>
-            <b-skeleton
-              v-else
-              :width="110"
-              :height="20"
-              animated
-              style="border-radius: 999px"
-            />
+            <b-skeleton v-else :width="110" :height="20" animated style="border-radius: 999px" />
           </header>
 
           <div class="card-body">
-
             <!-- Cobertura de combinaciones -->
             <div class="metric-row">
-              <div class="metric-label">
-                Cobertura de combinaciones ópticas (SPH / CYL / ADD)
-              </div>
+              <div class="metric-label">Cobertura de combinaciones ópticas</div>
               <div class="metric-value">
-                <template v-if="!loading">
-                  <strong>{{ coveragePercent }}%</strong> del catálogo objetivo
+                <template v-if="!isLoading">
+                  <strong>{{ s?.coveragePct ?? 0 }}%</strong> del catálogo objetivo
                 </template>
                 <template v-else>
                   <b-skeleton :width="140" :height="16" animated />
                 </template>
               </div>
             </div>
-            <b-progress
-              v-if="!loading"
-              :value="coveragePercent"
-              size="is-small"
-              type="is-primary"
-              :show-value="false"
-            />
+            <b-progress v-if="!isLoading" :value="s?.coveragePct ?? 0" size="is-small" type="is-primary" :show-value="false" />
             <b-skeleton v-else :width="'100%'" :height="8" animated class="mb-3" />
 
             <!-- Existencias en rango seguro -->
             <div class="metric-row mt-3">
-              <div class="metric-label">
-                Combinaciones dentro de rango seguro de existencias
-              </div>
+              <div class="metric-label">Combinaciones dentro de rango seguro</div>
               <div class="metric-value">
-                <template v-if="!loading">
-                  {{ safeStockPercent }}% con stock por encima del mínimo definido
+                <template v-if="!isLoading">
+                  {{ safeStockPercent }}% con stock por encima del mínimo
                 </template>
                 <template v-else>
                   <b-skeleton :width="200" :height="16" animated />
                 </template>
               </div>
             </div>
-            <b-progress
-              v-if="!loading"
-              :value="safeStockPercent"
-              size="is-small"
-              type="is-info"
-              :show-value="false"
-            />
+            <b-progress v-if="!isLoading" :value="safeStockPercent" size="is-small" type="is-info" :show-value="false" />
             <b-skeleton v-else :width="'100%'" :height="8" animated class="mb-3" />
 
             <!-- Alertas críticas -->
             <div class="metric-row mt-3">
-              <div class="metric-label">
-                Alertas críticas de stock
-              </div>
+              <div class="metric-label">Alertas críticas de stock</div>
               <div class="metric-value">
-                <template v-if="!loading">
+                <template v-if="!isLoading">
                   <span
-                    :class="[
-                      'tag',
-                      'is-rounded',
-                      criticalAlerts > 0 ? 'is-danger' : 'is-success'
-                    ]"
+                    :class="['tag', 'is-rounded', criticalAlerts > 0 ? 'is-danger' : 'is-success']"
                   >
                     {{ criticalAlerts }} combinaciones en nivel crítico
                   </span>
@@ -250,32 +219,90 @@
               </div>
             </div>
 
-            <!-- Última sincronización -->
             <p class="is-size-7 has-text-grey mt-4">
               <b-icon icon="clock" size="is-small" class="mr-1" />
-              <span>
-                Última sincronización de inventario:
-                <b>{{ lastSyncLabel }}</b>
-              </span>
+              <span>Última sincronización: <b>{{ lastSyncLabel }}</b></span>
             </p>
           </div>
         </div>
 
-        <!-- Tarjeta explicativa para usuarios no técnicos -->
+        <!-- Pedidos / Laboratorio — eurovision, supervisor, ventas, laboratorio -->
+        <div v-if="canSeeOrders" class="dashboard-card mb-4">
+          <header class="card-header-like">
+            <div>
+              <h2 class="card-title">Pedidos y laboratorio</h2>
+              <p class="card-subtitle">Resumen de actividad de pedidos.</p>
+            </div>
+          </header>
+          <div class="card-body">
+            <div class="analytics-kpi-row">
+              <div class="analytics-kpi">
+                <span class="analytics-kpi-label">Pendientes</span>
+                <template v-if="!isLoading">
+                  <strong class="analytics-kpi-value">{{ s?.ordersPending ?? 0 }}</strong>
+                  <p class="analytics-kpi-caption">Pedidos abiertos o parciales</p>
+                </template>
+                <template v-else><b-skeleton :width="60" :height="24" animated /></template>
+              </div>
+              <div class="analytics-kpi">
+                <span class="analytics-kpi-label">Cerrados hoy</span>
+                <template v-if="!isLoading">
+                  <strong class="analytics-kpi-value">{{ s?.ordersClosedToday ?? 0 }}</strong>
+                  <p class="analytics-kpi-caption">Completados en el día</p>
+                </template>
+                <template v-else><b-skeleton :width="60" :height="24" animated /></template>
+              </div>
+              <div class="analytics-kpi">
+                <span class="analytics-kpi-label">Creados hoy</span>
+                <template v-if="!isLoading">
+                  <strong class="analytics-kpi-value">{{ s?.ordersToday ?? 0 }}</strong>
+                  <p class="analytics-kpi-caption">Nuevos pedidos</p>
+                </template>
+                <template v-else><b-skeleton :width="60" :height="24" animated /></template>
+              </div>
+            </div>
+
+            <!-- Lab-specific: scans y correcciones -->
+            <div v-if="canSeeLab" class="analytics-kpi-row mt-3">
+              <div class="analytics-kpi">
+                <span class="analytics-kpi-label">Escaneos hoy</span>
+                <template v-if="!isLoading">
+                  <strong class="analytics-kpi-value">{{ s?.scansToday ?? 0 }}</strong>
+                  <p class="analytics-kpi-caption">Salidas por escáner</p>
+                </template>
+                <template v-else><b-skeleton :width="60" :height="24" animated /></template>
+              </div>
+              <div class="analytics-kpi">
+                <span class="analytics-kpi-label">Correcciones (7d)</span>
+                <template v-if="!isLoading">
+                  <strong class="analytics-kpi-value">{{ s?.corrections7d ?? 0 }}</strong>
+                  <p class="analytics-kpi-caption">Solicitudes de corrección</p>
+                </template>
+                <template v-else><b-skeleton :width="60" :height="24" animated /></template>
+              </div>
+              <div class="analytics-kpi">
+                <span class="analytics-kpi-label">Ediciones (30d)</span>
+                <template v-if="!isLoading">
+                  <strong class="analytics-kpi-value">{{ s?.edits30d ?? 0 }}</strong>
+                  <p class="analytics-kpi-caption">Modificaciones a pedidos</p>
+                </template>
+                <template v-else><b-skeleton :width="60" :height="24" animated /></template>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tarjeta explicativa -->
         <div class="dashboard-card">
           <header class="card-header-like">
             <div>
-              <h2 class="card-title">
-                ¿Qué gestiona este panel?
-              </h2>
-              <p class="card-subtitle">
-                Explicación rápida para personal de almacén y recepción.
-              </p>
+              <h2 class="card-title">¿Qué gestiona este panel?</h2>
+              <p class="card-subtitle">Explicación rápida para personal de almacén y recepción.</p>
             </div>
           </header>
           <div class="card-body">
             <ul class="explanatory-list">
-              <li>
+              <li v-if="canSeeInventory">
                 <b>Matrices por tipo de lente:</b>
                 el inventario se organiza en hojas para Monofocal, Bifocal, Progresivo y Base,
                 cada una con su propia tabla de combinaciones.
@@ -290,7 +317,7 @@
                 las salidas y ajustes modifican las existencias que ves aquí,
                 permitiendo saber rápidamente si hay lentes disponibles para un pedido.
               </li>
-              <li>
+              <li v-if="canSeeReports">
                 <b>Historial y trazabilidad:</b>
                 los cambios que se realizan en las hojas pueden asociarse a un usuario,
                 lo que facilita auditorías internas y revisiones de movimientos.
@@ -300,7 +327,7 @@
         </div>
       </div>
 
-      <!-- Accesos rápidos + contexto de sistema -->
+      <!-- Columna derecha -->
       <div class="column is-4-desktop">
         <!-- Accesos rápidos -->
         <div class="dashboard-card mb-4">
@@ -309,6 +336,7 @@
           </header>
           <div class="card-body quick-actions">
             <b-button
+              v-if="canSeeInventory"
               type="is-primary"
               icon-left="database"
               expanded
@@ -319,6 +347,7 @@
             </b-button>
 
             <b-button
+              v-if="canSeeInventory"
               type="is-light"
               icon-left="table"
               expanded
@@ -329,16 +358,18 @@
             </b-button>
 
             <b-button
+              v-if="canSeeOrders"
               type="is-light"
-              icon-left="clipboard-check"
+              icon-left="clipboard-list"
               expanded
               class="mb-2"
-              @click="$router.push('/apps/inventario/auditorias')"
+              @click="$router.push('/apps/laboratorio')"
             >
-              Revisiones y auditorías internas
+              Ver pedidos de laboratorio
             </b-button>
 
             <b-button
+              v-if="canSeeReports"
               type="is-light"
               icon-left="file-export"
               expanded
@@ -368,9 +399,13 @@
                 <span>Versión del panel:</span>
                 <b>{{ appVersion }}</b>
               </li>
-              <li>
-                <span>Última actualización funcional:</span>
-                <b>{{ lastFeatureUpdate }}</b>
+              <li v-if="canSeeInventory">
+                <span>Hojas activas:</span>
+                <b>{{ s?.activeSheets ?? '—' }}</b>
+              </li>
+              <li v-if="canSeeOrders">
+                <span>Pedidos cerrados (30d):</span>
+                <b>{{ s?.ordersClosed30d ?? '—' }}</b>
               </li>
               <li>
                 <span>Modelo de control:</span>
@@ -394,13 +429,31 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onActivated, computed } from 'vue'
+import { ref, watch, onMounted, onActivated, computed, toRef } from 'vue'
+import { useDashboardStats } from '@/composables/useDashboardStats'
 
-// Props desde el padre
 const props = defineProps({
   user: Object,
   loading: Boolean
 })
+
+const userRef = toRef(props, 'user')
+const {
+  stats,
+  loading: statsLoading,
+  load: loadStats,
+  canSeeInventory,
+  canSeeOrders,
+  canSeeReports,
+  canSeeLab,
+  canSeeMovements,
+} = useDashboardStats(userRef)
+
+const s = computed(() => stats.value)
+const isLoading = computed(() => props.loading || statsLoading.value)
+
+onMounted(() => { loadStats() })
+onActivated(() => { loadStats() })
 
 // === Avatar ===
 const avatarLoaded = ref(false)
@@ -448,118 +501,119 @@ const environmentLabel = computed(() => {
 })
 
 const appVersion = import.meta.env.VITE_APP_VERSION || 'v1.0.0'
-const lastFeatureUpdate = 'Oct 2025' // puedes ligarlo a tu changelog real
 
-// === Counters animados (KPIs) ===
-const finalValues = ref({
-  sheets: 24,           // Hojas / plantillas activas
-  combinaciones: 13840, // Combinaciones SPH/CYL/ADD gestionadas
-  stock: 5219,          // Piezas totales en inventario
-  alertas: 7            // Alertas activas (bajo stock, etc.)
-})
-
-const animatedValues = ref({
-  sheets: 0,
-  combinaciones: 0,
-  stock: 0,
-  alertas: 0
-})
-
-const animationDuration = 1000
-
+// === Computed KPIs ===
 function formatNumber (value) {
   const num = Number(value || 0)
   return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 }
 
-function animateCounters () {
-  const startTime = performance.now()
-  function animate (now) {
-    const elapsed = now - startTime
-    const progress = Math.min(elapsed / animationDuration, 1)
+const criticalAlerts = computed(() => s.value?.criticalAlerts ?? 0)
 
-    animatedValues.value.sheets = Math.floor(
-      progress * finalValues.value.sheets
-    )
-    animatedValues.value.combinaciones = Math.floor(
-      progress * finalValues.value.combinaciones
-    )
-    animatedValues.value.stock = Math.floor(
-      progress * finalValues.value.stock
-    )
-    animatedValues.value.alertas = Math.floor(
-      progress * finalValues.value.alertas
-    )
-
-    if (progress < 1) requestAnimationFrame(animate)
-  }
-  requestAnimationFrame(animate)
-}
-
-onMounted(() => {
-  animateCounters()
+const safeStockPercent = computed(() => {
+  const total = s.value?.totalCombinations || 0
+  const crit = s.value?.criticalAlerts || 0
+  if (!total) return 0
+  return Math.round(((total - crit) / total) * 100)
 })
 
-// === KPIs cards ===
-const kpiCards = computed(() => [
+const lastSyncLabel = computed(() => {
+  if (!s.value?.generatedAt) return 'Cargando...'
+  const diff = Date.now() - new Date(s.value.generatedAt).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'Hace un momento'
+  if (mins < 60) return `Hace ${mins} minuto(s)`
+  return `Hace ${Math.floor(mins / 60)}h`
+})
+
+// KPIs visibles por rol
+const allKpis = computed(() => [
   {
     key: 'sheets',
     icon: 'table',
     title: 'Hojas de inventario',
     caption: 'Plantillas activas',
-    value: animatedValues.value.sheets,
-    formattedValue: animatedValues.value.sheets,
-    description: 'Matrices por tipo de lente (Monofocal, Bifocal, Progresivo, Base).'
+    formattedValue: s.value?.activeSheets ?? '—',
+    description: 'Matrices por tipo de lente.',
+    requiresInventory: true,
   },
   {
     key: 'combinaciones',
     icon: 'project-diagram',
     title: 'Combinaciones ópticas',
     caption: 'SPH · CYL · ADD',
-    value: animatedValues.value.combinaciones,
-    formattedValue: formatNumber(animatedValues.value.combinaciones),
-    description:
-      'Total de combinaciones ópticas que el laboratorio puede cubrir desde el inventario.'
+    formattedValue: formatNumber(s.value?.totalCombinations),
+    description: 'Total de combinaciones gestionadas.',
+    requiresInventory: true,
   },
   {
     key: 'stock',
     icon: 'boxes',
     title: 'Existencias totales',
     caption: 'Piezas en almacén',
-    value: animatedValues.value.stock,
-    formattedValue: formatNumber(animatedValues.value.stock),
-    description:
-      'Cantidad total de piezas físicas registradas en todas las hojas de inventario.'
+    formattedValue: formatNumber(s.value?.totalStock),
+    description: 'Piezas físicas registradas.',
+    requiresInventory: true,
   },
   {
     key: 'alertas',
     icon: 'exclamation-triangle',
     title: 'Alertas activas',
-    caption: 'Stock crítico / inconsistencias',
-    value: animatedValues.value.alertas,
-    formattedValue: animatedValues.value.alertas,
-    description:
-      'Combinaciones con stock por debajo del mínimo o con movimientos pendientes de revisar.'
-  }
+    caption: 'Stock crítico',
+    formattedValue: criticalAlerts.value,
+    description: 'Combinaciones con stock en nivel crítico.',
+    requiresInventory: true,
+  },
+  {
+    key: 'pendientes',
+    icon: 'clipboard-list',
+    title: 'Pedidos pendientes',
+    caption: 'En espera',
+    formattedValue: s.value?.ordersPending ?? '—',
+    description: 'Pedidos abiertos o parciales.',
+    requiresOrders: true,
+  },
+  {
+    key: 'cerrados',
+    icon: 'check-circle',
+    title: 'Cerrados (30d)',
+    caption: 'Últimos 30 días',
+    formattedValue: s.value?.ordersClosed30d ?? '—',
+    description: 'Pedidos completados este mes.',
+    requiresOrders: true,
+  },
+  {
+    key: 'scansToday',
+    icon: 'barcode',
+    title: 'Escaneos hoy',
+    caption: 'Salidas por escáner',
+    formattedValue: s.value?.scansToday ?? '—',
+    description: 'Lentes escaneados para salida hoy.',
+    requiresLab: true,
+  },
+  {
+    key: 'serviceLevel',
+    icon: 'chart-line',
+    title: 'Nivel de servicio',
+    caption: 'Sin correcciones',
+    formattedValue: (s.value?.serviceLevel ?? 0) + '%',
+    description: 'Pedidos cerrados sin corrección (30d).',
+    requiresReports: true,
+  },
 ])
 
-// === Métricas de estado (dummy, puedes ligarlas a la API) ===
-const coveragePercent = computed(() => 92) // Cobertura de catálogo objetivo
-const safeStockPercent = computed(() => 84) // % combinaciones en rango seguro
-const criticalAlerts = computed(() => finalValues.value.alertas)
-
-// Etiqueta de última sincronización (por ahora fija, con formato humano)
-const lastSyncLabel = computed(() => {
-  // Podrías ligar esto a props.user?.lastInventorySync
-  return 'Hace menos de 5 minutos'
+const visibleKpis = computed(() => {
+  return allKpis.value.filter((kpi) => {
+    if (kpi.requiresInventory && !canSeeInventory.value) return false
+    if (kpi.requiresOrders && !canSeeOrders.value) return false
+    if (kpi.requiresLab && !canSeeLab.value) return false
+    if (kpi.requiresReports && !canSeeReports.value) return false
+    return true
+  }).slice(0, 4) // max 4 KPIs visible
 })
 </script>
 
 <style scoped>
-* {
-  transition: all 0.25s ease-in-out !important;
-}
-
 .section-user {
   padding: 1.5rem;
   border-bottom: 1px solid var(--border-solid);
@@ -688,6 +742,37 @@ const lastSyncLabel = computed(() => {
   color: var(--text-primary);
 }
 
+/* KPI row (reused for orders section) */
+.analytics-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.analytics-kpi {
+  padding: 0.4rem 0.5rem;
+  border-radius: 0.6rem;
+  background: var(--bg-subtle);
+}
+
+.analytics-kpi-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.analytics-kpi-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.analytics-kpi-caption {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
 /* Quick actions */
 .quick-actions .button {
   font-size: 0.8rem;
@@ -727,6 +812,12 @@ const lastSyncLabel = computed(() => {
 }
 
 /* Responsive tweaks */
+@media (max-width: 1024px) {
+  .analytics-kpi-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 768px) {
   .section-user {
     padding: 1rem;

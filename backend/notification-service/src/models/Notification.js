@@ -30,7 +30,7 @@ const notificationSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
-      maxlength: 1000,
+      maxlength: 2000,
     },
     type: {
       type: String,
@@ -101,6 +101,20 @@ const notificationSchema = new mongoose.Schema(
       default: 1,
       min: 1,
     },
+    /** Fecha YYYY-MM-DD para agrupar notificaciones por día */
+    date: {
+      type: String,
+      default: null,
+    },
+    /**
+     * Datos detallados para el panel expandible del frontend.
+     * Para alertas de stock: { type: 'stock_alert', sheetId, sheetLabel, cells: [...], critCount, lowCount }
+     * Para pedidos pendientes: { type: 'pending_orders', date, orders: [...] }
+     */
+    metadata: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
   },
   { timestamps: true }
 );
@@ -110,5 +124,6 @@ notificationSchema.index({ createdAt: -1 });
 notificationSchema.index({ targetRoles: 1 });
 notificationSchema.index({ isGlobal: 1 });
 notificationSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0, partialFilterExpression: { expiresAt: { $ne: null } } });
+notificationSchema.index({ groupKey: 1, date: 1 });
 
 module.exports = mongoose.model('Notification', notificationSchema);

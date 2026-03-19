@@ -122,9 +122,10 @@ function buildSessionPayload(decodedUser) {
   return {
     message: "Sesión válida",
     user: {
-      id: decodedUser.id,
-      email: decodedUser.email,
-      role: decodedUser.role,
+      id:       decodedUser.id,
+      email:    decodedUser.email,
+      role:     decodedUser.role,
+      roleName: decodedUser.roleName ?? null,
     },
   };
 }

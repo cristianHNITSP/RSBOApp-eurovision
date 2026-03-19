@@ -685,7 +685,10 @@ async function loadUsers() {
 /* computed normalizado */
 const users = computed(() => {
   const myId = String(me.value?.id || me.value?._id || "");
-  return (usersRaw.value || []).map((u) => {
+  return (usersRaw.value || []).filter((u) => {
+    const roleName = (u?.roleDoc || u?.role)?.name || "";
+    return roleName !== "root";
+  }).map((u) => {
     const roleObj = u?.roleDoc || u?.role || null;
     const roleName = roleObj?.name || "sin-rol";
     const rolePermissions = Array.isArray(roleObj?.permissions) ? roleObj.permissions : [];

@@ -56,6 +56,17 @@ export default defineConfig(() => {
           },
         },
 
+        "/admin": {
+          target: apiTarget,
+          changeOrigin: true,
+          secure: false,
+          configure: (proxy) => {
+            proxy.on("proxyReq", logReq("[ADMIN]"));
+            proxy.on("proxyRes", logRes("[ADMIN]"));
+            proxy.on("error", onProxyError("[ADMIN]"));
+          },
+        },
+
         "/ws": {
           target: apiTarget,
           ws: true,

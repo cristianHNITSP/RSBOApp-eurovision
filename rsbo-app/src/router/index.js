@@ -136,26 +136,35 @@ router.beforeEach(async (to, from, next) => {
   const requiresAuth = to.matched.some((record) => record.meta.requiresAuth);
 
   // Caso especial: si intenta ir a "/" con sesión válida, NO se permite,
-  // se manda a /layouts/home
+  // se manda a /layouts/home — excepto root, que va al panel admin
   if (to.name === "Landing") {
     try {
-      await checkSession();
-      // Sesión válida → redirigir a home
+      const { data } = await checkSession();
+      if (data?.user?.roleName === "root") {
+        window.location.href = "/admin/sso";
+        return;
+      }
       return next({ name: "home" });
-    } catch (err) {
-      // Sin sesión → Landing permitido
+    } catch {
       return next();
     }
   }
 
-  // Rutas públicas (que no necesitan auth) → pasan directo
+  // Rutas públicas → pasan directo
   if (!requiresAuth) {
     return next();
   }
 
   // Rutas protegidas
   try {
-    await checkSession();
+    const { data } = await checkSession();
+
+    // root no puede acceder a la app principal — solo al panel admin
+    if (data?.user?.roleName === "root") {
+      window.location.href = "/admin/sso";
+      return;
+    }
+
     return next();
   } catch (err) {
     const status = err?.response?.status;
@@ -163,11 +172,9 @@ router.beforeEach(async (to, from, next) => {
 
     console.warn("Sesión inválida o no autorizada", { status, code });
 
-    const authReason = mapErrorToAuthReason(code);
-
     return next({
       name: "Landing",
-      query: { authReason },
+      query: { authReason: mapErrorToAuthReason(code) },
     });
   }
 });

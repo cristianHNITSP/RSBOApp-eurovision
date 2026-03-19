@@ -348,14 +348,14 @@ export function useBasesMicasVentas(getUser) {
 
       labToast.success(`Pedido ${order?.folio || ""} enviado al laboratorio`);
 
-      // Notificar (agrupado) — isGlobal para que todos los roles la vean
+      // Notificar solo a laboratorio, supervisor y ventas
       createGroupedNotification({
         groupKey:        "pending_orders",
         title:           "Pedidos pendientes",
         messageTemplate: "{count} pedido(s) pendiente(s) de atención en laboratorio",
         type:            "warning",
         priority:        "medium",
-        isGlobal:        true,
+        targetRoles:     ["laboratorio", "supervisor", "ventas"],
       }).catch(() => {});
 
       // Refrescar historial desde la BD

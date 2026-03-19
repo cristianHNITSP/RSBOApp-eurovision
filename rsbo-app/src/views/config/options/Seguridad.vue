@@ -226,6 +226,93 @@
       </div>
 
     </div>
+
+    <!-- ── Modal: cerrar una sesión ──────────────────────────────────────── -->
+    <b-modal
+      v-model="showRevokeOneModal"
+      has-modal-card
+      trap-focus
+      :destroy-on-hide="true"
+      aria-role="dialog"
+      aria-modal
+    >
+      <div class="modal-card" style="max-width: 420px; width: 100%;">
+        <header class="modal-card-head revoke-modal-head--warning">
+          <p class="modal-card-title">
+            <i class="fas fa-exclamation-triangle mr-2"></i>
+            Cerrar sesión
+          </p>
+          <button class="delete" aria-label="close" @click="showRevokeOneModal = false" />
+        </header>
+        <section class="modal-card-body">
+          <p>
+            Se cerrará la sesión de
+            <strong>{{ pendingRevokeSession?.deviceInfo?.deviceName || 'este dispositivo' }}</strong>.
+            El dispositivo perderá el acceso inmediatamente.
+          </p>
+        </section>
+        <footer class="modal-card-foot">
+          <b-button @click="showRevokeOneModal = false" :disabled="revokingId !== null">
+            Cancelar
+          </b-button>
+          <b-button
+            type="is-danger"
+            icon-pack="fas"
+            icon-left="times"
+            :loading="revokingId !== null"
+            @click="onConfirmRevokeOne"
+          >
+            Cerrar sesión
+          </b-button>
+        </footer>
+      </div>
+    </b-modal>
+
+    <!-- ── Modal: cerrar todas las demás sesiones ─────────────────────────── -->
+    <b-modal
+      v-model="showRevokeAllModal"
+      has-modal-card
+      trap-focus
+      :destroy-on-hide="true"
+      aria-role="dialog"
+      aria-modal
+    >
+      <div class="modal-card" style="max-width: 440px; width: 100%;">
+        <header class="modal-card-head revoke-modal-head--danger">
+          <p class="modal-card-title">
+            <i class="fas fa-sign-out-alt mr-2"></i>
+            Cerrar otras sesiones
+          </p>
+          <button class="delete" aria-label="close" @click="showRevokeAllModal = false" />
+        </header>
+        <section class="modal-card-body">
+          <p class="mb-3">
+            Se cerrarán
+            <strong>{{ sessions.filter(s => !s.isCurrent).length }} sesión(es)</strong>
+            activas en otros dispositivos.
+          </p>
+          <div class="revoke-notice">
+            <i class="fas fa-info-circle mr-2"></i>
+            Esta acción no se puede deshacer. Los demás dispositivos perderán el acceso inmediatamente.
+          </div>
+        </section>
+        <footer class="modal-card-foot">
+          <b-button @click="showRevokeAllModal = false" :disabled="loadingRevoke">
+            Cancelar
+          </b-button>
+          <b-button
+            type="is-danger"
+            icon-pack="fas"
+            icon-left="sign-out-alt"
+            :loading="loadingRevoke"
+            @click="onConfirmRevokeAll"
+          >
+            Cerrar sesiones
+          </b-button>
+        </footer>
+      </div>
+    </b-modal>
+
   </section>
 </template>
 
@@ -239,10 +326,15 @@ const props = defineProps({
 });
 
 // ── Sesiones ────────────────────────────────────────────────────────────────
-const sessions      = ref([]);
+const sessions        = ref([]);
 const loadingSessions = ref(false);
-const loadingRevoke = ref(false);
-const revokingId    = ref(null);
+const loadingRevoke   = ref(false);
+const revokingId      = ref(null);
+
+// Estado de los modales de confirmación
+const showRevokeOneModal   = ref(false);
+const showRevokeAllModal   = ref(false);
+const pendingRevokeSession = ref(null);
 
 async function loadSessions() {
   loadingSessions.value = true;
@@ -256,9 +348,18 @@ async function loadSessions() {
   }
 }
 
+// ── Cerrar una sesión ──────────────────────────────────────────────────────
 function confirmRevokeOne(session) {
-  if (!window.confirm(`¿Cerrar la sesión de "${session.deviceInfo?.deviceName || 'este dispositivo'}"?`)) return;
-  doRevokeOne(session.id);
+  pendingRevokeSession.value = session;
+  showRevokeOneModal.value   = true;
+}
+
+async function onConfirmRevokeOne() {
+  showRevokeOneModal.value = false;
+  if (pendingRevokeSession.value) {
+    await doRevokeOne(pendingRevokeSession.value.id);
+    pendingRevokeSession.value = null;
+  }
 }
 
 async function doRevokeOne(sessionId) {
@@ -274,21 +375,26 @@ async function doRevokeOne(sessionId) {
   }
 }
 
+// ── Cerrar todas las demás sesiones ───────────────────────────────────────
 function confirmRevokeAll() {
-  const count = sessions.value.filter((s) => !s.isCurrent).length;
-  if (!window.confirm(`¿Cerrar las ${count} sesión(es) activas en otros dispositivos?`)) return;
-  doRevokeAll();
+  showRevokeAllModal.value = true;
+}
+
+async function onConfirmRevokeAll() {
+  showRevokeAllModal.value = false;
+  await doRevokeAll();
 }
 
 async function doRevokeAll() {
   loadingRevoke.value = true;
   try {
     const { data } = await revokeOtherSessions();
-    await loadSessions();
     labToast.success(`${data.revoked ?? 'Otras'} sesión(es) cerrada(s).`);
   } catch {
     labToast.danger('No se pudieron cerrar las sesiones.');
   } finally {
+    // Siempre recarga la lista, independientemente del resultado de la API
+    await loadSessions();
     loadingRevoke.value = false;
   }
 }
@@ -594,5 +700,33 @@ onMounted(() => loadSessions());
 
 @media screen and (max-width: 768px) {
   .sec-card { grid-column: span 12; }
+}
+
+/* ── Cabeceras de modales ────────────────────────────────────────────────── */
+.revoke-modal-head--warning {
+  background: rgba(254, 243, 199, 0.92);
+  color: rgba(120, 53, 15, 0.95);
+}
+
+.revoke-modal-head--danger {
+  background: rgba(254, 226, 226, 0.92);
+  color: rgba(127, 29, 29, 0.95);
+}
+
+.revoke-modal-head--warning .modal-card-title,
+.revoke-modal-head--danger .modal-card-title {
+  color: inherit;
+  font-weight: 800;
+}
+
+/* ── Info notice dentro del body ─────────────────────────────────────────── */
+.revoke-notice {
+  background: color-mix(in srgb, var(--c-info, #3273dc) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--c-info, #3273dc) 25%, transparent);
+  border-radius: 8px;
+  padding: 0.65rem 0.9rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.5;
 }
 </style>

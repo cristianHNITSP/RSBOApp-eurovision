@@ -20,17 +20,6 @@
         </div>
         <div class="panel__body">
           <div class="quick-actions">
-            <!--
-            <button class="quick-action-btn quick-action-btn--crear" @click="goCrear">
-              <i class="fas fa-cart-plus quick-action-btn__icon"></i>
-              <div>
-                <div class="quick-action-btn__label">Crear pedido</div>
-                <div class="quick-action-btn__hint">Mezcla micas de distintas planillas</div>
-              </div>
-              <i class="fas fa-chevron-right quick-action-btn__chev"></i>
-            </button>
-            -->
-
             <button class="quick-action-btn quick-action-btn--surtir" @click="goSurtir">
               <i class="fas fa-barcode quick-action-btn__icon"></i>
               <div>
@@ -61,7 +50,7 @@
               Entradas del día
               <span class="logs-badge ml-2">{{ lab.todayEntries.value.length }}</span>
             </h3>
-            <p class="panel__hint mt-1">Pedidos creados hoy.</p>
+            <p class="panel__hint mt-1">Toca una entrada para ver sus salidas.</p>
           </div>
         </div>
 
@@ -93,23 +82,67 @@
             <div
               v-for="e in lab.todayEntries.value"
               :key="e.id"
-              class="log-card log-card--in"
+              class="entry-block"
             >
-              <div class="log-card__top">
-                <span class="log-card__folio mono">{{ e.folio }}</span>
-                <span class="log-card__date">{{ e.at }}</span>
+              <!-- Cabecera de la entrada (clickeable) -->
+              <div
+                class="log-card log-card--in entry-card"
+                :class="{ 'entry-card--open': expandedFolios.has(e.folio) }"
+                @click="toggleEntry(e.folio)"
+              >
+                <div class="log-card__top">
+                  <span class="log-card__folio mono">{{ e.folio }}</span>
+                  <div class="entry-card__right">
+                    <span class="log-card__date">{{ e.at }}</span>
+                    <i
+                      class="fas fa-chevron-down entry-card__chev"
+                      :class="{ 'entry-card__chev--open': expandedFolios.has(e.folio) }"
+                    ></i>
+                  </div>
+                </div>
+                <div class="log-card__client">
+                  <i class="fas fa-building mr-1"></i>{{ e.cliente }}
+                </div>
+                <div class="log-card__meta">
+                  <span>{{ lab.sheetNameById(e.sheetId) }}</span>
+                  <span class="log-card__pill">{{ e.linesTotal }} micas</span>
+                </div>
+                <div v-if="e.micaSummary" class="log-card__mica-summary">
+                  <span v-for="(qty, type) in e.micaSummary" :key="type" class="mica-chip">
+                    {{ type }}: {{ qty }}
+                  </span>
+                </div>
               </div>
-              <div class="log-card__client">
-                <i class="fas fa-building mr-1"></i>{{ e.cliente }}
-              </div>
-              <div class="log-card__meta">
-                <span>{{ lab.sheetNameById(e.sheetId) }}</span>
-                <span class="log-card__pill">{{ e.linesTotal }} micas</span>
-              </div>
-              <div v-if="e.micaSummary" class="log-card__mica-summary">
-                <span v-for="(qty, type) in e.micaSummary" :key="type" class="mica-chip">
-                  {{ type }}: {{ qty }}
-                </span>
+
+              <!-- Panel de salidas (expandible) -->
+              <div v-if="expandedFolios.has(e.folio)" class="exits-panel">
+                <div class="exits-panel__header">
+                  <i class="fas fa-arrow-circle-up mr-1" style="color: rgba(239, 68, 68, 0.75)"></i>
+                  Salidas de este pedido
+                  <span class="exits-count">{{ exitsByFolio[e.folio]?.length ?? 0 }}</span>
+                </div>
+
+                <div v-if="!exitsByFolio[e.folio]?.length" class="exits-empty">
+                  <i class="fas fa-clock mr-1"></i>
+                  Aún no se han surtido micas de este pedido.
+                </div>
+
+                <div v-else class="exits-list">
+                  <div
+                    v-for="s in exitsByFolio[e.folio]"
+                    :key="s.id"
+                    class="exit-item"
+                  >
+                    <div class="exit-item__row">
+                      <span class="exit-item__title">{{ s.title }}</span>
+                      <span class="exit-item__time">{{ s.at }}</span>
+                    </div>
+                    <div class="exit-item__meta">
+                      <span class="exit-chip exit-chip--type">{{ s.micaType }}</span>
+                      <span v-if="s.codebar" class="exit-chip exit-chip--code mono">{{ s.codebar }}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -120,16 +153,33 @@
 </template>
 
 <script setup>
-import { inject } from "vue";
+import { inject, computed, reactive } from "vue";
 import PendingOrdersPanel from "./PendingOrdersPanel.vue";
 
 const lab = inject("lab");
 if (!lab) throw new Error("BandejaTab necesita provide('lab', ...)");
 
-//function goCrear() {
-//  lab.activeMainTab.value = "pedidos";
-//  lab.mode.value = "crear";
-//}
+// Folios actualmente expandidos
+const expandedFolios = reactive(new Set());
+
+function toggleEntry(folio) {
+  if (expandedFolios.has(folio)) {
+    expandedFolios.delete(folio);
+  } else {
+    expandedFolios.add(folio);
+  }
+}
+
+// Índice: folio → salidas
+const exitsByFolio = computed(() => {
+  const map = {};
+  for (const s of lab.exitEvents.value) {
+    if (!s.folio || s.folio === "—") continue;
+    if (!map[s.folio]) map[s.folio] = [];
+    map[s.folio].push(s);
+  }
+  return map;
+});
 
 function goSurtir() {
   lab.activeMainTab.value = "pedidos";
@@ -166,15 +216,6 @@ function goCorrecciones() {
   box-shadow: var(--shadow-md);
 }
 
-.quick-action-btn--crear {
-  border-color: rgba(144, 111, 225, 0.3);
-  background: linear-gradient(135deg, var(--c-primary-alpha), var(--surface-raised));
-}
-
-.quick-action-btn--crear:hover {
-  border-color: rgba(144, 111, 225, 0.55);
-}
-
 .quick-action-btn--surtir {
   border-color: rgba(34, 197, 94, 0.3);
   background: linear-gradient(135deg, rgba(34, 197, 94, 0.07), var(--surface-raised));
@@ -198,10 +239,6 @@ function goCorrecciones() {
   width: 2.2rem;
   text-align: center;
   flex-shrink: 0;
-}
-
-.quick-action-btn--crear .quick-action-btn__icon {
-  color: var(--c-primary);
 }
 
 .quick-action-btn--surtir .quick-action-btn__icon {
@@ -294,8 +331,8 @@ function goCorrecciones() {
 
 .logs-feed {
   display: grid;
-  gap: 0.4rem;
-  max-height: 380px;
+  gap: 0.5rem;
+  max-height: 520px;
   overflow-y: auto;
   padding-right: 2px;
 }
@@ -309,15 +346,28 @@ function goCorrecciones() {
   border-radius: 2px;
 }
 
+/* ── Entry block (entrada + salidas agrupadas) ───────────────────────── */
+.entry-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ── Entrada card ────────────────────────────────────────────────────── */
 .log-card {
   border-radius: 12px;
   padding: 0.6rem 0.65rem;
   font-size: 0.8rem;
   font-weight: 800;
-  transition: transform 100ms ease;
 }
 
-.log-card:hover {
+.entry-card {
+  cursor: pointer;
+  transition: transform 100ms ease, border-color 120ms ease, background 120ms ease;
+  user-select: none;
+}
+
+.entry-card:hover {
   transform: translateX(2px);
 }
 
@@ -327,11 +377,34 @@ function goCorrecciones() {
   border-left: 3px solid rgba(34, 197, 94, 0.5);
 }
 
+.entry-card--open.log-card--in {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-bottom-color: transparent;
+  background: rgba(34, 197, 94, 0.09);
+}
+
 .log-card__top {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 0.2rem;
+}
+
+.entry-card__right {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.entry-card__chev {
+  font-size: 0.65rem;
+  color: var(--text-subtle);
+  transition: transform 180ms ease;
+}
+
+.entry-card__chev--open {
+  transform: rotate(180deg);
 }
 
 .log-card__folio {
@@ -384,5 +457,103 @@ function goCorrecciones() {
   border-radius: 999px;
   padding: 0.05rem 0.35rem;
   color: var(--c-primary);
+}
+
+/* ── Exits panel ─────────────────────────────────────────────────────── */
+.exits-panel {
+  border: 1px solid rgba(239, 68, 68, 0.18);
+  border-top: none;
+  border-left: 3px solid rgba(239, 68, 68, 0.4);
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
+  background: rgba(239, 68, 68, 0.03);
+  padding: 0.5rem 0.65rem 0.6rem;
+}
+
+.exits-panel__header {
+  font-size: 0.72rem;
+  font-weight: 900;
+  color: rgba(239, 68, 68, 0.75);
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-bottom: 0.45rem;
+}
+
+.exits-count {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 999px;
+  padding: 0.02rem 0.35rem;
+  font-size: 0.68rem;
+  font-weight: 900;
+  color: rgba(239, 68, 68, 0.8);
+}
+
+.exits-empty {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--text-subtle);
+  padding: 0.2rem 0;
+}
+
+.exits-list {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.exit-item {
+  border-radius: 8px;
+  padding: 0.4rem 0.5rem;
+  background: rgba(239, 68, 68, 0.05);
+  border: 1px solid rgba(239, 68, 68, 0.12);
+}
+
+.exit-item__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.4rem;
+  margin-bottom: 0.2rem;
+}
+
+.exit-item__title {
+  font-size: 0.78rem;
+  font-weight: 900;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.exit-item__time {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--text-subtle);
+  flex-shrink: 0;
+}
+
+.exit-item__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.exit-chip {
+  font-size: 0.68rem;
+  font-weight: 900;
+  border-radius: 999px;
+  padding: 0.02rem 0.35rem;
+}
+
+.exit-chip--type {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.18);
+  color: rgba(239, 68, 68, 0.85);
+}
+
+.exit-chip--code {
+  background: var(--surface-overlay);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.65rem;
 }
 </style>

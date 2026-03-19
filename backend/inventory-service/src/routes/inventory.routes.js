@@ -1126,6 +1126,12 @@ router.put(
         actor
       });
 
+      // Alerta de stock — no bloqueante, no afecta la respuesta HTTP
+      setImmediate(() => {
+        const { checkCellAlert } = require("../services/stockAlert.service");
+        checkCellAlert(sheet, "SPH_CYL", key, after, null);
+      });
+
       return res.json({ ok: true, key, before, after, cell: nextCell, axisExtended, axisExtendError });
     } catch (err) {
       console.error("PUT /sheets/:sheetId/sph-cyl/cell error:", err);
@@ -1200,6 +1206,12 @@ router.post(
         type: "CHUNK_SAVE",
         details: { upserted: result.updated, rowsCount: rows.length, axisExtended, axisExtendError },
         actor
+      });
+
+      // Alerta de stock — barre toda la planilla, no bloqueante
+      setImmediate(() => {
+        const { checkSheetAlerts } = require("../services/stockAlert.service");
+        checkSheetAlerts(sheet);
       });
 
       return res.json({ ok: true, data: { upserted: result.updated, axisExtended, axisExtendError } });

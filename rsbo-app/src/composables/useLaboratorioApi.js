@@ -12,7 +12,8 @@ import {
   listEvents,
   requestCorrection,
   cancelOrder as cancelOrderService,
-  updateOrder as updateOrderService
+  updateOrder as updateOrderService,
+  getOrderHistory
 } from "@/services/laboratorio";
 
 // ============================================================================
@@ -861,11 +862,11 @@ export function useLaboratorioApi(getUser) {
   }
 
   // ======= Cancelar/Eliminar orden =======
-  async function cancelOrderById(orderId) {
+  async function cancelOrderById(orderId, motivo) {
     if (!orderId) return;
     loadingCancelOrder.value = true;
     try {
-      await cancelOrderService(orderId, actorRef());
+      await cancelOrderService(orderId, actorRef(), motivo || null);
       await Promise.all([loadOrders(), loadEvents()]);
       lastUpdatedAt.value = Date.now();
       notify("Pedido cancelado y stock devuelto.", "is-warning");
@@ -875,6 +876,24 @@ export function useLaboratorioApi(getUser) {
       notify(n?.message, "is-danger", 5000);
     } finally {
       loadingCancelOrder.value = false;
+    }
+  }
+
+  // ======= Historial de un pedido =======
+  const orderHistory = ref([]);
+  const loadingOrderHistory = ref(false);
+
+  async function loadOrderHistory(orderId) {
+    if (!orderId) { orderHistory.value = []; return; }
+    loadingOrderHistory.value = true;
+    try {
+      const { data } = await getOrderHistory(orderId);
+      orderHistory.value = (data?.data || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    } catch (e) {
+      console.error("[LAB] loadOrderHistory", e?.response?.data || e);
+      orderHistory.value = [];
+    } finally {
+      loadingOrderHistory.value = false;
     }
   }
 
@@ -1435,6 +1454,9 @@ export function useLaboratorioApi(getUser) {
     cancelOrderById,
     editOrder,
     submitCorrection,
+    orderHistory,
+    loadingOrderHistory,
+    loadOrderHistory,
 
     // export/print
     exportInventoryCsv,

@@ -8,9 +8,9 @@
                     Analíticas
                 </span>
 
-                <h2>Analíticas de inventario</h2>
+                <h2>{{ headerTitle }}</h2>
                 <p class="analytics-subtitle psh-desc">
-                    Resumen operativo del comportamiento del inventario en el periodo seleccionado.
+                    {{ headerSubtitle }}
                 </p>
 
                 <div class="psh-quick mt-3">
@@ -18,10 +18,10 @@
                         <div class="psh-quick__icon"><i class="fas fa-calendar-alt"></i></div>
                         <div>
                             <p class="psh-quick__title">Periodo activo</p>
-                            <p class="psh-quick__text">Visualizando resultados de: <strong>{{ analytics.periodLabel }}</strong></p>
+                            <p class="psh-quick__text">Visualizando resultados de: <strong>{{ s?.periodLabel || 'Últimos 30 días' }}</strong></p>
                         </div>
                     </div>
-                    <div class="psh-quick__card">
+                    <div v-if="canSeeInventory" class="psh-quick__card">
                         <div class="psh-quick__icon"><i class="fas fa-boxes"></i></div>
                         <div>
                             <p class="psh-quick__title">Alcance</p>
@@ -33,34 +33,30 @@
 
             <div class="psh-meta analytics-period">
                 <b-tag type="is-light" class="is-capitalized">
-                    {{ analytics.periodLabel }}
+                    {{ s?.periodLabel || 'Últimos 30 días' }}
                 </b-tag>
             </div>
         </header>
 
         <div class="columns is-multiline analytics-main">
-            <!-- Columna izquierda: actividad + tipos -->
+            <!-- Columna izquierda -->
             <div class="column is-12-tablet is-7-desktop">
-                <!-- Actividad de inventario -->
-                <div class="analytics-card">
+
+                <!-- Actividad de inventario — solo eurovision -->
+                <div v-if="canSeeMovements" class="analytics-card">
                     <div class="analytics-card-header">
                         <h3>Actividad de inventario</h3>
                         <small class="has-text-grey is-size-7">
-                            Movimientos registrados en las hojas de Monofocal, Bifocal, Progresivo y Base.
+                            Movimientos registrados en las hojas de inventario.
                         </small>
                     </div>
 
                     <div class="analytics-kpi-row">
-                        <!-- Total movimientos -->
                         <div class="analytics-kpi">
                             <span class="analytics-kpi-label">Movimientos totales</span>
-                            <template v-if="!loading">
-                                <strong class="analytics-kpi-value">
-                                    {{ formatNumber(analytics.totalMovements) }}
-                                </strong>
-                                <p class="analytics-kpi-caption">
-                                    Entradas, salidas y ajustes registrados en el periodo.
-                                </p>
+                            <template v-if="!isLoading">
+                                <strong class="analytics-kpi-value">{{ formatNumber(s?.movementsTotal30d) }}</strong>
+                                <p class="analytics-kpi-caption">Entradas, salidas y ajustes (30d).</p>
                             </template>
                             <template v-else>
                                 <b-skeleton :width="90" :height="24" animated class="mb-2" />
@@ -68,16 +64,11 @@
                             </template>
                         </div>
 
-                        <!-- Entradas -->
                         <div class="analytics-kpi">
                             <span class="analytics-kpi-label">Entradas</span>
-                            <template v-if="!loading">
-                                <strong class="analytics-kpi-value">
-                                    {{ formatNumber(analytics.inputs) }}
-                                </strong>
-                                <p class="analytics-kpi-caption">
-                                    {{ movementsRatio.inputs }}% de los movimientos.
-                                </p>
+                            <template v-if="!isLoading">
+                                <strong class="analytics-kpi-value">{{ formatNumber(s?.entries30d) }}</strong>
+                                <p class="analytics-kpi-caption">{{ entriesPct }}% de los movimientos.</p>
                             </template>
                             <template v-else>
                                 <b-skeleton :width="70" :height="24" animated class="mb-2" />
@@ -85,16 +76,11 @@
                             </template>
                         </div>
 
-                        <!-- Salidas -->
                         <div class="analytics-kpi">
                             <span class="analytics-kpi-label">Salidas</span>
-                            <template v-if="!loading">
-                                <strong class="analytics-kpi-value">
-                                    {{ formatNumber(analytics.outputs) }}
-                                </strong>
-                                <p class="analytics-kpi-caption">
-                                    {{ movementsRatio.outputs }}% de los movimientos.
-                                </p>
+                            <template v-if="!isLoading">
+                                <strong class="analytics-kpi-value">{{ formatNumber(s?.exits30d) }}</strong>
+                                <p class="analytics-kpi-caption">{{ exitsPct }}% de los movimientos.</p>
                             </template>
                             <template v-else>
                                 <b-skeleton :width="70" :height="24" animated class="mb-2" />
@@ -103,21 +89,12 @@
                         </div>
                     </div>
 
-                    <!-- Lead time + rotación -->
                     <div class="analytics-metrics-row">
                         <div class="analytics-metric">
-                            <span class="metric-label">Tiempo medio de reposición</span>
-                            <template v-if="!loading">
-                                <div class="metric-value">
-                                    <b>
-                                        {{ analytics.avgLeadTimeDays != null
-                                            ? analytics.avgLeadTimeDays + ' días'
-                                            : 'Sin datos' }}
-                                    </b>
-                                </div>
-                                <p class="metric-caption">
-                                    Días promedio entre el pedido al proveedor y la entrada al almacén.
-                                </p>
+                            <span class="metric-label">Movimientos hoy</span>
+                            <template v-if="!isLoading">
+                                <div class="metric-value"><b>{{ s?.movementsToday ?? 0 }}</b></div>
+                                <p class="metric-caption">Actividad registrada en el día actual.</p>
                             </template>
                             <template v-else>
                                 <b-skeleton :width="110" :height="18" animated class="mb-2" />
@@ -126,14 +103,10 @@
                         </div>
 
                         <div class="analytics-metric">
-                            <span class="metric-label">Índice de rotación (estimado)</span>
-                            <template v-if="!loading">
-                                <div class="metric-value">
-                                    <b>{{ rotationIndex }}</b> vueltas/año
-                                </div>
-                                <p class="metric-caption">
-                                    A mayor rotación, mejor aprovechamiento del stock y menor inmovilización.
-                                </p>
+                            <span class="metric-label">Índice de rotación (est.)</span>
+                            <template v-if="!isLoading">
+                                <div class="metric-value"><b>{{ rotationIndex }}</b> vueltas/año</div>
+                                <p class="metric-caption">Mayor rotación = mejor aprovechamiento del stock.</p>
                             </template>
                             <template v-else>
                                 <b-skeleton :width="110" :height="18" animated class="mb-2" />
@@ -143,8 +116,8 @@
                     </div>
                 </div>
 
-                <!-- Distribución por tipo de lente -->
-                <div class="analytics-card">
+                <!-- Distribución por familia — eurovision -->
+                <div v-if="canSeeInventory" class="analytics-card">
                     <div class="analytics-card-header">
                         <h3>Distribución por tipo de lente</h3>
                         <small class="has-text-grey is-size-7">
@@ -152,15 +125,17 @@
                         </small>
                     </div>
 
-                    <div v-if="!loading" class="analytics-family-list">
-                        <div v-for="family in analytics.topFamilies" :key="family.name" class="analytics-family-row">
+                    <div v-if="!isLoading" class="analytics-family-list">
+                        <div v-for="family in s?.topFamilies || []" :key="family.name" class="analytics-family-row">
                             <div class="analytics-family-header">
                                 <span class="family-name">{{ family.name }}</span>
                                 <span class="family-percentage">{{ family.percentage }}%</span>
                             </div>
-                            <b-progress :value="family.percentage" size="is-small" type="is-primary"
-                                show-value="false" />
+                            <b-progress :value="family.percentage" size="is-small" type="is-primary" :show-value="false" />
                         </div>
+                        <p v-if="!(s?.topFamilies?.length)" class="is-size-7 has-text-grey">
+                            Sin datos de familias en este periodo.
+                        </p>
                     </div>
 
                     <div v-else>
@@ -168,25 +143,90 @@
                         <b-skeleton :width="'100%'" :height="60" animated />
                     </div>
                 </div>
-            </div>
 
-            <!-- Columna derecha: nivel de servicio + riesgo -->
-            <div class="column is-12-tablet is-5-desktop">
-                <!-- Nivel de servicio -->
-                <div class="analytics-card">
+                <!-- Pedidos — supervisor, ventas, laboratorio -->
+                <div v-if="canSeeOrders" class="analytics-card">
                     <div class="analytics-card-header">
-                        <h3>Nivel de servicio</h3>
+                        <h3>Resumen de pedidos</h3>
                         <small class="has-text-grey is-size-7">
-                            Capacidad de surtir pedidos completos sin faltantes.
+                            Actividad de pedidos en el periodo.
                         </small>
                     </div>
 
-                    <div class="service-level-block" v-if="!loading">
+                    <div class="analytics-kpi-row">
+                        <div class="analytics-kpi">
+                            <span class="analytics-kpi-label">Pendientes</span>
+                            <template v-if="!isLoading">
+                                <strong class="analytics-kpi-value">{{ s?.ordersPending ?? 0 }}</strong>
+                                <p class="analytics-kpi-caption">Pedidos abiertos o parciales.</p>
+                            </template>
+                            <template v-else><b-skeleton :width="60" :height="24" animated /></template>
+                        </div>
+                        <div class="analytics-kpi">
+                            <span class="analytics-kpi-label">Cerrados (30d)</span>
+                            <template v-if="!isLoading">
+                                <strong class="analytics-kpi-value">{{ s?.ordersClosed30d ?? 0 }}</strong>
+                                <p class="analytics-kpi-caption">Completados este mes.</p>
+                            </template>
+                            <template v-else><b-skeleton :width="60" :height="24" animated /></template>
+                        </div>
+                        <div class="analytics-kpi">
+                            <span class="analytics-kpi-label">Cancelados</span>
+                            <template v-if="!isLoading">
+                                <strong class="analytics-kpi-value">{{ s?.ordersCancelledAll ?? 0 }}</strong>
+                                <p class="analytics-kpi-caption">Total cancelados.</p>
+                            </template>
+                            <template v-else><b-skeleton :width="60" :height="24" animated /></template>
+                        </div>
+                    </div>
+
+                    <!-- Lab extra stats -->
+                    <div v-if="canSeeLab" class="analytics-kpi-row mt-3">
+                        <div class="analytics-kpi">
+                            <span class="analytics-kpi-label">Correcciones (30d)</span>
+                            <template v-if="!isLoading">
+                                <strong class="analytics-kpi-value">{{ s?.corrections30d ?? 0 }}</strong>
+                                <p class="analytics-kpi-caption">Solicitudes de corrección.</p>
+                            </template>
+                            <template v-else><b-skeleton :width="60" :height="24" animated /></template>
+                        </div>
+                        <div class="analytics-kpi">
+                            <span class="analytics-kpi-label">Escaneos hoy</span>
+                            <template v-if="!isLoading">
+                                <strong class="analytics-kpi-value">{{ s?.scansToday ?? 0 }}</strong>
+                                <p class="analytics-kpi-caption">Salidas por escáner.</p>
+                            </template>
+                            <template v-else><b-skeleton :width="60" :height="24" animated /></template>
+                        </div>
+                        <div class="analytics-kpi">
+                            <span class="analytics-kpi-label">Ediciones (30d)</span>
+                            <template v-if="!isLoading">
+                                <strong class="analytics-kpi-value">{{ s?.edits30d ?? 0 }}</strong>
+                                <p class="analytics-kpi-caption">Modificaciones a pedidos.</p>
+                            </template>
+                            <template v-else><b-skeleton :width="60" :height="24" animated /></template>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Columna derecha -->
+            <div class="column is-12-tablet is-5-desktop">
+                <!-- Nivel de servicio — eurovision, supervisor -->
+                <div v-if="canSeeReports" class="analytics-card">
+                    <div class="analytics-card-header">
+                        <h3>Nivel de servicio</h3>
+                        <small class="has-text-grey is-size-7">
+                            Pedidos cerrados sin correcciones en los últimos 30 días.
+                        </small>
+                    </div>
+
+                    <div class="service-level-block" v-if="!isLoading">
                         <div class="service-level-header">
                             <div>
                                 <span class="metric-label">Pedidos surtidos sin faltantes</span>
                                 <div class="service-level-value">
-                                    <strong>{{ analytics.serviceLevel }}%</strong>
+                                    <strong>{{ s?.serviceLevel ?? 0 }}%</strong>
                                     <b-tag :type="serviceLevelTagType" size="is-small" class="ml-2">
                                         {{ serviceLevelStatus }}
                                     </b-tag>
@@ -194,17 +234,14 @@
                             </div>
                         </div>
 
-                        <b-progress :value="analytics.serviceLevel" size="is-medium" :type="serviceLevelProgressType"
-                            show-value="false" />
+                        <b-progress :value="s?.serviceLevel ?? 0" size="is-medium" :type="serviceLevelTagType" :show-value="false" />
 
                         <div class="service-level-footer">
                             <span class="is-size-7 has-text-grey">
-                                Corte del periodo:
-                                <b>{{ analytics.periodLabel }}</b>
+                                Corte: <b>{{ s?.periodLabel || 'Últimos 30 días' }}</b>
                             </span>
                             <span class="is-size-7 has-text-grey">
-                                Rupturas de stock registradas:
-                                <b>{{ analytics.stockouts }}</b>
+                                Correcciones totales: <b>{{ s?.corrections30d ?? 0 }}</b>
                             </span>
                         </div>
                     </div>
@@ -216,40 +253,70 @@
                     </div>
                 </div>
 
-                <!-- Combinaciones en riesgo -->
-                <div class="analytics-card">
+                <!-- Cobertura de inventario — eurovision -->
+                <div v-if="canSeeInventory" class="analytics-card">
                     <div class="analytics-card-header">
-                        <h3>Combinaciones en riesgo</h3>
+                        <h3>Cobertura de inventario</h3>
                         <small class="has-text-grey is-size-7">
-                            SPH / CYL / ADD con probabilidad de generar faltantes o retrasos.
+                            Estado general del stock por combinación óptica.
                         </small>
                     </div>
 
-                    <div v-if="!loading" class="risk-list">
-                        <p v-if="!analytics.riskLenses.length" class="is-size-7 has-text-grey">
-                            No hay combinaciones marcadas en riesgo para el periodo.
-                        </p>
+                    <div v-if="!isLoading">
+                        <div class="metric-row mb-2">
+                            <span class="metric-label">Combinaciones totales</span>
+                            <strong>{{ formatNumber(s?.totalCombinations) }}</strong>
+                        </div>
+                        <div class="metric-row mb-2">
+                            <span class="metric-label">Con stock</span>
+                            <strong>{{ formatNumber(s?.withStock) }}</strong>
+                        </div>
+                        <div class="metric-row mb-2">
+                            <span class="metric-label">Cobertura</span>
+                            <strong>{{ s?.coveragePct ?? 0 }}%</strong>
+                        </div>
+                        <b-progress :value="s?.coveragePct ?? 0" size="is-small" type="is-primary" :show-value="false" />
 
-                        <article v-for="item in analytics.riskLenses" :key="item.label" class="risk-item">
-                            <div class="risk-header">
-                                <span class="risk-label">{{ item.label }}</span>
-                                <b-tag :type="item.impact === 'Alta'
-                                    ? 'is-danger'
-                                    : item.impact === 'Media'
-                                        ? 'is-warning'
-                                        : 'is-info'" size="is-small" class="is-capitalized">
-                                    {{ item.impact }} prioridad
-                                </b-tag>
-                            </div>
-                            <p class="risk-reason">
-                                {{ item.reason }}
-                            </p>
-                            <p class="risk-action">
-                                <b>Sugerencia:</b> {{ item.suggestion }}
-                            </p>
-                        </article>
+                        <div class="metric-row mt-3 mb-2">
+                            <span class="metric-label">Existencias totales</span>
+                            <strong>{{ formatNumber(s?.totalStock) }}</strong>
+                        </div>
+                        <div class="metric-row mb-2">
+                            <span class="metric-label">Alertas críticas</span>
+                            <b-tag :type="(s?.criticalAlerts ?? 0) > 0 ? 'is-danger' : 'is-success'" size="is-small">
+                                {{ s?.criticalAlerts ?? 0 }}
+                            </b-tag>
+                        </div>
                     </div>
 
+                    <div v-else>
+                        <b-skeleton :width="'100%'" :height="48" animated class="mb-2" />
+                        <b-skeleton :width="'100%'" :height="48" animated />
+                    </div>
+                </div>
+
+                <!-- Resumen rápido de pedidos para ventas (sin reportes) -->
+                <div v-if="canSeeOrders && !canSeeReports" class="analytics-card">
+                    <div class="analytics-card-header">
+                        <h3>Tu actividad</h3>
+                        <small class="has-text-grey is-size-7">
+                            Resumen rápido de la operación del día.
+                        </small>
+                    </div>
+                    <div v-if="!isLoading">
+                        <div class="metric-row mb-2">
+                            <span class="metric-label">Pedidos creados hoy</span>
+                            <strong>{{ s?.ordersToday ?? 0 }}</strong>
+                        </div>
+                        <div class="metric-row mb-2">
+                            <span class="metric-label">Cerrados hoy</span>
+                            <strong>{{ s?.ordersClosedToday ?? 0 }}</strong>
+                        </div>
+                        <div class="metric-row mb-2">
+                            <span class="metric-label">Total cerrados histórico</span>
+                            <strong>{{ formatNumber(s?.ordersClosedAll) }}</strong>
+                        </div>
+                    </div>
                     <div v-else>
                         <b-skeleton :width="'100%'" :height="48" animated class="mb-2" />
                         <b-skeleton :width="'100%'" :height="48" animated />
@@ -261,96 +328,84 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, onActivated, toRef } from 'vue'
+import { useDashboardStats } from '@/composables/useDashboardStats'
 
 const props = defineProps({
-    loading: {
-        type: Boolean,
-        default: false
-    },
-    // Objeto que puedes llenar desde tu backend con datos reales
-    analytics: {
-        type: Object,
-        default: () => ({
-            periodLabel: 'Últimos 30 días',
-            totalMovements: 0,
-            inputs: 0,
-            outputs: 0,
-            avgLeadTimeDays: null,
-            stockouts: 0,
-            serviceLevel: 0, // 0–100
-            topFamilies: [
-                { name: 'Monofocal', percentage: 45 },
-                { name: 'Progresivo', percentage: 30 },
-                { name: 'Bifocal', percentage: 15 },
-                { name: 'Otros / especiales', percentage: 10 }
-            ],
-            riskLenses: [
-                {
-                    label: 'SPH -2.00 / CYL -1.00 / ADD +2.00',
-                    reason: 'Consumo alto en la última semana con stock cercano al mínimo.',
-                    impact: 'Alta',
-                    suggestion: 'Revisar próximos pedidos y aumentar la cantidad en la siguiente reposición.'
-                },
-                {
-                    label: 'SPH +1.50 / CYL 0.00 (Monofocal)',
-                    reason: 'Rotación constante, pero sin pedidos programados.',
-                    impact: 'Media',
-                    suggestion: 'Verificar proyección de ventas y programar reposición preventiva.'
-                }
-            ]
-        })
-    }
+    loading: { type: Boolean, default: false },
+    user: { type: Object, default: null },
 })
 
-const analytics = computed(() => props.analytics)
+const userRef = toRef(props, 'user')
+const {
+    stats,
+    loading: statsLoading,
+    load: loadStats,
+    canSeeInventory,
+    canSeeOrders,
+    canSeeReports,
+    canSeeLab,
+    canSeeMovements,
+} = useDashboardStats(userRef)
+
+const s = computed(() => stats.value)
+const isLoading = computed(() => props.loading || statsLoading.value)
+
+onMounted(() => { loadStats() })
+onActivated(() => { loadStats() })
+
+// Header por rol
+const headerTitle = computed(() => {
+    if (canSeeInventory.value) return 'Analíticas del sistema'
+    if (canSeeReports.value) return 'Analíticas de ventas'
+    if (canSeeLab.value) return 'Analíticas de laboratorio'
+    return 'Analíticas de pedidos'
+})
+
+const headerSubtitle = computed(() => {
+    if (canSeeInventory.value) return 'Resumen operativo completo del inventario, laboratorio y pedidos.'
+    if (canSeeReports.value) return 'Resumen de ventas, pedidos y nivel de servicio.'
+    if (canSeeLab.value) return 'Actividad de laboratorio: escaneos, correcciones y pedidos.'
+    return 'Resumen de la actividad de pedidos.'
+})
 
 // Ratios de movimientos
-const movementsRatio = computed(() => {
-    const total = analytics.value.totalMovements || 0
-    if (!total) return { inputs: 0, outputs: 0 }
-
-    const inputsPct = Math.round(
-        ((analytics.value.inputs || 0) / total) * 100
-    )
-    const outputsPct = Math.round(
-        ((analytics.value.outputs || 0) / total) * 100
-    )
-
-    return {
-        inputs: isFinite(inputsPct) ? inputsPct : 0,
-        outputs: isFinite(outputsPct) ? outputsPct : 0
-    }
+const entriesPct = computed(() => {
+    const total = s.value?.movementsTotal30d || 0
+    if (!total) return 0
+    return Math.round(((s.value?.entries30d || 0) / total) * 100)
 })
 
-// Índice de rotación (estimado) → muy general, solo para mostrar indicador
+const exitsPct = computed(() => {
+    const total = s.value?.movementsTotal30d || 0
+    if (!total) return 0
+    return Math.round(((s.value?.exits30d || 0) / total) * 100)
+})
+
 const rotationIndex = computed(() => {
-    if (!analytics.value.totalMovements) return '—'
-    // número ficticio solo para tener una referencia visual; puedes cambiarlo
-    const estimate = analytics.value.totalMovements / 365
+    const m = s.value?.movementsTotal30d || 0
+    if (!m) return '—'
+    const estimate = (m / 30) * 365 / Math.max(s.value?.totalStock || 1, 1)
     return estimate < 0.1 ? '< 0.1' : estimate.toFixed(1)
 })
 
-// Nivel de servicio: etiqueta y colores
+// Nivel de servicio
 const serviceLevelStatus = computed(() => {
-    const s = analytics.value.serviceLevel || 0
-    if (s >= 97) return 'Excelente'
-    if (s >= 90) return 'Bueno'
-    if (s >= 80) return 'Aceptable'
+    const sl = s.value?.serviceLevel || 0
+    if (sl >= 97) return 'Excelente'
+    if (sl >= 90) return 'Bueno'
+    if (sl >= 80) return 'Aceptable'
     return 'A mejorar'
 })
 
 const serviceLevelTagType = computed(() => {
-    const s = analytics.value.serviceLevel || 0
-    if (s >= 97) return 'is-success'
-    if (s >= 90) return 'is-info'
-    if (s >= 80) return 'is-warning'
+    const sl = s.value?.serviceLevel || 0
+    if (sl >= 97) return 'is-success'
+    if (sl >= 90) return 'is-info'
+    if (sl >= 80) return 'is-warning'
     return 'is-danger'
 })
 
-const serviceLevelProgressType = serviceLevelTagType
-
-// Utilidades
 function formatNumber(value) {
     const num = Number(value || 0)
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
@@ -384,15 +439,9 @@ function formatNumber(value) {
     margin-bottom: 0.35rem;
 }
 
-/* Encabezado — layout adicional sobre .page-section-header */
+/* Encabezado */
 .analytics-header {
     gap: 1.25rem;
-}
-
-.analytics-title {
-    font-size: 1.05rem;
-    font-weight: 700;
-    color: var(--text-primary);
 }
 
 .analytics-subtitle {
@@ -482,6 +531,14 @@ function formatNumber(value) {
     color: var(--text-muted);
 }
 
+.metric-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
 /* Familias */
 .analytics-family-list {
     margin-top: 0.8rem;
@@ -531,40 +588,6 @@ function formatNumber(value) {
     display: flex;
     justify-content: space-between;
     font-size: 0.72rem;
-}
-
-/* Riesgo */
-.risk-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.6rem;
-    margin-top: 0.6rem;
-}
-
-.risk-item {
-    border-radius: 0.6rem;
-    padding: 0.55rem 0.6rem;
-    background: var(--bg-subtle);
-}
-
-.risk-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.15rem;
-}
-
-.risk-label {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.risk-reason,
-.risk-action {
-    font-size: 0.74rem;
-    color: var(--text-secondary);
-    margin-bottom: 0.1rem;
 }
 
 /* Animación */

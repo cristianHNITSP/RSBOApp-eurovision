@@ -97,8 +97,13 @@ export const useAuthService = ($buefy) => {
       }
       purgeCredentials(credentials);
 
-      // Redirige a la página home
-      router.push({ name: "home" });
+      // root → panel AdminJS (navegación completa, no Vue Router)
+      // cualquier otro rol → app principal
+      if (data?.roleName === "root") {
+        window.location.href = "/admin/sso";
+      } else {
+        router.push({ name: "home" });
+      }
     } catch (err) {
       // Bloqueo por rate limiter
       if (err?.retryIn) {

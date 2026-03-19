@@ -31,6 +31,7 @@ router.post('/login', async (req, res) => {
 
     res.json({
       name: DOMPurify.sanitize(user.name),
+      roleName: user.role?.name ?? null,
     });
   } catch (err) {
     console.error('Error en login:', err);

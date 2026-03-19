@@ -18,7 +18,7 @@ function escapeRegex(s) {
 }
 
 async function getRoles() {
-  return Role.find().lean();
+  return Role.find({ name: { $ne: 'root' } }).lean();
 }
 
 async function getMe(userId) {
@@ -61,6 +61,10 @@ async function listUsers(query) {
   const sortBy = String(query.sortBy || "name");
   const sortDir = String(query.sortDir || "asc") === "desc" ? -1 : 1;
 
+  // El usuario root es una entidad aparte — nunca aparece en gestión
+  const rootRole = await Role.findOne({ name: 'root' }).select('_id').lean();
+  const rootRoleId = rootRole?._id ?? null;
+
   const filter = {};
 
   if (status === "trash") filter.deletedAt = { $ne: null };
@@ -69,7 +73,15 @@ async function listUsers(query) {
   if (status === "active") filter.isActive = true;
   if (status === "inactive") filter.isActive = false;
 
-  if (role) filter.role = role;
+  if (role) {
+    // Si piden filtrar por root, devolver vacío
+    if (rootRoleId && String(role) === String(rootRoleId)) {
+      return { items: [], total: 0, page, limit, stats: { totalUsers: 0, activeUsers: 0, trashUsers: 0 } };
+    }
+    filter.role = role;
+  } else if (rootRoleId) {
+    filter.role = { $ne: rootRoleId };
+  }
 
   if (q) {
     const rx = new RegExp(escapeRegex(q), "i");
@@ -78,6 +90,8 @@ async function listUsers(query) {
 
   const allowedSort = new Set(["name", "email", "createdAt", "lastLogin"]);
   const sort = allowedSort.has(sortBy) ? { [sortBy]: sortDir } : { name: 1 };
+
+  const rootExclude = rootRoleId ? { role: { $ne: rootRoleId } } : {};
 
   const [items, total, totalUsers, activeUsers, trashUsers] = await Promise.all([
     User.find(filter)
@@ -88,9 +102,9 @@ async function listUsers(query) {
       .limit(limit)
       .lean(),
     User.countDocuments(filter),
-    User.countDocuments({ deletedAt: null }),
-    User.countDocuments({ deletedAt: null, isActive: true }),
-    User.countDocuments({ deletedAt: { $ne: null } }),
+    User.countDocuments({ deletedAt: null, ...rootExclude }),
+    User.countDocuments({ deletedAt: null, isActive: true, ...rootExclude }),
+    User.countDocuments({ deletedAt: { $ne: null }, ...rootExclude }),
   ]);
 
   const normalized = (items || []).map((u) => ({
@@ -130,6 +144,11 @@ async function createUser(data) {
     error.statusCode = 400;
     throw error;
   }
+  if (role.name === 'root') {
+    const error = new Error("No se puede crear un usuario con rol root");
+    error.statusCode = 403;
+    throw error;
+  }
 
   const exists = await User.findOne({ email }).select("_id").lean();
   if (exists) {
@@ -164,10 +183,17 @@ async function updateUser(userId, data) {
   const roleId = data.role;
   const isActive = data.isActive !== undefined ? !!data.isActive : undefined;
 
-  const user = await User.findById(userId);
+  const user = await User.findById(userId).populate('role', 'name');
   if (!user || user.deletedAt) {
     const error = new Error("Usuario no encontrado");
     error.statusCode = 404;
+    throw error;
+  }
+
+  // El usuario root es intocable desde el panel de gestión
+  if (user.role?.name === 'root') {
+    const error = new Error("El usuario root no puede ser modificado desde este panel");
+    error.statusCode = 403;
     throw error;
   }
 
@@ -176,6 +202,11 @@ async function updateUser(userId, data) {
     if (!role) {
       const error = new Error("Rol inválido");
       error.statusCode = 400;
+      throw error;
+    }
+    if (role.name === 'root') {
+      const error = new Error("No se puede asignar el rol root");
+      error.statusCode = 403;
       throw error;
     }
     user.role = role._id;
@@ -226,10 +257,15 @@ async function updatePassword(userId, password) {
  */
 async function deleteUser(userId) {
   // ✅ Trae tokens aunque sea select:false
-  const user = await User.findById(userId).select("+tokens");
+  const user = await User.findById(userId).select("+tokens").populate('role', 'name');
 
   if (!user) {
     return { deleted: false, alreadyDeleted: true, reason: "NOT_FOUND" };
+  }
+  if (user.role?.name === 'root') {
+    const error = new Error("El usuario root no puede eliminarse");
+    error.statusCode = 403;
+    throw error;
   }
   if (user.deletedAt) {
     return { deleted: false, alreadyDeleted: true, deletedAt: user.deletedAt };

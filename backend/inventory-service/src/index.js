@@ -128,6 +128,9 @@ app.use("/api/contactlenses", contactlensesRoutes);
 const catalogRoutes = require("./routes/catalog.routes");
 app.use("/api/catalog", catalogRoutes);
 
+const statsRoutes = require("./routes/stats.routes");
+app.use("/api/stats", statsRoutes);
+
 // si tu API usa prefijo /api:
 // app.use("/api/laboratory", laboratoryRoutes);
 
@@ -143,6 +146,10 @@ app.use((err, _req, res, _next) => {
 // Conectar al Gateway WebSocket para broadcasting
 const labWs = require("./ws");
 labWs.connect();
+
+// Iniciar job de alertas de stock (cron 6h + sweep inicial)
+const { startStockAlertJob } = require("./jobs/stockAlert.job");
+startStockAlertJob();
 
 /**
  * Inicio del servidor

@@ -232,10 +232,66 @@ async function dismiss({ notificationId, roleName, userId }) {
 }
 
 /**
+ * Crea o actualiza una notificación agrupada por día.
+ * Usa groupKey + date (YYYY-MM-DD) como clave única diaria.
+ * Almacena metadata para el panel expandible del frontend.
+ *
+ * @param {{
+ *   groupKey: string,
+ *   date?: string,  // YYYY-MM-DD, por defecto hoy
+ *   title: string,
+ *   message: string,
+ *   metadata?: object,
+ *   type?: string,
+ *   priority?: string,
+ *   targetRoles?: string[],
+ *   isGlobal?: boolean,
+ *   createdBy: ObjectId,
+ *   createdByName?: string,
+ * }} params
+ */
+async function upsertDaily({ groupKey, date, title, message, metadata, type, priority, targetRoles, isGlobal, createdBy, createdByName }) {
+  const today = date || new Date().toISOString().slice(0, 10);
+
+  const existing = await Notification.findOne({ groupKey, date: today });
+
+  if (existing) {
+    existing.title    = title;
+    existing.message  = message;
+    existing.metadata = metadata ?? existing.metadata;
+    existing.count    = (existing.count || 1) + 1;
+    existing.readBy   = []; // re-notificar a todos
+    if (type)     existing.type     = type;
+    if (priority) existing.priority = priority;
+    existing.markModified('metadata');
+    await existing.save();
+    return { notification: existing, accumulated: true };
+  }
+
+  const n = await Notification.create({
+    groupKey,
+    date:          today,
+    title,
+    message,
+    metadata:      metadata ?? null,
+    type:          type     ?? 'warning',
+    priority:      priority ?? 'high',
+    targetRoles:   isGlobal ? [] : (targetRoles ?? []),
+    isGlobal:      Boolean(isGlobal),
+    expiresAt:     null,
+    count:         1,
+    createdBy,
+    createdByName: createdByName ?? '',
+  });
+
+  return { notification: n, accumulated: false };
+}
+
+/**
  * Actualiza campos permitidos de una notificación.
  */
 async function update(notificationId, updates) {
-  const allowed = ['title', 'message', 'type', 'priority', 'targetRoles', 'isGlobal', 'expiresAt'];
+  const allowed = ['title', 'message', 'type', 'priority', 'targetRoles', 'isGlobal', 'expiresAt', 'metadata'];
   const safeUpdates = {};
   for (const key of allowed) {
     if (key in updates) safeUpdates[key] = updates[key];
@@ -252,4 +308,4 @@ async function remove(notificationId) {
   return Notification.findByIdAndDelete(notificationId);
 }
 
-module.exports = { listForUser, countUnread, create, createOrAccumulate, markRead, markAllRead, togglePin, dismiss, update, remove };
+module.exports = { listForUser, countUnread, create, createOrAccumulate, upsertDaily, markRead, markAllRead, togglePin, dismiss, update, remove };

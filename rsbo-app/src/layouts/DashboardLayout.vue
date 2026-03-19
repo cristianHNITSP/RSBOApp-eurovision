@@ -12,6 +12,7 @@ import { useNotifications } from "../composables/useNotificationsState";
 import { useAccessibility } from "../composables/useAccessibility";
 import { pendingOrdersCount } from "@/composables/useOrdersBadge.js";
 import { listOrders } from "@/services/laboratorio.js";
+import { fetchUnreadCount } from "@/services/notifications.js";
 
 
 /* =========================
@@ -40,6 +41,16 @@ const { motionRef, animateSidebarShift } = useMotionEffects();
 const { showPanel, openPanel, closePanel } = useNotifications();
 const unreadNotifications = ref(0);
 const isPinnedPanel = ref(false);
+const bellRinging = ref(false);
+let _prevUnread = 0;
+
+watch(unreadNotifications, (newVal) => {
+  if (newVal > _prevUnread) {
+    bellRinging.value = true;
+    setTimeout(() => { bellRinging.value = false; }, 800);
+  }
+  _prevUnread = newVal;
+});
 
 /* =========================
    Breadcrumb / título
@@ -261,10 +272,20 @@ async function refreshPendingCount() {
   } catch {}
 }
 
+async function refreshUnreadCount() {
+  try {
+    const { data } = await fetchUnreadCount();
+    unreadNotifications.value = data?.unread ?? 0;
+  } catch { /* silencioso */ }
+}
+
 function _onLabWs(e) {
   const type = e?.detail?.type;
   if (["LAB_ORDER_CREATE","LAB_ORDER_CANCEL","LAB_ORDER_CLOSE","LAB_ORDER_RESET"].includes(type)) {
     refreshPendingCount();
+  }
+  if (type === "NOTIFICATION_NEW" || type === "STOCK_ALERT") {
+    refreshUnreadCount();
   }
 }
 
@@ -281,6 +302,7 @@ onMounted(() => {
   else mql.addListener(onMediaChange);
 
   refreshPendingCount();
+  refreshUnreadCount();
   window.addEventListener("lab:ws", _onLabWs);
 });
 
@@ -406,6 +428,7 @@ export default {
                 <b-tooltip label="Notificaciones" position="is-bottom" append-to-body>
                   <div class="has-badge-wrapper">
                     <b-button class="toolbar-btn" type="is-light" :icon-right="showPanel ? 'close' : 'bell'"
+                      :class="{ 'bell-btn--ringing': bellRinging && !showPanel }"
                       @click="showPanel ? handleClosePanel() : openPanelMobile()" />
                     <transition name="badge-fade">
                       <b-tag v-if="unreadNotifications > 0" type="is-primary" size="is-small" rounded class="is-badge">
@@ -504,6 +527,7 @@ export default {
               <b-tooltip label="Notificaciones" position="is-bottom" append-to-body>
                 <div class="has-badge-wrapper">
                   <b-button class="toolbar-btn" type="is-light" :icon-right="showPanel ? 'close' : 'bell'"
+                    :class="{ 'bell-btn--ringing': bellRinging && !showPanel }"
                     @click="showPanel ? closePanel() : openPanelMobile()" />
                   <transition name="badge-fade">
                     <b-tag v-if="unreadNotifications > 0" type="is-primary" size="is-small" rounded class="is-badge">
@@ -1060,4 +1084,20 @@ export default {
 }
 
 /* Los efectos reducidos se manejan en tokens.css vía [data-reduced-effects="true"] */
+
+/* ── Bell ring animation ─────────────────────────────────────────────────── */
+@keyframes bell-ring {
+  0%, 100% { transform: rotate(0deg); }
+  15%       { transform: rotate(-18deg); }
+  30%       { transform: rotate(18deg); }
+  45%       { transform: rotate(-14deg); }
+  60%       { transform: rotate(14deg); }
+  75%       { transform: rotate(-8deg); }
+  90%       { transform: rotate(4deg); }
+}
+
+.bell-btn--ringing :deep(.icon) {
+  animation: bell-ring 0.75s ease forwards;
+  transform-origin: top center;
+}
 </style>

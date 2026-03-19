@@ -40,10 +40,22 @@ export default {
 
   setup() {
     const activeMobileMenu = ref(null);
+    const expandedId = ref(null);
     return {
       activeMobileMenu,
+      expandedId,
       toggleMobileMenu(id) { activeMobileMenu.value = activeMobileMenu.value === id ? null : id; },
       closeMobileMenu()    { activeMobileMenu.value = null; },
+      toggleExpand(id)     { expandedId.value = expandedId.value === id ? null : id; },
+      isExpanded(id)       { return expandedId.value === id; },
+      hasDetail(notif)     {
+        return !!(notif.metadata && (
+          notif.metadata.type === 'stock_alert' ||
+          notif.metadata.type === 'pending_orders' ||
+          notif.metadata.type === 'new_order' ||
+          notif.metadata.type === 'correction'
+        ));
+      },
     };
   },
 
@@ -89,6 +101,11 @@ export default {
     timeAgo,
     isPinned(notif)  { return notif.isPinned === true; },
     isReading(notif) { return this.readingIds.includes(String(notif._id)); },
+
+    statusLabel(status) {
+      const map = { pendiente: 'Por iniciar', parcial: 'En proceso', cerrado: 'Cerrado', cancelado: 'Cancelado' };
+      return map[status] || status;
+    },
 
     async load() {
       this.loading = true;
@@ -307,6 +324,142 @@ export default {
                 <!-- Mensaje -->
                 <p class="notif-message">{{ notif.message }}</p>
 
+                <!-- Botón expandir detalle -->
+                <button
+                  v-if="hasDetail(notif)"
+                  class="detail-toggle"
+                  @click="toggleExpand(notif._id)"
+                >
+                  <span>{{ isExpanded(notif._id) ? 'Ocultar detalle' : 'Ver detalle' }}</span>
+                  <b-icon
+                    pack="fas"
+                    :icon="isExpanded(notif._id) ? 'chevron-up' : 'chevron-down'"
+                    size="is-small"
+                  />
+                </button>
+
+                <!-- Panel de detalle expandible -->
+                <transition name="detail-expand">
+                  <div v-if="hasDetail(notif) && isExpanded(notif._id)" class="detail-panel">
+
+                    <!-- DETALLE: Alerta de stock -->
+                    <template v-if="notif.metadata.type === 'stock_alert'">
+                      <div class="detail-header">
+                        <span class="detail-header__label">{{ notif.metadata.sheetLabel }}</span>
+                        <span class="detail-header__counts">
+                          <span v-if="notif.metadata.critCount > 0" class="level-badge level-badge--critico">
+                            {{ notif.metadata.critCount }} CRÍTICO{{ notif.metadata.critCount > 1 ? 'S' : '' }}
+                          </span>
+                          <span v-if="notif.metadata.lowCount > 0" class="level-badge level-badge--bajo">
+                            {{ notif.metadata.lowCount }} BAJO{{ notif.metadata.lowCount > 1 ? 'S' : '' }}
+                          </span>
+                        </span>
+                      </div>
+                      <ul class="cell-list">
+                        <li
+                          v-for="(cell, idx) in notif.metadata.cells"
+                          :key="idx"
+                          class="cell-row"
+                        >
+                          <span
+                            class="level-badge"
+                            :class="cell.level === 'CRITICO' ? 'level-badge--critico' : 'level-badge--bajo'"
+                          >{{ cell.level }}</span>
+                          <span class="cell-label">{{ cell.label }}</span>
+                          <span class="cell-stock">{{ cell.existencias }} pza{{ cell.existencias !== 1 ? 's' : '' }}</span>
+                        </li>
+                      </ul>
+                    </template>
+
+                    <!-- DETALLE: Pedidos pendientes -->
+                    <template v-else-if="notif.metadata.type === 'pending_orders'">
+                      <div class="detail-header">
+                        <span class="detail-header__label">Pedidos activos</span>
+                        <span class="detail-header__counts">
+                          <span v-if="notif.metadata.summary.pendiente > 0" class="level-badge level-badge--bajo">
+                            {{ notif.metadata.summary.pendiente }} por iniciar
+                          </span>
+                          <span v-if="notif.metadata.summary.parcial > 0" class="level-badge level-badge--critico">
+                            {{ notif.metadata.summary.parcial }} en proceso
+                          </span>
+                        </span>
+                      </div>
+                      <ul class="order-list">
+                        <li
+                          v-for="order in notif.metadata.orders"
+                          :key="order.orderId"
+                          class="order-item"
+                        >
+                          <div class="order-item__head">
+                            <span class="order-folio">{{ order.folio }}</span>
+                            <span
+                              class="level-badge"
+                              :class="order.status === 'parcial' ? 'level-badge--critico' : 'level-badge--bajo'"
+                            >{{ statusLabel(order.status) }}</span>
+                            <span class="order-client">{{ order.cliente }}</span>
+                          </div>
+                          <div class="order-item__progress">
+                            <span class="progress-text">
+                              {{ order.progress.picked }} / {{ order.progress.total }} pzas
+                            </span>
+                            <div class="progress-bar">
+                              <div
+                                class="progress-bar__fill"
+                                :style="{ width: order.progress.total > 0 ? (order.progress.picked / order.progress.total * 100) + '%' : '0%' }"
+                              />
+                            </div>
+                          </div>
+                          <ul class="line-list">
+                            <li
+                              v-for="(line, li) in order.lines"
+                              :key="li"
+                              class="line-row"
+                            >
+                              <span class="line-label">{{ line.label }}</span>
+                              <span class="line-qty">{{ line.picked }}/{{ line.qty }}</span>
+                            </li>
+                          </ul>
+                        </li>
+                      </ul>
+                    </template>
+
+                    <!-- DETALLE: Nuevo pedido individual -->
+                    <template v-else-if="notif.metadata.type === 'new_order'">
+                      <div class="detail-header">
+                        <span class="detail-header__label">{{ notif.metadata.folio }}</span>
+                        <span class="level-badge level-badge--bajo">{{ statusLabel(notif.metadata.status) }}</span>
+                      </div>
+                      <div class="order-item">
+                        <div class="order-item__head">
+                          <span class="order-client">{{ notif.metadata.cliente }}</span>
+                          <span v-if="notif.metadata.note" class="notif-message" style="font-size:0.72rem">{{ notif.metadata.note }}</span>
+                        </div>
+                        <ul class="line-list">
+                          <li v-for="(line, li) in notif.metadata.lines" :key="li" class="line-row">
+                            <span class="line-label">{{ line.label }}</span>
+                            <span class="line-qty">{{ line.qty }} pza{{ line.qty !== 1 ? 's' : '' }}</span>
+                          </li>
+                        </ul>
+                      </div>
+                    </template>
+
+                    <!-- DETALLE: Corrección solicitada -->
+                    <template v-else-if="notif.metadata.type === 'correction'">
+                      <div class="detail-header">
+                        <span class="detail-header__label">{{ notif.metadata.folio }}</span>
+                        <span class="level-badge level-badge--critico">CORRECCIÓN</span>
+                      </div>
+                      <div class="order-item">
+                        <p class="notif-message" style="margin:0">{{ notif.metadata.message || 'Sin detalle del motivo' }}</p>
+                        <span v-if="notif.metadata.actor" class="notif-author" style="font-size:0.7rem;margin-top:0.3rem;display:flex;align-items:center;gap:0.25rem">
+                          <b-icon pack="fas" icon="user" size="is-small" />{{ notif.metadata.actor }}
+                        </span>
+                      </div>
+                    </template>
+
+                  </div>
+                </transition>
+
                 <!-- Meta: quién creó + tiempo -->
                 <div class="notif-meta">
                   <span v-if="notif.createdByName" class="notif-author">
@@ -345,22 +498,23 @@ export default {
   position: absolute;
   top: 0;
   right: 0;
+  bottom: 0;
   z-index: 15;
   width: 300px;
-  height: 100%;
   background: var(--surface-solid);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border-left: 1px solid var(--border-solid);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: hidden; /* Scroll is handled by the inner list */
 }
 
 .aside-container {
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
 }
 
 /* ── Header ─────────────────────────────────────────────────────────────────── */
@@ -390,6 +544,7 @@ export default {
 /* ── Lista ──────────────────────────────────────────────────────────────────── */
 .notification-list {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   padding: 0.75rem;
@@ -401,6 +556,7 @@ export default {
 /* ── Tarjeta ────────────────────────────────────────────────────────────────── */
 .notif-card {
   display: flex;
+  flex-shrink: 0;
   border-radius: 10px;
   border: 1px solid var(--border-solid);
   background: var(--bg-muted);
@@ -521,6 +677,214 @@ export default {
   line-height: 1.4;
 }
 
+/* ── Botón expandir detalle ─────────────────────────────────────────────────── */
+.detail-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: none;
+  border: none;
+  padding: 0.15rem 0;
+  margin-bottom: 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--c-primary);
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.detail-toggle:hover { opacity: 0.75; }
+
+/* ── Panel de detalle ───────────────────────────────────────────────────────── */
+.detail-panel {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-solid);
+  border-radius: 7px;
+  padding: 0.55rem 0.65rem;
+  margin-bottom: 0.45rem;
+  overflow: hidden;
+}
+
+.detail-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+.detail-header__label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.detail-header__counts {
+  display: flex;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
+/* ── Badges de nivel ────────────────────────────────────────────────────────── */
+.level-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.level-badge--critico {
+  background: var(--c-danger, #cc0f35);
+  color: #fff;
+}
+.level-badge--bajo {
+  background: var(--c-warning, #d97706);
+  color: #fff;
+}
+
+/* ── Lista de celdas (stock alert) ──────────────────────────────────────────── */
+.cell-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.cell-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.7rem;
+}
+
+.cell-label {
+  flex: 1;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cell-stock {
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+/* ── Lista de pedidos (pending orders) ──────────────────────────────────────── */
+.order-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.order-item {
+  border-top: 1px solid var(--border-solid);
+  padding-top: 0.45rem;
+}
+.order-item:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.order-item__head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.3rem;
+}
+
+.order-folio {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-family: monospace;
+}
+
+.order-client {
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.order-item__progress {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.3rem;
+}
+
+.progress-text {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 4px;
+  background: var(--border-solid);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-bar__fill {
+  height: 100%;
+  background: var(--c-primary);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.line-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.line-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.67rem;
+}
+
+.line-label {
+  flex: 1;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.line-qty {
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
 /* ── Meta ───────────────────────────────────────────────────────────────────── */
 .notif-meta {
   display: flex;
@@ -601,4 +965,17 @@ export default {
 .fade-drop-leave-active { transition: opacity 0.15s, transform 0.15s; }
 .fade-drop-enter-from,
 .fade-drop-leave-to     { opacity: 0; transform: translateY(-4px); }
+
+/* ── Expansión del panel de detalle ─────────────────────────────────────────── */
+.detail-expand-enter-active,
+.detail-expand-leave-active {
+  transition: max-height 0.28s ease, opacity 0.22s ease;
+  max-height: 600px;
+  overflow: hidden;
+}
+.detail-expand-enter-from,
+.detail-expand-leave-to {
+  max-height: 0;
+  opacity: 0;
+}
 </style>

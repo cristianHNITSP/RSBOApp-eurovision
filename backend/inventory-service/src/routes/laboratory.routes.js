@@ -12,6 +12,7 @@ const MatrixProgresivo = require("../models/matrix/MatrixProgresivo");
 const LaboratoryOrder = require("../models/laboratory/LaboratoryOrder");
 const LaboratoryEvent = require("../models/laboratory/LaboratoryEvent");
 
+const { notifyPendingOrders, notifyNewOrder, notifyCorrection } = require("../services/labNotification.service");
 const { actorFromBody } = require("../inventory/utils/normalize");
 const { denormNum, parseKey } = require("../inventory/utils/keys");
 
@@ -209,6 +210,13 @@ async function applyDeltaToInventory(sheet, loc, qtySigned, actor, reasonType) {
     if (DEBUG_LAB) console.warn("[LAB] InventoryChangeLog fail:", e?.message || e);
   }
 
+  // Alerta de stock tras movimiento de laboratorio — no bloqueante
+  setImmediate(() => {
+    const { checkCellAlert } = require("../services/stockAlert.service");
+    const eyeArg = (sheet.tipo_matriz === "BASE" || sheet.tipo_matriz === "SPH_CYL") ? null : (loc.eye || null);
+    checkCellAlert(sheet, sheet.tipo_matriz, key, after, eyeArg);
+  });
+
   return { ok: true, before, after };
 }
 
@@ -238,7 +246,7 @@ router.get(
     try {
       const typeRaw = String(req.query.type || "").trim();
       const types = typeRaw ? typeRaw.split(",").map((x) => x.trim()).filter(Boolean) : [];
-      const allowed = new Set(["ORDER_CREATE", "EXIT_SCAN", "ORDER_CLOSE", "ORDER_RESET", "CORRECTION_REQUEST", "ORDER_CANCEL"]);
+      const allowed = new Set(["ORDER_CREATE", "EXIT_SCAN", "ORDER_CLOSE", "ORDER_RESET", "CORRECTION_REQUEST", "ORDER_CANCEL", "ORDER_EDIT"]);
 
       for (const t of types) {
         if (!allowed.has(t)) return res.status(400).json({ ok: false, message: `type inválido: ${t}` });
@@ -434,6 +442,8 @@ router.post(
       });
 
       broadcast("LAB_ORDER_CREATE", { orderId: String(order._id), folio, cliente });
+      setImmediate(() => { notifyPendingOrders(); });
+      setImmediate(() => { notifyNewOrder(order); });
 
       return res.status(201).json({ ok: true, data: order });
     } catch (e) {
@@ -464,9 +474,11 @@ router.post(
   "/orders/:orderId/cancel",
   param("orderId").isMongoId(),
   body("actor").optional().isObject(),
+  body("motivo").optional({ nullable: true }).isString().trim().isLength({ max: 400 }),
   handleValidation,
   async (req, res) => {
     const actor = actorFromBody(req) || { userId: null, name: "system" };
+    const motivo = String(req.body.motivo || "").trim() || null;
 
     try {
       const order = await LaboratoryOrder.findById(req.params.orderId);
@@ -496,12 +508,13 @@ router.post(
       order.updatedAt = new Date();
       await order.save();
       broadcast("LAB_ORDER_CANCEL", { orderId: String(order._id), folio: order.folio });
+      setImmediate(() => { notifyPendingOrders(); });
 
       await LaboratoryEvent.create({
         order: order._id,
         sheet: order.sheet,
         type: "ORDER_CANCEL",
-        details: { folio: order.folio, sheetId: order.sheet ? String(order.sheet) : null },
+        details: { folio: order.folio, sheetId: order.sheet ? String(order.sheet) : null, motivo },
         actor
       });
 
@@ -638,6 +651,7 @@ router.post(
       order.updatedAt = new Date();
       await order.save();
       broadcast("LAB_ORDER_RESET", { orderId: String(order._id), folio: order.folio });
+      setImmediate(() => { notifyPendingOrders(); });
 
       await LaboratoryEvent.create({
         order: order._id,
@@ -674,6 +688,7 @@ router.post(
       order.updatedBy = actor;
       await order.save();
       broadcast("LAB_ORDER_CLOSE", { orderId: String(order._id), folio: order.folio });
+      setImmediate(() => { notifyPendingOrders(); });
 
       await LaboratoryEvent.create({
         order: order._id,
@@ -699,9 +714,12 @@ router.patch(
   body("note").optional({ nullable: true }).isString(),
   body("lines").optional().isArray(),
   body("actor").optional().isObject(),
+  body("motivo").optional({ nullable: true }).isString().trim().isLength({ max: 400 }),
   handleValidation,
   async (req, res) => {
     const actor = actorFromBody(req) || { userId: null, name: "system" };
+    const motivo = String(req.body.motivo || "").trim() || null;
+
     try {
       const order = await LaboratoryOrder.findById(req.params.orderId);
       if (!order) return res.status(404).json({ ok: false, message: "Pedido no existe" });
@@ -710,9 +728,18 @@ router.patch(
       if (order.status === "cancelado")
         return res.status(409).json({ ok: false, message: "No se puede editar un pedido cancelado" });
 
-      if (req.body.cliente !== undefined) order.cliente = String(req.body.cliente).trim();
-      if (req.body.note !== undefined) order.note = String(req.body.note || "").trim();
+      // Capturar diff antes de modificar
+      const diff = {};
+      if (req.body.cliente !== undefined && req.body.cliente !== order.cliente) {
+        diff.cliente = { before: order.cliente, after: String(req.body.cliente).trim() };
+        order.cliente = diff.cliente.after;
+      }
+      if (req.body.note !== undefined && req.body.note !== order.note) {
+        diff.note = { before: order.note, after: String(req.body.note || "").trim() };
+        order.note = diff.note.after;
+      }
 
+      const linesChanges = [];
       if (Array.isArray(req.body.lines)) {
         const removeIds = new Set();
 
@@ -730,6 +757,7 @@ router.patch(
               });
             }
             removeIds.add(lineId);
+            linesChanges.push({ action: "removed", codebar: line.codebar, lineId });
             continue;
           }
 
@@ -745,7 +773,10 @@ router.patch(
                 message: `No puedes reducir "${line.codebar}" a ${newQty}: ya surtidas ${picked}`
               });
             }
-            line.qty = newQty;
+            if (newQty !== Number(line.qty)) {
+              linesChanges.push({ action: "qty_changed", codebar: line.codebar, lineId, before: line.qty, after: newQty });
+              line.qty = newQty;
+            }
           }
         }
 
@@ -759,7 +790,6 @@ router.patch(
       }
 
       // Recalcular status
-      const total = order.lines.reduce((acc, l) => acc + Number(l.qty || 0), 0);
       const pickedTotal = order.lines.reduce(
         (acc, l) => acc + Math.min(Number(l.picked || 0), Number(l.qty || 0)),
         0
@@ -770,6 +800,22 @@ router.patch(
       order.updatedBy = actor;
       order.updatedAt = new Date();
       await order.save();
+
+      // Registrar evento de edición
+      if (Object.keys(diff).length > 0 || linesChanges.length > 0 || motivo) {
+        await LaboratoryEvent.create({
+          order: order._id,
+          sheet: order.sheet,
+          type: "ORDER_EDIT",
+          details: {
+            folio: order.folio,
+            motivo,
+            diff,
+            linesChanges
+          },
+          actor
+        });
+      }
 
       return res.json({ ok: true, data: order });
     } catch (e) {
@@ -811,6 +857,15 @@ router.post(
           message
         },
         actor
+      });
+
+      setImmediate(() => {
+        notifyCorrection({
+          folio:     order.folio,
+          orderId:   String(order._id),
+          message:   String(req.body.message || "").trim(),
+          actorName: actor?.name || null,
+        });
       });
 
       return res.status(201).json({ ok: true, data: event });

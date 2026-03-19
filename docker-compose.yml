@@ -128,6 +128,9 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${AUTH_DB}?authSource=admin"
+      INVENTORY_MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${INVENTORY_DB}?authSource=admin"
+      NOTIFICATION_MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${NOTIFICATION_DB}?authSource=admin"
+      OPTICA_MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${OPTICA_DB}?authSource=admin"
     depends_on:
       - mongo
     expose:

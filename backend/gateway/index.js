@@ -5,6 +5,7 @@ const cors = require("cors");
 const axios = require("axios");
 const http = require("http");
 const { WebSocketServer } = require("ws");
+const { createProxyMiddleware } = require("http-proxy-middleware");
 
 const app = express();
 
@@ -106,15 +107,22 @@ const proxyRequest = (serviceUrl) => async (req, res) => {
     // 📥 Log de cookies recibidas del cliente
     console.log("📥 Cookies recibidas del navegador:", req.headers.cookie || "(none)");
 
+    // GET / DELETE / HEAD no llevan body — si se reenvían con Content-Type: application/json
+    // y sin body, el JSON parser del microservicio lanza SyntaxError → 400.
+    const noBody = new Set(["GET", "DELETE", "HEAD", "OPTIONS"]);
+    const isNoBody = noBody.has(req.method.toUpperCase());
+
     const response = await axios({
       method: req.method,
       url: targetUrl,
-      data: req.body,
+      ...(isNoBody ? {} : { data: req.body }),
       // Importante: forward de headers + cookies
       headers: {
         ...req.headers,
-        host: undefined, // evita conflictos
-        cookie: req.headers.cookie || "",
+        host:             undefined, // evita conflictos
+        cookie:           req.headers.cookie || "",
+        // Elimina headers de cuerpo para métodos sin body
+        ...(isNoBody ? { "content-type": undefined, "content-length": undefined } : {}),
       },
       // ✅ NO hacer throw por 401/403/etc; queremos devolver tal cual al cliente
       validateStatus: () => true,
@@ -144,6 +152,24 @@ const proxyRequest = (serviceUrl) => async (req, res) => {
   }
 };
 
+// 🔹 Proxy AdminJS — montado en root con pathFilter para que Express NO strip /admin
+//    http-proxy-middleware v3: pathFilter preserva el path completo al proxiar
+app.use(
+  createProxyMiddleware({
+    pathFilter: ["/admin"],
+    target: SERVICES.auth,
+    changeOrigin: true,
+    on: {
+      error: (err, _req, res) => {
+        console.error("❌ Admin proxy error:", err.message);
+        if (res && !res.headersSent) {
+          res.status(502).json({ error: "Admin panel no disponible" });
+        }
+      },
+    },
+  })
+);
+
 // 🔹 Rutas proxy
 app.use("/api/access", proxyRequest(SERVICES.auth));
 app.use("/api/users", proxyRequest(SERVICES.users));
@@ -152,6 +178,7 @@ app.use("/api/inventory", proxyRequest(SERVICES.inventory));
 app.use("/api/laboratory", proxyRequest(SERVICES.inventory));
 app.use("/api/search", proxyRequest(SERVICES.inventory));
 app.use("/api/contactlenses", proxyRequest(SERVICES.inventory));
+app.use("/api/stats", proxyRequest(SERVICES.inventory));
 app.use("/api/optica", proxyRequest(SERVICES.optica));
 app.use("/api/notification", proxyRequest(SERVICES.notification));
 

@@ -1,21 +1,23 @@
+"use strict";
+
 /**
  * stockAlert.service.js
  *
  * Sistema de alertas de stock inteligente basado en distancia al neutro.
- * Las alertas se agrupan por planilla (una notificación diaria por planilla).
+ * Las alertas se agrupan por planilla (una notificacion diaria por planilla).
+ *
+ * Las notificaciones se persisten en el notification-service via HTTP interno
+ * (notifClient) — este servicio ya no accede directamente a notification_db.
  *
  * ┌─────────────────────────────────────────────────────────┐
- * │  SECCIÓN 1 — Clasificación (puras, sin efectos)         │
- * │  SECCIÓN 2 — Notificación agrupada por planilla         │
- * │  SECCIÓN 3 — Orquestación: checkCell / sweep            │
+ * │  SECCION 1 — Clasificacion (puras, sin efectos)         │
+ * │  SECCION 2 — Notificacion agrupada por planilla         │
+ * │  SECCION 3 — Orquestacion: checkCell / sweep            │
  * └─────────────────────────────────────────────────────────┘
  */
 
-"use strict";
-
-const mongoose = require("mongoose");
 const { denormNum } = require("../inventory/utils/keys");
-const { getNotifModel } = require("./notifDb");
+const notifClient   = require("./notifClient");
 
 const MatrixBase       = require("../models/matrix/MatrixBase");
 const MatrixSphCyl     = require("../models/matrix/MatrixSphCyl");
@@ -23,12 +25,11 @@ const MatrixBifocal    = require("../models/matrix/MatrixBifocal");
 const MatrixProgresivo = require("../models/matrix/MatrixProgresivo");
 
 // ============================================================================
-// SECCIÓN 1 — Clasificación (funciones puras, sin I/O)
+// SECCION 1 — Clasificacion (funciones puras, sin I/O)
 // ============================================================================
 
-const SYSTEM_OID = new mongoose.Types.ObjectId("000000000000000000000001");
 const TARGET_ROLES = ["eurovision"];
-const COOLDOWN_MS = 5 * 60 * 60 * 1000; // 5 horas
+const COOLDOWN_MS  = 5 * 60 * 60 * 1000; // 5 horas
 
 const TIERS = [
   { maxDist: 1.00, critical: 3, low: 6,  neutral: 10 },
@@ -99,14 +100,14 @@ function todayStr() {
 }
 
 // ============================================================================
-// SECCIÓN 2 — Notificación agrupada por planilla (una por día)
+// SECCION 2 — Notificacion agrupada por planilla (una por dia)
 // ============================================================================
 
 /**
  * Lee TODAS las celdas de una planilla, clasifica las que tienen stock
- * bajo o crítico, y crea/actualiza UNA notificación diaria para esa planilla.
+ * bajo o critico, y delega la persistencia al notification-service via HTTP.
  *
- * Si no hay celdas con alerta, elimina la notificación de hoy (auto-resolución).
+ * Si no hay celdas con alerta, solicita la eliminacion de la notificacion de hoy.
  *
  * @param {object} sheet - Documento de InventorySheet
  * @param {{ respectCooldown?: boolean }} opts
@@ -115,18 +116,8 @@ async function upsertSheetAlertNotification(sheet, opts = {}) {
   const { respectCooldown = false } = opts;
 
   try {
-    const Notification = await getNotifModel();
     const today    = todayStr();
     const groupKey = `stock_alert:${sheet._id}`;
-
-    // Anti-spam: si ya se actualizó hace < 5h en el mismo día, omitir
-    if (respectCooldown) {
-      const existing = await Notification.findOne({ groupKey, date: today });
-      if (existing) {
-        const msSince = Date.now() - new Date(existing.updatedAt).getTime();
-        if (msSince < COOLDOWN_MS) return;
-      }
-    }
 
     // Leer la matriz y recolectar celdas con alerta
     const Model = getMatrixModel(sheet.tipo_matriz);
@@ -172,35 +163,32 @@ async function upsertSheetAlertNotification(sheet, opts = {}) {
       }
     }
 
-    // Sin alertas → eliminar notificación de hoy si existe
+    // Sin alertas → eliminar notificacion de hoy y limpiar legado
     if (alertCells.length === 0) {
-      await Notification.deleteOne({ groupKey, date: today });
-      // También limpiar notificaciones antiguas de celdas individuales de esta planilla
-      await Notification.deleteMany({
-        groupKey: { $regex: `^stock_(critico|bajo):${sheet._id}:` },
-      });
+      await notifClient.deleteByGroup({ groupKey, date: today });
+      await notifClient.deleteByGroup({ groupKeyPattern: `^stock_(critico|bajo):${sheet._id}:` });
       return;
     }
 
-    // Ordenar: CRÍTICO primero
+    // Ordenar: CRITICO primero
     alertCells.sort((a, b) => {
       if (a.level === "CRITICO" && b.level !== "CRITICO") return -1;
       if (b.level === "CRITICO" && a.level !== "CRITICO") return 1;
       return 0;
     });
 
-    const critCount  = alertCells.filter((c) => c.level === "CRITICO").length;
-    const lowCount   = alertCells.filter((c) => c.level === "BAJO").length;
-    const sLabel     = sheetLabel(sheet);
-    const hasCrit    = critCount > 0;
+    const critCount = alertCells.filter((c) => c.level === "CRITICO").length;
+    const lowCount  = alertCells.filter((c) => c.level === "BAJO").length;
+    const sLabel    = sheetLabel(sheet);
+    const hasCrit   = critCount > 0;
 
     const title = hasCrit
-      ? `Stock Crítico — ${sLabel}`
+      ? `Stock Critico — ${sLabel}`
       : `Stock Bajo — ${sLabel}`;
 
     const parts = [];
-    if (critCount > 0) parts.push(`${critCount} combinación${critCount > 1 ? "es" : ""} en estado CRÍTICO`);
-    if (lowCount  > 0) parts.push(`${lowCount} combinación${lowCount > 1 ? "es" : ""} con stock bajo`);
+    if (critCount > 0) parts.push(`${critCount} combinacion${critCount > 1 ? "es" : ""} en estado CRITICO`);
+    if (lowCount  > 0) parts.push(`${lowCount} combinacion${lowCount > 1 ? "es" : ""} con stock bajo`);
 
     const message = `Planilla: ${sLabel} — ${parts.join(", ")}. Revisa el detalle para ver todas las combinaciones afectadas.`;
 
@@ -213,41 +201,22 @@ async function upsertSheetAlertNotification(sheet, opts = {}) {
       lowCount,
     };
 
-    const existing = await Notification.findOne({ groupKey, date: today });
+    // Delegar persistencia al notification-service
+    await notifClient.upsertDaily({
+      groupKey,
+      date:          today,
+      title,
+      message:       message.slice(0, 2000),
+      metadata,
+      type:          hasCrit ? "danger" : "warning",
+      priority:      hasCrit ? "critical" : "high",
+      targetRoles:   TARGET_ROLES,
+      isGlobal:      false,
+      respectCooldown,
+      cooldownMs:    COOLDOWN_MS,
+    });
 
-    if (existing) {
-      existing.title    = title;
-      existing.message  = message.slice(0, 2000);
-      existing.metadata = metadata;
-      existing.type     = hasCrit ? "danger" : "warning";
-      existing.priority = hasCrit ? "critical" : "high";
-      existing.count    = (existing.count || 1) + 1;
-      existing.readBy   = [];
-      existing.markModified("metadata");
-      await existing.save();
-    } else {
-      // Limpiar antiguas notificaciones per-celda de esta planilla antes de crear la nueva
-      await Notification.deleteMany({
-        groupKey: { $regex: `^stock_(critico|bajo):${sheet._id}:` },
-      });
-
-      await Notification.create({
-        groupKey,
-        date:          today,
-        title,
-        message:       message.slice(0, 2000),
-        metadata,
-        type:          hasCrit ? "danger" : "warning",
-        priority:      hasCrit ? "critical" : "high",
-        targetRoles:   TARGET_ROLES,
-        isGlobal:      false,
-        createdBy:     SYSTEM_OID,
-        createdByName: "Sistema",
-        count:         1,
-      });
-    }
-
-    // WS broadcast
+    // WS broadcast del evento de dominio (independiente de la notificacion)
     try {
       require("../ws").broadcast("STOCK_ALERT", {
         sheetId:  String(sheet._id),
@@ -258,32 +227,25 @@ async function upsertSheetAlertNotification(sheet, opts = {}) {
       });
     } catch { /* WS opcional */ }
 
-    // Broadcast NOTIFICATION_NEW para que el badge se actualice
-    try {
-      require("../ws").broadcast("NOTIFICATION_NEW", { source: "stock_alert" });
-    } catch { /* WS opcional */ }
-
   } catch (e) {
     console.warn("[STOCK_ALERT] upsertSheetAlertNotification error:", e?.message);
   }
 }
 
 // ============================================================================
-// SECCIÓN 3 — Orquestación
+// SECCION 3 — Orquestacion
 // ============================================================================
 
 /**
- * Verifica el estado de stock de UNA planilla completa y actualiza la notificación diaria.
+ * Verifica el estado de stock de UNA planilla completa y actualiza la notificacion diaria.
  * Llamar con setImmediate() desde las rutas para no bloquear res.send().
  */
-async function checkCellAlert(sheet, tipoMatriz, cellKey, existencias, eye = null) {
-  // El parámetro cellKey/existencias/eye ahora solo sirve de contexto de debug.
-  // La notificación se genera a nivel de planilla completa.
+async function checkCellAlert(sheet) {
   await upsertSheetAlertNotification(sheet, { respectCooldown: false });
 }
 
 /**
- * Barre TODAS las celdas de una planilla y actualiza la notificación diaria.
+ * Barre TODAS las celdas de una planilla y actualiza la notificacion diaria.
  */
 async function checkSheetAlerts(sheet, opts = {}) {
   await upsertSheetAlertNotification(sheet, opts);
@@ -314,21 +276,36 @@ async function sweepAllSheets(opts = { respectCooldown: true }) {
  */
 async function cleanupLegacyPerCellNotifications() {
   try {
-    const Notification = await getNotifModel();
-    const result = await Notification.deleteMany({
-      groupKey: { $regex: "^stock_(critico|bajo):" },
-    });
-    if (result.deletedCount > 0) {
-      console.log(`[STOCK_ALERT] Limpiadas ${result.deletedCount} notificaciones de stock por celda (formato legado).`);
-    }
+    await notifClient.deleteByGroup({ groupKeyPattern: "^stock_(critico|bajo):" });
+    console.log("[STOCK_ALERT] Limpieza de notificaciones por celda (formato legado) solicitada.");
   } catch (e) {
     console.warn("[STOCK_ALERT] cleanupLegacyPerCellNotifications error:", e?.message);
+  }
+}
+
+/**
+ * Verifica el stock de una planilla dado solo su ObjectId.
+ * Usado por los hooks post-save de los modelos Matrix para cubrir
+ * creacion de planillas, seeds y cualquier otra escritura directa.
+ *
+ * @param {ObjectId|string} sheetId
+ * @param {{ respectCooldown?: boolean, cooldownMs?: number }} opts
+ */
+async function checkSheetById(sheetId, opts = {}) {
+  try {
+    const InventorySheet = require("../models/InventorySheet");
+    const sheet = await InventorySheet.findById(sheetId).lean();
+    if (!sheet || sheet.isDeleted) return;
+    await upsertSheetAlertNotification(sheet, opts);
+  } catch (e) {
+    console.warn("[STOCK_ALERT] checkSheetById error:", e?.message);
   }
 }
 
 module.exports = {
   checkCellAlert,
   checkSheetAlerts,
+  checkSheetById,
   sweepAllSheets,
   cleanupLegacyPerCellNotifications,
   classifyStock,

@@ -32,6 +32,7 @@ app.use(cookieParser());
 // El gateway proxia /api/notification → este servicio, reenviando la URL completa.
 // Por eso montamos en /api/notification para que el path coincida.
 app.use('/api/notification', require('./routes/notification.routes'));
+app.use('/api/notification/internal', require('./routes/internal.routes'));
 
 // ─── Healthcheck ─────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) =>

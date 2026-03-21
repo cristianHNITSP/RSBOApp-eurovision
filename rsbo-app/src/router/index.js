@@ -96,6 +96,12 @@ const routes = [
         }),
       },
       {
+        path: "devoluciones",
+        name: "devoluciones",
+        component: () => import("../views/devoluciones/Devoluciones.vue"),
+        meta: { requiresAuth: true, breadcrumb: "Devoluciones" },
+      },
+      {
         path: "ayuda",
         name: "Ayuda",
         component: () => import("../views/Ayuda.vue"),

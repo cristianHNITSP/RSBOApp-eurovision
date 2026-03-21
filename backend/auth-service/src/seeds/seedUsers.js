@@ -21,6 +21,10 @@ const ROLES_DATA = [
       'edit_settings',
       'manage_roles',
       'manage_system',
+      'view_devolutions',
+      'manage_devolutions',
+      'export_reports',
+      'view_audit_log',
     ],
   },
   {
@@ -36,6 +40,10 @@ const ROLES_DATA = [
       'update_order_status',
       'view_inventory',
       'view_clients',
+      'view_devolutions',
+      'manage_devolutions',
+      'export_reports',
+      'view_audit_log',
     ],
   },
   {
@@ -49,6 +57,9 @@ const ROLES_DATA = [
       'update_order_status',
       'view_inventory',
       'view_clients',
+      'view_devolutions',
+      'manage_devolutions',
+      'export_reports',
     ],
   },
   {
@@ -60,6 +71,7 @@ const ROLES_DATA = [
       'view_inventory',
       'view_clients',
       'manage_sales',
+      'create_devolution',
     ],
   },
   {
@@ -69,6 +81,7 @@ const ROLES_DATA = [
       'view_orders',
       'update_order_progress',
       'mark_order_completed',
+      'view_devolutions',
     ],
   },
 ];

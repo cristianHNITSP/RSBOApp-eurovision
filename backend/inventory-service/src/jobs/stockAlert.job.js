@@ -1,28 +1,31 @@
+"use strict";
+
 /**
  * stockAlert.job.js
  *
- * Cron job de barrido periódico de alertas de stock.
+ * Estrategia de deteccion de alertas:
  *
- * Punto 2 — Anti-spam: pasa respectCooldown=true al sweep para que el cron
- *   no renotifique celdas que el hook ya alertó hace menos de 5 horas.
+ *   1. EVENT-DRIVEN (principal): cada vez que un usuario actualiza una celda o
+ *      guarda un chunk, las rutas lanzan checkCellAlert / checkSheetAlerts via
+ *      setImmediate — la alerta se detecta en tiempo real, sin polling.
  *
- * Punto 3 — No-bloqueante: el sweep inicial se lanza como IIFE async
- *   que no suspende app.listen(). startStockAlertJob() retorna de inmediato.
+ *   2. SWEEP DIARIO (safety net): un cron a las 3:00 AM hace un barrido de
+ *      todas las planillas para capturar cualquier cambio que haya ocurrido
+ *      fuera del flujo normal (migraciones directas en DB, crashes, etc.).
+ *      respectCooldown=true evita re-notificar lo que el trigger ya gestionó.
+ *
+ *   3. SWEEP DE ARRANQUE: barrido inicial con delay de 8s para dar tiempo a
+ *      que Mongoose conecte. Util tras reinicios del servicio.
  */
-
-"use strict";
 
 const cron = require("node-cron");
 const { sweepAllSheets, cleanupLegacyPerCellNotifications } = require("../services/stockAlert.service");
 const { notifyPendingOrders } = require("../services/labNotification.service");
 
-/** Tiempo de espera antes del primer sweep (deja que mongoose conecte). */
 const STARTUP_DELAY_MS = 8000;
 
 function startStockAlertJob() {
-  // ── Punto 3: Sweep inicial — IIFE async, fire-and-forget ─────────────────
-  // No usa await → app.listen() no se retrasa.
-  // El catch final evita unhandledRejection sin suprimir el error silenciosamente.
+  // ── Sweep de arranque — fire-and-forget ───────────────────────────────────
   (async () => {
     await new Promise((resolve) => setTimeout(resolve, STARTUP_DELAY_MS));
     console.log("[STOCK_ALERT] Sweep inicial al arrancar...");
@@ -31,16 +34,16 @@ function startStockAlertJob() {
     await notifyPendingOrders();
   })().catch((e) => console.error("[STOCK_ALERT] Error en sweep inicial:", e?.message));
 
-  // ── Cron cada 6 horas ────────────────────────────────────────────────────
-  // respectCooldown=true → omite celdas notificadas por hook en las últimas 5h.
-  cron.schedule("0 */6 * * *", () => {
-    console.log("[STOCK_ALERT] Cron: iniciando barrido periódico...");
-    // Fire-and-forget: el cron no necesita esperar el resultado.
+  // ── Sweep diario a las 3:00 AM — safety net minimo ───────────────────────
+  // La deteccion en tiempo real la hacen los triggers en las rutas (setImmediate).
+  // Este cron solo sirve como red de seguridad para capturas perdidas.
+  cron.schedule("0 3 * * *", () => {
+    console.log("[STOCK_ALERT] Cron 3AM: iniciando barrido diario...");
     sweepAllSheets({ respectCooldown: true })
-      .catch((e) => console.error("[STOCK_ALERT] Error en cron sweep:", e?.message));
+      .catch((e) => console.error("[STOCK_ALERT] Error en cron diario:", e?.message));
   });
 
-  console.log("[STOCK_ALERT] Job iniciado — cron 6h activo.");
+  console.log("[STOCK_ALERT] Job iniciado — triggers en tiempo real + cron diario 3AM.");
 }
 
 module.exports = { startStockAlertJob };

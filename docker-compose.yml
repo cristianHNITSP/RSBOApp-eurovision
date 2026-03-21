@@ -154,6 +154,8 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${INVENTORY_DB}?authSource=admin"
       GATEWAY_WS_URL: "ws://gateway:3000/ws-internal"
+      NOTIFICATION_SERVICE_INTERNAL_URL: "http://notification-service:3000"
+      INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN}"
     depends_on:
       - mongo
     expose:
@@ -199,6 +201,7 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${NOTIFICATION_DB}?authSource=admin"
       GATEWAY_WS_URL: "ws://gateway:3000/ws-internal"
+      INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN}"
     depends_on:
       - mongo
     expose:

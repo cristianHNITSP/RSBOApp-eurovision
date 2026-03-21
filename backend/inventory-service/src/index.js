@@ -131,6 +131,9 @@ app.use("/api/catalog", catalogRoutes);
 const statsRoutes = require("./routes/stats.routes");
 app.use("/api/stats", statsRoutes);
 
+const devolutionsRoutes = require("./routes/devolutions.routes");
+app.use("/api/devolutions", devolutionsRoutes);
+
 // si tu API usa prefijo /api:
 // app.use("/api/laboratory", laboratoryRoutes);
 
@@ -147,7 +150,12 @@ app.use((err, _req, res, _next) => {
 const labWs = require("./ws");
 labWs.connect();
 
-// Iniciar job de alertas de stock (cron 6h + sweep inicial)
+// Hooks Mongoose: detecta cambios de stock en cualquier escritura a Matrix
+// (creacion de planilla, seed, scripts CLI, rutas)
+const { registerStockAlertHooks } = require("./hooks/stockAlertHooks");
+registerStockAlertHooks();
+
+// Job de alertas: sweep inicial al arrancar + cron diario 3AM (safety net)
 const { startStockAlertJob } = require("./jobs/stockAlert.job");
 startStockAlertJob();
 

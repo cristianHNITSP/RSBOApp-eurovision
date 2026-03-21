@@ -262,6 +262,7 @@ export default {
             { label: "Lentes de Contacto", icon: "circle", path: "/layouts/ventas/lentes-contacto" },
           ],
         },
+        { label: "Devoluciones", icon: "rotate-left", path: "/layouts/devoluciones" },
         { group: "Otros" },
         { label: "Ajustes", icon: "cog", path: "/layouts/config.panel" },
         { label: "Ayuda", icon: "question-circle", path: "/layouts/Ayuda" },

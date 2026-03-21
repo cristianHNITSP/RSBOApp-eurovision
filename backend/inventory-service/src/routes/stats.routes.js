@@ -20,6 +20,7 @@ const MatrixProgresivo  = require("../models/matrix/MatrixProgresivo");
 const LaboratoryOrder   = require("../models/laboratory/LaboratoryOrder");
 const LaboratoryEvent   = require("../models/laboratory/LaboratoryEvent");
 const InventoryChangeLog = require("../models/InventoryChangeLog");
+const Devolution         = require("../models/Devolution");
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -168,6 +169,27 @@ router.get("/dashboard", async (_req, res) => {
       InventoryChangeLog.countDocuments({ createdAt: { $gte: today } }),
     ]);
 
+    // ── Devoluciones ──────────────────────────────────────────────────────
+    const [
+      devolucionesPendientes,
+      devolucionesAprobadas,
+      devolucionesRechazadas,
+      devolucionesProcesadas,
+      devolucionesEnRevision,
+      devolucionesTotal30d,
+      devolucionesTotal7d,
+      devolucionesHoy,
+    ] = await Promise.all([
+      Devolution.countDocuments({ status: "pendiente" }),
+      Devolution.countDocuments({ status: "aprobada" }),
+      Devolution.countDocuments({ status: "rechazada" }),
+      Devolution.countDocuments({ status: "procesada" }),
+      Devolution.countDocuments({ status: "en_revision" }),
+      Devolution.countDocuments({ createdAt: { $gte: d30 } }),
+      Devolution.countDocuments({ createdAt: { $gte: d7 } }),
+      Devolution.countDocuments({ createdAt: { $gte: today } }),
+    ]);
+
     // Nivel de servicio: % pedidos cerrados sin corrección
     let serviceLevel = 0;
     if (ordersClosed30d > 0) {
@@ -242,6 +264,16 @@ router.get("/dashboard", async (_req, res) => {
 
         // Nivel de servicio
         serviceLevel,
+
+        // Devoluciones
+        devolucionesPendientes,
+        devolucionesAprobadas,
+        devolucionesRechazadas,
+        devolucionesProcesadas,
+        devolucionesEnRevision,
+        devolucionesTotal30d,
+        devolucionesTotal7d,
+        devolucionesHoy,
 
         // Meta
         periodLabel: "Últimos 30 días",

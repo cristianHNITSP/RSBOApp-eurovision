@@ -9,6 +9,7 @@ import AgGridBifocal   from "@/components/ag-grid/templates/AgGridBifocal.vue";
 import AgGridBase      from "@/components/ag-grid/templates/AgGridBase.vue";
 import AgGridMonofocal from "@/components/ag-grid/templates/AgGridMonofocal.vue";
 import AgGridProgresivo from "@/components/ag-grid/templates/AgGridProgresivo.vue";
+import GlassTable      from "@/components/ag-grid/templates/GlassTable.vue";
 
 import { listSheets } from "@/services/inventory";
 import { fetchCatalog } from "@/services/catalog";
@@ -26,6 +27,9 @@ const dynamicSheets      = reactive([{ id: "nueva", name: "+ Agregar" }]);
 const activeSheet        = ref("nueva");
 const activeInternalTab  = ref(null);
 const loadingSheets      = ref(true);
+
+/** "excel" = AG-Grid | "glass" = Buefy GlassTable */
+const viewMode = ref("excel");
 
 // Catálogo cargado desde BD
 const catalog        = ref({ bases: [], treatments: [] });
@@ -268,12 +272,38 @@ const resolverGridProps = (sheet, activeInternal) => {
 
     <header class="page-section-header">
       <div>
-        <span class="inventario-pill">
-          <b-icon icon="glasses" size="is-small" class="mr-1" />
-          Inventario
-        </span>
-        <h2>Bases y Micas</h2>
-        <p class="psh-desc">Gestiona el stock de planillas oftálmicas: monofocal, bifocal, progresivo y base.</p>
+        <div class="psh-top-row">
+          <div>
+            <span class="inventario-pill">
+              <b-icon icon="glasses" size="is-small" class="mr-1" />
+              Inventario
+            </span>
+            <h2>Bases y Micas</h2>
+            <p class="psh-desc">Gestiona el stock de planillas oftálmicas: monofocal, bifocal, progresivo y base.</p>
+          </div>
+
+          <!-- VIEW TOGGLE -->
+          <div class="view-toggle">
+            <b-tooltip label="Vista Excel (AG-Grid)" position="is-bottom">
+              <button
+                class="vt-btn"
+                :class="{ 'vt-btn--active': viewMode === 'excel' }"
+                @click="viewMode = 'excel'"
+              >
+                <i class="fas fa-table-cells-large"></i>
+              </button>
+            </b-tooltip>
+            <b-tooltip label="Vista Tabla (Glassmorphism)" position="is-bottom">
+              <button
+                class="vt-btn"
+                :class="{ 'vt-btn--active': viewMode === 'glass' }"
+                @click="viewMode = 'glass'"
+              >
+                <i class="fas fa-table-list"></i>
+              </button>
+            </b-tooltip>
+          </div>
+        </div>
 
         <div class="psh-quick mt-3">
           <div class="psh-quick__card">
@@ -319,14 +349,24 @@ const resolverGridProps = (sheet, activeInternal) => {
             <Transition name="sheet" mode="out-in" appear>
               <div
                 v-if="sheet && sheet.id !== 'nueva'"
-                :key="`${sheet.id}:${sheet.tipo_matriz}`"
+                :key="`${sheet.id}:${sheet.tipo_matriz}:${viewMode}`"
                 class="contenido-planilla"
               >
                 <div class="planilla-wrapper">
+                  <!-- AG-Grid (Excel) view -->
                   <component
+                    v-if="viewMode === 'excel'"
                     :is="resolverGrid(sheet.tipo_matriz)"
                     v-bind="resolverGridProps(sheet, activeInternal)"
                     :actor="user"
+                  />
+                  <!-- Glass Table (Buefy) view -->
+                  <GlassTable
+                    v-else
+                    :sheet-id="sheet.id"
+                    :sph-type="activeInternal || 'sph-neg'"
+                    :actor="user"
+                    api-type="inventory"
                   />
                 </div>
               </div>
@@ -407,5 +447,49 @@ const resolverGridProps = (sheet, activeInternal) => {
   .sheet-leave-active {
     transition: none !important;
   }
+}
+
+/* ── Top row with view toggle ── */
+.psh-top-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 0;
+  border-radius: 0.6rem;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+
+.vt-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 34px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 150ms, color 150ms;
+  font-size: 0.85rem;
+}
+.vt-btn:hover {
+  background: var(--c-primary-alpha);
+  color: var(--c-primary);
+}
+.vt-btn--active {
+  background: var(--c-primary);
+  color: #fff;
+}
+.vt-btn--active:hover {
+  background: var(--c-primary);
+  color: #fff;
 }
 </style>

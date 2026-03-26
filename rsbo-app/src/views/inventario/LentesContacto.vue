@@ -8,7 +8,9 @@ import { labToast } from "@/composables/useLabToast.js";
 import AgGridBifocal    from "@/components/ag-grid/templates/AgGridBifocal.vue";
 import AgGridBase       from "@/components/ag-grid/templates/AgGridBase.vue";
 import AgGridMonofocal  from "@/components/ag-grid/templates/AgGridMonofocal.vue";
+import AgGridTorico     from "@/components/ag-grid/templates/AgGridTorico.vue";
 import AgGridProgresivo from "@/components/ag-grid/templates/AgGridProgresivo.vue";
+import GlassTable       from "@/components/ag-grid/templates/GlassTable.vue";
 
 import { listContactLensSheets } from "@/services/contactlenses";
 
@@ -25,6 +27,9 @@ const dynamicSheets     = reactive([{ id: "nueva", name: "+ Agregar" }]);
 const activeSheet       = ref("nueva");
 const activeInternalTab = ref(null);
 const loadingSheets     = ref(true);
+
+/** "excel" = AG-Grid | "glass" = Buefy GlassTable */
+const viewMode = ref("excel");
 
 /* ─────────────────────────────────────────────────────────────────────────
    Foco desde búsqueda global
@@ -89,10 +94,10 @@ const catalog = computed(() => ({
     },
     {
       key: "torico",
-      label: "Tórico (SPH + CYL)",
+      label: "Tórico (SPH + CYL + Eje)",
       materiales: ["Hidrogel", "Silicona-Hidrogel", "HEMA", "Polímero"],
       tratamientos: ["Transparente", "Diario", "Quincenal", "Mensual", "UV", "Humectante"],
-      tipo_matriz: "SPH_ADD"
+      tipo_matriz: "SPH_CYL_AXIS"
     },
     {
       key: "multifocal",
@@ -237,19 +242,20 @@ function reordenarSheets({ oldIndex, newIndex }) {
 ───────────────────────────────────────────────────────────────────────── */
 const resolverGrid = (tipo) => {
   switch (tipo) {
-    case "SPH_CYL":  return AgGridMonofocal;
-    case "SPH_ADD":  return AgGridBifocal;
-    case "BASE":     return AgGridBase;
-    case "BASE_ADD": return AgGridProgresivo;
-    default:         return AgGridMonofocal;
+    case "SPH_CYL":      return AgGridMonofocal;
+    case "SPH_CYL_AXIS": return AgGridTorico;
+    case "SPH_ADD":      return AgGridBifocal;
+    case "BASE":         return AgGridBase;
+    case "BASE_ADD":     return AgGridProgresivo;
+    default:             return AgGridMonofocal;
   }
 };
 
 const resolverGridProps = (sheet, activeInternal) => {
   if (!sheet) return {};
-  const base = { sheetId: sheet.id };
+  const base = { sheetId: sheet.id, apiType: "contactlenses" };
 
-  if (sheet.tipo_matriz === "SPH_ADD" || sheet.tipo_matriz === "SPH_CYL") {
+  if (sheet.tipo_matriz === "SPH_ADD" || sheet.tipo_matriz === "SPH_CYL" || sheet.tipo_matriz === "SPH_CYL_AXIS") {
     return { ...base, sphType: activeInternal || "sph-neg" };
   }
   if (sheet.tipo_matriz === "BASE" || sheet.tipo_matriz === "BASE_ADD") {
@@ -264,12 +270,38 @@ const resolverGridProps = (sheet, activeInternal) => {
 
     <header class="page-section-header">
       <div>
-        <span class="cl-pill">
-          <b-icon icon="eye" size="is-small" class="mr-1" />
-          Inventario
-        </span>
-        <h2>Lentes de Contacto</h2>
-        <p class="psh-desc">Gestiona el stock de lentes de contacto: esféricos, tóricos, coloridos y multifocales.</p>
+        <div class="psh-top-row">
+          <div>
+            <span class="cl-pill">
+              <b-icon icon="eye" size="is-small" class="mr-1" />
+              Inventario
+            </span>
+            <h2>Lentes de Contacto</h2>
+            <p class="psh-desc">Gestiona el stock de lentes de contacto: esféricos, tóricos, coloridos y multifocales.</p>
+          </div>
+
+          <!-- VIEW TOGGLE -->
+          <div class="view-toggle">
+            <b-tooltip label="Vista Excel (AG-Grid)" position="is-bottom">
+              <button
+                class="vt-btn"
+                :class="{ 'vt-btn--active': viewMode === 'excel' }"
+                @click="viewMode = 'excel'"
+              >
+                <i class="fas fa-table-cells-large"></i>
+              </button>
+            </b-tooltip>
+            <b-tooltip label="Vista Tabla (Glassmorphism)" position="is-bottom">
+              <button
+                class="vt-btn"
+                :class="{ 'vt-btn--active': viewMode === 'glass' }"
+                @click="viewMode = 'glass'"
+              >
+                <i class="fas fa-table-list"></i>
+              </button>
+            </b-tooltip>
+          </div>
+        </div>
 
         <div class="psh-quick mt-3">
           <div class="psh-quick__card">
@@ -298,6 +330,9 @@ const resolverGridProps = (sheet, activeInternal) => {
           :catalog="catalog"
           :actor="user"
           :loading-tabs="loadingSheets"
+          api-type="contactlenses"
+          :material-required="false"
+          :show-tratamiento="false"
           @update:active="activeSheet = $event"
           @update:internal="activeInternalTab = $event"
           @crear="crearNuevaPlanilla"
@@ -307,14 +342,24 @@ const resolverGridProps = (sheet, activeInternal) => {
             <Transition name="sheet" mode="out-in" appear>
               <div
                 v-if="sheet && sheet.id !== 'nueva'"
-                :key="`${sheet.id}:${sheet.tipo_matriz}`"
+                :key="`${sheet.id}:${sheet.tipo_matriz}:${viewMode}`"
                 class="contenido-planilla"
               >
                 <div class="planilla-wrapper">
+                  <!-- AG-Grid (Excel) view -->
                   <component
+                    v-if="viewMode === 'excel'"
                     :is="resolverGrid(sheet.tipo_matriz)"
                     v-bind="resolverGridProps(sheet, activeInternal)"
                     :actor="user"
+                  />
+                  <!-- Glass Table (Buefy) view -->
+                  <GlassTable
+                    v-else
+                    :sheet-id="sheet.id"
+                    :sph-type="activeInternal || 'sph-neg'"
+                    :actor="user"
+                    api-type="contactlenses"
                   />
                 </div>
               </div>
@@ -395,5 +440,49 @@ const resolverGridProps = (sheet, activeInternal) => {
   .sheet-leave-active {
     transition: none !important;
   }
+}
+
+/* ── Top row with view toggle ── */
+.psh-top-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 0;
+  border-radius: 0.6rem;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+
+.vt-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 34px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 150ms, color 150ms;
+  font-size: 0.85rem;
+}
+.vt-btn:hover {
+  background: var(--c-primary-alpha);
+  color: var(--c-primary);
+}
+.vt-btn--active {
+  background: var(--c-primary);
+  color: #fff;
+}
+.vt-btn--active:hover {
+  background: var(--c-primary);
+  color: #fff;
 }
 </style>

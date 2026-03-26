@@ -23,6 +23,9 @@ function normalizePassword(password) {
   return String(password || "");
 }
 
+const SESSION_TTL_MS = 7 * 3600 * 1000;       // 7 horas
+const RENEW_THRESHOLD_MS = 5 * 3600 * 1000;   // renovar si quedan < 5 h
+
 function parseDeviceName(ua) {
   const s = String(ua || '');
   let browser = 'Otro';
@@ -68,7 +71,7 @@ async function login({ email, password, ip, userAgent }) {
   const valid = await bcrypt.compare(cleanPassword, user.password);
   if (!valid) throw makeError(401, "Usuario o contraseña incorrectos");
 
-  // Generar token
+  // Generar token — 7 h de vida (sliding: se renueva con actividad)
   const token = jwt.sign(
     {
       id: user._id,
@@ -77,14 +80,20 @@ async function login({ email, password, ip, userAgent }) {
       roleName: user.role?.name ?? null,
     },
     process.env.JWT_SECRET,
-    { expiresIn: "8h" }
+    { expiresIn: "7h" }
+  );
+
+  // Limpiar sesiones expiradas antes de agregar la nueva
+  const now = Date.now();
+  user.tokens = (user.tokens || []).filter(
+    (t) => t.expiresAt && new Date(t.expiresAt).getTime() > now
   );
 
   // Manejo de sesiones
   const { browser, os, deviceName } = parseDeviceName(userAgent);
   user.tokens.push({
     token,
-    expiresAt:  new Date(Date.now() + 8 * 3600 * 1000),
+    expiresAt:  new Date(now + SESSION_TTL_MS),
     lastUsedAt: new Date(),
     deviceInfo: { ip: ip || null, userAgent: userAgent || null, deviceName, os, browser },
   });
@@ -94,16 +103,9 @@ async function login({ email, password, ip, userAgent }) {
   }
 
   user.lastLogin = new Date();
-
-  // 🚫 Antes tú reactivabas usuarios aquí:
-  // if (!user.isActive || user.tokens.length === 1) user.isActive = true;
-  // Eso es incorrecto si quieres que "trash/inactive" no pueda entrar.
-  // Así que NO se toca isActive aquí.
-
   await user.save();
 
-  // Devuelve user sin password (como ya estás haciendo)
-  return { token, user };
+  return { token, user, sessionTtlMs: SESSION_TTL_MS };
 }
 
 async function logout({ userId, tokenFromCookie }) {
@@ -130,9 +132,56 @@ function buildSessionPayload(decodedUser) {
   };
 }
 
+/**
+ * Renueva el JWT si el token actual está próximo a expirar.
+ * Devuelve { renewed, newToken } — renewed=false si no se necesitó renovar.
+ */
+async function renewTokenIfNeeded(userId, currentToken) {
+  let decoded;
+  try {
+    decoded = jwt.verify(currentToken, process.env.JWT_SECRET);
+  } catch {
+    return { renewed: false };
+  }
+
+  const remainingMs = (decoded.exp * 1000) - Date.now();
+  if (remainingMs > RENEW_THRESHOLD_MS) {
+    return { renewed: false }; // todavía tiene bastante tiempo
+  }
+
+  // Emitir nuevo token con 7 h frescas
+  const newToken = jwt.sign(
+    { id: decoded.id, email: decoded.email, role: decoded.role, roleName: decoded.roleName },
+    process.env.JWT_SECRET,
+    { expiresIn: "7h" }
+  );
+
+  const user = await User.findById(userId).select("+tokens");
+  if (!user) return { renewed: false };
+
+  // Reemplazar el token viejo por el nuevo
+  const idx = user.tokens.findIndex((t) => t.token === currentToken);
+  if (idx === -1) return { renewed: false };
+
+  user.tokens[idx].token = newToken;
+  user.tokens[idx].expiresAt = new Date(Date.now() + SESSION_TTL_MS);
+  user.tokens[idx].lastUsedAt = new Date();
+
+  // Limpiar sesiones expiradas de paso
+  const now = Date.now();
+  user.tokens = user.tokens.filter(
+    (t) => t.expiresAt && new Date(t.expiresAt).getTime() > now
+  );
+
+  await user.save();
+  return { renewed: true, newToken };
+}
+
 module.exports = {
   login,
   logout,
   buildSessionPayload,
   parseDeviceName,
+  renewTokenIfNeeded,
+  SESSION_TTL_MS,
 };

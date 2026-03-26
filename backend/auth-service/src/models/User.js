@@ -40,6 +40,19 @@ userSchema.index({ email: 1 });
 userSchema.index({ deletedAt: 1 });
 userSchema.index({ isActive: 1 });
 
+/**
+ * Elimina tokens cuyo expiresAt ya pasó.
+ * Devuelve la cantidad de tokens eliminados.
+ */
+userSchema.methods.pruneExpiredTokens = function () {
+  const now = Date.now();
+  const before = this.tokens.length;
+  this.tokens = (this.tokens || []).filter(
+    (t) => t.expiresAt && new Date(t.expiresAt).getTime() > now
+  );
+  return before - this.tokens.length;
+};
+
 userSchema.methods.softDelete = async function () {
   this.deletedAt = new Date();
   this.isActive = false;

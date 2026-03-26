@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 
 const authMiddleware = require("../middlewares/auth.middleware");
+const { csrfProtection } = require("../middlewares/csrf.middleware");
 const { requirePermissions } = require("../middlewares/permissions.middleware");
 const userService = require("../services/user.service");
 
@@ -20,7 +21,7 @@ router.get("/", authMiddleware, requirePermissions(["manage_users"]), async (req
   }
 });
 
-router.post("/", authMiddleware, requirePermissions(["manage_users"]), async (req, res) => {
+router.post("/", authMiddleware, csrfProtection, requirePermissions(["manage_users"]), async (req, res) => {
   try {
     const created = await userService.createUser(req.body);
     return res.json(created);
@@ -44,7 +45,7 @@ router.get('/me/sessions', authMiddleware, async (req, res) => {
   }
 });
 
-router.delete('/me/sessions/others', authMiddleware, async (req, res) => {
+router.delete('/me/sessions/others', authMiddleware, csrfProtection, async (req, res) => {
   try {
     const currentToken = req.cookies?.auth_token;
     const result = await userService.revokeOtherSessions(req.user.id, currentToken);
@@ -54,7 +55,7 @@ router.delete('/me/sessions/others', authMiddleware, async (req, res) => {
   }
 });
 
-router.delete('/me/sessions/:sessionId', authMiddleware, async (req, res) => {
+router.delete('/me/sessions/:sessionId', authMiddleware, csrfProtection, async (req, res) => {
   try {
     const result = await userService.revokeSession(req.user.id, req.params.sessionId);
     return res.json(result);
@@ -63,7 +64,7 @@ router.delete('/me/sessions/:sessionId', authMiddleware, async (req, res) => {
   }
 });
 
-router.patch('/me/password', authMiddleware, async (req, res) => {
+router.patch('/me/password', authMiddleware, csrfProtection, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
     if (!currentPassword || !newPassword) {
@@ -102,7 +103,7 @@ router.get("/roles", authMiddleware, requirePermissions(["manage_users"]), async
   }
 });
 
-router.put("/:id", authMiddleware, canManageOrSelf, async (req, res) => {
+router.put("/:id", authMiddleware, csrfProtection, canManageOrSelf, async (req, res) => {
   try {
     const updated = await userService.updateUser(req.params.id, req.body);
     return res.json(updated);
@@ -113,7 +114,7 @@ router.put("/:id", authMiddleware, canManageOrSelf, async (req, res) => {
   }
 });
 
-router.put("/:id/password", authMiddleware, canManageOrSelf, async (req, res) => {
+router.put("/:id/password", authMiddleware, csrfProtection, canManageOrSelf, async (req, res) => {
   try {
     const result = await userService.updatePassword(req.params.id, req.body.password);
     return res.json(result);
@@ -124,7 +125,7 @@ router.put("/:id/password", authMiddleware, canManageOrSelf, async (req, res) =>
   }
 });
 
-router.put("/:id/restore", authMiddleware, requirePermissions(["manage_users"]), async (req, res) => {
+router.put("/:id/restore", authMiddleware, csrfProtection, requirePermissions(["manage_users"]), async (req, res) => {
   try {
     // ✅ restore idempotente: siempre 200 si ya estaba restaurado o no existe
     const result = await userService.restoreUser(req.params.id);
@@ -137,7 +138,7 @@ router.put("/:id/restore", authMiddleware, requirePermissions(["manage_users"]),
 });
 
 // DELETE (soft delete, idempotente)
-router.delete("/:id", authMiddleware, requirePermissions(["manage_users"]), async (req, res) => {
+router.delete("/:id", authMiddleware, csrfProtection, requirePermissions(["manage_users"]), async (req, res) => {
   try {
     const result = await userService.deleteUser(req.params.id);
     // ✅ SIEMPRE JSON (evita "respuesta vacía")

@@ -303,8 +303,13 @@ async function restoreUser(userId) {
 }
 
 async function getMeSessions(userId, currentToken) {
-  const user = await User.findById(userId).select('+tokens').lean();
+  // Traer documento completo (no lean) para poder hacer prune + save
+  const user = await User.findById(userId).select('+tokens');
   if (!user) { const e = new Error('Usuario no encontrado'); e.statusCode = 404; throw e; }
+
+  // Limpiar sesiones expiradas antes de devolver la lista
+  const pruned = user.pruneExpiredTokens();
+  if (pruned > 0) await user.save();
 
   return (user.tokens || [])
     .map((t) => ({

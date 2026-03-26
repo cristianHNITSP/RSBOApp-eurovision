@@ -7,6 +7,7 @@ const express = require('express');
 const router = express.Router();
 
 const authMiddleware = require('../middlewares/auth.middleware');
+const { generateCsrfToken, setCsrfTokenOnResponse } = require('../middlewares/csrf.middleware');
 const authService = require('../services/auth.service');
 const User = require('../models/User');
 const DOMPurify = require('isomorphic-dompurify');
@@ -21,13 +22,16 @@ router.post('/login', async (req, res) => {
     const userAgent = req.headers['user-agent'] || null;
     const { token, user } = await authService.login({ email, password, ip, userAgent });
 
-    // Setear cookie HttpOnly
+    // Setear cookie HttpOnly — 7 h sliding session
     res.cookie('auth_token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-      maxAge: 8 * 60 * 60 * 1000,
+      maxAge: authService.SESSION_TTL_MS,
     });
+
+    // Emitir CSRF token
+    setCsrfTokenOnResponse(res, generateCsrfToken());
 
     res.json({
       name: DOMPurify.sanitize(user.name),
@@ -56,6 +60,10 @@ router.post('/logout', authMiddleware, async (req, res) => {
 
     res.clearCookie('auth_token', {
       httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+    });
+    res.clearCookie('csrf_token', {
       secure: process.env.NODE_ENV === 'production',
       sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
     });
@@ -92,26 +100,39 @@ router.get('/check-session', authMiddleware, async (req, res) => {
       return res.status(401).json({ error: 'USER_INACTIVE', message: 'La cuenta está desactivada.' });
     }
 
-    // Verificar que el token no haya sido revocado (logout de otra sesión, borrado de DB, etc.)
+    // Verificar que el token no haya sido revocado
     const tokenValid = user.tokens?.some((t) => t.token === token);
-
-    // Actualizar lastUsedAt de la sesión actual (máx 1 vez cada 5 min para no saturar BD)
-    if (tokenValid) {
-      const tokenDoc = user.tokens.find((t) => t.token === token);
-      if (tokenDoc) {
-        const fiveMin = 5 * 60 * 1000;
-        if (!tokenDoc.lastUsedAt || Date.now() - new Date(tokenDoc.lastUsedAt).getTime() > fiveMin) {
-          tokenDoc.lastUsedAt = new Date();
-          user.save().catch(() => {});
-        }
-      }
-    }
 
     if (!tokenValid) {
       return res.status(401).json({ error: 'TOKEN_REVOKED', message: 'La sesión ha expirado o fue revocada. Inicia sesión nuevamente.' });
     }
 
+    // Actualizar lastUsedAt (máx 1 vez cada 5 min)
+    const tokenDoc = user.tokens.find((t) => t.token === token);
+    if (tokenDoc) {
+      const fiveMin = 5 * 60 * 1000;
+      if (!tokenDoc.lastUsedAt || Date.now() - new Date(tokenDoc.lastUsedAt).getTime() > fiveMin) {
+        tokenDoc.lastUsedAt = new Date();
+        user.save().catch(() => {});
+      }
+    }
+
+    // ── Sliding session: renovar token si le queda poco tiempo ──
+    const { renewed, newToken } = await authService.renewTokenIfNeeded(req.user.id, token);
+    if (renewed && newToken) {
+      res.cookie('auth_token', newToken, {
+        httpOnly: true,
+        secure:   process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+        maxAge:   authService.SESSION_TTL_MS,
+      });
+    }
+
+    // Refrescar CSRF token en cada check-session
+    setCsrfTokenOnResponse(res, generateCsrfToken());
+
     const payload = authService.buildSessionPayload(req.user);
+    payload.renewed = renewed; // el frontend puede saberlo
     res.json(payload);
   } catch (err) {
     console.error('Error en check-session:', err);

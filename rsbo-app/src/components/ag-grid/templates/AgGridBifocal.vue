@@ -12,6 +12,8 @@
       :material="material"
       :tratamientos="tratamientos"
       :last-saved-at="lastSavedAt"
+      :grid-can-undo="gridHistory.canUndo.value"
+      :grid-can-redo="gridHistory.canRedo.value"
       @add-row="handleAddRow"
       @add-column="handleAddColumn"
       @clear-filters="clearFilters"
@@ -24,6 +26,8 @@
       @export="handleExport"
       @fx-input="onFxInput"
       @fx-commit="onFxCommit"
+      @grid-undo="handleGridUndo"
+      @grid-redo="handleGridRedo"
     />
 
     <!-- ✅ Leyenda natural (sin componentes extra) 
@@ -78,15 +82,21 @@ import {
   colorSchemeDark
 } from "ag-grid-community";
 import navtools from "@/components/ag-grid/navtools.vue";
-import { fetchItems, saveChunk, getSheet, reseedSheet } from "@/services/inventory";
+import { useSheetApi } from "@/composables/useSheetApi";
+import { useGridHistory } from "@/composables/useGridHistory";
+import { useUnsavedGuard } from "@/composables/useUnsavedGuard";
+import { labToast } from "@/composables/useLabToast";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 const props = defineProps({
   sheetId: { type: String, required: true },
   sphType: { type: String, default: "sph-neg" }, // sph-neg | sph-pos
-  actor: { type: Object, default: null }
+  actor:   { type: Object, default: null },
+  apiType: { type: String, default: "inventory" },
 });
+
+const { fetchItems, saveChunk, getSheet, reseedSheet } = useSheetApi(() => props.apiType);
 
 /* ===================== ACK helpers ===================== */
 const ackOk = (ack, message = "Ok", status = 200) => {
@@ -168,30 +178,6 @@ function sortSphForView(values) {
   return [...new Set(values)].sort((a, b) => (dir === "desc" ? b - a : a - b));
 }
 
-/** decimal-safe range builder (incluyente) */
-function buildAxisRange(start, end, step = 0.25) {
-  const s = Number(start);
-  const e = Number(end);
-  const st = Math.abs(Number(step) || 0.25);
-  if (!Number.isFinite(s) || !Number.isFinite(e) || !Number.isFinite(st) || st <= 0) return [];
-
-  const SCALE = 100;
-  const toInt = (x) => Math.round(Number(x) * SCALE);
-  const fromInt = (i) => Number((i / SCALE).toFixed(2));
-  const si = toInt(s);
-  const ei = toInt(e);
-  const di = Math.max(1, toInt(st));
-
-  const out = [];
-  if (si === ei) return [fromInt(si)];
-
-  const forward = si < ei;
-  for (let i = si; forward ? i <= ei : i >= ei; forward ? (i += di) : (i -= di)) {
-    out.push(fromInt(i));
-    if (out.length > 8000) break;
-  }
-  return out;
-}
 
 const fmtSigned = (n) => {
   const num = Number(n);
@@ -224,6 +210,34 @@ const lastSavedAt = ref(null);
 
 /** Buffer de cambios (sph, add, eye) */
 const pendingChanges = ref(new Map());
+
+/* ── Grid-level undo/redo ── */
+const gridHistory = useGridHistory({ maxSize: 300 });
+
+/* ── Unsaved changes guard ── */
+const _guardViewId = computed(() => `${props.sheetId}:bifocal:${props.sphType}`);
+const unsavedGuard = useUnsavedGuard({
+  storageKey: () => _guardViewId.value,
+  isDirty: () => dirty.value,
+  getPending: () => Object.fromEntries(pendingChanges.value),
+  onRestore(saved) {
+    for (const [k, v] of Object.entries(saved)) {
+      pendingChanges.value.set(k, v);
+      // also update rowData if row exists
+      const [sphStr] = k.split("|");
+      const row = rowData.value.find(r => String(to2(r.sph)) === sphStr);
+      if (row && v.add !== undefined && v.eye) {
+        const field = `add_${norm(v.add)}_${v.eye}`;
+        row[field] = v.existencias;
+        gridApi.value?.applyTransaction({ update: [row] });
+      }
+    }
+    if (pendingChanges.value.size > 0) {
+      dirty.value = true;
+      labToast.warning(`Se restauraron ${pendingChanges.value.size} cambios sin guardar.`);
+    }
+  },
+});
 
 const totalRows = computed(() => rowData.value.length);
 const sheetName = computed(() => sheetMeta.value?.nombre || sheetMeta.value?.name || "Hoja bifocal");
@@ -296,25 +310,13 @@ function inPhysAdd(v) {
   return Number.isFinite(n) && n >= PHYS.value.ADD.min && n <= PHYS.value.ADD.max;
 }
 
-/* ===================== Reglas SPH: plantilla vs fetch ===================== */
-function getTabRanges() {
-  const defaults =
-    props.sphType === "sph-pos"
-      ? { start: 0, end: 6, step: 0.25 }
-      : { start: 0, end: -6, step: 0.25 };
-
-  const tab = (sheetTabs.value || []).find((t) => t?.id === props.sphType);
-  const r = tab?.ranges || {};
-  const sphR = r.sph || {};
-
-  const rawStart = Number(sphR.start ?? defaults.start);
-  const rawEnd = Number(sphR.end ?? defaults.end);
-  const rawStep = Math.abs(Number(sphR.step ?? defaults.step)) || 0.25;
-
-  const displayStart = props.sphType === "sph-neg" ? Math.max(rawStart, rawEnd) : Math.min(rawStart, rawEnd);
-  const displayEnd = props.sphType === "sph-neg" ? Math.min(rawStart, rawEnd) : Math.max(rawStart, rawEnd);
-
-  return { displayStart, displayEnd, step: rawStep, tab };
+/** Obtiene el tab del backend para la vista actual */
+function getTabForView() {
+  return (
+    (sheetTabs.value || []).find((t) => t?.id === props.sphType) ||
+    (sheetTabs.value || []).find((t) => String(t?.id || "").includes("sph")) ||
+    null
+  );
 }
 
 function buildFetchQueryForView() {
@@ -324,11 +326,16 @@ function buildFetchQueryForView() {
 }
 
 /* ===================== Cambio de celda ===================== */
-function markCellChangedBifocal({ sph, add, eye, base_izq, base_der, existencias }) {
+function markCellChangedBifocal({ sph, add, eye, base_izq, base_der, existencias, _oldValue }) {
   const s = to2(sph);
   const a = to2(add);
   const e = String(eye).toUpperCase();
   const key = `${s}|${a}|${e}`;
+  const field = `add_${norm(a)}_${e}`;
+
+  const prev = pendingChanges.value.get(key);
+  const oldVal = _oldValue ?? prev?.existencias ?? 0;
+  const newVal = Number(existencias ?? 0);
 
   pendingChanges.value.set(key, {
     sph: s,
@@ -336,10 +343,19 @@ function markCellChangedBifocal({ sph, add, eye, base_izq, base_der, existencias
     eye: e,
     base_izq: to2(base_izq ?? 0),
     base_der: to2(base_der ?? 0),
-    existencias: Number(existencias ?? 0)
+    existencias: newVal
   });
 
   dirty.value = true;
+
+  // Push to grid history for undo/redo
+  if (!gridHistory.isApplying.value) {
+    gridHistory.push({
+      key, field,
+      oldValue: oldVal, newValue: newVal,
+      meta: { sph: s, add: a, eye: e, base_izq: to2(base_izq ?? 0), base_der: to2(base_der ?? 0) },
+    });
+  }
 }
 
 /* ===================== Columnas ===================== */
@@ -364,6 +380,7 @@ function makeLeaf(field, header, add, eye) {
     valueSetter: (p) => {
       const raw = String(p.newValue ?? "").trim();
       const newVal = isNumeric(raw) ? Number(raw) : 0;
+      const oldVal = Number(p.oldValue ?? 0);
       p.data[p.colDef.field] = newVal;
 
       markCellChangedBifocal({
@@ -372,7 +389,8 @@ function makeLeaf(field, header, add, eye) {
         eye,
         base_izq: p.data.base_izq,
         base_der: p.data.base_der,
-        existencias: newVal
+        existencias: newVal,
+        _oldValue: oldVal
       });
 
       return true;
@@ -442,8 +460,9 @@ async function loadSheetMeta() {
 }
 
 async function loadRows() {
-  const tabCfg = getTabRanges();
+  const tab = getTabForView();
   const qFetch = buildFetchQueryForView();
+  const isNeg = props.sphType === "sph-neg";
 
   const { data: itemsRes } = await fetchItems(props.sheetId, qFetch);
   const itemsRaw = itemsRes?.data || [];
@@ -452,13 +471,12 @@ async function loadRows() {
     .map((i) => ({ ...i, sph: to2(i.sph), add: to2(i.add), existencias: Number(i.existencias ?? 0) }))
     .filter((i) => inPhysSph(i.sph) && inPhysAdd(i.add));
 
-  const tab = tabCfg.tab;
+  // Ejes vienen del backend (tab.axis)
+  const backendSph = Array.isArray(tab?.axis?.sph) ? tab.axis.sph : [];
+  const backendAdd = Array.isArray(tab?.axis?.add) ? tab.axis.add : [];
 
-  const addsFromTab = Array.isArray(tab?.ranges?.addCols)
-    ? tab.ranges.addCols.map(to2).filter(inPhysAdd)
-    : [];
   const addsFromData = items.map((i) => to2(i.add)).filter(inPhysAdd);
-  addCols.value = uniqSorted([...addsFromTab, ...addsFromData]);
+  addCols.value = uniqSorted([...backendAdd, ...addsFromData]);
 
   basesPorSph.value = new Map();
   for (const it of items) {
@@ -471,18 +489,11 @@ async function loadRows() {
   const key = (sph, add, eye) => `${to2(sph)}|${to2(add)}|${String(eye).toUpperCase()}`;
   const map = new Map(items.map((i) => [key(i.sph, i.add, i.eye), Number(i.existencias ?? 0)]));
 
-  let sphAxis = buildAxisRange(tabCfg.displayStart, tabCfg.displayEnd, tabCfg.step).map(to2);
+  // Merge backend axis con datos reales
   const sphFromData = items.map((i) => to2(i.sph)).filter(inPhysSph);
-
-  const inView = (n) => (props.sphType === "sph-neg" ? n <= 0 : n >= 0);
-  const sphFinal = sortSphForView([...sphAxis, ...sphFromData].filter(inView));
-
-  if (!sphFinal.length) {
-    const fallback = props.sphType === "sph-pos" ? buildAxisRange(0, 6, 0.25) : buildAxisRange(0, -6, 0.25);
-    sphAxis = fallback.map(to2);
-  }
-
-  const axis = sphFinal.length ? sphFinal : sphAxis;
+  const inView = (n) => (isNeg ? n <= 0 : n >= 0);
+  const sphMerged = [...backendSph, ...sphFromData].map(to2).filter(inView);
+  const axis = sortSphForView([...new Set(sphMerged)]);
 
   rowData.value = axis.map((sph) => {
     const bases = basesPorSph.value.get(to2(sph)) || { base_izq: 0, base_der: 0 };
@@ -523,15 +534,27 @@ const _WS_STOCK = new Set(["LAB_ORDER_SCAN", "LAB_ORDER_CANCEL", "LAB_ORDER_RESE
 function _onLabWs(e) {
   if (_WS_STOCK.has(e?.detail?.type)) loadRows();
 }
-onMounted(() => { loadAll(); window.addEventListener("lab:ws", _onLabWs); });
+onMounted(async () => {
+  await loadAll();
+  window.addEventListener("lab:ws", _onLabWs);
+  // Restore unsaved changes from previous session/view
+  unsavedGuard.restore();
+});
 onBeforeUnmount(() => window.removeEventListener("lab:ws", _onLabWs));
 
 watch(
   () => [props.sheetId, props.sphType],
   async () => {
+    // Persist unsaved changes for the OLD view before switching
+    if (dirty.value && pendingChanges.value.size > 0) {
+      unsavedGuard.persist();
+    }
     pendingChanges.value.clear();
     dirty.value = false;
+    gridHistory.clear();
     await loadAll();
+    // Try to restore any saved changes for the NEW view
+    unsavedGuard.restore();
   }
 );
 
@@ -625,6 +648,28 @@ function applyFxToGrid(val, { commit = false } = {}) {
 
 const onFxInput = (val) => applyFxToGrid(val, { commit: false });
 const onFxCommit = (val) => applyFxToGrid(val, { commit: true });
+
+/* ── Grid-level undo / redo ── */
+function applyGridHistoryOp(op) {
+  if (!op) return;
+  const value = op.reversed ? op.oldValue : op.newValue;
+  const row = rowData.value.find(r => {
+    return op.meta && to2(r.sph) === to2(op.meta.sph);
+  });
+  if (!row) return;
+  row[op.field] = value;
+  gridApi.value?.applyTransaction({ update: [row] });
+  gridApi.value?.refreshCells({ force: true });
+
+  // update pendingChanges
+  if (op.meta) {
+    const updated = { ...op.meta, existencias: value };
+    pendingChanges.value.set(op.key, updated);
+  }
+  dirty.value = pendingChanges.value.size > 0;
+}
+const handleGridUndo = () => applyGridHistoryOp(gridHistory.undo());
+const handleGridRedo = () => applyGridHistoryOp(gridHistory.redo());
 
 /* ===================== Grid hooks ===================== */
 const onGridReady = (p) => {
@@ -747,6 +792,8 @@ async function handleSave(ack) {
     dirty.value = false;
     pendingChanges.value.clear();
     lastSavedAt.value = new Date();
+    gridHistory.clear();
+    unsavedGuard.clearStorage();
 
     ackOk(ack, ok.message || "Cambios guardados.", ok.status);
 
@@ -762,6 +809,8 @@ async function handleSave(ack) {
 async function handleDiscard() {
   pendingChanges.value.clear();
   dirty.value = false;
+  gridHistory.clear();
+  unsavedGuard.clearStorage();
   await switchViewReload();
 }
 
@@ -796,7 +845,8 @@ function handleExport() {
   if (!gridApi.value || typeof gridApi.value.exportDataAsCsv !== "function") return;
   const nameSlug = sheetName.value.replace(/\s+/g, "_");
   const posNeg = props.sphType === "sph-pos" ? "pos" : "neg";
-  gridApi.value.exportDataAsCsv({ fileName: `${nameSlug || "bifocal"}_${posNeg}.csv` });
+  const fecha = new Date().toISOString().slice(0, 10);
+  gridApi.value.exportDataAsCsv({ fileName: `reporte_inventario_${nameSlug || "bifocal"}_${posNeg}_${fecha}.csv` });
 }
 
 /* ===================== Filters / sort ===================== */

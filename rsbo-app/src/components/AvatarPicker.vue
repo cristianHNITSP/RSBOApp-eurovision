@@ -43,12 +43,11 @@
           </header>
 
           <section class="modal-card-body avatar-modal-body">
-            <b-tabs v-model="activeTab" animated class="avatar-tabs" type="is-toggle" expanded>
-              <b-tab-item
-                v-for="(category, name, idx) in avatarCategoriesSafe"
+            <DynamicTabs v-model="activeTab" :tabs="avatarTabs">
+              <template
+                v-for="(category, name) in avatarCategoriesSafe"
                 :key="name"
-                :label="name"
-                :value="idx"
+                v-slot:[name]
               >
                 <div class="avatar-grid" role="list">
                   <button
@@ -68,8 +67,8 @@
                     </span>
                   </button>
                 </div>
-              </b-tab-item>
-            </b-tabs>
+              </template>
+            </DynamicTabs>
           </section>
 
           <footer class="modal-card-foot avatar-modal-foot">
@@ -95,7 +94,8 @@
 
 <script setup>
 import { ref, watch, computed } from "vue";
-import { avatarCategories } from "@/services/myUserCRUD"; // ✅ AJUSTA si tu ruta real es otra
+import { avatarCategories } from "@/services/myUserCRUD";
+import DynamicTabs from "@/components/DynamicTabs.vue";
 
 const props = defineProps({
   modelValue: { type: String, default: "" },
@@ -108,7 +108,7 @@ const props = defineProps({
 const emit = defineEmits(["update:modelValue"]);
 
 const isModalActive = ref(false);
-const activeTab = ref(0);
+const activeTab = ref("");
 const selectedAvatar = ref("");
 
 const currentSrc = computed(() => props.modelValue || props.placeholder || "");
@@ -117,6 +117,10 @@ const avatarCategoriesSafe = computed(() => {
   if (!avatarCategories || typeof avatarCategories !== "object") return {};
   return avatarCategories;
 });
+
+const avatarTabs = computed(() =>
+  Object.keys(avatarCategoriesSafe.value).map((name) => ({ key: name, label: name }))
+);
 
 const pickerVars = computed(() => {
   const s = Math.max(28, Number(props.size) || 84);
@@ -139,7 +143,7 @@ function openModal() {
   const entries = Object.entries(avatarCategoriesSafe.value || {});
   const current = selectedAvatar.value;
   const idx = entries.findIndex(([, list]) => Array.isArray(list) && list.includes(current));
-  activeTab.value = idx >= 0 ? idx : 0;
+  activeTab.value = idx >= 0 ? entries[idx][0] : (entries[0]?.[0] ?? "");
 
   isModalActive.value = true;
 }
@@ -311,28 +315,6 @@ function confirmSelection() {
   background-color: var(--surface-solid);
 }
 
-/* ===== Tabs ===== */
-.avatar-tabs :deep(.tabs) {
-  margin-bottom: 0.75rem;
-}
-.avatar-tabs :deep(.tabs ul) {
-  border-bottom: 1px solid rgba(148, 163, 184, 0.35);
-}
-.avatar-tabs :deep(.tabs li a) {
-  font-weight: 700;
-  font-size: 0.9rem;
-  color: var(--text-muted);
-  transition: color 140ms ease, transform 140ms ease, background-color 140ms ease;
-  border-radius: 10px 10px 0 0;
-}
-.avatar-tabs :deep(.tabs li.is-active a) {
-  color: var(--c-primary);
-  background: var(--c-primary-alpha);
-}
-.avatar-tabs :deep(.tabs li a:hover) {
-  color: #4f46e5;
-  transform: translateY(-1px);
-}
 
 /* ===== Grid ===== */
 .avatar-grid {

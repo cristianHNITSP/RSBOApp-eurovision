@@ -85,7 +85,7 @@
           </b-field>
 
           <!-- MATERIALES -->
-          <b-field v-if="selectedBase" label="Selecciona el Material">
+          <b-field v-if="selectedBase && props.materialRequired" label="Selecciona el Material">
             <div class="tabs tabs-opciones is-toggle is-small">
               <ul>
                 <li v-for="mat in allMaterials" :key="mat" :class="[
@@ -113,7 +113,7 @@
           </b-field>
 
           <!-- TRATAMIENTO -->
-          <b-field v-if="selectedMaterial" label="Selecciona el Tratamiento">
+          <b-field v-if="props.showTratamiento && (props.materialRequired ? selectedMaterial : selectedBase)" label="Selecciona el Tratamiento">
             <div class="tabs tabs-opciones is-toggle is-small">
               <ul>
                 <li v-for="t in allowedTratamientos" :key="t.key"
@@ -128,7 +128,7 @@
           </b-field>
 
           <!-- VARIANTE -->
-          <b-field v-if="selectedTratamientoKey && varianteOptions.length" label="Selecciona la Variante">
+          <b-field v-if="props.showTratamiento && selectedTratamientoKey && varianteOptions.length" label="Selecciona la Variante">
             <div class="tabs tabs-opciones is-toggle is-small">
               <ul>
                 <li v-for="v in varianteOptions" :key="v" :class="{ 'is-active': selectedVariante === v }"
@@ -541,7 +541,7 @@
 <script setup>
 import { ref, onMounted, computed, watch, nextTick } from "vue";
 import Sortable from "sortablejs";
-import { createSheet, updateSheet, moveSheetToTrash } from "@/services/inventory";
+import { useSheetApi } from "@/composables/useSheetApi";
 
 const DEBUG_PURCHASE = true;
 
@@ -599,13 +599,18 @@ const numForEdit = (v) => {
 };
 
 const props = defineProps({
-  initialSheets:  { type: Array,   required: true },
-  activeId:       { type: String,  required: true },
-  catalog:        { type: Object,  default: () => ({ bases: [], treatments: [] }) },
-  catalogLoading: { type: Boolean, default: false },
-  actor:          { type: Object,  default: null },
-  loadingTabs:    { type: Boolean, default: false }
+  initialSheets:    { type: Array,   required: true },
+  activeId:         { type: String,  required: true },
+  catalog:          { type: Object,  default: () => ({ bases: [], treatments: [] }) },
+  catalogLoading:   { type: Boolean, default: false },
+  actor:            { type: Object,  default: null },
+  loadingTabs:      { type: Boolean, default: false },
+  apiType:          { type: String,  default: 'inventory' },
+  materialRequired: { type: Boolean, default: true },
+  showTratamiento:  { type: Boolean, default: true },
 });
+
+const { createSheet, updateSheet, moveSheetToTrash } = useSheetApi(() => props.apiType);
 
 const emit = defineEmits(["update:active", "reorder", "crear", "update:internal", "deleted", "renamed"]);
 
@@ -940,8 +945,8 @@ const selectVariante = (v) => {
 watch([selectedBase, selectedMaterial, selectedTratamientoKey, selectedVariante], () => {
   const baseCfg = selectedBase.value && catalogBasesMap.value[selectedBase.value];
   const baseLabelTxt = baseCfg ? baseCfg.label : "";
-  const materialLabel = selectedMaterial.value || "";
-  const tKey = selectedTratamientoKey.value;
+  const materialLabel = props.materialRequired ? (selectedMaterial.value || "") : (selectedMaterial.value || "");
+  const tKey = props.showTratamiento ? selectedTratamientoKey.value : null;
   const tLabel = tKey ? (catalogTreatmentsMap.value[tKey]?.label || tKey) : "";
   const nameTrat = composeTratamientoDisplay(tLabel, selectedVariante.value || "");
   newSheetName.value = [baseLabelTxt, materialLabel, nameTrat].filter(Boolean).join(" | ");
@@ -949,8 +954,8 @@ watch([selectedBase, selectedMaterial, selectedTratamientoKey, selectedVariante]
 
 const canCreate = computed(() => {
   if (!selectedBase.value) return false;
-  if (!selectedMaterial.value) return false;
-  if (!selectedTratamientoKey.value) return false;
+  if (props.materialRequired && !selectedMaterial.value) return false;
+  if (props.showTratamiento && !selectedTratamientoKey.value) return false;
   if (!newSheetName.value) return false;
   if (creatingSheet.value) return false;
   if (varianteOptions.value.length > 0 && !String(selectedVariante.value || "").trim()) return false;
@@ -975,7 +980,7 @@ const handleCrear = async () => {
     const baseCfg = catalogBasesMap.value[selectedBase.value];
     const tipo_matriz = mapBaseToTipoMatriz(selectedBase.value);
 
-    const tKey = selectedTratamientoKey.value;
+    const tKey = props.showTratamiento ? selectedTratamientoKey.value : null;
     const tratamientoLabel = tKey ? (catalogTreatmentsMap.value[tKey]?.label || tKey) : "";
     const varianteLabel = String(selectedVariante.value || "").trim();
 
@@ -992,7 +997,7 @@ const handleCrear = async () => {
       nombre: newSheetName.value,
       baseKey: selectedBase.value,
       base: baseCfg?.label || selectedBase.value,
-      material: selectedMaterial.value,
+      material: selectedMaterial.value || "",
 
       tratamiento: tratamientoLabel || null,
       variante: varianteLabel || null,

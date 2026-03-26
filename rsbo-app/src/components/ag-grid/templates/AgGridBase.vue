@@ -12,6 +12,8 @@
       :material="material"
       :tratamientos="tratamientos"
       :last-saved-at="lastSavedAt"
+      :grid-can-undo="gridHistory.canUndo.value"
+      :grid-can-redo="gridHistory.canRedo.value"
       @add-row="handleAddRow"
       @clear-filters="clearFilters"
       @reset-sort="resetSort"
@@ -23,6 +25,8 @@
       @export="handleExport"
       @fx-input="onFxInput"
       @fx-commit="onFxCommit"
+      @grid-undo="handleGridUndo"
+      @grid-redo="handleGridRedo"
     />
 
     <!-- ✅ Leyenda natural (sin componentes extra) 
@@ -77,15 +81,21 @@ import {
   colorSchemeDark
 } from "ag-grid-community";
 import navtools from "@/components/ag-grid/navtools.vue";
-import { fetchItems, saveChunk, reseedSheet, getSheet } from "@/services/inventory";
+import { useSheetApi } from "@/composables/useSheetApi";
+import { useGridHistory } from "@/composables/useGridHistory";
+import { useUnsavedGuard } from "@/composables/useUnsavedGuard";
+import { labToast } from "@/composables/useLabToast";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 const props = defineProps({
   sheetId: { type: String, required: true },
   sphType: { type: String, default: "base-pos" }, // base-neg | base-pos
-  actor: { type: Object, default: null }
+  actor:   { type: Object, default: null },
+  apiType: { type: String, default: "inventory" },
 });
+
+const { fetchItems, saveChunk, reseedSheet, getSheet } = useSheetApi(() => props.apiType);
 
 /* ===================== ACK helpers ===================== */
 const ackOk = (ack, message = "Ok", status = 200) => {
@@ -122,6 +132,32 @@ const sheetTabs = ref([]);
 const physicalLimits = ref(null);
 
 const pendingChanges = ref(new Map());
+
+/* ── Grid-level undo/redo ── */
+const gridHistory = useGridHistory({ maxSize: 300 });
+
+/* ── Unsaved changes guard (persist across view switch / nav) ── */
+const _guardViewId = computed(() => `${props.sheetId}:base:${props.sphType}`);
+const unsavedGuard = useUnsavedGuard({
+  storageKey: () => _guardViewId.value,
+  isDirty: () => dirty.value,
+  getPending: () => Object.fromEntries(pendingChanges.value),
+  onRestore(saved) {
+    for (const [k, v] of Object.entries(saved)) {
+      pendingChanges.value.set(k, v);
+      // also update rowData if row exists
+      const row = rowData.value.find(r => String(to2(r.base)) === k);
+      if (row) {
+        row.existencias = v.existencias;
+        gridApi.value?.applyTransaction({ update: [row] });
+      }
+    }
+    if (pendingChanges.value.size > 0) {
+      dirty.value = true;
+      labToast.warning(`Se restauraron ${pendingChanges.value.size} cambios sin guardar.`);
+    }
+  },
+});
 
 /** ✅ transición suave al cambiar vista */
 const switchingView = ref(false);
@@ -189,17 +225,6 @@ const to2 = (n) => {
   const num = Number(n);
   if (!Number.isFinite(num)) return 0;
   return Number(num.toFixed(2));
-};
-const frange = (start, end, step) => {
-  const out = [];
-  const s = Number(start);
-  const e = Number(end);
-  const st = Math.abs(Number(step));
-  if (!Number.isFinite(s) || !Number.isFinite(e) || !Number.isFinite(st) || st <= 0) return out;
-  const eps = 1e-9;
-  if (s <= e) for (let v = s; v <= e + eps; v += st) out.push(to2(v));
-  else for (let v = s; v >= e - eps; v -= st) out.push(to2(v));
-  return out;
 };
 const fmtSigned = (n) => {
   const num = Number(n);
@@ -290,10 +315,24 @@ const rowClassRules = computed(() => ({
   "ag-row--stock-low": (p) => isLowStock(p?.data?.existencias)
 }));
 
-function markChanged({ base, existencias }) {
+function markChanged({ base, existencias, _oldValue }) {
   const b = to2(base);
-  pendingChanges.value.set(String(b), { base: b, existencias: Number(existencias ?? 0) });
+  const key = String(b);
+  const prev = pendingChanges.value.get(key);
+  const oldVal = _oldValue ?? prev?.existencias ?? 0;
+  const newVal = Number(existencias ?? 0);
+
+  pendingChanges.value.set(key, { base: b, existencias: newVal });
   dirty.value = true;
+
+  // Push to grid history for undo/redo
+  if (!gridHistory.isApplying.value) {
+    gridHistory.push({
+      key, field: 'existencias',
+      oldValue: oldVal, newValue: newVal,
+      meta: { base: b },
+    });
+  }
 }
 
 const columns = computed(() => [
@@ -340,8 +379,9 @@ const columns = computed(() => [
         valueSetter: (p) => {
           const raw = String(p.newValue ?? "").trim();
           const newVal = isNumeric(raw) ? Number(raw) : 0;
+          const oldVal = Number(p.oldValue ?? 0);
           p.data.existencias = newVal;
-          markChanged({ base: p.data.base, existencias: newVal });
+          markChanged({ base: p.data.base, existencias: newVal, _oldValue: oldVal });
           return true;
         }
       }
@@ -376,42 +416,13 @@ async function loadSheetMeta() {
   }
 }
 
-/**
- * ✅ Determina el rango “a mostrar” por vista:
- * - usa tabs del backend (meta.ranges)
- * - fallback a seed mínima
- * - clamp por físicos
- */
-function getViewRange() {
-  const P = phys.value;
-
-  const tab =
+/** Obtiene el tab del backend para la vista actual */
+function getTabForView() {
+  return (
     sheetTabs.value.find((t) => t?.id === baseViewId.value) ||
     sheetTabs.value.find((t) => String(t?.id || "").includes("base")) ||
-    null;
-
-  const r = tab?.ranges?.base && typeof tab.ranges.base === "object" ? tab.ranges.base : null;
-
-  const rawA = r ? Number(r.start) : NaN;
-  const rawB = r ? Number(r.end) : NaN;
-
-  let min = Number.isFinite(rawA) && Number.isFinite(rawB) ? Math.min(rawA, rawB) : NaN;
-  let max = Number.isFinite(rawA) && Number.isFinite(rawB) ? Math.max(rawA, rawB) : NaN;
-
-  if (!Number.isFinite(min) || !Number.isFinite(max)) {
-    min = 0;
-    max = 8;
-  }
-
-  min = to2(Math.max(P.baseMin, min));
-  max = to2(Math.min(P.baseMax, max));
-
-  if (baseViewId.value === "base-neg") {
-    const viewMin = to2(Math.min(min, 0, -BASE_STEP)); // asegura vista neg existente
-    return { viewMin, viewMax: 0 };
-  }
-  const viewMax = to2(Math.max(max, 0));
-  return { viewMin: 0, viewMax };
+    null
+  );
 }
 
 /** Pedimos items por límites físicos, filtramos por vista al render */
@@ -423,13 +434,10 @@ function buildItemsQueryForView() {
 
 async function loadRows() {
   const P = phys.value;
-  const { viewMin, viewMax } = getViewRange();
+  const tab = getTabForView();
 
-  // ✅ seed visible (BASE_STEP = 0.50)
-  const seedBases =
-    baseViewId.value === "base-neg"
-      ? frange(0, viewMin, BASE_STEP)
-      : frange(0, viewMax, BASE_STEP);
+  // Eje BASE viene del backend (tab.axis.base)
+  const backendAxis = Array.isArray(tab?.axis?.base) ? tab.axis.base : [];
 
   const { data } = await fetchItems(props.sheetId, buildItemsQueryForView());
   const items = data?.data || [];
@@ -438,7 +446,8 @@ async function loadRows() {
     .map((i) => to2(i.base))
     .filter((b) => b >= P.baseMin && b <= P.baseMax);
 
-  const merged = [...seedBases, ...itemBases]
+  // Solo backend axis + datos reales (sin generacion frontend)
+  const merged = [...backendAxis, ...itemBases]
     .map(to2)
     .filter((b) => b >= P.baseMin && b <= P.baseMax)
     .filter((b) => baseFilterDisplay.value(b));
@@ -485,15 +494,27 @@ const _WS_STOCK = new Set(["LAB_ORDER_SCAN", "LAB_ORDER_CANCEL", "LAB_ORDER_RESE
 function _onLabWs(e) {
   if (_WS_STOCK.has(e?.detail?.type)) loadRows();
 }
-onMounted(() => { loadAll(); window.addEventListener("lab:ws", _onLabWs); });
+onMounted(async () => {
+  await loadAll();
+  window.addEventListener("lab:ws", _onLabWs);
+  // Restore unsaved changes from previous session/view
+  unsavedGuard.restore();
+});
 onBeforeUnmount(() => window.removeEventListener("lab:ws", _onLabWs));
 
 watch(
   () => props.sphType,
-  async () => {
+  async (_, oldType) => {
+    // Persist unsaved changes for the OLD view before switching
+    if (dirty.value && pendingChanges.value.size > 0) {
+      unsavedGuard.persist();
+    }
     pendingChanges.value.clear();
     dirty.value = false;
+    gridHistory.clear();
     await switchViewReload();
+    // Try to restore any saved changes for the NEW view
+    unsavedGuard.restore();
   }
 );
 
@@ -543,6 +564,23 @@ const applyFxToGrid = (val, { commit = false } = {}) => {
 
 const onFxInput = (val) => applyFxToGrid(val, { commit: false });
 const onFxCommit = (val) => applyFxToGrid(val, { commit: true });
+
+/* ── Grid-level undo / redo ── */
+function applyGridHistoryOp(op) {
+  if (!op) return;
+  const value = op.reversed ? op.oldValue : op.newValue;
+  const row = rowData.value.find(r => String(to2(r.base)) === op.key);
+  if (!row) return;
+  row.existencias = value;
+  gridApi.value?.applyTransaction({ update: [row] });
+  gridApi.value?.refreshCells({ force: true });
+
+  // update pendingChanges
+  pendingChanges.value.set(op.key, { base: op.meta.base, existencias: value });
+  dirty.value = pendingChanges.value.size > 0;
+}
+const handleGridUndo = () => applyGridHistoryOp(gridHistory.undo());
+const handleGridRedo = () => applyGridHistoryOp(gridHistory.redo());
 
 const onGridReady = (p) => {
   gridApi.value = p.api;
@@ -621,6 +659,8 @@ async function handleSave(ack) {
     dirty.value = false;
     pendingChanges.value.clear();
     lastSavedAt.value = new Date();
+    gridHistory.clear();
+    unsavedGuard.clearStorage();
 
     ackOk(ack, ok.message || "Cambios guardados.", ok.status);
 
@@ -658,6 +698,8 @@ async function handleDiscard() {
   await switchViewReload();
   dirty.value = false;
   pendingChanges.value.clear();
+  gridHistory.clear();
+  unsavedGuard.clearStorage();
 }
 
 async function handleRefresh() {
@@ -689,7 +731,8 @@ async function handleSeed(ack) {
 function handleExport() {
   if (!gridApi.value || typeof gridApi.value.exportDataAsCsv !== "function") return;
   const nameSlug = sheetName.value.replace(/\s+/g, "_");
-  gridApi.value.exportDataAsCsv({ fileName: `${nameSlug || "base"}.csv` });
+  const fecha = new Date().toISOString().slice(0, 10);
+  gridApi.value.exportDataAsCsv({ fileName: `reporte_inventario_${nameSlug || "base"}_${fecha}.csv` });
 }
 </script>
 

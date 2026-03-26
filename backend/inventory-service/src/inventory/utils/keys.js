@@ -23,6 +23,8 @@ const keyBifocal = (sph, add, bi, bd) =>
   `${normNum(sph)}|${normNum(add)}|${normNum(bi)}|${normNum(bd)}`;
 const keyProg = (bi, bd, add) =>
   `${normNum(bi)}|${normNum(bd)}|${normNum(add)}`;
+const keyTorico = (sph, cyl, axis) =>
+  `${normNum(sph)}|${normNum(cyl)}|${normNum(axis)}`;
 
 const parseKey = (key) => {
   try {
@@ -47,6 +49,7 @@ module.exports = {
   keySphCyl,
   keyBifocal,
   keyProg,
+  keyTorico,
   parseKey,
   normalizeCylConvention,
 };

@@ -1,15 +1,15 @@
 // src/routes/search.routes.js
 /**
  * @fileoverview Búsqueda global — consulta planillas de inventario,
- *               y devuelve también las rutas de la app que coincidan.
+ *               órdenes de laboratorio y devuelve las rutas de la app.
  *
  * GET /api/search?q=<texto>&limit=<n>
  *
  * Response:
  * {
  *   routes : [ { id, label, icon, routeName, routeQuery?, category } ],
- *   sheets : [ { id, nombre, material, tipo_matriz, tratamiento, variante, sku } ],
- *   users  : [ { id, name, email } ]   ← solo si el usuario tiene manage_users
+ *   sheets : [ { id, nombre, material, tipo_matriz, tratamiento, variante, sku, proveedor, marca } ],
+ *   orders : [ { id, folio, cliente, status } ]
  * }
  */
 
@@ -18,6 +18,7 @@ const router       = express.Router();
 //const authMiddleware = require('../middlewares/auth.middleware');
 const InventorySheet     = require('../models/InventorySheet');
 const ContactLensesSheet = require('../models/ContactLensesSheet');
+const LaboratoryOrder    = require('../models/laboratory/LaboratoryOrder');
 
 // ── Mapa estático de rutas de la aplicación ──────────────────────────────────
 // Mantén sincronizado con src/router/index.js del frontend.
@@ -43,10 +44,11 @@ const APP_ROUTES = [
 ];
 
 const TIPO_MATRIZ_LABELS = {
-  BASE:     'Monofocal (Base)',
-  SPH_CYL:  'Monofocal Esf-Cil',
-  SPH_ADD:  'Bifocal',
-  BASE_ADD: 'Progresivo'
+  BASE:         'Monofocal (Base)',
+  SPH_CYL:      'Monofocal Esf-Cil',
+  SPH_CYL_AXIS: 'Tórico (CL)',
+  SPH_ADD:      'Bifocal',
+  BASE_ADD:     'Progresivo'
 };
 
 // ── GET /api/search ──────────────────────────────────────────────────────────
@@ -76,19 +78,31 @@ router.get('/'//, authMiddleware
     const sheetQuery = {
       isDeleted: { $ne: true },
       $or: [
-        { nombre:      regex },
-        { material:    regex },
-        { tratamiento: regex },
-        { variante:    regex },
-        { sku:         regex },
-        { baseKey:     regex }
+        { nombre:           regex },
+        { material:         regex },
+        { tratamiento:      regex },
+        { variante:         regex },
+        { sku:              regex },
+        { baseKey:          regex },
+        { 'proveedor.name': regex },
+        { 'marca.name':     regex }
       ]
     };
-    const sheetFields = { nombre: 1, material: 1, tipo_matriz: 1, tratamiento: 1, variante: 1, sku: 1, baseKey: 1 };
+    const sheetFields = { nombre: 1, material: 1, tipo_matriz: 1, tratamiento: 1, variante: 1, sku: 1, baseKey: 1, proveedor: 1, marca: 1 };
 
-    const [invSheets, clSheets] = await Promise.all([
+    const orderQuery = {
+      status: { $ne: 'cancelado' },
+      $or: [
+        { folio:   regex },
+        { cliente: regex }
+      ]
+    };
+    const orderFields = { folio: 1, cliente: 1, status: 1 };
+
+    const [invSheets, clSheets, labOrders] = await Promise.all([
       InventorySheet.find(sheetQuery, sheetFields).lean().limit(limit),
-      ContactLensesSheet.find(sheetQuery, sheetFields).lean().limit(limit)
+      ContactLensesSheet.find(sheetQuery, sheetFields).lean().limit(limit),
+      LaboratoryOrder.find(orderQuery, orderFields).sort({ createdAt: -1 }).lean().limit(limit)
     ]);
 
     const mapSheet = (s, category) => ({
@@ -97,9 +111,11 @@ router.get('/'//, authMiddleware
       material:    s.material,
       tipo_matriz: s.tipo_matriz,
       tipoLabel:   TIPO_MATRIZ_LABELS[s.tipo_matriz] || s.tipo_matriz,
-      tratamiento: s.tratamiento || '',
-      variante:    s.variante    || '',
-      sku:         s.sku         || '',
+      tratamiento: s.tratamiento  || '',
+      variante:    s.variante     || '',
+      sku:         s.sku          || '',
+      proveedor:   s.proveedor?.name || '',
+      marca:       s.marca?.name     || '',
       category
     });
 
@@ -108,7 +124,14 @@ router.get('/'//, authMiddleware
       ...clSheets.map(s => mapSheet(s, 'Lentes de contacto'))
     ].slice(0, limit);
 
-    return res.json({ routes: matched, sheets: sheetsResult });
+    const ordersResult = labOrders.map(o => ({
+      id:      String(o._id),
+      folio:   o.folio,
+      cliente: o.cliente,
+      status:  o.status
+    }));
+
+    return res.json({ routes: matched, sheets: sheetsResult, orders: ordersResult });
 
   } catch (err) {
     console.error('Error en búsqueda global:', err);

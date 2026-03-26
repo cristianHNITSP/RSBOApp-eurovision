@@ -11,6 +11,7 @@
 "use strict";
 
 const router = require("express").Router();
+const { cacheMiddleware, KEYS } = require("../services/redis");
 
 const InventorySheet    = require("../models/InventorySheet");
 const MatrixBase        = require("../models/matrix/MatrixBase");
@@ -21,6 +22,13 @@ const LaboratoryOrder   = require("../models/laboratory/LaboratoryOrder");
 const LaboratoryEvent   = require("../models/laboratory/LaboratoryEvent");
 const InventoryChangeLog = require("../models/InventoryChangeLog");
 const Devolution         = require("../models/Devolution");
+
+// Lentes de contacto
+const ContactLensesSheet = require("../models/ContactLensesSheet");
+const CLMatrixEsferico   = require("../models/contactlenses/CLMatrixEsferico");
+const CLMatrixColorido   = require("../models/contactlenses/CLMatrixColorido");
+const CLMatrixTorico     = require("../models/contactlenses/CLMatrixTorico");
+const CLMatrixMultifocal = require("../models/contactlenses/CLMatrixMultifocal");
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -49,7 +57,7 @@ function aggregateCells(doc, tipo) {
   for (const [, cell] of Object.entries(cells)) {
     if (!cell) continue;
 
-    if (tipo === "BASE" || tipo === "SPH_CYL") {
+    if (tipo === "BASE" || tipo === "SPH_CYL" || tipo === "SPH_CYL_AXIS") {
       const n = Number(cell.existencias ?? 0);
       totalCombinations++;
       totalStock += n;
@@ -71,7 +79,7 @@ function aggregateCells(doc, tipo) {
 
 // ─── GET /api/stats/dashboard ────────────────────────────────────────────────
 
-router.get("/dashboard", async (_req, res) => {
+router.get("/dashboard", cacheMiddleware(KEYS.stats, 45), async (_req, res) => {
   try {
     const today = todayStart();
     const d30   = daysAgo(30);
@@ -125,6 +133,121 @@ router.get("/dashboard", async (_req, res) => {
       }))
       .sort((a, b) => b.stock - a.stock)
       .slice(0, 8);
+
+    // ── Lentes de contacto (inventario separado) ─────────────────────────
+    const clSheets = await ContactLensesSheet.find({ isDeleted: { $ne: true } }).lean();
+    const clActiveSheets = clSheets.length;
+
+    let clTotalStock = 0;
+    let clTotalCombinations = 0;
+    let clWithStock = 0;
+    const clTypeStockMap = {};
+
+    const TIPO_LABELS = {
+      BASE: "Esférico",
+      SPH_CYL: "Colorido (Esférica + Cilíndrica)",
+      SPH_CYL_AXIS: "Tórico (Esférica + Cilíndrica + Eje)",
+      BASE_ADD: "Multifocal (Base Esférica + Adición)",
+      SPH_ADD: "Bifocal (Esférica + Adición)",
+    };
+
+    const clMatrixModels = [
+      { model: CLMatrixEsferico,  tipo: "BASE" },
+      { model: CLMatrixColorido,  tipo: "SPH_CYL" },
+      { model: CLMatrixTorico,    tipo: "SPH_CYL_AXIS" },
+      { model: CLMatrixMultifocal, tipo: "BASE_ADD" },
+    ];
+
+    for (const { model, tipo } of clMatrixModels) {
+      const docs = await model.find({}).lean();
+      let tipoStock = 0;
+      let tipoCombinations = 0;
+      let tipoWithStock = 0;
+
+      for (const doc of docs) {
+        const agg = aggregateCells(doc, tipo);
+        clTotalStock += agg.totalStock;
+        clTotalCombinations += agg.totalCombinations;
+        clWithStock += agg.withStock;
+        tipoStock += agg.totalStock;
+        tipoCombinations += agg.totalCombinations;
+        tipoWithStock += agg.withStock;
+      }
+
+      const label = TIPO_LABELS[tipo] || tipo;
+      clTypeStockMap[label] = {
+        stock: tipoStock,
+        combinations: tipoCombinations,
+        withStock: tipoWithStock,
+        sheets: clSheets.filter((s) => s.tipo_matriz === tipo).length,
+      };
+    }
+
+    const clCoveragePct = clTotalCombinations > 0
+      ? Math.round((clWithStock / clTotalCombinations) * 100)
+      : 0;
+
+    const clTotalForDist = Math.max(Object.values(clTypeStockMap).reduce((a, b) => a + b.stock, 0), 1);
+    const clDistribution = Object.entries(clTypeStockMap).map(([name, d]) => ({
+      name,
+      stock: d.stock,
+      combinations: d.combinations,
+      withStock: d.withStock,
+      sheets: d.sheets,
+      percentage: Math.round((d.stock / clTotalForDist) * 100),
+    })).sort((a, b) => b.stock - a.stock);
+
+    // Promedio de existencias por celda CL
+    const clAvgPerCell = clTotalCombinations > 0
+      ? Number((clTotalStock / clTotalCombinations).toFixed(2))
+      : 0;
+
+    // Top plantillas CL con menor stock (alertas)
+    const clLowStockSheets = [];
+    for (const clSheet of clSheets) {
+      const matEntry = clMatrixModels.find((m) => m.tipo === clSheet.tipo_matriz);
+      if (!matEntry) continue;
+      const matDoc = await matEntry.model.findOne({ sheet: clSheet._id }).lean();
+      if (!matDoc) continue;
+      const agg = aggregateCells(matDoc, clSheet.tipo_matriz);
+      clLowStockSheets.push({
+        id: String(clSheet._id),
+        nombre: clSheet.nombre,
+        tipo: TIPO_LABELS[clSheet.tipo_matriz] || clSheet.tipo_matriz,
+        stock: agg.totalStock,
+        combinations: agg.totalCombinations,
+        withStock: agg.withStock,
+        coverage: agg.totalCombinations > 0 ? Math.round((agg.withStock / agg.totalCombinations) * 100) : 0,
+      });
+    }
+    clLowStockSheets.sort((a, b) => a.coverage - b.coverage);
+    const clTopLowStock = clLowStockSheets.slice(0, 5);
+    const clTopHighStock = [...clLowStockSheets].sort((a, b) => b.stock - a.stock).slice(0, 5);
+
+    // Inventario optico: top plantillas por stock para comparar
+    const opticLowStockSheets = [];
+    for (const sheet of sheets) {
+      const matEntry = matrixModels.find((m) => m.tipo === sheet.tipo_matriz);
+      if (!matEntry) continue;
+      const matDoc = await matEntry.model.findOne({ sheet: sheet._id }).lean();
+      if (!matDoc) continue;
+      const agg = aggregateCells(matDoc, sheet.tipo_matriz);
+      opticLowStockSheets.push({
+        id: String(sheet._id),
+        nombre: sheet.nombre,
+        tipo: TIPO_LABELS[sheet.tipo_matriz] || sheet.tipo_matriz,
+        stock: agg.totalStock,
+        combinations: agg.totalCombinations,
+        coverage: agg.totalCombinations > 0 ? Math.round((agg.withStock / agg.totalCombinations) * 100) : 0,
+      });
+    }
+    opticLowStockSheets.sort((a, b) => a.coverage - b.coverage);
+    const opticTopLowStock = opticLowStockSheets.slice(0, 5);
+
+    // Promedio de existencias por celda inventario optico
+    const opticAvgPerCell = totalCombinations > 0
+      ? Number((totalStock / totalCombinations).toFixed(2))
+      : 0;
 
     // ── Laboratorio / Pedidos ─────────────────────────────────────────────
     const [
@@ -235,7 +358,7 @@ router.get("/dashboard", async (_req, res) => {
     return res.json({
       ok: true,
       data: {
-        // Inventario
+        // Inventario optico
         activeSheets,
         totalStock,
         totalCombinations,
@@ -243,6 +366,19 @@ router.get("/dashboard", async (_req, res) => {
         coveragePct,
         criticalAlerts,
         topFamilies,
+        opticAvgPerCell,
+        opticTopLowStock,
+
+        // Lentes de contacto
+        clActiveSheets,
+        clTotalStock,
+        clTotalCombinations,
+        clWithStock,
+        clCoveragePct,
+        clDistribution,
+        clAvgPerCell,
+        clTopLowStock,
+        clTopHighStock,
 
         // Pedidos / Laboratorio
         ordersPending,

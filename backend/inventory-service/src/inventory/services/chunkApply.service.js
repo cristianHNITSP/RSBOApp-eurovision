@@ -6,6 +6,7 @@ const {
   keySphCyl,
   keyBifocal,
   keyProg,
+  keyTorico,
   normalizeCylConvention,
 } = require("../utils/keys");
 
@@ -220,9 +221,63 @@ async function applyChunkProgresivo(models, sheet, rows, actor) {
   return { updated };
 }
 
+async function applyChunkTorico(models, sheet, rows, actor) {
+  const { MatrixTorico } = models;
+
+  const doc = await MatrixTorico.findOneAndUpdate(
+    { sheet: sheet._id },
+    { $setOnInsert: { sheet: sheet._id, tipo_matriz: "SPH_CYL_AXIS", cells: new Map() } },
+    { new: true, upsert: true }
+  );
+
+  doc.set("cells", doc.cells || new Map());
+  let updated = 0;
+
+  for (const row of rows) {
+    const sph = to2(row.sph);
+    let cyl = normalizeCylConvention(row.cyl);
+    const axis = Number(row.axis);
+    if (!Number.isFinite(sph) || !Number.isFinite(cyl) || !Number.isFinite(axis)) continue;
+
+    const existencias = Number(row.existencias ?? 0);
+    const k = keyTorico(sph, cyl, axis);
+
+    const existed = doc.cells.has(k);
+    const current = existed
+      ? doc.cells.get(k)
+      : {
+          existencias: 0,
+          sku: makeSku(sheet._id, "SPH_CYL_AXIS", { sph, cyl, axis }),
+          codebar: null,
+          createdBy: actor,
+          updatedBy: actor,
+        };
+
+    const prev = Number(current.existencias ?? 0);
+
+    if (existed && prev === existencias && current.sku && (existencias === 0 || current.codebar))
+      continue;
+
+    current.existencias = existencias;
+    if (!current.sku) current.sku = makeSku(sheet._id, "SPH_CYL_AXIS", { sph, cyl, axis });
+    if (existencias > 0 && !current.codebar) current.codebar = makeCodebar(sheet._id, "SPH_CYL_AXIS", { sph, cyl, axis });
+
+    current.updatedBy = actor;
+    if (!current.createdBy) current.createdBy = actor;
+
+    doc.cells.set(k, current);
+    updated++;
+  }
+
+  doc.markModified("cells");
+  await doc.save();
+  return { updated };
+}
+
 module.exports = {
   applyChunkBase,
   applyChunkSphCyl,
   applyChunkBifocal,
   applyChunkProgresivo,
+  applyChunkTorico,
 };

@@ -782,18 +782,24 @@ function fmtTimeAgo(d) {
 
 // ── KPIs ──────────────────────────────────────────────────────────────────────
 const allKpis = computed(() => [
-  { key:'sheets',         icon:'table-cells-large',   accent:'purple', title:'Hojas activas',        caption:'Plantillas',                    formattedValue: s.value?.activeSheets ?? '—',             requiresInventory:true },
-  { key:'combinaciones',  icon:'layer-group',          accent:'blue',   title:'Combinaciones',         caption:'SPH · CYL · ADD',               formattedValue: formatNumber(s.value?.totalCombinations),  requiresInventory:true },
-  { key:'stock',          icon:'boxes-stacked',        accent:'green',  title:'Existencias',           caption:'Piezas en almacén',             formattedValue: formatNumber(s.value?.totalStock),         requiresInventory:true },
-  { key:'alertas',        icon:'triangle-exclamation', accent:'orange', title:'Alertas críticas',      caption:'Stock crítico',                 formattedValue: criticalAlerts.value, alert: criticalAlerts.value > 0, requiresInventory:true },
-  { key:'pendientes',     icon:'clipboard-list',       accent:'orange', title:'Pendientes',            caption:'Abiertos o parciales',          formattedValue: s.value?.ordersPending ?? '—',            requiresOrders:true },
-  { key:'cerrados30d',    icon:'circle-check',         accent:'green',  title:'Cerrados (30d)',         caption:'Últimos 30 días',               formattedValue: s.value?.ordersClosed30d ?? '—',           requiresOrders:true },
-  { key:'scansToday',     icon:'barcode',              accent:'cyan',   title:'Escaneos hoy',          caption:'Salidas por escáner',           formattedValue: s.value?.scansToday ?? '—',               requiresLab:true },
-  { key:'serviceLevel',   icon:'gauge-high',           accent:'purple', title:'Nivel de servicio',     caption:'Sin correcciones (30d)',        formattedValue: (s.value?.serviceLevel ?? 0) + '%',        requiresReports:true },
-  { key:'devPendientes',  icon:'rotate-left',          accent:'orange', title:'Devol. pendientes',     caption:'Esperando revisión',            formattedValue: s.value?.devolucionesPendientes ?? '—',    requiresDevolutions:true, alert: (s.value?.devolucionesPendientes ?? 0) > 0 },
-  { key:'devTotal30d',    icon:'arrow-rotate-left',    accent:'purple', title:'Devol. (30d)',           caption:'Este período',                  formattedValue: s.value?.devolucionesTotal30d ?? '—',      requiresDevolutions:true },
-  { key:'corrections7d',  icon:'wrench',               accent:'red',    title:'Correcciones (7d)',      caption:'Solicitudes activas',           formattedValue: s.value?.corrections7d ?? '—',            requiresLab:true },
-  { key:'cerradoHoy',     icon:'check',                accent:'green',  title:'Cerrados hoy',          caption:'Completados hoy',               formattedValue: s.value?.ordersClosedToday ?? '—',        requiresOrders:true },
+  // Inventario optico
+  { key:'sheets',         icon:'table-cells-large',   accent:'purple', title:'Hojas activas',            caption:'Plantillas ópticas',                       formattedValue: s.value?.activeSheets ?? '—',             requiresInventory:true },
+  { key:'combinaciones',  icon:'layer-group',          accent:'blue',   title:'Combinaciones ópticas',    caption:'Esférica, Cilíndrica, Adición',            formattedValue: formatNumber(s.value?.totalCombinations),  requiresInventory:true },
+  { key:'stock',          icon:'boxes-stacked',        accent:'green',  title:'Existencias ópticas',      caption:'Piezas en almacén',                        formattedValue: formatNumber(s.value?.totalStock),         requiresInventory:true },
+  { key:'alertas',        icon:'triangle-exclamation', accent:'orange', title:'Alertas críticas',         caption:'Stock nivel crítico',                       formattedValue: criticalAlerts.value, alert: criticalAlerts.value > 0, requiresInventory:true },
+  // Lentes de contacto
+  { key:'clSheets',       icon:'eye',                  accent:'cyan',   title:'Lentes de contacto',       caption:'Hojas activas',                            formattedValue: s.value?.clActiveSheets ?? '—',           requiresInventory:true },
+  { key:'clStock',        icon:'boxes-stacked',        accent:'teal',   title:'Existencias contacto',     caption:'Piezas lentes de contacto',                formattedValue: formatNumber(s.value?.clTotalStock),       requiresInventory:true },
+  { key:'clCoverage',     icon:'percent',              accent:'blue',   title:'Cobertura contacto',       caption:'Del catálogo de contacto',                 formattedValue: (s.value?.clCoveragePct ?? 0) + '%',       requiresInventory:true },
+  // Pedidos y operaciones
+  { key:'pendientes',     icon:'clipboard-list',       accent:'orange', title:'Pendientes',               caption:'Abiertos o parciales',                     formattedValue: s.value?.ordersPending ?? '—',            requiresOrders:true },
+  { key:'cerrados30d',    icon:'circle-check',         accent:'green',  title:'Cerrados (30d)',            caption:'Últimos 30 días',                          formattedValue: s.value?.ordersClosed30d ?? '—',           requiresOrders:true },
+  { key:'scansToday',     icon:'barcode',              accent:'cyan',   title:'Escaneos hoy',             caption:'Salidas por escáner',                      formattedValue: s.value?.scansToday ?? '—',               requiresLab:true },
+  { key:'serviceLevel',   icon:'gauge-high',           accent:'purple', title:'Nivel de servicio',        caption:'Sin correcciones (30d)',                    formattedValue: (s.value?.serviceLevel ?? 0) + '%',        requiresReports:true },
+  { key:'devPendientes',  icon:'rotate-left',          accent:'orange', title:'Devoluciones pendientes',  caption:'Esperando revisión',                       formattedValue: s.value?.devolucionesPendientes ?? '—',    requiresDevolutions:true, alert: (s.value?.devolucionesPendientes ?? 0) > 0 },
+  { key:'devTotal30d',    icon:'arrow-rotate-left',    accent:'purple', title:'Devoluciones (30d)',        caption:'Este período',                             formattedValue: s.value?.devolucionesTotal30d ?? '—',      requiresDevolutions:true },
+  { key:'corrections7d',  icon:'wrench',               accent:'red',    title:'Correcciones (7d)',         caption:'Solicitudes activas',                      formattedValue: s.value?.corrections7d ?? '—',            requiresLab:true },
+  { key:'cerradoHoy',     icon:'check',                accent:'green',  title:'Cerrados hoy',             caption:'Completados hoy',                          formattedValue: s.value?.ordersClosedToday ?? '—',        requiresOrders:true },
 ])
 
 const visibleKpis = computed(() => {
@@ -989,6 +995,7 @@ const visibleKpis = computed(() => {
 .kpi-green::before  { content:''; position:absolute; top:0; left:0; right:0; height:2.5px; background:linear-gradient(90deg,#10b981,#65a30d); }
 .kpi-orange::before { content:''; position:absolute; top:0; left:0; right:0; height:2.5px; background:linear-gradient(90deg,#f59e0b,#ef4444); }
 .kpi-cyan::before   { content:''; position:absolute; top:0; left:0; right:0; height:2.5px; background:linear-gradient(90deg,#06b6d4,#3b82f6); }
+.kpi-teal::before   { content:''; position:absolute; top:0; left:0; right:0; height:2.5px; background:linear-gradient(90deg,#14b8a6,#06b6d4); }
 .kpi-red::before    { content:''; position:absolute; top:0; left:0; right:0; height:2.5px; background:linear-gradient(90deg,#ef4444,#dc2626); }
 
 .kpi-glow-dot {
@@ -1007,6 +1014,7 @@ const visibleKpis = computed(() => {
 .ki-green  { background:rgba(16,185,129,.15);  color:#10b981; }
 .ki-orange { background:rgba(245,158,11,.15);  color:#f59e0b; }
 .ki-cyan   { background:rgba(6,182,212,.15);   color:#06b6d4; }
+.ki-teal   { background:rgba(20,184,166,.15);  color:#14b8a6; }
 .ki-red    { background:rgba(239,68,68,.15);   color:#ef4444; }
 
 .kpi-trend-badge { font-size:0.65rem; color:#f59e0b; }
@@ -1019,6 +1027,7 @@ const visibleKpis = computed(() => {
 .kn-green  { background-image:linear-gradient(135deg,#10b981,#65a30d); }
 .kn-orange { background-image:linear-gradient(135deg,#f59e0b,#ef4444); }
 .kn-cyan   { background-image:linear-gradient(135deg,#06b6d4,#3b82f6); }
+.kn-teal   { background-image:linear-gradient(135deg,#14b8a6,#06b6d4); }
 .kn-red    { background-image:linear-gradient(135deg,#ef4444,#dc2626); }
 
 .kpi-label { font-size:0.7rem; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.07em; margin-top:0.1rem; }
@@ -1064,6 +1073,7 @@ const visibleKpis = computed(() => {
 .accent-blue   { background:rgba(59,130,246,.15);  color:#3b82f6; }
 .accent-green  { background:rgba(16,185,129,.15);  color:#10b981; }
 .accent-cyan   { background:rgba(6,182,212,.15);   color:#06b6d4; }
+.accent-teal   { background:rgba(20,184,166,.15);  color:#14b8a6; }
 .accent-orange { background:rgba(245,158,11,.15);  color:#f59e0b; }
 .accent-red    { background:rgba(239,68,68,.15);   color:#ef4444; }
 

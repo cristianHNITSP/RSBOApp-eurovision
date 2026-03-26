@@ -40,6 +40,16 @@ const fmtShort = (v) => {
   });
 };
 
+const eyeLabel = (e) => {
+  if (!e) return "—";
+  const s = String(e).toUpperCase();
+  if (s === "OD" || s === "R" || s === "RIGHT") return "Ojo Derecho (OD)";
+  if (s === "OS" || s === "L" || s === "LEFT") return "Ojo Izquierdo (OS)";
+  return e;
+};
+
+const todaySlug = () => new Date().toISOString().slice(0, 10);
+
 function downloadBlob(filename, blob) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -52,6 +62,7 @@ function downloadBlob(filename, blob) {
 }
 
 function toCsv(rows, headers) {
+  const BOM = "\uFEFF"; // UTF-8 BOM para compatibilidad con Excel en Windows
   const esc = (v) => {
     const s = String(v ?? "");
     if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
@@ -68,38 +79,91 @@ function toCsv(rows, headers) {
         .join(",")
     )
     .join("\n");
-  return `${head}\n${body}\n`;
+  return `${BOM}${head}\n${body}\n`;
 }
 
 function openPrintWindow({ title, bodyHtml }) {
   const w = window.open("", "_blank");
   if (!w) return;
+  const now = new Date();
+  const fechaGenerado = now.toLocaleString("es-MX", {
+    day: "2-digit", month: "long", year: "numeric",
+    hour: "2-digit", minute: "2-digit"
+  });
   w.document.open();
   w.document.write(`<!doctype html>
-<html>
+<html lang="es">
 <head>
   <meta charset="utf-8" />
-  <title>${String(title || "Impresión")}</title>
+  <title>${String(title || "Documento")}</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-    body { font-family: Arial, Helvetica, sans-serif; padding: 16px; color: #111; }
-    h1, h2, h3 { margin: 0 0 10px; }
-    .muted { color: #555; }
-    .box { border: 1px solid #ddd; border-radius: 10px; padding: 12px; margin: 10px 0; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { border: 1px solid #ddd; padding: 8px; font-size: 12px; vertical-align: top; }
-    th { background: #f5f5f5; text-align: left; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; font-size: 13px; color: #1a202c; background: #fff; padding: 28px; }
+    .print-toolbar { display: flex; align-items: center; gap: 10px; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; margin-bottom: 20px; }
+    .print-toolbar button { background: #1d4ed8; color: #fff; border: none; border-radius: 6px; padding: 8px 20px; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .print-toolbar button:hover { background: #1e40af; }
+    .print-toolbar span { font-size: 12px; color: #64748b; }
+    .print-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #1d4ed8; padding-bottom: 14px; margin-bottom: 20px; }
+    .print-header-left .doc-title { font-size: 22px; font-weight: 700; color: #1e3a8a; line-height: 1.2; }
+    .print-header-left .doc-subtitle { font-size: 12px; color: #64748b; margin-top: 4px; }
+    .print-header-right { text-align: right; }
+    .print-header-right .brand { font-size: 16px; font-weight: 800; color: #1d4ed8; letter-spacing: -0.5px; }
+    .print-header-right .gen-date { font-size: 11px; color: #94a3b8; margin-top: 3px; }
+    h2 { font-size: 15px; font-weight: 700; color: #1e3a8a; margin: 18px 0 8px; }
+    h3 { font-size: 13px; font-weight: 600; color: #334155; margin: 12px 0 6px; }
+    .muted { color: #64748b; }
+    .box { border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; margin: 12px 0; background: #f8fafc; }
+    .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; margin: 12px 0; }
+    .info-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 7px; padding: 10px 14px; }
+    .info-card .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: #94a3b8; font-weight: 600; }
+    .info-card .val { font-size: 14px; font-weight: 700; color: #1e293b; margin-top: 2px; }
+    .info-card .val.mono { font-family: ui-monospace, 'Courier New', monospace; font-size: 13px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+    thead tr { background: #1e3a8a; }
+    thead th { color: #fff; padding: 9px 11px; text-align: left; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; }
+    tbody tr:nth-child(even) { background: #f1f5f9; }
+    td { padding: 8px 11px; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
+    tfoot tr { background: #1e3a8a; }
+    tfoot td { color: #fff; font-weight: 700; padding: 9px 11px; border: none; }
+    .mono { font-family: ui-monospace, 'Courier New', monospace; font-size: 11px; }
     .right { text-align: right; }
-    .badge { display: inline-block; border: 1px solid #ddd; border-radius: 999px; padding: 2px 8px; font-size: 12px; margin-left: 8px; }
-    @media print { .no-print { display: none; } }
+    .center { text-align: center; }
+    .badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+    .badge-blue { background: #dbeafe; color: #1d4ed8; }
+    .badge-green { background: #dcfce7; color: #166534; }
+    .badge-yellow { background: #fef9c3; color: #854d0e; }
+    .badge-red { background: #fee2e2; color: #991b1b; }
+    .badge-gray { background: #f1f5f9; color: #475569; }
+    .note-box { border-left: 4px solid #f59e0b; background: #fffbeb; border-radius: 0 6px 6px 0; padding: 10px 14px; margin: 10px 0; font-size: 12px; }
+    .print-footer { margin-top: 28px; padding-top: 12px; border-top: 1px solid #e2e8f0; font-size: 10px; color: #94a3b8; display: flex; justify-content: space-between; }
+    @media print {
+      .print-toolbar { display: none !important; }
+      body { padding: 0; }
+      @page { margin: 1.8cm 1.5cm; }
+    }
   </style>
 </head>
 <body>
-  <div class="no-print" style="margin-bottom: 10px;">
+  <div class="print-toolbar">
     <button onclick="window.print()">Imprimir / Guardar como PDF</button>
+    <span>Para guardar como PDF, selecciona "Guardar como PDF" en el diálogo de impresora.</span>
+  </div>
+  <div class="print-header">
+    <div class="print-header-left">
+      <div class="doc-title">${String(title || "Documento")}</div>
+      <div class="doc-subtitle">Sistema de gestión óptica · RSBO</div>
+    </div>
+    <div class="print-header-right">
+      <div class="brand">RSBO</div>
+      <div class="gen-date">Generado el ${fechaGenerado}</div>
+    </div>
   </div>
   ${bodyHtml || ""}
+  <div class="print-footer">
+    <span>RSBO — Sistema de Gestión Óptica</span>
+    <span>${fechaGenerado}</span>
+  </div>
 </body>
 </html>`);
   w.document.close();
@@ -1078,47 +1142,47 @@ export function useLaboratorioApi(getUser) {
       const rows = filteredItems.value;
       const tipo = sheet.tipo_matriz;
       const baseHeaders = [
-        { key: "existencias", label: "existencias" },
-        { key: "codebar", label: "codebar" },
-        { key: "sku", label: "sku" }
+        { key: "existencias", label: "Existencias" },
+        { key: "codebar", label: "Código de Barras" },
+        { key: "sku", label: "SKU" }
       ];
 
       const tipoHeaders =
         tipo === "BASE"
-          ? [{ key: "base", label: "base" }]
+          ? [{ key: "base", label: "Base" }]
           : tipo === "SPH_CYL"
           ? [
-              { key: "sph", label: "sph" },
-              { key: "cyl", label: "cyl" }
+              { key: "sph", label: "Esfera (SPH)" },
+              { key: "cyl", label: "Cilindro (CYL)" }
             ]
           : tipo === "SPH_ADD"
           ? [
-              { key: "eye", label: "eye" },
-              { key: "sph", label: "sph" },
-              { key: "add", label: "add" },
-              { key: "base_izq", label: "base_izq" },
-              { key: "base_der", label: "base_der" }
+              { key: "eye", label: "Ojo", transform: (r) => eyeLabel(r.eye) },
+              { key: "sph", label: "Esfera (SPH)" },
+              { key: "add", label: "Adición (ADD)" },
+              { key: "base_izq", label: "Base Izquierda" },
+              { key: "base_der", label: "Base Derecha" }
             ]
           : tipo === "BASE_ADD"
           ? [
-              { key: "eye", label: "eye" },
-              { key: "base_izq", label: "base_izq" },
-              { key: "base_der", label: "base_der" },
-              { key: "add", label: "add" }
+              { key: "eye", label: "Ojo", transform: (r) => eyeLabel(r.eye) },
+              { key: "base_izq", label: "Base Izquierda" },
+              { key: "base_der", label: "Base Derecha" },
+              { key: "add", label: "Adición (ADD)" }
             ]
           : [];
 
       const headers = [
         ...baseHeaders,
         ...tipoHeaders,
-        { key: "_title", label: "title", transform: (r) => buildRowTitle(r, sheet) }
+        { key: "_title", label: "Descripción del Producto", transform: (r) => buildRowTitle(r, sheet) }
       ];
       const csv = toCsv(rows, headers);
       downloadBlob(
-        `inventario_${String(sheet.nombre || "inventario").replace(/[^\w\-]+/g, "_")}_${sheet.tipo_matriz}.csv`,
+        `reporte_inventario_${String(sheet.nombre || "inventario").replace(/[^\w\-]+/g, "_")}_${sheet.tipo_matriz}_${todaySlug()}.csv`,
         new Blob([csv], { type: "text/csv;charset=utf-8" })
       );
-      notify(`CSV exportado: ${rows.length} filas`, "is-success", 2500);
+      notify(`Inventario exportado: ${rows.length} filas`, "is-success", 2500);
     } catch (e) {
       notify(normalizeAck(e, { errorFallback: "No se pudo exportar el CSV." })?.message, "is-danger");
     } finally {
@@ -1134,18 +1198,18 @@ export function useLaboratorioApi(getUser) {
     try {
       const rows = filteredCatalogRows.value;
       const headers = [
-        { key: "existencias", label: "existencias" },
-        { key: "codebar", label: "codebar" },
-        { key: "sku", label: "sku" },
-        { key: "_title", label: "title", transform: (r) => buildRowTitle(r, sheet) },
-        { key: "_params", label: "params", transform: (r) => buildRowParams(r, sheet) }
+        { key: "existencias", label: "Existencias" },
+        { key: "codebar", label: "Código de Barras" },
+        { key: "sku", label: "SKU" },
+        { key: "_title", label: "Producto", transform: (r) => buildRowTitle(r, sheet) },
+        { key: "_params", label: "Parámetros", transform: (r) => buildRowParams(r, sheet) }
       ];
       const csv = toCsv(rows, headers);
       downloadBlob(
-        `catalogo_${String(sheet.nombre || "catalogo").replace(/[^\w\-]+/g, "_")}_${sheet.tipo_matriz}.csv`,
+        `reporte_catalogo_${String(sheet.nombre || "catalogo").replace(/[^\w\-]+/g, "_")}_${sheet.tipo_matriz}_${todaySlug()}.csv`,
         new Blob([csv], { type: "text/csv;charset=utf-8" })
       );
-      notify(`CSV catálogo exportado: ${rows.length} filas`, "is-success", 2500);
+      notify(`Catálogo exportado: ${rows.length} productos`, "is-success", 2500);
     } catch (e) {
       notify(normalizeAck(e, { errorFallback: "No se pudo exportar el catálogo." })?.message, "is-danger");
     } finally {
@@ -1158,18 +1222,18 @@ export function useLaboratorioApi(getUser) {
     try {
       const rows = ordersDB.value || [];
       const headers = [
-        { key: "folio", label: "folio" },
-        { key: "cliente", label: "cliente" },
-        { key: "status", label: "status" },
-        { key: "createdAt", label: "createdAt" },
-        { key: "_progress", label: "progreso", transform: (o) => `${orderPickedCount(o)}/${orderTotalCount(o)}` },
-        { key: "_micas", label: "micas", transform: (o) => String(o.lines?.length || 0) }
+        { key: "folio", label: "Folio" },
+        { key: "cliente", label: "Cliente" },
+        { key: "status", label: "Estatus", transform: (o) => statusHuman(o.status) },
+        { key: "createdAt", label: "Fecha de Creación", transform: (o) => fmtShort(o.createdAt) },
+        { key: "_progress", label: "Progreso (Surtidas/Total)", transform: (o) => `${orderPickedCount(o)}/${orderTotalCount(o)}` },
+        { key: "_micas", label: "Total de Micas", transform: (o) => String(o.lines?.length || 0) }
       ];
       downloadBlob(
-        `pedidos_${new Date().toISOString().slice(0, 10)}.csv`,
+        `reporte_pedidos_${todaySlug()}.csv`,
         new Blob([toCsv(rows, headers)], { type: "text/csv;charset=utf-8" })
       );
-      notify(`CSV pedidos exportado: ${rows.length} pedidos`, "is-success", 2500);
+      notify(`Pedidos exportados: ${rows.length} registros`, "is-success", 2500);
     } catch (e) {
       notify(normalizeAck(e, { errorFallback: "No se pudo exportar pedidos." })?.message, "is-danger");
     } finally {
@@ -1183,14 +1247,14 @@ export function useLaboratorioApi(getUser) {
       const { data } = await listEvents({ type: "ORDER_CREATE", from: from.toISOString(), limit: 2000 });
       const rows = (Array.isArray(data?.data) ? data.data : []).map(mapEntryEvent);
       const headers = [
-        { key: "folio", label: "folio" },
-        { key: "cliente", label: "cliente" },
-        { key: "at", label: "fecha" },
-        { key: "linesTotal", label: "micas" }
+        { key: "folio", label: "Folio" },
+        { key: "cliente", label: "Cliente" },
+        { key: "at", label: "Fecha y Hora" },
+        { key: "linesTotal", label: "Total de Micas" }
       ];
       const periodName = { day: "hoy", week: "semana", month: "mes", year: "año" }[period] || period;
       downloadBlob(
-        `entradas_${periodName}_${new Date().toISOString().slice(0, 10)}.csv`,
+        `reporte_entradas_${periodName}_${todaySlug()}.csv`,
         new Blob([toCsv(rows, headers)], { type: "text/csv;charset=utf-8" })
       );
       notify(`Entradas (${periodName}): ${rows.length} registros exportados`, "is-success", 3000);
@@ -1205,15 +1269,15 @@ export function useLaboratorioApi(getUser) {
       const { data } = await listEvents({ type: "EXIT_SCAN", from: from.toISOString(), limit: 2000 });
       const rows = (Array.isArray(data?.data) ? data.data : []).map(mapExitEvent);
       const headers = [
-        { key: "folio", label: "folio" },
-        { key: "codebar", label: "codebar" },
-        { key: "title", label: "producto" },
-        { key: "micaType", label: "tipo_mica" },
-        { key: "at", label: "fecha" }
+        { key: "folio", label: "Folio" },
+        { key: "codebar", label: "Código de Barras" },
+        { key: "title", label: "Producto" },
+        { key: "micaType", label: "Tipo de Mica" },
+        { key: "at", label: "Fecha y Hora" }
       ];
       const periodName = { day: "hoy", week: "semana", month: "mes", year: "año" }[period] || period;
       downloadBlob(
-        `salidas_${periodName}_${new Date().toISOString().slice(0, 10)}.csv`,
+        `reporte_salidas_${periodName}_${todaySlug()}.csv`,
         new Blob([toCsv(rows, headers)], { type: "text/csv;charset=utf-8" })
       );
       notify(`Salidas (${periodName}): ${rows.length} registros exportados`, "is-success", 3000);
@@ -1229,19 +1293,19 @@ export function useLaboratorioApi(getUser) {
     try {
       const sheet = sheetById(o.sheetId);
       const headers = [
-        { key: "codebar", label: "codebar" },
-        { key: "qty", label: "qty" },
-        { key: "picked", label: "picked" },
-        { key: "_human", label: "mica", transform: (l) => lineHuman(l, sheet) },
-        { key: "micaType", label: "tipo_mica" },
-        { key: "eye", label: "eye" },
-        { key: "_params", label: "params", transform: (l) => JSON.stringify(l?.params || {}) }
+        { key: "codebar", label: "Código de Barras" },
+        { key: "qty", label: "Cantidad Pedida" },
+        { key: "picked", label: "Cantidad Surtida" },
+        { key: "_human", label: "Descripción de Mica", transform: (l) => lineHuman(l, sheet) },
+        { key: "micaType", label: "Tipo de Mica" },
+        { key: "eye", label: "Ojo", transform: (l) => eyeLabel(l.eye) },
+        { key: "_params", label: "Parámetros", transform: (l) => JSON.stringify(l?.params || {}) }
       ];
       downloadBlob(
-        `pedido_${String(o.folio || o.id)}.csv`,
+        `pedido_${String(o.folio || o.id)}_${todaySlug()}.csv`,
         new Blob([toCsv(o.lines || [], headers)], { type: "text/csv;charset=utf-8" })
       );
-      notify(`CSV pedido ${o.folio} exportado`, "is-success", 2500);
+      notify(`Pedido ${o.folio} exportado correctamente`, "is-success", 2500);
     } catch (e) {
       notify(normalizeAck(e, { errorFallback: "No se pudo exportar el pedido." })?.message, "is-danger");
     }
@@ -1252,10 +1316,24 @@ export function useLaboratorioApi(getUser) {
     if (!cb) return;
     const svg = isEan13(cb) ? ean13SvgString(cb, 3, 120) : "";
     openPrintWindow({
-      title: `Barcode ${cb}`,
-      bodyHtml: `<h2>Código de barras</h2><div class="box"><div class="mono" style="font-size:16px;margin-bottom:10px;">${cb}</div>${
-        svg || `<div class="muted">Código inválido para EAN-13</div>`
-      }</div>`
+      title: `Código de Barras · ${cb}`,
+      bodyHtml: `
+        <div class="info-grid">
+          <div class="info-card">
+            <div class="lbl">Código</div>
+            <div class="val mono">${cb}</div>
+          </div>
+          <div class="info-card">
+            <div class="lbl">Formato</div>
+            <div class="val">${svg ? "EAN-13 válido" : "Código personalizado"}</div>
+          </div>
+        </div>
+        <div class="box" style="text-align:center;padding:24px;">
+          ${svg
+            ? `<div style="margin-bottom:8px;">${svg}</div><div class="mono" style="font-size:16px;letter-spacing:4px;">${cb}</div>`
+            : `<div class="mono" style="font-size:28px;letter-spacing:6px;margin-bottom:8px;">${cb}</div><div class="muted">Código no EAN-13 — se muestra sólo el número</div>`
+          }
+        </div>`
     });
   }
 
@@ -1264,18 +1342,69 @@ export function useLaboratorioApi(getUser) {
     if (!sheet?.id) return;
 
     const rows = paginatedCatalog.value || [];
-    const bodyHtml = `<h2>Catálogo (página ${catalogPage.value}/${catalogPages.value}) <span class="badge">${sheet.tipo_matriz}</span></h2>
-      <div class="muted">${sheetTitle(sheet)} · ${sheet.material || ""} · ${prettyTrat(sheet.tratamientos)}</div>
-      <div class="box"><table><thead><tr><th>existencias</th><th>producto</th><th>codebar</th><th>barcode</th></tr></thead>
-      <tbody>${rows
-        .map((r) => {
-          const cb = String(r.codebar || "");
-          const svg = cb && isEan13(cb) ? ean13SvgString(cb, 2, 80) : "";
-          return `<tr><td class="right">${Number(r.existencias || 0)}</td><td>${buildRowTitle(r, sheet)}<div class="muted">${buildRowParams(r, sheet)}</div></td><td class="mono">${cb || "—"}</td><td>${svg || `<span class="muted">—</span>`}</td></tr>`;
-        })
-        .join("")}</tbody></table></div>`;
+    const totalStock = rows.reduce((s, r) => s + Number(r.existencias || 0), 0);
+    const bodyHtml = `
+      <div class="info-grid">
+        <div class="info-card">
+          <div class="lbl">Planilla</div>
+          <div class="val">${sheetTitle(sheet)}</div>
+        </div>
+        <div class="info-card">
+          <div class="lbl">Material</div>
+          <div class="val">${sheet.material || "—"}</div>
+        </div>
+        <div class="info-card">
+          <div class="lbl">Tratamientos</div>
+          <div class="val">${prettyTrat(sheet.tratamientos) || "—"}</div>
+        </div>
+        <div class="info-card">
+          <div class="lbl">Tipo de Matriz</div>
+          <div class="val">${sheet.tipo_matriz || "—"}</div>
+        </div>
+        <div class="info-card">
+          <div class="lbl">Página</div>
+          <div class="val">${catalogPage.value} de ${catalogPages.value}</div>
+        </div>
+        <div class="info-card">
+          <div class="lbl">Stock Total (página)</div>
+          <div class="val">${totalStock} unidades</div>
+        </div>
+      </div>
+      <div class="box" style="padding:0;overflow:hidden;">
+        <table>
+          <thead>
+            <tr>
+              <th class="right">Existencias</th>
+              <th>Producto</th>
+              <th>Código de Barras</th>
+              <th class="center">Código EAN-13</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map((r) => {
+              const cb = String(r.codebar || "");
+              const svg = cb && isEan13(cb) ? ean13SvgString(cb, 2, 70) : "";
+              return `<tr>
+                <td class="right"><b>${Number(r.existencias || 0)}</b></td>
+                <td>
+                  <div style="font-weight:600;">${buildRowTitle(r, sheet)}</div>
+                  <div class="muted" style="font-size:11px;">${buildRowParams(r, sheet)}</div>
+                </td>
+                <td class="mono">${cb || "—"}</td>
+                <td class="center">${svg || `<span class="muted">—</span>`}</td>
+              </tr>`;
+            }).join("")}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td class="right">${totalStock}</td>
+              <td colspan="3">Total de existencias en esta página (${rows.length} productos)</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>`;
 
-    openPrintWindow({ title: `Catálogo ${sheetTitle(sheet)}`, bodyHtml });
+    openPrintWindow({ title: `Catálogo · ${sheetTitle(sheet)}`, bodyHtml });
   }
 
   function printOrder(order) {
@@ -1283,20 +1412,80 @@ export function useLaboratorioApi(getUser) {
     if (!o?.id) return;
 
     const sheet = sheetById(o.sheetId);
-    const bodyHtml = `<h2>Pedido <span class="mono">${String(o.folio || o.id)}</span> <span class="badge">${statusHuman(o.status)}</span></h2>
-      <div class="muted">Cliente: <b>${String(o.cliente || "—")}</b> · Planilla: <b>${sheetTitle(sheet)}</b> · Creado: ${o.createdAtShort || fmtShort(o.createdAt)}</div>
-      ${o.note ? `<div class="box"><b>Nota:</b> ${sanitizeUserText(o.note)}</div>` : ""}
-      <div class="box"><div class="muted">Progreso: <b>${orderPickedCount(o)}/${orderTotalCount(o)}</b> (${orderProgressPct(o)}%)</div>
-      <table><thead><tr><th>Mica</th><th>Tipo</th><th class="right">qty</th><th class="right">picked</th><th>codebar</th><th>barcode</th></tr></thead>
-      <tbody>${(o.lines || [])
-        .map((l) => {
-          const cb = String(l.codebar || "");
-          const svg = cb && isEan13(cb) ? ean13SvgString(cb, 2, 70) : "";
-          return `<tr><td>${lineHuman(l, sheet)}</td><td>${l.micaType || "—"}</td><td class="right">${Number(l.qty || 0)}</td><td class="right">${Number(l.picked || 0)}</td><td class="mono">${cb || "—"}</td><td>${svg || `<span class="muted">—</span>`}</td></tr>`;
-        })
-        .join("")}</tbody></table></div>`;
+    const picked = orderPickedCount(o);
+    const total = orderTotalCount(o);
+    const pct = orderProgressPct(o);
+    const statusClass = { pendiente: "badge-blue", parcial: "badge-yellow", cerrado: "badge-green", cancelado: "badge-red" }[o.status] || "badge-gray";
 
-    openPrintWindow({ title: `Pedido ${String(o.folio || o.id)}`, bodyHtml });
+    const bodyHtml = `
+      <div class="info-grid">
+        <div class="info-card">
+          <div class="lbl">Folio</div>
+          <div class="val mono">${String(o.folio || o.id)}</div>
+        </div>
+        <div class="info-card">
+          <div class="lbl">Cliente</div>
+          <div class="val">${String(o.cliente || "—")}</div>
+        </div>
+        <div class="info-card">
+          <div class="lbl">Estatus</div>
+          <div class="val"><span class="badge ${statusClass}">${statusHuman(o.status)}</span></div>
+        </div>
+        <div class="info-card">
+          <div class="lbl">Planilla</div>
+          <div class="val">${sheetTitle(sheet)}</div>
+        </div>
+        <div class="info-card">
+          <div class="lbl">Fecha de Creación</div>
+          <div class="val">${o.createdAtShort || fmtShort(o.createdAt)}</div>
+        </div>
+        <div class="info-card">
+          <div class="lbl">Progreso de Surtido</div>
+          <div class="val">${picked} / ${total} micas (${pct}%)</div>
+        </div>
+      </div>
+      ${o.note ? `<div class="note-box"><b>Observación:</b> ${sanitizeUserText(o.note)}</div>` : ""}
+      <div class="box" style="padding:0;overflow:hidden;">
+        <table>
+          <thead>
+            <tr>
+              <th>Descripción de Mica</th>
+              <th>Tipo de Mica</th>
+              <th>Ojo</th>
+              <th class="right">Cant. Pedida</th>
+              <th class="right">Cant. Surtida</th>
+              <th>Código de Barras</th>
+              <th class="center">Código EAN-13</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${(o.lines || []).map((l) => {
+              const cb = String(l.codebar || "");
+              const svg = cb && isEan13(cb) ? ean13SvgString(cb, 2, 60) : "";
+              const pendiente = Number(l.qty || 0) - Number(l.picked || 0);
+              return `<tr>
+                <td><div style="font-weight:600;">${lineHuman(l, sheet)}</div></td>
+                <td>${l.micaType || "—"}</td>
+                <td>${eyeLabel(l.eye)}</td>
+                <td class="right">${Number(l.qty || 0)}</td>
+                <td class="right">${Number(l.picked || 0)}${pendiente > 0 ? ` <span class="muted" style="font-size:10px;">(${pendiente} pend.)</span>` : ""}</td>
+                <td class="mono">${cb || "—"}</td>
+                <td class="center">${svg || `<span class="muted">—</span>`}</td>
+              </tr>`;
+            }).join("")}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="3">Total del pedido</td>
+              <td class="right">${total}</td>
+              <td class="right">${picked}</td>
+              <td colspan="2">${pct}% surtido</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>`;
+
+    openPrintWindow({ title: `Orden de Pedido · ${String(o.folio || o.id)}`, bodyHtml });
   }
 
   // ======= Watchers =======

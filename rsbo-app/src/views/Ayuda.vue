@@ -102,10 +102,10 @@
     </div>
 
     <!-- Tabs principales -->
-    <b-tabs v-model="activeTab" type="is-boxed" animated class="help-tabs">
+    <DynamicTabs v-model="activeTab" :tabs="HELP_TABS">
 
       <!-- ══ TAB 1: INICIO ════════════════════════════════════════════════════ -->
-      <b-tab-item value="inicio" label="Inicio" icon="home">
+      <template #inicio>
         <div class="help-tab-content">
 
           <!-- 1) Pantalla de inicio -->
@@ -213,10 +213,10 @@
           </article>
 
         </div>
-      </b-tab-item>
+      </template>
 
       <!-- ══ TAB 2: INVENTARIO ════════════════════════════════════════════════ -->
-      <b-tab-item value="inventario" label="Inventario" icon="layer-group">
+      <template #inventario>
         <div class="help-tab-content">
 
           <article id="sec_inventario" class="help-card help-anchor">
@@ -287,10 +287,10 @@
           </article>
 
         </div>
-      </b-tab-item>
+      </template>
 
       <!-- ══ TAB 3: VENTAS & LABORATORIO ═════════════════════════════════════ -->
-      <b-tab-item value="ventas" label="Ventas & Lab" icon="flask">
+      <template #ventas>
         <div class="help-tab-content">
 
           <!-- Ventas -->
@@ -435,10 +435,10 @@
           </article>
 
         </div>
-      </b-tab-item>
+      </template>
 
       <!-- ══ TAB 4: MI CUENTA ═════════════════════════════════════════════════ -->
-      <b-tab-item value="cuenta" label="Mi cuenta" icon="cog">
+      <template #cuenta>
         <div class="help-tab-content">
 
           <!-- Configuración -->
@@ -567,10 +567,10 @@
           </article>
 
         </div>
-      </b-tab-item>
+      </template>
 
       <!-- ══ TAB 5: REFERENCIA RÁPIDA ════════════════════════════════════════ -->
-      <b-tab-item value="referencia" label="Referencia" icon="question-circle">
+      <template #referencia>
         <div class="help-tab-content">
 
           <!-- Atajos de teclado -->
@@ -753,15 +753,24 @@
           </article>
 
         </div>
-      </b-tab-item>
+      </template>
 
-    </b-tabs>
+    </DynamicTabs>
   </section>
 </template>
 
 <script setup>
 import { computed, ref, watch, nextTick, onMounted, onBeforeUnmount } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import DynamicTabs from "@/components/DynamicTabs.vue";
+
+const HELP_TABS = [
+  { key: "inicio",      label: "Inicio",      icon: "home" },
+  { key: "inventario",  label: "Inventario",  icon: "layer-group" },
+  { key: "ventas",      label: "Ventas & Lab", icon: "flask" },
+  { key: "cuenta",      label: "Mi cuenta",   icon: "cog" },
+  { key: "referencia",  label: "Referencia",  icon: "question-circle" },
+];
 
 const props = defineProps({
   user:       { type: Object, default: () => null },
@@ -1357,27 +1366,8 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
 }
 
 /* ── Tabs ─────────────────────────────────────────────────────────────────── */
-.help-tabs {
-  margin-top: 0;
-}
-
-:deep(.help-tabs .tab-content) {
-  padding: 0 !important;
+:deep(.dyn-tabs__content) {
   margin-top: 0.75rem;
-}
-
-:deep(.help-tabs .tab-content > .tab-item) {
-  padding: 0 !important;
-}
-
-:deep(.help-tabs .tabs li.is-active a) {
-  border-bottom-color: var(--c-primary);
-  color: var(--c-primary);
-}
-
-:deep(.help-tabs .tabs a) {
-  color: var(--text-secondary);
-  font-size: 0.82rem;
 }
 
 .help-tab-content {

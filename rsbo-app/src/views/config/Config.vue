@@ -36,31 +36,33 @@
       </div>
     </header>
 
-    <b-tabs v-model="activeTab" type="is-boxed" expanded animated>
-      <!-- TAB PERFIL -->
-      <b-tab-item label="Mi perfil" icon="user" value="profile">
-        <!-- Le pasamos lo que llega por props -->
+    <DynamicTabs v-model="activeTab" :tabs="CONFIG_TABS">
+      <template #profile>
         <MiUser :user="props.user" :loading="props.loading" />
-      </b-tab-item>
-
-      <!-- OTRAS TABS (relleno por ahora) -->
-      <b-tab-item label="Preferencias" icon="sliders-h" value="preferences">
+      </template>
+      <template #preferences>
         <Preferencias />
-      </b-tab-item>
-
-      <b-tab-item label="Seguridad" icon="shield-alt" value="security">
+      </template>
+      <template #security>
         <Seguridad :user="props.user" />
-      </b-tab-item>
-    </b-tabs>
+      </template>
+    </DynamicTabs>
   </section>
 </template>
 
 <script setup>
 import { ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import MiUser     from '../../views/config/options/MiUser.vue'
+import DynamicTabs  from '@/components/DynamicTabs.vue'
+import MiUser       from '../../views/config/options/MiUser.vue'
 import Preferencias from '../../views/config/options/Preferencias.vue'
-import Seguridad   from '../../views/config/options/Seguridad.vue'
+import Seguridad    from '../../views/config/options/Seguridad.vue'
+
+const CONFIG_TABS = [
+  { key: 'profile',     label: 'Mi perfil',    icon: 'user' },
+  { key: 'preferences', label: 'Preferencias', icon: 'sliders-h' },
+  { key: 'security',    label: 'Seguridad',    icon: 'shield-alt' },
+]
 
 // 🔹 Props que vienen del layout (por router-view): :user, :loading
 const props = defineProps({
@@ -133,20 +135,8 @@ watch(
 }
 
 
-/* ✅ Quitar padding que mete Buefy en el contenido de las tabs */
-:deep(.b-tabs .tab-content) {
-  position: relative;
-  overflow: visible;
-  display: flex;
-  flex-direction: column;
-  padding: 0 !important;
+:deep(.dyn-tabs__content) {
   margin-top: 1rem;
-  /* <- lo que quieres */
-}
-
-/* Opcional: si también ves padding en el wrapper de cada tab */
-:deep(.b-tabs .tab-content > .tab-item) {
-  padding: 0 !important;
 }
 
 

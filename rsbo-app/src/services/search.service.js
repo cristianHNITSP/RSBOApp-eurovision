@@ -8,7 +8,7 @@ import api from '@/api/axios';
 /**
  * @param {string} q        — texto a buscar (mínimo 2 caracteres)
  * @param {number} [limit]  — máx resultados por categoría (default 8)
- * @returns {Promise<{ routes: RouteResult[], sheets: SheetResult[] }>}
+ * @returns {Promise<{ routes: RouteResult[], sheets: SheetResult[], orders: OrderResult[] }>}
  */
 export async function globalSearch(q, limit = 8) {
   const { data } = await api.get('/search', {
@@ -30,7 +30,7 @@ export async function globalSearch(q, limit = 8) {
  *   { type: 'sheet',  ...sheetData },
  * ]
  */
-export function flattenResults({ routes = [], sheets = [] }) {
+export function flattenResults({ routes = [], sheets = [], orders = [] }) {
   const items = [];
 
   if (routes.length) {
@@ -55,6 +55,11 @@ export function flattenResults({ routes = [], sheets = [] }) {
     items.push({ type: 'header', label, icon: catIcons[label] || 'glasses' });
     group.forEach(s => items.push({ type: 'sheet', ...s }));
   });
+
+  if (orders.length) {
+    items.push({ type: 'header', label: 'Órdenes de laboratorio', icon: 'flask' });
+    orders.forEach(o => items.push({ type: 'order', ...o }));
+  }
 
   return items;
 }

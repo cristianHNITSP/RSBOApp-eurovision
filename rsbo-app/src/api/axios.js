@@ -67,6 +67,8 @@ function defaultMessageByStatus(status) {
       return "No se pudo completar la acción por un conflicto";
     case 422:
       return "Los datos enviados no son válidos";
+    case 429:
+      return "Demasiadas solicitudes. Espera un momento e intenta de nuevo";
     case 500:
       return "Ocurrió un error en el servidor";
     case 502:
@@ -79,16 +81,31 @@ function defaultMessageByStatus(status) {
 
 
 // -------------------------
-// Request-Id (diagnóstico)
+// Request-Id (diagnóstico) + CSRF token
 // -------------------------
 function genReqId() {
-  // suficientemente bueno para debug
   return `req_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
+
+/** Lee el valor de una cookie por nombre */
+function getCookie(name) {
+  const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : null;
 }
 
 api.interceptors.request.use((config) => {
   config.headers = config.headers || {};
   config.headers["X-Request-Id"] = config.headers["X-Request-Id"] || genReqId();
+
+  // Adjuntar CSRF token en requests mutantes (POST/PUT/PATCH/DELETE)
+  const method = (config.method || "get").toUpperCase();
+  if (["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+    const csrfToken = getCookie("csrf_token");
+    if (csrfToken) {
+      config.headers["X-CSRF-Token"] = csrfToken;
+    }
+  }
+
   return config;
 });
 

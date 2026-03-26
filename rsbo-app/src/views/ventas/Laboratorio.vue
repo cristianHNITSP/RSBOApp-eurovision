@@ -3,23 +3,12 @@
     <LabHero />
 
     <div class="glass">
-      <b-tabs v-model="lab.activeMainTab.value" type="is-toggle" class="main-tabs" expanded :animated="false">
-        <b-tab-item value="pedidos" label="Pedidos" icon="clipboard-list">
-          <PedidosTab />
-        </b-tab-item>
-
-        <b-tab-item value="bandeja" label="Bandeja" icon="inbox">
-          <BandejaTab />
-        </b-tab-item>
-
-        <b-tab-item value="catalogo" label="Catálogo" icon="qrcode">
-          <CatalogoTab />
-        </b-tab-item>
-
-        <b-tab-item value="correcciones" label="Correcciones" icon="tools">
-          <CorreccionesTab />
-        </b-tab-item>
-      </b-tabs>
+      <DynamicTabs v-model="lab.activeMainTab.value" :tabs="LAB_TABS">
+        <template #pedidos><PedidosTab /></template>
+        <template #bandeja><BandejaTab /></template>
+        <template #catalogo><CatalogoTab /></template>
+        <template #correcciones><CorreccionesTab /></template>
+      </DynamicTabs>
     </div>
 
     <BarcodeModal />
@@ -31,8 +20,16 @@
 <script setup>
 import { provide } from "vue";
 import { useLaboratorioApi } from "@/composables/useLaboratorioApi";
+import DynamicTabs from "@/components/DynamicTabs.vue";
 
 import LabHero from "@/components/laboratorio/LabHero.vue";
+
+const LAB_TABS = [
+  { key: "pedidos",      label: "Pedidos",      icon: "clipboard-list" },
+  { key: "bandeja",      label: "Bandeja",      icon: "inbox" },
+  { key: "catalogo",     label: "Catálogo",     icon: "qrcode" },
+  { key: "correcciones", label: "Correcciones", icon: "tools" },
+];
 import PedidosTab from "@/components/laboratorio/PedidosTab.vue";
 import BandejaTab from "@/components/laboratorio/BandejaTab.vue";
 import CatalogoTab from "@/components/laboratorio/CatalogoTab.vue";
@@ -50,16 +47,9 @@ provide("lab", lab);
 </script>
 
 <style>
-/* Mantén altura estable entre tabs */
-.main-tabs :deep(.tab-content) {
+/* Altura mínima estable del contenido de labs */
+.glass :deep(.dyn-tabs__content) {
   min-height: 860px;
-}
-
-@media (max-width: 520px) {
-  .main-tabs :deep(.tabs ul) {
-    flex-wrap: wrap;
-    gap: 0.4rem;
-  }
 }
 </style>
 
@@ -171,23 +161,6 @@ provide("lab", lab);
   padding: 0.75rem;
 }
 
-.main-tabs :deep(.tab-content) {
-  min-height: 860px;
-}
-
-.main-tabs :deep(.tabs) {
-  margin-bottom: 0.75rem;
-}
-
-.main-tabs :deep(.tabs a) {
-  border-radius: 14px !important;
-  font-weight: 900;
-}
-
-.main-tabs :deep(.tabs li.is-active a) {
-  background: linear-gradient(135deg, rgba(144, 111, 225, 0.18), rgba(236, 72, 153, 0.10));
-  border-color: rgba(144, 111, 225, 0.35);
-}
 
 .panel {
   border: 1px solid var(--border);

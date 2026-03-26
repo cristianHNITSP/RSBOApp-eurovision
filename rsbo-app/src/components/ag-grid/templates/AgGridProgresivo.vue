@@ -12,6 +12,8 @@
       :material="material"
       :tratamientos="tratamientos"
       :last-saved-at="lastSavedAt"
+      :grid-can-undo="gridHistory.canUndo.value"
+      :grid-can-redo="gridHistory.canRedo.value"
       @add-row="handleAddRow"
       @add-column="handleAddColumn"
       @clear-filters="clearFilters"
@@ -24,6 +26,8 @@
       @export="handleExport"
       @fx-input="onFxInput"
       @fx-commit="onFxCommit"
+      @grid-undo="handleGridUndo"
+      @grid-redo="handleGridRedo"
     />
 
     <!-- ✅ Leyenda natural (sin componentes extra) 
@@ -77,15 +81,21 @@ import {
   colorSchemeDark
 } from "ag-grid-community";
 import navtools from "@/components/ag-grid/navtools.vue";
-import { fetchItems, saveChunk, reseedSheet, getSheet } from "@/services/inventory";
+import { useSheetApi } from "@/composables/useSheetApi";
+import { useGridHistory } from "@/composables/useGridHistory";
+import { useUnsavedGuard } from "@/composables/useUnsavedGuard";
+import { labToast } from "@/composables/useLabToast";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 const props = defineProps({
   sheetId: { type: String, required: true },
   sphType: { type: String, default: "base-pos" }, // base-neg/base-pos
-  actor: { type: Object, default: null }
+  actor:   { type: Object, default: null },
+  apiType: { type: String, default: "inventory" },
 });
+
+const { fetchItems, saveChunk, reseedSheet, getSheet } = useSheetApi(() => props.apiType);
 
 /* ===================== ACK helpers ===================== */
 const ackOk = (ack, message = "Ok", status = 200) => {
@@ -122,6 +132,26 @@ const physicalLimits = ref(null);
 
 /** Buffer de cambios (base_izq, base_der, add, eye) */
 const pendingChanges = ref(new Map());
+
+/* ── Grid-level undo/redo ── */
+const gridHistory = useGridHistory({ maxSize: 300 });
+
+/* ── Unsaved changes guard ── */
+const _guardViewId = computed(() => `${props.sheetId}:progresivo:${props.sphType}`);
+const unsavedGuard = useUnsavedGuard({
+  storageKey: () => _guardViewId.value,
+  isDirty: () => dirty.value,
+  getPending: () => Object.fromEntries(pendingChanges.value),
+  onRestore(saved) {
+    for (const [k, v] of Object.entries(saved)) {
+      pendingChanges.value.set(k, v);
+    }
+    if (pendingChanges.value.size > 0) {
+      dirty.value = true;
+      labToast.warning(`Se restauraron ${pendingChanges.value.size} cambios sin guardar.`);
+    }
+  },
+});
 
 /** ✅ transición suave al cambiar vista */
 const switchingView = ref(false);
@@ -176,17 +206,6 @@ const isQuarterStep = (value) => {
   return Math.abs(scaled - Math.round(scaled)) < 1e-6;
 };
 
-const frange = (start, end, step) => {
-  const out = [];
-  const s = Number(start);
-  const e = Number(end);
-  const st = Number(step);
-  if (!Number.isFinite(s) || !Number.isFinite(e) || !Number.isFinite(st) || st === 0) return out;
-  const eps = 1e-9;
-  if (s <= e) for (let v = s; v <= e + eps; v += st) out.push(to2(v));
-  else for (let v = s; v >= e - eps; v -= st) out.push(to2(v));
-  return out;
-};
 
 const fmtSigned = (n) => {
   const num = Number(n);
@@ -281,19 +300,33 @@ const denorm = (s) => Number(String(s).replace("_", "."));
 const addValues = ref([]);
 const eyes = ["OD", "OI"];
 
-function markCellChangedProgresivo({ add, eye, base_izq, base_der, existencias }) {
+function markCellChangedProgresivo({ add, eye, base_izq, base_der, existencias, _oldValue }) {
   const a = to2(add);
   const bi = to2(base_izq ?? 0);
   const bd = to2(base_der ?? 0);
   const key = `${bi}|${bd}|${a}|${eye}`;
+  const field = `add_${norm(a)}_${eye}`;
+  const prev = pendingChanges.value.get(key);
+  const oldVal = _oldValue ?? prev?.existencias ?? 0;
+  const newVal = Number(existencias ?? 0);
+
   pendingChanges.value.set(key, {
     add: a,
     eye,
     base_izq: bi,
     base_der: bd,
-    existencias: Number(existencias ?? 0)
+    existencias: newVal
   });
   dirty.value = true;
+
+  // Push to grid history for undo/redo
+  if (!gridHistory.isApplying.value) {
+    gridHistory.push({
+      key, field,
+      oldValue: oldVal, newValue: newVal,
+      meta: { add: a, eye, base_izq: bi, base_der: bd },
+    });
+  }
 }
 
 const columns = computed(() => [
@@ -348,6 +381,7 @@ const columns = computed(() => [
         valueSetter: (p) => {
           const v = String(p.newValue ?? "").trim();
           const newVal = isNumeric(v) ? Number(v) : 0;
+          const oldVal = Number(p.oldValue ?? 0);
           p.data[`add_${norm(add)}_${eye}`] = newVal;
 
           markCellChangedProgresivo({
@@ -355,7 +389,8 @@ const columns = computed(() => [
             eye,
             base_izq: p.data.base_izq ?? p.data.base,
             base_der: p.data.base_der ?? p.data.base,
-            existencias: newVal
+            existencias: newVal,
+            _oldValue: oldVal
           });
 
           return true;
@@ -415,14 +450,10 @@ async function loadRows() {
     sheetTabs.value[0] ||
     null;
 
-  const defAddCols = Array.isArray(tab?.ranges?.addCols) ? tab.ranges.addCols.map(to2) : [];
-  const defBaseRange = tab?.ranges?.base || null;
+  // Ejes vienen del backend (tab.axis)
+  const defAddCols = Array.isArray(tab?.axis?.add) ? tab.axis.add.map(to2) : [];
 
-  const defBasesAll = defBaseRange
-    ? frange(defBaseRange.start, defBaseRange.end, defBaseRange.step ?? 0.25)
-    : [];
-
-  const defBases = defBasesAll
+  const defBases = (Array.isArray(tab?.axis?.base) ? tab.axis.base : [])
     .map(to2)
     .filter((b) => b >= P.baseMin && b <= P.baseMax)
     .filter((b) => (baseViewId.value === "base-neg" ? Number(b) <= 0 : Number(b) >= 0));
@@ -519,15 +550,27 @@ const _WS_STOCK = new Set(["LAB_ORDER_SCAN", "LAB_ORDER_CANCEL", "LAB_ORDER_RESE
 function _onLabWs(e) {
   if (_WS_STOCK.has(e?.detail?.type)) loadRows();
 }
-onMounted(() => { loadAll(); window.addEventListener("lab:ws", _onLabWs); });
+onMounted(async () => {
+  await loadAll();
+  window.addEventListener("lab:ws", _onLabWs);
+  // Restore unsaved changes from previous session/view
+  unsavedGuard.restore();
+});
 onBeforeUnmount(() => window.removeEventListener("lab:ws", _onLabWs));
 
 watch(
   () => props.sphType,
-  async () => {
+  async (_, oldType) => {
+    // Persist unsaved changes for the OLD view before switching
+    if (dirty.value && pendingChanges.value.size > 0) {
+      unsavedGuard.persist();
+    }
     pendingChanges.value.clear();
     dirty.value = false;
+    gridHistory.clear();
     await switchViewReload();
+    // Try to restore any saved changes for the NEW view
+    unsavedGuard.restore();
   }
 );
 
@@ -604,6 +647,28 @@ function applyFxToGrid(val, { commit = false } = {}) {
 
 const onFxInput = (val) => applyFxToGrid(val, { commit: false });
 const onFxCommit = (val) => applyFxToGrid(val, { commit: true });
+
+/* ── Grid-level undo / redo ── */
+function applyGridHistoryOp(op) {
+  if (!op) return;
+  const value = op.reversed ? op.oldValue : op.newValue;
+  const row = rowData.value.find(
+    r => op.meta && to2(r.base_izq) === to2(op.meta.base_izq) && to2(r.base_der) === to2(op.meta.base_der)
+  );
+  if (!row) return;
+  row[op.field] = value;
+  gridApi.value?.applyTransaction({ update: [row] });
+  gridApi.value?.refreshCells({ force: true });
+
+  // update pendingChanges
+  if (op.meta) {
+    const updated = { ...op.meta, existencias: value };
+    pendingChanges.value.set(op.key, updated);
+  }
+  dirty.value = pendingChanges.value.size > 0;
+}
+const handleGridUndo = () => applyGridHistoryOp(gridHistory.undo());
+const handleGridRedo = () => applyGridHistoryOp(gridHistory.redo());
 
 const onGridReady = (p) => {
   gridApi.value = p.api;
@@ -729,6 +794,8 @@ async function handleSave(ack) {
     dirty.value = false;
     pendingChanges.value.clear();
     lastSavedAt.value = new Date();
+    gridHistory.clear();
+    unsavedGuard.clearStorage();
 
     ackOk(ack, ok.message || "Cambios guardados.", ok.status);
 
@@ -765,6 +832,8 @@ async function handleDiscard() {
   await switchViewReload();
   dirty.value = false;
   pendingChanges.value.clear();
+  gridHistory.clear();
+  unsavedGuard.clearStorage();
 }
 
 async function handleRefresh() {
@@ -796,7 +865,8 @@ async function handleSeed(ack) {
 function handleExport() {
   if (!gridApi.value || typeof gridApi.value.exportDataAsCsv !== "function") return;
   const nameSlug = sheetName.value.replace(/\s+/g, "_");
-  gridApi.value.exportDataAsCsv({ fileName: `${nameSlug || "progresivo"}.csv` });
+  const fecha = new Date().toISOString().slice(0, 10);
+  gridApi.value.exportDataAsCsv({ fileName: `reporte_inventario_${nameSlug || "progresivo"}_${fecha}.csv` });
 }
 </script>
 

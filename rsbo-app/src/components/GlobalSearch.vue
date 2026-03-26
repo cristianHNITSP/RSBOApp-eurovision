@@ -121,9 +121,39 @@
                 <span class="gs-item__sub">
                   <span class="gs-item__badge gs-item__badge--tipo">{{ item.tipoLabel }}</span>
                   <span class="gs-item__material">{{ item.material }}</span>
+                  <span v-if="item.proveedor" class="gs-item__trat">
+                    · <span v-html="highlight(item.proveedor)" />
+                  </span>
+                  <span v-if="item.marca" class="gs-item__trat">
+                    · <span v-html="highlight(item.marca)" />
+                  </span>
                   <span v-if="item.tratamiento" class="gs-item__trat">
                     · {{ item.tratamiento }}{{ item.variante ? ` (${item.variante})` : '' }}
                   </span>
+                </span>
+              </span>
+              <i class="fas fa-arrow-right gs-item__arrow" />
+            </div>
+
+            <!-- Order item -->
+            <div
+              v-else-if="item.type === 'order'"
+              class="gs-item"
+              :class="{ 'gs-item--active': cursor === selectableIndex(idx) }"
+              role="option"
+              :aria-selected="cursor === selectableIndex(idx)"
+              tabindex="-1"
+              @click="selectItem(item)"
+              @mouseenter="cursor = selectableIndex(idx)"
+            >
+              <span class="gs-item__icon gs-item__icon--order">
+                <i class="fas fa-flask" />
+              </span>
+              <span class="gs-item__body">
+                <span class="gs-item__title" v-html="highlight(item.folio)" />
+                <span class="gs-item__sub">
+                  <span class="gs-item__badge" :class="`gs-item__badge--status-${item.status}`">{{ item.status }}</span>
+                  <span class="gs-item__material" v-html="highlight(item.cliente)" />
                 </span>
               </span>
               <i class="fas fa-arrow-right gs-item__arrow" />
@@ -258,6 +288,8 @@ function selectItem(item) {
     }
   } else if (item.type === 'sheet') {
     router.push({ path: '/layouts/inventario/bases-micas', query: { sheetId: item.id } });
+  } else if (item.type === 'order') {
+    router.push({ path: '/layouts/ventas/laboratorio', query: { orderId: item.id } });
   }
   query.value = '';
 }
@@ -384,6 +416,11 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside));
   color: var(--c-success);
 }
 
+.gs-item__icon--order {
+  background: var(--c-warning-alpha);
+  color: var(--c-warning);
+}
+
 .gs-item__body {
   flex: 1;
   min-width: 0;
@@ -434,6 +471,19 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside));
 }
 
 .gs-item__badge--tipo {
+  background: var(--c-success-alpha);
+  color: var(--c-success);
+}
+
+.gs-item__badge--status-pendiente {
+  background: var(--c-warning-alpha);
+  color: var(--c-warning);
+}
+.gs-item__badge--status-parcial {
+  background: var(--c-primary-alpha);
+  color: var(--c-primary);
+}
+.gs-item__badge--status-cerrado {
   background: var(--c-success-alpha);
   color: var(--c-success);
 }

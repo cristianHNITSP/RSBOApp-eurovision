@@ -52,8 +52,8 @@
 
     <!-- RIBBON -->
     <div class="navtools-card navtools-card--ribbon">
-      <b-tabs v-model="activeTab" size="is-small" type="is-toggle-rounded" class="ribbon-tabs">
-        <b-tab-item label="Edición" icon="edit">
+      <DynamicTabs v-model="activeTab" :tabs="RIBBON_TABS">
+        <template #edicion>
           <div class="ribbon-actions-row">
             <b-field grouped group-multiline>
               <p class="control">
@@ -97,9 +97,9 @@
               </p>
             </b-field>
           </div>
-        </b-tab-item>
+        </template>
 
-        <b-tab-item label="Estructura" icon="border-all">
+        <template #estructura>
           <div class="ribbon-actions-row">
             <b-field grouped group-multiline>
               <p class="control">
@@ -129,9 +129,9 @@
               </p>
             </b-field>
           </div>
-        </b-tab-item>
+        </template>
 
-        <b-tab-item label="Datos" icon="database">
+        <template #datos>
           <div class="ribbon-actions-row">
             <b-field grouped group-multiline>
               <p class="control">
@@ -180,8 +180,8 @@
               </p>
             </b-field>
           </div>
-        </b-tab-item>
-      </b-tabs>
+        </template>
+      </DynamicTabs>
     </div>
 
     <!-- FX BAR -->
@@ -259,6 +259,13 @@
 <script setup>
 import { ref, watch, computed, defineProps, defineEmits, onMounted, onBeforeUnmount, getCurrentInstance } from 'vue'
 import { labToast } from "@/composables/useLabToast.js";
+import DynamicTabs from "@/components/DynamicTabs.vue";
+
+const RIBBON_TABS = [
+  { key: 'edicion',    label: 'Edición',    icon: 'edit' },
+  { key: 'estructura', label: 'Estructura', icon: 'border-all' },
+  { key: 'datos',      label: 'Datos',      icon: 'database' },
+];
 
 const props = defineProps({
   modelValue: { type: [Number, String], default: '' },
@@ -269,7 +276,10 @@ const props = defineProps({
   tipoMatriz: { type: String, default: '' },
   material: { type: String, default: '' },
   tratamientos: { type: Array, default: () => [] },
-  lastSavedAt: { type: [String, Date], default: null }
+  lastSavedAt: { type: [String, Date], default: null },
+  /* grid-level undo/redo — provided by useGridHistory in templates */
+  gridCanUndo: { type: Boolean, default: false },
+  gridCanRedo: { type: Boolean, default: false },
 })
 
 const emit = defineEmits([
@@ -282,10 +292,15 @@ const emit = defineEmits([
   'discard-changes',
   'export',
   'fx-input',
-  'fx-commit'
+  'fx-commit',
+  'grid-undo',
+  'grid-redo',
+  'grid-copy',
+  'grid-cut',
+  'grid-paste',
 ])
 
-const activeTab = ref(0)
+const activeTab = ref('edicion')
 const localValue = ref(props.modelValue ?? '')
 const fxDirty = ref(false)
 
@@ -485,8 +500,8 @@ const undoStack = ref([])
 const redoStack = ref([])
 const isApplyingHistory = ref(false)
 
-const canUndo = computed(() => undoStack.value.length > 0)
-const canRedo = computed(() => redoStack.value.length > 0)
+const canUndo = computed(() => props.gridCanUndo || undoStack.value.length > 0)
+const canRedo = computed(() => props.gridCanRedo || redoStack.value.length > 0)
 
 watch(
   () => props.modelValue,
@@ -600,11 +615,11 @@ const pasteCell = async () => {
   else emit('update:modelValue', str)
 }
 
-const handleUndoClick = () => undo()
-const handleRedoClick = () => redo()
-const handleCopyClick = () => copyCell()
-const handleCutClick = () => cutCell()
-const handlePasteClick = () => pasteCell()
+const handleUndoClick = () => { if (props.gridCanUndo) emit('grid-undo'); else undo() }
+const handleRedoClick = () => { if (props.gridCanRedo) emit('grid-redo'); else redo() }
+const handleCopyClick = () => { emit('grid-copy'); copyCell() }
+const handleCutClick = () => { emit('grid-cut'); cutCell() }
+const handlePasteClick = () => { emit('grid-paste'); pasteCell() }
 
 /* ========= Modales fila/columna ========= */
 const PHYSICAL_LIMITS = Object.freeze({
@@ -850,11 +865,11 @@ const handleKey = async (e) => {
   if (isMobile) return
   if (e.ctrlKey || e.metaKey) {
     const key = e.key.toLowerCase()
-    if (key === 'z') { e.preventDefault(); undo() }
-    else if (key === 'y') { e.preventDefault(); redo() }
-    else if (key === 'c') { e.preventDefault(); await copyCell() }
-    else if (key === 'x') { e.preventDefault(); await cutCell() }
-    else if (key === 'v') { e.preventDefault(); await pasteCell() }
+    if (key === 'z') { e.preventDefault(); if (props.gridCanUndo) emit('grid-undo'); else undo() }
+    else if (key === 'y') { e.preventDefault(); if (props.gridCanRedo) emit('grid-redo'); else redo() }
+    else if (key === 'c') { e.preventDefault(); emit('grid-copy'); await copyCell() }
+    else if (key === 'x') { e.preventDefault(); emit('grid-cut'); await cutCell() }
+    else if (key === 'v') { e.preventDefault(); emit('grid-paste'); await pasteCell() }
     else if (key === 's') { e.preventDefault(); handleSaveInternal() }
   }
 }

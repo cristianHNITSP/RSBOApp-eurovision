@@ -1,7 +1,7 @@
-<!-- src/components/ag-grid/templates/AgGridMonofocal.vue -->
+<!-- src/components/ag-grid/templates/AgGridTorico.vue -->
 <template>
   <div class="grid-page">
-    <!-- ✅ TOPBAR (sticky) -->
+    <!-- TOPBAR (sticky) -->
     <header class="grid-topbar">
       <navtools
         class="navtools-wrap"
@@ -31,24 +31,25 @@
         @grid-undo="handleGridUndo"
         @grid-redo="handleGridRedo"
       />
-
-      <!-- ✅ Leyenda natural (sin componentes extra) 
-      <div class="stock-legend pt-2">
-        <span class="stock-pill stock-pill--low">
-          <i class="fas fa-exclamation-triangle mr-1"></i>
-          Bajo stock (≤ {{ LOW_STOCK_THRESHOLD }})
-        </span>
-        <span class="stock-pill stock-pill--zero">
-          <i class="fas fa-times-circle mr-1"></i>
-          Sin stock (0)
-        </span>
-      </div>
-      -->
     </header>
-    
 
+    <!-- DEGREE SELECTOR -->
+    <div class="degree-bar">
+      <span class="degree-bar__label">Eje (grados):</span>
+      <div class="degree-bar__pills">
+        <button
+          v-for="deg in degreeValues"
+          :key="deg"
+          class="degree-pill"
+          :class="{ 'degree-pill--active': deg === selectedDegree }"
+          @click="selectDegree(deg)"
+        >
+          {{ deg }}°
+        </button>
+      </div>
+    </div>
 
-    <!--GRID MAIN -->
+    <!-- GRID MAIN -->
     <main class="grid-main">
       <div class="buefy-balham-light grid-shell" :class="{ 'grid-shell--switching': switchingView }">
         <AgGridVue
@@ -95,9 +96,9 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 
 const props = defineProps({
   sheetId: { type: String, required: true },
-  sphType: { type: String, default: "sph-neg" }, // sph-neg | sph-pos
+  sphType: { type: String, default: "sph-neg" },
   actor:   { type: Object, default: null },
-  apiType: { type: String, default: "inventory" },
+  apiType: { type: String, default: "contactlenses" },
 });
 
 const { fetchItems, saveChunk, reseedSheet, getSheet } = useSheetApi(() => props.apiType);
@@ -116,11 +117,11 @@ const statusFromErr = (e) => e?.response?.status ?? 0;
 const normalizeAxiosOk = (res) => {
   const status = res?.status ?? 200;
   const body = res?.data ?? null;
-  if (body?.ok === false) return { ok: false, status, message: body?.message || "Operación rechazada" };
-  return { ok: true, status, message: body?.message || "Operación exitosa" };
+  if (body?.ok === false) return { ok: false, status, message: body?.message || "Operacion rechazada" };
+  return { ok: true, status, message: body?.message || "Operacion exitosa" };
 };
 
-/* ===================== Helpers numéricos ===================== */
+/* ===================== Helpers numericos ===================== */
 const numOr = (v, dflt) => {
   const n = Number(v);
   return Number.isFinite(n) ? n : dflt;
@@ -144,13 +145,11 @@ const fmtSigned = (n) => {
 };
 const isNumeric = (v) => /^-?\d+(\.\d+)?$/.test(String(v ?? "").trim());
 
-/* ✅ CYL headers: siempre “-” por columna (0.00 neutro) */
 const fmtCylHeader = (cDisp) => {
   const n = Number(cDisp);
   if (!Number.isFinite(n)) return "";
   return n === 0 ? "0.00" : `-${n.toFixed(2)}`;
 };
-
 
 const norm = (n) => String(to2(n)).replace(".", "_");
 const denorm = (s) => Number(String(s).replace("_", "."));
@@ -182,8 +181,13 @@ const cylValues = ref([]);
 /* ── Grid-level undo/redo ── */
 const gridHistory = useGridHistory({ maxSize: 300 });
 
+/* === Degree selector === */
+const degreeValues = ref([]);
+const selectedDegree = ref(180);
+const allItems = ref([]);
+
 /* ── Unsaved changes guard ── */
-const _guardViewId = computed(() => `${props.sheetId}:monofocal:${props.sphType}`);
+const _guardViewId = computed(() => `${props.sheetId}:torico:${props.sphType}:${selectedDegree.value}`);
 const unsavedGuard = useUnsavedGuard({
   storageKey: () => _guardViewId.value,
   isDirty: () => dirty.value,
@@ -191,15 +195,17 @@ const unsavedGuard = useUnsavedGuard({
   onRestore(saved) {
     for (const [k, v] of Object.entries(saved)) {
       pendingChanges.value.set(k, v);
-      // also update rowData if row exists
-      const [sphStr, cylDispStr] = k.split('|');
-      const sph = Number(sphStr);
-      const cDisp = Number(cylDispStr);
-      const row = rowData.value.find(r => to2(r.sph) === to2(sph));
-      if (row) {
-        const field = `cyl_${norm(cDisp)}`;
-        row[field] = v.existencias;
-        gridApi.value?.applyTransaction({ update: [row] });
+      // Also update rowData if row exists
+      const parts = k.split("|");
+      if (parts.length >= 2) {
+        const sph = to2(Number(parts[0]));
+        const cDisp = to2(Number(parts[1]));
+        const row = rowData.value.find(r => to2(r.sph) === sph);
+        if (row) {
+          const field = `cyl_${norm(cDisp)}`;
+          row[field] = v.existencias;
+          gridApi.value?.applyTransaction({ update: [row] });
+        }
       }
     }
     if (pendingChanges.value.size > 0) {
@@ -251,19 +257,15 @@ const effectiveActor = computed(() => {
 
 /* ===================== Meta computed ===================== */
 const totalRows = computed(() => rowData.value.length);
-const sheetName = computed(() => sheetMeta.value?.nombre || sheetMeta.value?.name || "Hoja monofocal (Esf/Cil)");
-const tipoMatriz = computed(() => sheetMeta.value?.tipo_matriz || "SPH_CYL");
+const sheetName = computed(() => sheetMeta.value?.nombre || sheetMeta.value?.name || "Hoja torica (SPH/CYL/Eje)");
+const tipoMatriz = computed(() => sheetMeta.value?.tipo_matriz || "SPH_CYL_AXIS");
 const material = computed(() => sheetMeta.value?.material || "");
 const tratamientos = computed(() => sheetMeta.value?.tratamientos || []);
 
-/* ===================== ✅ UMBRAL DE BAJO STOCK (escalable) ===================== */
+/* ===================== UMBRAL DE BAJO STOCK ===================== */
 const LOW_STOCK_THRESHOLD = computed(() => {
   const s = sheetMeta.value || {};
-  const raw =
-    s?.lowStockThreshold ??
-    s?.alerts?.lowStock ??
-    s?.config?.lowStockThreshold ??
-    2; // fallback
+  const raw = s?.lowStockThreshold ?? s?.alerts?.lowStock ?? s?.config?.lowStockThreshold ?? 2;
   const n = Number(raw);
   return Number.isFinite(n) ? n : 2;
 });
@@ -277,18 +279,14 @@ const isLowStock = (v) => {
 function rowHasZeroStock(row) {
   if (!row) return false;
   for (const k of Object.keys(row)) {
-    if (k.startsWith("cyl_")) {
-      if (isZeroStock(row[k])) return true;
-    }
+    if (k.startsWith("cyl_") && isZeroStock(row[k])) return true;
   }
   return false;
 }
 function rowHasLowStock(row) {
   if (!row) return false;
   for (const k of Object.keys(row)) {
-    if (k.startsWith("cyl_")) {
-      if (isLowStock(row[k])) return true;
-    }
+    if (k.startsWith("cyl_") && isLowStock(row[k])) return true;
   }
   return false;
 }
@@ -298,9 +296,6 @@ const rowClassRules = computed(() => ({
   "ag-row--stock-low": (p) => !rowHasZeroStock(p?.data) && rowHasLowStock(p?.data)
 }));
 
-/**
- * ✅ FUENTE DE VERDAD: PHYSICAL_LIMITS desde backend
- */
 const phys = computed(() => {
   const pl = physicalLimits.value || {};
   const SPH = pl.SPH || pl.sph || {};
@@ -314,13 +309,13 @@ const phys = computed(() => {
 });
 
 /* ===================== Grid defs ===================== */
-function markCellChangedMonofocal(sph, cylDisplay, existencias, _oldValue) {
+function markCellChanged(sph, cylDisplay, existencias, _oldValue) {
   const s = to2(sph);
   const cDisp = to2(Math.abs(Number(cylDisplay)));
   const cBackend = -cDisp;
-  const field = `cyl_${norm(cDisp)}`;
+  const deg = selectedDegree.value;
 
-  const key = `${s}|${cDisp}`;
+  const key = `${s}|${cDisp}|${deg}`;
   const prev = pendingChanges.value.get(key);
   const oldVal = _oldValue ?? prev?.existencias ?? 0;
   const newVal = Number(existencias ?? 0);
@@ -328,6 +323,7 @@ function markCellChangedMonofocal(sph, cylDisplay, existencias, _oldValue) {
   pendingChanges.value.set(key, {
     sph: s,
     cyl: cBackend,
+    axis: deg,
     existencias: newVal
   });
   dirty.value = true;
@@ -335,9 +331,11 @@ function markCellChangedMonofocal(sph, cylDisplay, existencias, _oldValue) {
   // Push to grid history for undo/redo
   if (!gridHistory.isApplying.value) {
     gridHistory.push({
-      key, field,
-      oldValue: oldVal, newValue: newVal,
-      meta: { sph: s, cyl: cBackend },
+      key,
+      field: `cyl_${norm(cDisp)}`,
+      oldValue: oldVal,
+      newValue: newVal,
+      meta: { sph: s, cylDisplay: cDisp, axis: deg },
     });
   }
 }
@@ -349,9 +347,7 @@ const columns = computed(() => [
       {
         field: "sph",
         headerName: "SPH",
-        width: 90,
-        minWidth: 86,
-        maxWidth: 96,
+        width: 90, minWidth: 86, maxWidth: 96,
         pinned: "left",
         editable: false,
         sortable: true,
@@ -368,30 +364,26 @@ const columns = computed(() => [
     ]
   },
   {
-    headerName: "CYL (-)",
+    headerName: `CYL (-) | Eje ${selectedDegree.value}\u00B0`,
     children: cylValues.value.map((cDisp) => ({
       field: `cyl_${norm(cDisp)}`,
-      headerName: fmtCylHeader(cDisp), // ✅ “-” por columna
+      headerName: fmtCylHeader(cDisp),
       editable: true,
       filter: "agNumberColumnFilter",
-      minWidth: 80,
-      maxWidth: 110,
+      minWidth: 80, maxWidth: 110,
       resizable: true,
       cellClass: ["ag-cell--compact", "ag-cell--numeric"],
       headerClass: ["ag-header-cell--compact"],
-
-      /* ✅ Marca la celda si está baja / en cero */
       cellClassRules: {
         "ag-cell--stock-zero": (p) => isZeroStock(p.value),
         "ag-cell--stock-low": (p) => isLowStock(p.value)
       },
-
       valueSetter: (p) => {
         const v = String(p.newValue ?? "").trim();
         const newVal = isNumeric(v) ? Number(v) : 0;
         const oldVal = Number(p.oldValue ?? 0);
         p.data[p.colDef.field] = newVal;
-        markCellChangedMonofocal(p.data.sph, cDisp, newVal, oldVal);
+        markCellChanged(p.data.sph, cDisp, newVal, oldVal);
         return true;
       }
     }))
@@ -399,15 +391,10 @@ const columns = computed(() => [
 ]);
 
 const defaultColDef = {
-  resizable: true,
-  sortable: true,
-  filter: "agNumberColumnFilter",
-  floatingFilter: true,
-  editable: true,
-  minWidth: 90,
-  maxWidth: 150,
-  cellClass: "ag-cell--compact",
-  headerClass: "ag-header-cell--compact"
+  resizable: true, sortable: true,
+  filter: "agNumberColumnFilter", floatingFilter: true,
+  editable: true, minWidth: 90, maxWidth: 150,
+  cellClass: "ag-cell--compact", headerClass: "ag-header-cell--compact"
 };
 
 const getRowId = (p) => p.data.sph?.toString();
@@ -419,10 +406,9 @@ async function loadSheetMeta() {
     const payload = data?.data || data;
     sheetMeta.value = payload?.sheet || null;
     sheetTabs.value = payload?.tabs || [];
-    physicalLimits.value =
-      payload?.physicalLimits || payload?.physical_limits || payload?.limits || null;
+    physicalLimits.value = payload?.physicalLimits || payload?.physical_limits || payload?.limits || null;
   } catch (e) {
-    console.error("[AgGridMonofocal] Error getSheet:", e?.response?.data || e);
+    console.error("[AgGridTorico] Error getSheet:", e?.response?.data || e);
   }
 }
 
@@ -437,31 +423,33 @@ function getTabForView() {
 function buildFetchQueryForView() {
   const P = phys.value;
   const isNeg = props.sphType === "sph-neg";
-  const sphMin = isNeg ? P.sphMin : 0;
-  const sphMax = isNeg ? 0 : P.sphMax;
-
-  const cylMin = Math.min(P.cylMin, 0);
-  const cylMax = 0;
-
-  return { sphMin, sphMax, cylMin, cylMax, limit: 20000 };
+  return {
+    sphMin: isNeg ? P.sphMin : 0,
+    sphMax: isNeg ? 0 : P.sphMax,
+    cylMin: Math.min(P.cylMin, 0),
+    cylMax: 0,
+    limit: 50000
+  };
 }
 
-async function loadRows() {
-  const P = phys.value;
-  const isNeg = props.sphType === "sph-neg";
+/* ===================== Load & filter by degree ===================== */
+async function loadAllItems() {
   const tab = getTabForView();
   const qFetch = buildFetchQueryForView();
+  const P = phys.value;
+  const isNeg = props.sphType === "sph-neg";
 
   const { data } = await fetchItems(props.sheetId, qFetch);
   const itemsRaw = data?.data || [];
 
-  const items = itemsRaw
+  allItems.value = itemsRaw
     .map((i) => {
       const sph = to2(i.sph);
       let cyl = to2(i.cyl);
       if (Number.isFinite(cyl) && cyl > 0) cyl = -Math.abs(cyl);
+      const axis = Number(i.axis ?? 180);
       const existencias = Number(i.existencias ?? 0);
-      return { sph, cyl, existencias };
+      return { sph, cyl, axis, existencias };
     })
     .filter((i) => {
       if (!Number.isFinite(i.sph) || !Number.isFinite(i.cyl)) return false;
@@ -473,26 +461,58 @@ async function loadRows() {
       return true;
     });
 
-  // Ejes SPH y CYL vienen del backend (tab.axis)
+  // Degree axis from backend tab
+  const backendDegrees = Array.isArray(tab?.axis?.degrees) ? tab.axis.degrees : [];
+  const degreesFromData = [...new Set(allItems.value.map((i) => i.axis))];
+  const allDeg = [...new Set([...backendDegrees, ...degreesFromData])]
+    .filter((d) => Number.isFinite(d) && d >= 10 && d <= 180 && d % 10 === 0)
+    .sort((a, b) => b - a);
+  degreeValues.value = allDeg.length ? allDeg : [180, 170, 160, 150, 140, 130, 120, 110, 100, 90, 80, 70, 60, 50, 40, 30, 20, 10];
+
+  if (!degreeValues.value.includes(selectedDegree.value)) {
+    selectedDegree.value = degreeValues.value[0] || 180;
+  }
+
+  // SPH / CYL axes from backend
   const backendSph = Array.isArray(tab?.axis?.sph) ? tab.axis.sph : [];
   const backendCyl = Array.isArray(tab?.axis?.cyl) ? tab.axis.cyl : [];
 
-  // Merge backend axis con datos reales (por si hay items fuera del rango default)
-  const sphFromData = items.map((i) => i.sph);
+  const sphFromData = allItems.value.map((i) => i.sph);
   const sphMerged = [...backendSph, ...sphFromData]
     .map(to2)
     .filter((s) => Number.isFinite(s) && s >= P.sphMin && s <= P.sphMax)
     .filter((s) => isNeg ? s <= 0 : s >= 0);
   const sphAxis = [...new Set(sphMerged)].sort((a, b) => isNeg ? b - a : a - b);
 
-  const cylFromDataDisp = items
+  const cylFromDataDisp = allItems.value
     .map((i) => to2(Math.abs(i.cyl)))
     .filter((n) => Number.isFinite(n) && n >= 0 && n <= P.cylAbsMax);
-
   const cylMerged = [...backendCyl, ...cylFromDataDisp]
     .map(to2)
     .filter((n) => Number.isFinite(n) && n >= 0 && n <= P.cylAbsMax);
   cylValues.value = [...new Set(cylMerged)].sort((a, b) => a - b);
+
+  buildRowsForDegree(sphAxis);
+}
+
+function buildRowsForDegree(sphAxisOverride) {
+  const deg = selectedDegree.value;
+  const isNeg = props.sphType === "sph-neg";
+  const P = phys.value;
+
+  const items = allItems.value.filter((i) => i.axis === deg);
+
+  let sphAxis = sphAxisOverride;
+  if (!sphAxis) {
+    const tab = getTabForView();
+    const backendSph = Array.isArray(tab?.axis?.sph) ? tab.axis.sph : [];
+    const sphFromData = items.map((i) => i.sph);
+    const sphMerged = [...backendSph, ...sphFromData]
+      .map(to2)
+      .filter((s) => Number.isFinite(s) && s >= P.sphMin && s <= P.sphMax)
+      .filter((s) => isNeg ? s <= 0 : s >= 0);
+    sphAxis = [...new Set(sphMerged)].sort((a, b) => isNeg ? b - a : a - b);
+  }
 
   const key = (s, cDisp) => `${to2(s)}|${to2(cDisp)}`;
   const map = new Map(items.map((i) => [key(i.sph, Math.abs(i.cyl)), Number(i.existencias ?? 0)]));
@@ -507,17 +527,34 @@ async function loadRows() {
 
   dirty.value = false;
   pendingChanges.value.clear();
-  await nextTick();
-  resetSort();
+}
+
+function selectDegree(deg) {
+  if (deg === selectedDegree.value) return;
+  // Persist unsaved changes for the OLD degree before switching
+  if (dirty.value && pendingChanges.value.size > 0) {
+    unsavedGuard.persist();
+  }
+  pendingChanges.value.clear();
+  dirty.value = false;
+  gridHistory.clear();
+
+  selectedDegree.value = deg;
+  buildRowsForDegree(null);
+  nextTick(() => {
+    resetSort();
+    // Restore any saved changes for the NEW degree
+    unsavedGuard.restore();
+  });
 }
 
 async function switchViewReload() {
   switchingView.value = true;
   await raf();
   try {
-    await loadRows();
+    await loadAllItems();
   } catch (e) {
-    console.error("[AgGridMonofocal] Error fetchItems:", e?.response?.data || e);
+    console.error("[AgGridTorico] Error fetchItems:", e?.response?.data || e);
   } finally {
     await raf();
     switchingView.value = false;
@@ -529,10 +566,10 @@ async function loadAll() {
   await switchViewReload();
 }
 
-// ── WebSocket: actualiza stock en tiempo real al surtir/cancelar/resetear ──
+// WebSocket: actualiza stock en tiempo real
 const _WS_STOCK = new Set(["LAB_ORDER_SCAN", "LAB_ORDER_CANCEL", "LAB_ORDER_RESET"]);
 function _onLabWs(e) {
-  if (_WS_STOCK.has(e?.detail?.type)) loadRows();
+  if (_WS_STOCK.has(e?.detail?.type)) loadAllItems();
 }
 onMounted(async () => {
   await loadAll();
@@ -573,16 +610,12 @@ const onCellValueChanged = (p) => {
   }
   if (p.colDef.field.startsWith("cyl_")) {
     const cDisp = parseCylFromField(p.colDef.field);
-    if (!Number.isNaN(cDisp)) markCellChangedMonofocal(p.data.sph, cDisp, p.data[p.colDef.field]);
+    if (!Number.isNaN(cDisp)) markCellChanged(p.data.sph, cDisp, p.data[p.colDef.field]);
   } else {
     dirty.value = true;
   }
 };
 
-/**
- * ✅ Base-style: FX input no “guarda”, FX commit sí “guarda”
- * - Monofocal: solo permite cyl_*
- */
 function applyFxToGrid(val, { commit = false } = {}) {
   if (!activeCell || !gridApi.value) return;
 
@@ -595,7 +628,6 @@ function applyFxToGrid(val, { commit = false } = {}) {
   const raw = String(val ?? "").trim();
   const newVal = isNumeric(raw) ? Number(raw) : 0;
 
-  // live preview (sin ensuciar ni pending)
   if (activeCell.data) activeCell.data[field] = newVal;
 
   if (!commit) {
@@ -609,9 +641,7 @@ function applyFxToGrid(val, { commit = false } = {}) {
 
   const updatedRow = { ...(activeCell.data || {}), [field]: newVal };
   gridApi.value.applyTransaction({ update: [updatedRow] });
-
-  markCellChangedMonofocal(updatedRow.sph, cDisp, newVal);
-
+  markCellChanged(updatedRow.sph, cDisp, newVal);
   gridApi.value.flashCells?.({
     rowNodes: activeCell.node ? [activeCell.node] : undefined,
     columns: [field]
@@ -625,18 +655,17 @@ const onFxCommit = (val) => applyFxToGrid(val, { commit: true });
 function applyGridHistoryOp(op) {
   if (!op) return;
   const value = op.reversed ? op.oldValue : op.newValue;
-  const [sphStr, cylDispStr] = op.key.split('|');
-  const sph = Number(sphStr);
+  const { sph, cylDisplay, axis } = op.meta;
   const row = rowData.value.find(r => to2(r.sph) === to2(sph));
   if (!row) return;
-  const field = op.field;
+  const field = `cyl_${norm(cylDisplay)}`;
   row[field] = value;
   gridApi.value?.applyTransaction({ update: [row] });
   gridApi.value?.refreshCells({ force: true });
 
   // update pendingChanges
-  const cDisp = Number(cylDispStr);
-  pendingChanges.value.set(op.key, { sph: to2(sph), cyl: -cDisp, existencias: value });
+  const cBackend = -to2(cylDisplay);
+  pendingChanges.value.set(op.key, { sph: to2(sph), cyl: cBackend, axis, existencias: value });
   dirty.value = pendingChanges.value.size > 0;
 }
 const handleGridUndo = () => applyGridHistoryOp(gridHistory.undo());
@@ -648,21 +677,20 @@ const onGridReady = (p) => {
   nextTick(() => resetSort());
 };
 
-/* ===================== Add row/col (con ACK) ===================== */
+/* ===================== Add row/col ===================== */
 const handleAddRow = async (nuevoValor, ack) => {
   const P = phys.value;
   const v = to2(nuevoValor);
 
-  if (!Number.isFinite(v)) return ackErr(ack, "Ingresa un SPH numérico", 400);
-  if (!isQuarterStep(v)) return ackErr(ack, "SPH debe ser múltiplo de 0.25 (…00, …25, …50, …75)", 400);
-  if (v < P.sphMin || v > P.sphMax) return ackErr(ack, `SPH fuera de límites (${P.sphMin} a ${P.sphMax})`, 400);
+  if (!Number.isFinite(v)) return ackErr(ack, "Ingresa un SPH numerico", 400);
+  if (!isQuarterStep(v)) return ackErr(ack, "SPH debe ser multiplo de 0.25", 400);
+  if (v < P.sphMin || v > P.sphMax) return ackErr(ack, `SPH fuera de limites (${P.sphMin} a ${P.sphMax})`, 400);
 
-  if (props.sphType === "sph-neg" && v >= 0) return ackErr(ack, "Vista SPH (-): SPH debe ser negativo (ej: -0.25)", 400);
+  if (props.sphType === "sph-neg" && v >= 0) return ackErr(ack, "Vista SPH (-): SPH debe ser negativo", 400);
   if (props.sphType === "sph-pos" && v < 0) return ackErr(ack, "Vista SPH (+): SPH debe ser 0 o positivo", 400);
 
   if (rowData.value.some((r) => to2(r.sph) === v)) return ackErr(ack, `SPH ${fmtSigned(v)} ya existe`, 409);
 
-  // UI
   const nueva = { sph: v };
   cylValues.value.forEach((cDisp) => (nueva[`cyl_${norm(cDisp)}`] = 0));
   gridApi.value?.applyTransaction({ add: [nueva] });
@@ -670,18 +698,15 @@ const handleAddRow = async (nuevoValor, ack) => {
   resetSort();
 
   try {
-    // Persist mínimo (celda cyl=0) para extender plantilla
-    const res = await saveChunk(props.sheetId, [{ sph: v, cyl: 0, existencias: 0 }], effectiveActor.value);
+    const res = await saveChunk(props.sheetId, [{ sph: v, cyl: 0, axis: selectedDegree.value, existencias: 0 }], effectiveActor.value);
     const ok = normalizeAxiosOk(res);
     if (!ok.ok) return ackErr(ack, ok.message || "No se pudo agregar SPH", ok.status);
-
     ackOk(ack, ok.message || `SPH agregado: ${fmtSigned(v)}`, ok.status);
-
     lastSavedAt.value = new Date();
     await loadSheetMeta();
     await switchViewReload();
   } catch (e) {
-    console.error("[AgGridMonofocal] ❌ Error al persistir SPH nuevo:", e?.response?.status, e?.response?.data || e);
+    console.error("[AgGridTorico] Error al persistir SPH:", e?.response?.data || e);
     ackErr(ack, msgFromErr(e, "Error al guardar el nuevo SPH"), statusFromErr(e));
   }
 };
@@ -690,16 +715,14 @@ const handleAddColumn = async (nuevoValor, ack) => {
   const P = phys.value;
   const raw = to2(nuevoValor);
 
-  if (!Number.isFinite(raw)) return ackErr(ack, "Ingresa un CYL numérico", 400);
-  if (!isQuarterStep(raw)) return ackErr(ack, "CYL debe ser múltiplo de 0.25 (…00, …25, …50, …75)", 400);
-  if (raw >= 0) return ackErr(ack, "CYL debe ingresarse en negativo. Ej: -0.25, -1.00, -7.00", 400);
+  if (!Number.isFinite(raw)) return ackErr(ack, "Ingresa un CYL numerico", 400);
+  if (raw >= 0) return ackErr(ack, "CYL debe ingresarse en negativo. Ej: -0.75", 400);
 
-  const vDisp = to2(Math.abs(raw)); // aquí ya es seguro: raw es negativo
-  if (vDisp === 0) return ackErr(ack, "CYL 0.00 ya existe (no se puede duplicar)", 409);
-  if (vDisp > P.cylAbsMax) return ackErr(ack, `CYL fuera de límite (máx ${P.cylAbsMax})`, 400);
+  const vDisp = to2(Math.abs(raw));
+  if (vDisp === 0) return ackErr(ack, "CYL 0.00 ya existe", 409);
+  if (vDisp > P.cylAbsMax) return ackErr(ack, `CYL fuera de limite (max ${P.cylAbsMax})`, 400);
   if (cylValues.value.includes(vDisp)) return ackErr(ack, `CYL ${vDisp.toFixed(2)} ya existe`, 409);
 
-  // UI
   cylValues.value = [...cylValues.value, vDisp].sort((a, b) => a - b);
   rowData.value.forEach((r) => (r[`cyl_${norm(vDisp)}`] = 0));
 
@@ -708,18 +731,15 @@ const handleAddColumn = async (nuevoValor, ack) => {
   gridApi.value?.redrawRows();
 
   try {
-    // Persist mínimo (celda sph=0) para extender CYL (meta.ranges)
-    const res = await saveChunk(props.sheetId, [{ sph: 0, cyl: -vDisp, existencias: 0 }], effectiveActor.value);
+    const res = await saveChunk(props.sheetId, [{ sph: 0, cyl: -vDisp, axis: selectedDegree.value, existencias: 0 }], effectiveActor.value);
     const ok = normalizeAxiosOk(res);
     if (!ok.ok) return ackErr(ack, ok.message || "No se pudo agregar CYL", ok.status);
-
     ackOk(ack, ok.message || `CYL agregado: -${vDisp.toFixed(2)}`, ok.status);
-
     lastSavedAt.value = new Date();
     await loadSheetMeta();
     await switchViewReload();
   } catch (e) {
-    console.error("[AgGridMonofocal] ❌ Error al persistir CYL nuevo:", e?.response?.status, e?.response?.data || e);
+    console.error("[AgGridTorico] Error al persistir CYL:", e?.response?.data || e);
     ackErr(ack, msgFromErr(e, "Error al guardar el nuevo CYL"), statusFromErr(e));
   }
 };
@@ -735,7 +755,7 @@ const clearFilters = () => {
 const resetSort = () => {
   const api = gridApi.value;
   if (!api) return;
-  const sortDir = props.sphType === "sph-neg" ? "desc" : "asc"; // 0 arriba en ambas vistas
+  const sortDir = props.sphType === "sph-neg" ? "desc" : "asc";
   if (typeof api.applyColumnState === "function") {
     api.applyColumnState({
       defaultState: { sort: null },
@@ -769,11 +789,10 @@ async function handleSave(ack) {
     unsavedGuard.clearStorage();
 
     ackOk(ack, ok.message || "Cambios guardados.", ok.status);
-
     await loadSheetMeta();
     await switchViewReload();
   } catch (e) {
-    console.error("[AgGridMonofocal] Error saveChunk:", e?.response?.data || e);
+    console.error("[AgGridTorico] Error saveChunk:", e?.response?.data || e);
     ackErr(ack, msgFromErr(e, "Error al guardar cambios"), statusFromErr(e));
   } finally {
     saving.value = false;
@@ -808,7 +827,7 @@ async function handleSeed(ack) {
     lastSavedAt.value = new Date();
     ackOk(ack, ok.message || "Seed generado.", ok.status);
   } catch (e) {
-    console.error("[AgGridMonofocal] Error reseed:", e?.response?.data || e);
+    console.error("[AgGridTorico] Error reseed:", e?.response?.data || e);
     ackErr(ack, msgFromErr(e, "Error al generar seed"), statusFromErr(e));
   } finally {
     saving.value = false;
@@ -820,151 +839,101 @@ function handleExport() {
   const nameSlug = sheetName.value.replace(/\s+/g, "_");
   const posNeg = props.sphType === "sph-pos" ? "pos" : "neg";
   const fecha = new Date().toISOString().slice(0, 10);
-  gridApi.value.exportDataAsCsv({ fileName: `reporte_inventario_${nameSlug || "monofocal"}_${posNeg}_${fecha}.csv` });
+  gridApi.value.exportDataAsCsv({ fileName: `reporte_inventario_${nameSlug || "torico"}_${posNeg}_${selectedDegree.value}deg_${fecha}.csv` });
 }
 </script>
 
 <style scoped>
-/* ✅ App-like shell */
 .grid-page {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: #fbfbff;
+  background: var(--surface, #fbfbff);
 }
 
-/* ✅ Topbar “metodología nueva” */
 .grid-topbar {
   position: sticky;
   top: 0;
   z-index: 15;
   padding: 0.75rem 0.75rem 0.35rem;
-  background: rgba(251, 251, 255, 0.82);
+  background: var(--surface-glass, rgba(251, 251, 255, 0.82));
   backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  border-bottom: 1px solid var(--border, rgba(15, 23, 42, 0.06));
 }
 
 .navtools-wrap {
   padding: 0 !important;
 }
 
-/* ✅ Leyenda */
-.stock-legend {
+/* ── Degree selector bar ── */
+.degree-bar {
   display: flex;
+  align-items: center;
   gap: 0.5rem;
-  flex-wrap: wrap;
-  align-items: center;
+  padding: 0.4rem 0.75rem;
+  background: var(--surface-raised, #f5f3ff);
+  border-bottom: 1px solid var(--border, rgba(15, 23, 42, 0.06));
+  overflow-x: auto;
+  flex-shrink: 0;
 }
-.stock-pill {
-  display: inline-flex;
-  align-items: center;
+
+.degree-bar__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary, #64748b);
+  white-space: nowrap;
+}
+
+.degree-bar__pills {
+  display: flex;
   gap: 0.25rem;
-  padding: 0.22rem 0.55rem;
+  flex-wrap: nowrap;
+}
+
+.degree-pill {
+  padding: 0.2rem 0.55rem;
   border-radius: 999px;
   font-size: 0.72rem;
-  line-height: 1;
-  user-select: none;
-  border: 1px solid rgba(15, 23, 42, 0.10);
-  background: rgba(15, 23, 42, 0.03);
-}
-.stock-pill--low {
-  background: rgba(245, 158, 11, 0.14);
-  border-color: rgba(245, 158, 11, 0.25);
-}
-.stock-pill--zero {
-  background: rgba(239, 68, 68, 0.12);
-  border-color: rgba(239, 68, 68, 0.22);
-}
-
-/* Main */
-.grid-main {
-  flex: 1 1 auto;
-  padding: 0.5rem 0.75rem 0.75rem;
-  overflow: hidden;
-}
-
-/* Card */
-.buefy-balham-light {
-  height: 100%;
-  padding: 0.55rem;
-  background-color: var(--ag-bg);
-  border-radius: 0.9rem;
-  box-shadow: 0 10px 22px rgba(17, 24, 39, 0.06);
-  border: 1px solid rgba(15, 23, 42, 0.06);
-}
-
-/* switching anim */
-.grid-shell {
-  height: 100%;
-  transition: opacity 160ms ease,
-    transform 200ms cubic-bezier(0.22, 0.61, 0.36, 1),
-    filter 160ms ease;
-  will-change: opacity, transform, filter;
-}
-
-.grid-shell--switching {
-  opacity: 0;
-  transform: translate3d(0, 8px, 0) scale(0.992);
-  filter: blur(1.2px);
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .grid-shell {
-    transition: none !important;
-  }
-}
-
-/* ag-grid cosmetics */
-.ag-grid-buefy .ag-header-cell.ag-header-cell--compact {
-  padding-inline: 6px;
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.ag-grid-buefy .ag-cell.ag-cell--compact {
-  padding-inline: 6px;
-  line-height: 1.2;
-  font-size: 0.75rem;
-}
-
-.ag-grid-buefy .ag-cell.ag-cell--numeric {
-  justify-content: flex-end;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-.ag-grid-buefy .ag-cell.ag-cell--pinned,
-.ag-grid-buefy .ag-header-cell.ag-header-cell--pinned {
-  background-color: #f5f3ff;
   font-weight: 600;
+  border: 1px solid var(--border, #e5e5f0);
+  background: var(--surface, #fff);
+  color: var(--text-secondary, #64748b);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
 }
 
-.ag-grid-buefy .ag-row-hover {
-  background-color: #f3f0ff !important;
+.degree-pill:hover {
+  border-color: var(--c-primary, #7957d5);
+  color: var(--c-primary, #7957d5);
 }
 
-/* ===================== ✅ ALERTAS STOCK (fila + celda) ===================== */
-/* fila (suave) */
-.ag-grid-buefy :deep(.ag-row.ag-row--stock-low) {
-  box-shadow: inset 3px 0 0 rgba(245, 158, 11, 0.75);
-  background: rgba(245, 158, 11, 0.06);
-}
-.ag-grid-buefy :deep(.ag-row.ag-row--stock-zero) {
-  box-shadow: inset 3px 0 0 rgba(239, 68, 68, 0.85);
-  background: rgba(239, 68, 68, 0.06);
+.degree-pill--active {
+  background: var(--c-primary, #7957d5);
+  border-color: var(--c-primary, #7957d5);
+  color: #fff;
 }
 
-/* celda (más explícita) */
-.ag-grid-buefy :deep(.ag-cell.ag-cell--stock-low) {
-  font-weight: 700;
-  background: rgba(245, 158, 11, 0.12);
-  border-radius: 6px;
+.degree-pill--active:hover {
+  color: #fff;
 }
-.ag-grid-buefy :deep(.ag-cell.ag-cell--stock-zero) {
-  font-weight: 800;
-  background: rgba(239, 68, 68, 0.12);
-  border-radius: 6px;
+
+/* ── Grid shell ── */
+.grid-main {
+  flex: 1 1 0;
+  min-height: 0;
+  padding: 0.5rem;
+}
+
+.grid-shell {
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+  transition: opacity 0.18s;
+}
+.grid-shell--switching {
+  opacity: 0.45;
+  pointer-events: none;
 }
 </style>

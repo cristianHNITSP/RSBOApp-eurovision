@@ -153,11 +153,13 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${INVENTORY_DB}?authSource=admin"
+      REDIS_URL: "redis://redis:6379"
       GATEWAY_WS_URL: "ws://gateway:3000/ws-internal"
       NOTIFICATION_SERVICE_INTERNAL_URL: "http://notification-service:3000"
       INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN}"
     depends_on:
       - mongo
+      - redis
     expose:
       - "3000"
     restart: unless-stopped
@@ -206,6 +208,20 @@ services:
       - mongo
     expose:
       - "3000"
+    restart: unless-stopped
+    networks:
+      - rsbo-net
+    profiles: ["prod", "dev"]
+
+  # =========================
+  # Redis (cache para inventory-service)
+  # =========================
+  redis:
+    image: redis:7-alpine
+    container_name: rsboapp-redis
+    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
+    expose:
+      - "6379"
     restart: unless-stopped
     networks:
       - rsbo-net

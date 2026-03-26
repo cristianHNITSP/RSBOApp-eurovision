@@ -10,9 +10,48 @@ const { createProxyMiddleware } = require("http-proxy-middleware");
 const app = express();
 
 // 👇 Importante si algún día pones reverse proxy TLS (Nginx/Caddy)
-// y para que req.secure / x-forwarded-proto tenga sentido.
-// 👇 Importante si algún día pones reverse proxy TLS (Nginx/Caddy)
 app.set("trust proxy", 1);
+
+// ── Rate Limiter simple (in-memory, sin dependencia externa) ──────────────
+const rateLimitStore = new Map();
+const RATE_LIMIT_WINDOW = 60 * 1000;      // 1 minuto
+const RATE_LIMIT_MAX     = 120;            // máx requests por ventana
+const RATE_LIMIT_LOGIN   = 8;             // máx intentos de login por ventana
+
+function rateLimit(max = RATE_LIMIT_MAX) {
+  return (req, res, next) => {
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || 'unknown';
+    const key = `${ip}::${max}`;
+    const now = Date.now();
+    let entry = rateLimitStore.get(key);
+
+    if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW) {
+      entry = { windowStart: now, count: 0 };
+      rateLimitStore.set(key, entry);
+    }
+
+    entry.count++;
+
+    if (entry.count > max) {
+      const retryAfter = Math.ceil((entry.windowStart + RATE_LIMIT_WINDOW - now) / 1000);
+      res.set('Retry-After', String(retryAfter));
+      return res.status(429).json({
+        error: 'TOO_MANY_REQUESTS',
+        message: `Demasiadas solicitudes. Intenta de nuevo en ${retryAfter}s`,
+        retryIn: retryAfter,
+      });
+    }
+    next();
+  };
+}
+
+// Limpieza periódica del store (cada 5 min)
+setInterval(() => {
+  const cutoff = Date.now() - RATE_LIMIT_WINDOW;
+  for (const [key, entry] of rateLimitStore) {
+    if (entry.windowStart < cutoff) rateLimitStore.delete(key);
+  }
+}, 5 * 60 * 1000);
 
 // Orígenes base desde .env (separados por coma)
 const rawOrigins = process.env.CORS_ORIGINS || "";
@@ -169,6 +208,10 @@ app.use(
     },
   })
 );
+
+// ── Rate limiting global + estricto en login ──────────────────────────────
+app.use("/api", rateLimit(RATE_LIMIT_MAX));
+app.post("/api/access/login", rateLimit(RATE_LIMIT_LOGIN));
 
 // 🔹 Rutas proxy
 app.use("/api/access", proxyRequest(SERVICES.auth));

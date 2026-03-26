@@ -13,6 +13,9 @@ const cors = require("cors");
 const cookieParser = require("cookie-parser");
 require("dotenv").config();
 
+// Initialize Redis cache (no-op if REDIS_URL not set)
+require("./services/redis");
+
 /**
  * Instancia de la aplicación Express
  * @type {import('express').Application}

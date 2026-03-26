@@ -31,6 +31,7 @@ const {
   applyChunkProgresivo
 } = require("../inventory/services/chunkApply.service");
 const { maybeExtendMetaRangesFromRows } = require("../inventory/services/metaRangesExtend.service");
+const { cacheMiddleware, invalidatePattern, cacheDel, KEYS } = require("../services/redis");
 
 // ===================== DEBUG =====================
 const DEBUG_INVENTORY = String(process.env.DEBUG_INVENTORY || "") === "1";
@@ -131,7 +132,7 @@ const models = { MatrixBase, MatrixSphCyl, MatrixBifocal, MatrixProgresivo };
 
 /* ======================= SHEETS ======================= */
 
-router.get("/", async (req, res) => {
+router.get("/", cacheMiddleware(KEYS.sheetsList("inventory"), 30), async (req, res) => {
   try {
     const includeDeleted = String(req.query.includeDeleted) === "true";
     const q = String(req.query.q || "").trim();
@@ -369,6 +370,9 @@ router.post(
         });
       }
 
+      cacheDel(KEYS.sheetsList("inventory"));
+      cacheDel(KEYS.stats());
+
       res.status(201).json({
         ok: true,
         data: {
@@ -393,6 +397,7 @@ router.get(
   "/sheets/:sheetId",
   param("sheetId").isMongoId(),
   handleValidation,
+  cacheMiddleware((req) => KEYS.sheetMeta(req.params.sheetId), 60),
   async (req, res) => {
     try {
       const sheet = await InventorySheet.findById(req.params.sheetId);
@@ -778,6 +783,9 @@ router.delete(
         actor
       });
 
+      invalidatePattern(KEYS.sheetPattern(req.params.sheetId));
+      cacheDel(KEYS.sheetsList("inventory"));
+      cacheDel(KEYS.stats());
       res.json({ ok: true, message: "Hoja eliminada (soft-delete)" });
     } catch (err) {
       console.error("DELETE /sheets/:sheetId error:", err);
@@ -833,6 +841,7 @@ router.get(
   "/sheets/:sheetId/items",
   param("sheetId").isMongoId(),
   handleValidation,
+  cacheMiddleware((req) => KEYS.sheetItems(req.params.sheetId, req.query), 20),
   async (req, res) => {
     try {
       const sheet = await InventorySheet.findById(req.params.sheetId);
@@ -1213,6 +1222,11 @@ router.post(
         const { checkSheetAlerts } = require("../services/stockAlert.service");
         checkSheetAlerts(sheet);
       });
+
+      // Invalidate cache for this sheet + stats
+      invalidatePattern(KEYS.sheetPattern(req.params.sheetId));
+      cacheDel(KEYS.stats());
+      cacheDel(KEYS.sheetsList("inventory"));
 
       return res.json({ ok: true, data: { upserted: result.updated, axisExtended, axisExtendError } });
     } catch (err) {

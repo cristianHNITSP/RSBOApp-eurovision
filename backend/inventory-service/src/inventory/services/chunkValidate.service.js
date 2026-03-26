@@ -89,6 +89,35 @@ const validateChunkRows = (tipo, rows) => {
       });
     }
 
+    if (tipo === "SPH_CYL_AXIS") {
+      const sphVal = to2(row.sph);
+      if (!isDef(row.sph) || !Number.isFinite(Number(row.sph))) {
+        errors.push({ path: `${path}.sph`, msg: "sph numérico requerido" });
+      } else if (sphVal < PHYSICAL_LIMITS.SPH.min || sphVal > PHYSICAL_LIMITS.SPH.max) {
+        errors.push({ path: `${path}.sph`, msg: `sph fuera de límites (${PHYSICAL_LIMITS.SPH.min}..${PHYSICAL_LIMITS.SPH.max})` });
+      } else if (!isMultipleOfStep(sphVal, 0.25)) {
+        errors.push({ path: `${path}.sph`, msg: "sph debe ir en pasos de 0.25 D" });
+      }
+
+      if (!isDef(row.cyl) || !Number.isFinite(Number(row.cyl))) {
+        errors.push({ path: `${path}.cyl`, msg: "cyl numérico requerido" });
+      } else {
+        const cylVal = normalizeCylConvention(row.cyl);
+        if (cylVal < PHYSICAL_LIMITS.CYL.min || cylVal > PHYSICAL_LIMITS.CYL.max) {
+          errors.push({ path: `${path}.cyl`, msg: `cyl fuera de límites (${PHYSICAL_LIMITS.CYL.min}..${PHYSICAL_LIMITS.CYL.max})` });
+        }
+      }
+
+      const axisVal = Number(row.axis);
+      if (!isDef(row.axis) || !Number.isFinite(axisVal)) {
+        errors.push({ path: `${path}.axis`, msg: "axis numérico requerido" });
+      } else if (axisVal < PHYSICAL_LIMITS.AXIS.min || axisVal > PHYSICAL_LIMITS.AXIS.max) {
+        errors.push({ path: `${path}.axis`, msg: `axis fuera de límites (${PHYSICAL_LIMITS.AXIS.min}..${PHYSICAL_LIMITS.AXIS.max})` });
+      } else if (axisVal % 10 !== 0) {
+        errors.push({ path: `${path}.axis`, msg: "axis debe ir en pasos de 10" });
+      }
+    }
+
     if (tipo === "BASE_ADD") {
       const addVal = to2(row.add);
 

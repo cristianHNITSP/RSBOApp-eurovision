@@ -27,8 +27,9 @@ const { makeUniqueSheetSku } = require('../inventory/utils/sku');
 
 // ── seed.service (opcional) ───────────────────────────────────────────────────
 let seedRootForSheet = null;
+let seedFullForSheet = null;
 try {
-  ({ seedRootForSheet } = require('../inventory/services/seed.service'));
+  ({ seedRootForSheet, seedFullForSheet } = require('../inventory/services/seed.service'));
 } catch (_) {
   console.warn('⚠️  seed.service no encontrado → matrices vacías');
 }
@@ -198,8 +199,11 @@ async function main() {
         updatedBy: actor
       });
 
-      // ── Crear estructura de matriz ─────────────────────────────────────────
-      if (seedRootForSheet) {
+      // ── Crear estructura de matriz completa ──────────────────────────────
+      if (seedFullForSheet) {
+        const result = await seedFullForSheet(models, sheet, actor);
+        process.stdout.write(`     → ${result?.inserted || 0} celdas generadas\n`);
+      } else if (seedRootForSheet) {
         await seedRootForSheet(models, sheet, actor);
       } else {
         await createEmptyMatrix(sheet);

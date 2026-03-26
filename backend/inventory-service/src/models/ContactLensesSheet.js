@@ -17,24 +17,30 @@ const RangesSchema = new mongoose.Schema(
     base: { type: RangeAxisSchema, default: undefined },
     sph: { type: RangeAxisSchema, default: undefined },
     cyl: { type: RangeAxisSchema, default: undefined },
-    add: { type: RangeAxisSchema, default: undefined }
+    add: { type: RangeAxisSchema, default: undefined },
+    axis: { type: RangeAxisSchema, default: undefined }
   },
   { _id: false }
 );
 
 const defaultRangesByTipo = {
-  BASE: { base: { start: 0, end: 8, step: 0.5 } },
+  BASE: { base: { start: 0, end: 14, step: 0.5 } },
   SPH_CYL: {
-    sph: { start: -6, end: 6, step: 0.25 },
-    cyl: { start: -6, end: 6, step: 0.25 }
+    sph: { start: -16, end: 8, step: 0.25 },
+    cyl: { start: -6, end: 0, step: 0.25 }
+  },
+  SPH_CYL_AXIS: {
+    sph: { start: -10, end: 6, step: 0.25 },
+    cyl: { start: -2.25, end: -0.75, step: 0.5 },
+    axis: { start: 180, end: 10, step: 10 }
   },
   SPH_ADD: {
-    sph: { start: -6, end: 6, step: 0.25 },
-    add: { start: 0, end: 4, step: 0.25 }
+    sph: { start: -3, end: 11, step: 0.25 },
+    add: { start: 1, end: 4, step: 0.25 }
   },
   BASE_ADD: {
-    base: { start: 0, end: 8, step: 0.5 },
-    add: { start: 0, end: 4, step: 0.25 }
+    base: { start: 0, end: 3, step: 0.5 },
+    add: { start: 1, end: 4, step: 0.25 }
   }
 };
 
@@ -69,11 +75,11 @@ const ContactLensesSheetSchema = new mongoose.Schema(
     tipo_matriz: {
       type: String,
       required: true,
-      enum: ["BASE", "SPH_CYL", "SPH_ADD", "BASE_ADD"]
+      enum: ["BASE", "SPH_CYL", "SPH_CYL_AXIS", "SPH_ADD", "BASE_ADD"]
     },
 
     baseKey: { type: String, required: true, trim: true },
-    material: { type: String, required: true, trim: true },
+    material: { type: String, required: false, trim: true, default: "" },
 
     tratamiento: { type: String, trim: true, default: null },
     variante: { type: String, trim: true, default: null },

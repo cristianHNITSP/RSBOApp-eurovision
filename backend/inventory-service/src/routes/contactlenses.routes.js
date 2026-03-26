@@ -9,7 +9,8 @@ const ContactLensesSheet = require("../models/ContactLensesSheet");
 const InventoryChangeLog  = require("../models/InventoryChangeLog");
 const MatrixBase           = require("../models/contactlenses/CLMatrixEsferico");
 const MatrixSphCyl         = require("../models/contactlenses/CLMatrixColorido");
-const MatrixBifocal        = require("../models/contactlenses/CLMatrixTorico");
+const MatrixBifocal        = require("../models/contactlenses/CLMatrixTorico");      // legacy SPH_ADD (unused for CL now)
+const MatrixTorico         = require("../models/contactlenses/CLMatrixTorico");      // SPH_CYL_AXIS
 const MatrixProgresivo     = require("../models/contactlenses/CLMatrixMultifocal");
 
 // Inventory modules (100% reutilizables, sin cambios)
@@ -19,7 +20,7 @@ const { actorFromBody, normalizeParty, escapeRegExp } = require("../inventory/ut
 const { makeUniqueSheetSku, ensureSheetSku } = require("../inventory/utils/sku");
 const { to2, isDef, isMultipleOfStep } = require("../inventory/utils/numbers");
 const { clampRange } = require("../inventory/utils/ranges");
-const { parseKey, denormNum, keySphCyl, normalizeCylConvention } = require("../inventory/utils/keys");
+const { parseKey, denormNum, keySphCyl, keyTorico, normalizeCylConvention } = require("../inventory/utils/keys");
 const { makeSku, makeCodebar } = require("../inventory/utils/barcode");
 
 // Services (100% reutilizables — reciben `models` como parámetro)
@@ -29,9 +30,11 @@ const {
   applyChunkBase,
   applyChunkSphCyl,
   applyChunkBifocal,
-  applyChunkProgresivo
+  applyChunkProgresivo,
+  applyChunkTorico
 } = require("../inventory/services/chunkApply.service");
 const { maybeExtendMetaRangesFromRows } = require("../inventory/services/metaRangesExtend.service");
+const { cacheMiddleware, invalidatePattern, cacheDel, KEYS } = require("../services/redis");
 
 // ===================== DEBUG =====================
 const DEBUG_INVENTORY = String(process.env.DEBUG_INVENTORY || "") === "1";
@@ -117,11 +120,11 @@ const parseOptionalNumber = (v) => {
 };
 
 // modelos agrupados — mismas keys que inventory.routes para reutilizar servicios
-const models = { MatrixBase, MatrixSphCyl, MatrixBifocal, MatrixProgresivo };
+const models = { MatrixBase, MatrixSphCyl, MatrixBifocal, MatrixProgresivo, MatrixTorico };
 
 /* ======================= SHEETS ======================= */
 
-router.get("/", async (req, res) => {
+router.get("/", cacheMiddleware(KEYS.sheetsList("contactlenses"), 30), async (req, res) => {
   try {
     const includeDeleted = String(req.query.includeDeleted) === "true";
     const q = String(req.query.q || "").trim();
@@ -193,8 +196,8 @@ router.post(
   body("marca.id").optional({ nullable: true, checkFalsy: true }).isString().trim(),
 
   body("baseKey").isString().trim().notEmpty(),
-  body("material").isString().trim().notEmpty(),
-  body("tipo_matriz").isIn(["BASE", "SPH_CYL", "SPH_ADD", "BASE_ADD"]),
+  body("material").optional({ nullable: true }).isString().trim(),
+  body("tipo_matriz").isIn(["BASE", "SPH_CYL", "SPH_CYL_AXIS", "SPH_ADD", "BASE_ADD"]),
 
   body("tratamientos").optional().isArray(),
   body("tratamiento").optional({ nullable: true, checkFalsy: true }).isString().trim(),
@@ -316,6 +319,9 @@ router.post(
         });
       }
 
+      cacheDel(KEYS.sheetsList("contactlenses"));
+      cacheDel(KEYS.stats());
+
       res.status(201).json({
         ok: true,
         data: {
@@ -336,6 +342,7 @@ router.get(
   "/sheets/:sheetId",
   param("sheetId").isMongoId(),
   handleValidation,
+  cacheMiddleware((req) => KEYS.sheetMeta(req.params.sheetId), 60),
   async (req, res) => {
     try {
       const sheet = await ContactLensesSheet.findById(req.params.sheetId);
@@ -652,6 +659,9 @@ router.delete(
         actor
       });
 
+      invalidatePattern(KEYS.sheetPattern(req.params.sheetId));
+      cacheDel(KEYS.sheetsList("contactlenses"));
+      cacheDel(KEYS.stats());
       res.json({ ok: true, message: "Hoja eliminada (soft-delete)" });
     } catch (err) {
       console.error("DELETE /contactlenses/sheets/:sheetId error:", err);
@@ -703,6 +713,7 @@ router.get(
   "/sheets/:sheetId/items",
   param("sheetId").isMongoId(),
   handleValidation,
+  cacheMiddleware((req) => KEYS.sheetItems(req.params.sheetId, req.query), 20),
   async (req, res) => {
     try {
       const sheet = await ContactLensesSheet.findById(req.params.sheetId);
@@ -809,6 +820,40 @@ router.get(
           }
         }
         rows = rows.slice(0, limit);
+        return res.json({ ok: true, data: rows });
+      }
+
+      if (sheet.tipo_matriz === "SPH_CYL_AXIS") {
+        const doc = await MatrixTorico.findOne({ sheet: sheet._id });
+
+        const sphMin = Number(req.query.sphMin ?? PHYSICAL_LIMITS.SPH.min);
+        const sphMax = Number(req.query.sphMax ?? PHYSICAL_LIMITS.SPH.max);
+        const cylMin = Number(req.query.cylMin ?? PHYSICAL_LIMITS.CYL.min);
+        const cylMax = Number(req.query.cylMax ?? PHYSICAL_LIMITS.CYL.max);
+        const axisMin = Number(req.query.axisMin ?? PHYSICAL_LIMITS.AXIS.min);
+        const axisMax = Number(req.query.axisMax ?? PHYSICAL_LIMITS.AXIS.max);
+
+        let rows = [];
+        if (doc?.cells) {
+          for (const [k, cell] of doc.cells.entries()) {
+            const [sph, cyl, axis] = parseKey(k);
+            if (!Number.isFinite(sph) || !Number.isFinite(cyl) || !Number.isFinite(axis)) continue;
+            if (sph < sphMin || sph > sphMax) continue;
+            if (cyl < cylMin || cyl > cylMax) continue;
+            if (axis < axisMin || axis > axisMax) continue;
+            rows.push({
+              sheet: sheet._id,
+              tipo_matriz: "SPH_CYL_AXIS",
+              sph,
+              cyl,
+              axis,
+              existencias: cell.existencias ?? 0,
+              sku: cell.sku || null,
+              codebar: cell.codebar || null
+            });
+          }
+        }
+        rows = rows.sort((a, b) => a.sph === b.sph ? (a.cyl === b.cyl ? b.axis - a.axis : a.cyl - b.cyl) : a.sph - b.sph).slice(0, limit);
         return res.json({ ok: true, data: rows });
       }
 
@@ -945,6 +990,88 @@ router.put(
   }
 );
 
+/* ======================= UPDATE UNA CELDA SPH_CYL_AXIS (tórico) ======================= */
+
+router.put(
+  "/sheets/:sheetId/torico/cell",
+  param("sheetId").isMongoId(),
+  body("sph").exists(),
+  body("cyl").exists(),
+  body("axis").exists(),
+  body("existencias").optional(),
+  body("delta").optional(),
+  body("sku").optional(),
+  body("codebar").optional(),
+  body("actor").optional().isObject(),
+  handleValidation,
+  async (req, res) => {
+    const actor = actorFromBody(req) || { userId: null, name: "system" };
+
+    try {
+      const sheet = await ContactLensesSheet.findById(req.params.sheetId);
+      if (!sheet || sheet.isDeleted) return res.status(404).json({ ok: false, message: "Hoja no encontrada" });
+      if (sheet.tipo_matriz !== "SPH_CYL_AXIS") return res.status(400).json({ ok: false, message: "Esta hoja no es SPH_CYL_AXIS (tórico)" });
+
+      const sph = to2(req.body.sph);
+      const cyl = normalizeCylConvention(req.body.cyl);
+      const axis = Number(req.body.axis);
+
+      if (!Number.isFinite(sph) || !Number.isFinite(cyl) || !Number.isFinite(axis))
+        return res.status(400).json({ ok: false, message: "SPH/CYL/AXIS inválidos" });
+
+      if (sph < PHYSICAL_LIMITS.SPH.min || sph > PHYSICAL_LIMITS.SPH.max)
+        return res.status(400).json({ ok: false, message: `SPH fuera de límites` });
+      if (cyl < PHYSICAL_LIMITS.CYL.min || cyl > PHYSICAL_LIMITS.CYL.max)
+        return res.status(400).json({ ok: false, message: `CYL fuera de límites` });
+      if (axis < PHYSICAL_LIMITS.AXIS.min || axis > PHYSICAL_LIMITS.AXIS.max || axis % 10 !== 0)
+        return res.status(400).json({ ok: false, message: `AXIS debe ser de ${PHYSICAL_LIMITS.AXIS.min} a ${PHYSICAL_LIMITS.AXIS.max} en pasos de 10` });
+
+      const key = keyTorico(sph, cyl, axis);
+
+      let doc = await MatrixTorico.findOne({ sheet: sheet._id });
+      if (!doc) doc = new MatrixTorico({ sheet: sheet._id, tipo_matriz: "SPH_CYL_AXIS", cells: new Map() });
+
+      doc.set("cells", doc.cells || new Map());
+
+      const prev = doc.cells.get(key) || { existencias: 0, sku: null, codebar: null, createdBy: actor };
+      const before = Number(prev.existencias ?? 0);
+
+      let after;
+      if (isDef(req.body.existencias)) after = Number(req.body.existencias);
+      else if (isDef(req.body.delta)) after = before + Number(req.body.delta);
+      else return res.status(400).json({ ok: false, message: "Envía existencias o delta" });
+
+      if (!Number.isFinite(after) || after < 0)
+        return res.status(400).json({ ok: false, message: "Existencias resultantes inválidas (<0)" });
+
+      let finalSku = isDef(req.body.sku) ? String(req.body.sku) : prev.sku || makeSku(sheet._id, "SPH_CYL_AXIS", { sph, cyl, axis });
+      let finalCodebar = isDef(req.body.codebar) ? (req.body.codebar === null ? null : String(req.body.codebar)) : prev.codebar;
+      if (after > 0 && !finalCodebar) finalCodebar = makeCodebar(sheet._id, "SPH_CYL_AXIS", { sph, cyl, axis });
+
+      const nextCell = { ...prev, existencias: after, sku: finalSku, codebar: finalCodebar, createdBy: prev.createdBy || actor, updatedBy: actor };
+
+      doc.cells.set(key, nextCell);
+      doc.markModified("cells");
+      await doc.save();
+
+      await InventoryChangeLog.create({
+        sheet: sheet._id,
+        tipo_matriz: "SPH_CYL_AXIS",
+        sph,
+        cyl,
+        type: "CELL_UPDATE",
+        details: { key, before, after, delta: after - before, axis },
+        actor
+      });
+
+      return res.json({ ok: true, key, before, after, cell: nextCell });
+    } catch (err) {
+      console.error("PUT /contactlenses/sheets/:sheetId/torico/cell error:", err);
+      return res.status(500).json({ ok: false, message: "Error interno", error: String(err?.message || err) });
+    }
+  }
+);
+
 /* ======================= CHUNK SAVE ======================= */
 
 router.post(
@@ -984,6 +1111,13 @@ router.post(
           break;
         }
 
+        case "SPH_CYL_AXIS": {
+          const normalizedToricoRows = rows.map((r) => ({ ...r, cyl: normalizeCylConvention(r.cyl) }));
+          result = await applyChunkTorico(models, sheet, normalizedToricoRows, actor);
+          usedRowsForExtend = normalizedToricoRows;
+          break;
+        }
+
         case "SPH_ADD":
           result = await applyChunkBifocal(models, sheet, rows, actor);
           break;
@@ -1012,6 +1146,11 @@ router.post(
         details: { upserted: result.updated, rowsCount: rows.length, axisExtended, axisExtendError },
         actor
       });
+
+      // Invalidate cache for this sheet + stats
+      invalidatePattern(KEYS.sheetPattern(req.params.sheetId));
+      cacheDel(KEYS.stats());
+      cacheDel(KEYS.sheetsList("contactlenses"));
 
       return res.json({ ok: true, data: { upserted: result.updated, axisExtended, axisExtendError } });
     } catch (err) {

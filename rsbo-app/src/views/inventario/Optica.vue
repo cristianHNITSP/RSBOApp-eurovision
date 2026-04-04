@@ -191,55 +191,7 @@ async function doRestore(key, row) {
   } catch (e) { labToast.danger(e?.response?.data?.error || "Error"); }
 }
 
-// ══════════════════════════════════════════════════════════════
-// ESTADÍSTICAS
-// ══════════════════════════════════════════════════════════════
-const armazonesStats = computed(() => {
-  const d = sec.armazones.items;
-  return {
-    total:   d.reduce((s,a)=>s+(a.stock||0),0),
-    bajo:    d.filter(a=>(a.stock||0)>0&&(a.stock||0)<=3).length,
-    agotado: d.filter(a=>(a.stock||0)===0).length,
-    valor:   d.reduce((s,a)=>s+(a.precio||0)*(a.stock||0),0),
-  };
-});
-const solStats = computed(() => {
-  const d = sec.soluciones.items;
-  return {
-    total:     d.reduce((s,l)=>s+(l.stock||0),0),
-    porVencer: d.filter(l=>{ if(!l.caducidad)return false; const df=(new Date(l.caducidad)-new Date())/86400000; return df>0&&df<=180; }).length,
-    agotado:   d.filter(l=>(l.stock||0)===0).length,
-    valor:     d.reduce((s,l)=>s+(l.precio||0)*(l.stock||0),0),
-  };
-});
-const accStats = computed(() => {
-  const d = sec.accesorios.items;
-  return {
-    total:      d.reduce((s,a)=>s+(a.stock||0),0),
-    agotado:    d.filter(a=>(a.stock||0)===0).length,
-    categorias: new Set(d.map(a=>a.categoria)).size,
-    valor:      d.reduce((s,a)=>s+(a.precio||0)*(a.stock||0),0),
-  };
-});
-const estStats = computed(() => {
-  const d = sec.estuches.items;
-  return {
-    total:   d.reduce((s,e)=>s+(e.stock||0),0),
-    agotado: d.filter(e=>(e.stock||0)===0).length,
-    tipos:   new Set(d.map(e=>e.tipo)).size,
-    valor:   d.reduce((s,e)=>s+(e.precio||0)*(e.stock||0),0),
-  };
-});
-const eqpStats = computed(() => {
-  const d = sec.equipos.items;
-  return {
-    operativo: d.filter(e=>e.estado==="Operativo").length,
-    mantto:    d.filter(e=>e.estado==="Mantenimiento").length,
-    fuera:     d.filter(e=>e.estado==="Fuera de servicio").length,
-    proxMantto:d.filter(e=>{ if(!e.mantenimiento)return false; const df=(new Date(e.mantenimiento)-new Date())/86400000; return df>0&&df<=90; }).length,
-    total:     d.length,
-  };
-});
+// (Estadísticas movidas a DashboardHome.vue)
 
 // ══════════════════════════════════════════════════════════════
 // HELPERS
@@ -350,26 +302,6 @@ function rowClass(row) { return row.isDeleted ? "row--deleted" : ""; }
             </div>
           </transition>
 
-          <!-- Stats -->
-          <div class="stat-row">
-            <div class="stat-card glass-card stat-card--neutral">
-              <div class="stat-card__icon"><i class="fas fa-layer-group"></i></div>
-              <div><span class="stat-label">Unidades</span><span class="stat-value">{{ armazonesStats.total }}</span></div>
-            </div>
-            <div class="stat-card glass-card stat-card--warning">
-              <div class="stat-card__icon"><i class="fas fa-exclamation-triangle"></i></div>
-              <div><span class="stat-label">Bajo stock</span><span class="stat-value text-warning">{{ armazonesStats.bajo }}</span></div>
-            </div>
-            <div class="stat-card glass-card stat-card--danger">
-              <div class="stat-card__icon"><i class="fas fa-times-circle"></i></div>
-              <div><span class="stat-label">Agotados</span><span class="stat-value text-danger">{{ armazonesStats.agotado }}</span></div>
-            </div>
-            <div class="stat-card glass-card stat-card--primary">
-              <div class="stat-card__icon"><i class="fas fa-dollar-sign"></i></div>
-              <div><span class="stat-label">Valor total</span><span class="stat-value text-primary">{{ fmt(armazonesStats.valor) }}</span></div>
-            </div>
-          </div>
-
           <!-- Filtros + Toolbar -->
           <div class="section-toolbar">
             <b-field grouped group-multiline class="mb-0">
@@ -456,25 +388,6 @@ function rowClass(row) { return row.isDeleted ? "row--deleted" : ""; }
             </div>
           </transition>
 
-          <div class="stat-row">
-            <div class="stat-card glass-card stat-card--neutral">
-              <div class="stat-card__icon"><i class="fas fa-boxes"></i></div>
-              <div><span class="stat-label">Unidades</span><span class="stat-value">{{ solStats.total }}</span></div>
-            </div>
-            <div class="stat-card glass-card stat-card--warning">
-              <div class="stat-card__icon"><i class="fas fa-hourglass-half"></i></div>
-              <div><span class="stat-label">Próx. a vencer</span><span class="stat-value text-warning">{{ solStats.porVencer }}</span></div>
-            </div>
-            <div class="stat-card glass-card stat-card--danger">
-              <div class="stat-card__icon"><i class="fas fa-ban"></i></div>
-              <div><span class="stat-label">Agotados</span><span class="stat-value text-danger">{{ solStats.agotado }}</span></div>
-            </div>
-            <div class="stat-card glass-card stat-card--primary">
-              <div class="stat-card__icon"><i class="fas fa-dollar-sign"></i></div>
-              <div><span class="stat-label">Valor total</span><span class="stat-value text-primary">{{ fmt(solStats.valor) }}</span></div>
-            </div>
-          </div>
-
           <div class="section-toolbar">
             <b-field grouped group-multiline class="mb-0">
               <b-field class="toolbar-field">
@@ -546,25 +459,6 @@ function rowClass(row) { return row.isDeleted ? "row--deleted" : ""; }
             </div>
           </transition>
 
-          <div class="stat-row">
-            <div class="stat-card glass-card stat-card--neutral">
-              <div class="stat-card__icon"><i class="fas fa-cubes"></i></div>
-              <div><span class="stat-label">Unidades</span><span class="stat-value">{{ accStats.total }}</span></div>
-            </div>
-            <div class="stat-card glass-card stat-card--danger">
-              <div class="stat-card__icon"><i class="fas fa-ban"></i></div>
-              <div><span class="stat-label">Agotados</span><span class="stat-value text-danger">{{ accStats.agotado }}</span></div>
-            </div>
-            <div class="stat-card glass-card stat-card--info">
-              <div class="stat-card__icon"><i class="fas fa-tags"></i></div>
-              <div><span class="stat-label">Categorías</span><span class="stat-value text-info">{{ accStats.categorias }}</span></div>
-            </div>
-            <div class="stat-card glass-card stat-card--primary">
-              <div class="stat-card__icon"><i class="fas fa-dollar-sign"></i></div>
-              <div><span class="stat-label">Valor total</span><span class="stat-value text-primary">{{ fmt(accStats.valor) }}</span></div>
-            </div>
-          </div>
-
           <div class="section-toolbar">
             <b-field grouped group-multiline class="mb-0">
               <b-field class="toolbar-field">
@@ -632,25 +526,6 @@ function rowClass(row) { return row.isDeleted ? "row--deleted" : ""; }
               </div>
             </div>
           </transition>
-
-          <div class="stat-row">
-            <div class="stat-card glass-card stat-card--neutral">
-              <div class="stat-card__icon"><i class="fas fa-archive"></i></div>
-              <div><span class="stat-label">Unidades</span><span class="stat-value">{{ estStats.total }}</span></div>
-            </div>
-            <div class="stat-card glass-card stat-card--danger">
-              <div class="stat-card__icon"><i class="fas fa-ban"></i></div>
-              <div><span class="stat-label">Agotados</span><span class="stat-value text-danger">{{ estStats.agotado }}</span></div>
-            </div>
-            <div class="stat-card glass-card stat-card--info">
-              <div class="stat-card__icon"><i class="fas fa-object-group"></i></div>
-              <div><span class="stat-label">Tipos</span><span class="stat-value text-info">{{ estStats.tipos }}</span></div>
-            </div>
-            <div class="stat-card glass-card stat-card--primary">
-              <div class="stat-card__icon"><i class="fas fa-dollar-sign"></i></div>
-              <div><span class="stat-label">Valor total</span><span class="stat-value text-primary">{{ fmt(estStats.valor) }}</span></div>
-            </div>
-          </div>
 
           <div class="section-toolbar">
             <b-field grouped group-multiline class="mb-0">
@@ -722,29 +597,6 @@ function rowClass(row) { return row.isDeleted ? "row--deleted" : ""; }
               </div>
             </div>
           </transition>
-
-          <div class="stat-row stat-row--5">
-            <div class="stat-card glass-card stat-card--success">
-              <div class="stat-card__icon"><i class="fas fa-check-circle"></i></div>
-              <div><span class="stat-label">Operativos</span><span class="stat-value text-success">{{ eqpStats.operativo }}</span></div>
-            </div>
-            <div class="stat-card glass-card stat-card--warning">
-              <div class="stat-card__icon"><i class="fas fa-wrench"></i></div>
-              <div><span class="stat-label">Mantenimiento</span><span class="stat-value text-warning">{{ eqpStats.mantto }}</span></div>
-            </div>
-            <div class="stat-card glass-card stat-card--danger">
-              <div class="stat-card__icon"><i class="fas fa-power-off"></i></div>
-              <div><span class="stat-label">Fuera servicio</span><span class="stat-value text-danger">{{ eqpStats.fuera }}</span></div>
-            </div>
-            <div class="stat-card glass-card stat-card--warning">
-              <div class="stat-card__icon"><i class="fas fa-clock"></i></div>
-              <div><span class="stat-label">Mantto en 90d</span><span class="stat-value text-warning">{{ eqpStats.proxMantto }}</span></div>
-            </div>
-            <div class="stat-card glass-card stat-card--neutral">
-              <div class="stat-card__icon"><i class="fas fa-microscope"></i></div>
-              <div><span class="stat-label">Total equipos</span><span class="stat-value">{{ eqpStats.total }}</span></div>
-            </div>
-          </div>
 
           <div class="section-toolbar">
             <b-field grouped group-multiline class="mb-0">

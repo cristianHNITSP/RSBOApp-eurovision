@@ -282,27 +282,7 @@ const resolverGridProps = (sheet, activeInternal) => {
             <p class="psh-desc">Gestiona el stock de planillas oftálmicas: monofocal, bifocal, progresivo y base.</p>
           </div>
 
-          <!-- VIEW TOGGLE -->
-          <div class="view-toggle">
-            <b-tooltip label="Vista Excel (AG-Grid)" position="is-bottom">
-              <button
-                class="vt-btn"
-                :class="{ 'vt-btn--active': viewMode === 'excel' }"
-                @click="viewMode = 'excel'"
-              >
-                <i class="fas fa-table-cells-large"></i>
-              </button>
-            </b-tooltip>
-            <b-tooltip label="Vista Tabla (Glassmorphism)" position="is-bottom">
-              <button
-                class="vt-btn"
-                :class="{ 'vt-btn--active': viewMode === 'glass' }"
-                @click="viewMode = 'glass'"
-              >
-                <i class="fas fa-table-list"></i>
-              </button>
-            </b-tooltip>
-          </div>
+          <!-- VIEW TOGGLE (disabled) -->
         </div>
 
         <div class="psh-quick mt-3">
@@ -323,8 +303,8 @@ const resolverGridProps = (sheet, activeInternal) => {
           <div class="psh-quick__card">
             <div class="psh-quick__icon"><i class="fas fa-file-export"></i></div>
             <div>
-              <p class="psh-quick__title">Exportar CSV</p>
-              <p class="psh-quick__text">Descarga el inventario como archivo .csv</p>
+              <p class="psh-quick__title">Exportar a Excel</p>
+              <p class="psh-quick__text">Descarga el inventario como archivo de Excel</p>
             </div>
           </div>
         </div>

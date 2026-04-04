@@ -77,10 +77,10 @@
             </strong>
           </template>
 
-          <!-- Ojo OD/OI -->
+          <!-- Ojo -->
           <template v-else-if="col.field === 'eye'">
             <b-tag :type="row.eye === 'OD' ? 'is-info' : 'is-success'" size="is-small">
-              {{ row.eye }}
+              {{ row.eye === 'OD' ? 'Derecho' : row.eye === 'OI' ? 'Izquierdo' : row.eye }}
             </b-tag>
           </template>
 
@@ -141,6 +141,7 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount } from "vue";
 import { useSheetApi } from "@/composables/useSheetApi";
 import { labToast } from "@/composables/useLabToast";
+import { exportToXlsx } from "@/composables/useExcelExport";
 
 const props = defineProps({
   sheetId:    { type: String, required: true },
@@ -525,30 +526,33 @@ async function handleRefresh() {
   await loadAll();
 }
 
-function handleExport() {
-  const BOM = "\uFEFF";
+async function handleExport() {
   const cols = visibleColumns.value;
-  const esc = (v) => {
-    const s = String(v ?? "");
-    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-  };
-  const header = cols.map(c => esc(c.label)).join(",");
-  const csvRows = filteredData.value.map(row =>
-    cols.map(c => {
-      const v = row[c.field];
-      if (c.field === '_precio') return esc(fmtPrice(v));
-      if (c.field === '_caducidad') return esc(fmtDate(v));
-      return esc(v);
-    }).join(",")
-  );
-  const csv = `${BOM}${[header, ...csvRows].join("\n")}\n`;
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `reporte_inventario_${(sheetName.value || "inventario").replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
+  const columns = cols.map(c => ({
+    key: c.field,
+    label: c.label,
+    width: c.field === '_precio' ? 14 : c.field === '_caducidad' ? 16 : undefined,
+    align: c.field === 'existencias' ? "center" : undefined,
+    transform: c.field === '_precio'
+      ? (r) => fmtPrice(r[c.field])
+      : c.field === '_caducidad'
+      ? (r) => fmtDate(r[c.field])
+      : undefined,
+  }));
+  const rows = filteredData.value;
+  const fecha = new Date().toISOString().slice(0, 10);
+  await exportToXlsx({
+    filename: `reporte_inventario_${(sheetName.value || "inventario").replace(/\s+/g, "_")}_${fecha}`,
+    sheetName: String(sheetName.value || "Inventario").slice(0, 31),
+    title: `Inventario — ${sheetName.value || "Inventario"}`,
+    subtitle: material.value ? `Material: ${material.value}` : undefined,
+    columns,
+    rows,
+    summaryCards: [
+      { label: "Productos", value: rows.length },
+      { label: "Stock Total", value: rows.reduce((s, r) => s + Number(r.existencias || 0), 0) },
+    ],
+  });
 }
 
 /* ─── Lifecycle ─── */

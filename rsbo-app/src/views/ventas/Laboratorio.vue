@@ -175,55 +175,7 @@ provide("lab", lab);
   top: 0.85rem;
 }
 
-.panel__head {
-  padding: 1rem;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.85rem;
-  flex-wrap: wrap;
-}
-
-.panel__head--compact {
-  padding: 0.85rem 1rem;
-}
-
-.panel__title {
-  margin: 0;
-  font-weight: 1000;
-  font-size: 1.05rem;
-  color: var(--text-primary);
-}
-
-.panel__hint {
-  margin: 0.25rem 0 0;
-  color: var(--text-muted);
-  font-weight: 700;
-  font-size: 0.85rem;
-}
-
-.panel__badge {
-  margin-left: 0.5rem;
-  font-size: 0.78rem;
-  font-weight: 950;
-  padding: 0.2rem 0.55rem;
-  border-radius: 999px;
-  border: 1px solid var(--c-primary-alpha);
-  background: var(--c-primary-alpha);
-}
-
-.panel__headActions {
-  display: flex;
-  gap: 0.6rem;
-  align-items: flex-end;
-  flex-wrap: wrap;
-}
-
-.panel__body {
-  padding: 1rem;
-  position: relative;
-}
+/* .panel__* → global.css */
 
 /* Tables */
 .nice-table :deep(.table) {
@@ -382,11 +334,7 @@ provide("lab", lab);
   margin-top: 0.85rem;
 }
 
-.soft-hr {
-  border: none;
-  border-top: 1px dashed var(--border);
-  margin: 1rem 0;
-}
+/* .soft-hr → global.css */
 
 /* QR Catalog grid */
 .qr-grid {
@@ -497,32 +445,7 @@ provide("lab", lab);
   border-radius: 999px;
 }
 
-/* Empty states */
-.empty {
-  padding: 2.2rem 1rem;
-  text-align: center;
-  color: var(--text-muted);
-}
-
-.empty--mini {
-  padding: 1.2rem 0.75rem;
-}
-
-.empty__icon {
-  font-size: 1.6rem;
-  color: rgba(144, 111, 225, 0.9);
-}
-
-.empty__title {
-  margin: 0.5rem 0 0;
-  font-weight: 1000;
-  color: var(--text-primary);
-}
-
-.empty__text {
-  margin: 0.25rem 0 0;
-  font-weight: 800;
-}
+/* .empty* → global.css */
 
 /* Pager */
 .pager {

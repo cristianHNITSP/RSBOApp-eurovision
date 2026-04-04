@@ -30,7 +30,7 @@
               :loading="lab.loadingExportInv.value"
               @click="lab.exportInventoryCsv"
             >
-              CSV
+              Excel
             </b-button>
           </div>
         </div>
@@ -243,7 +243,7 @@
             <div class="columns is-mobile is-variable is-2 mt-2">
               <div class="column">
                 <b-button type="is-light" expanded icon-left="download" size="is-small"
-                  @click="lab.exportOrderCsv(lab.selectedOrder.value)">CSV</b-button>
+                  @click="lab.exportOrderCsv(lab.selectedOrder.value)">Excel</b-button>
               </div>
               <div class="column">
                 <b-button type="is-light" expanded icon-left="print" size="is-small"

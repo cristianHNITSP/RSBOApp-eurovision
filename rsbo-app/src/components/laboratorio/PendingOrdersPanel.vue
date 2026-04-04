@@ -19,7 +19,7 @@
           :loading="lab.loadingExportOrders.value"
           @click="lab.exportOrdersCsv"
         >
-          CSV
+          Excel
         </b-button>
         <b-button
           v-if="!standalone"
@@ -334,21 +334,7 @@ function countByStatus(tabValue) {
   background: var(--surface-overlay);
 }
 
-.skel {
-  border-radius: 8px;
-  background: linear-gradient(90deg, rgba(148, 163, 184, 0.15) 25%, rgba(148, 163, 184, 0.3) 50%, rgba(148, 163, 184, 0.15) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.4s infinite;
-}
-
-.skel--title { height: 16px; width: 55%; }
-.skel--line  { height: 12px; width: 80%; }
-.skel--bar   { height: 8px; width: 100%; border-radius: 999px; }
-
-@keyframes shimmer {
-  0%   { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
+/* .skel*, @keyframes shimmer → global.css */
 
 /* ===== Order card items ===== */
 .order-cards-grid {
@@ -508,153 +494,7 @@ function countByStatus(tabValue) {
   opacity: 0.85;
 }
 
-/* ===== Logs section ===== */
-.logs-section {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-}
-
-@media (max-width: 700px) {
-  .logs-section {
-    grid-template-columns: 1fr;
-  }
-}
-
-
-.logs-head {
-  display: flex;
-  align-items: center;
-  font-size: 0.82rem;
-  font-weight: 1000;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  padding: 0.35rem 0.55rem;
-  border-radius: 10px;
-  margin-bottom: 0.6rem;
-}
-
-.logs-head--in {
-  background: var(--c-success-alpha);
-  color: var(--c-success);
-  border: 1px solid rgba(34, 197, 94, 0.22);
-}
-
-.logs-head--out {
-  background: var(--c-info-alpha);
-  color: var(--c-info);
-  border: 1px solid rgba(59, 130, 246, 0.22);
-}
-
-.logs-badge {
-  margin-left: auto;
-  background: var(--surface-overlay);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 0.05rem 0.45rem;
-  font-size: 0.72rem;
-  font-weight: 900;
-  color: var(--text-muted);
-}
-
-.logs-empty {
-  font-size: 0.82rem;
-  font-weight: 800;
-  color: var(--text-muted);
-  padding: 0.6rem 0;
-}
-
-.logs-loading {
-  position: relative;
-  height: 48px;
-}
-
-.logs-feed {
-  display: grid;
-  gap: 0.4rem;
-  max-height: 320px;
-  overflow-y: auto;
-  padding-right: 2px;
-}
-
-.logs-feed::-webkit-scrollbar {
-  width: 4px;
-}
-.logs-feed::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.3);
-  border-radius: 2px;
-}
-
-.log-card {
-  border-radius: 12px;
-  padding: 0.6rem 0.65rem;
-  font-size: 0.8rem;
-  font-weight: 800;
-  transition: transform 100ms ease;
-}
-
-.log-card:hover {
-  transform: translateX(2px);
-}
-
-.log-card--in {
-  border: 1px solid rgba(34, 197, 94, 0.18);
-  background: rgba(34, 197, 94, 0.05);
-  border-left: 3px solid rgba(34, 197, 94, 0.5);
-}
-
-.log-card--out {
-  border: 1px solid rgba(59, 130, 246, 0.18);
-  background: rgba(59, 130, 246, 0.05);
-  border-left: 3px solid rgba(59, 130, 246, 0.5);
-}
-
-.log-card__top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.2rem;
-}
-
-.log-card__folio {
-  font-weight: 1000;
-  font-size: 0.82rem;
-  color: var(--text-primary);
-}
-
-.log-card__date {
-  font-size: 0.72rem;
-  font-weight: 800;
-  color: var(--text-muted);
-}
-
-.log-card__client {
-  font-weight: 900;
-  color: var(--text-primary);
-  margin-bottom: 0.15rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.log-card__code {
-  font-size: 0.78rem;
-  font-weight: 900;
-  color: var(--text-primary);
-  margin-bottom: 0.15rem;
-}
-
-.log-card__meta {
-  display: flex;
-  justify-content: space-between;
-  color: var(--text-muted);
-  font-size: 0.76rem;
-}
-
-.log-card__pill {
-  background: var(--border);
-  padding: 0.05rem 0.4rem;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-}
+/* .logs-*, .log-card* → global.css */
+/* PendingOrdersPanel usa max-height menor por su contexto lateral */
+.logs-feed { --logs-feed-max-h: 320px; }
 </style>

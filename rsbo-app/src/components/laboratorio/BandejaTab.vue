@@ -58,7 +58,7 @@
           <!-- Exportar entradas por período -->
           <div class="export-period-row mb-3">
             <span class="export-period-label">
-              <i class="fas fa-download mr-1"></i> Exportar entradas:
+              <i class="fas fa-file-excel mr-1"></i> Descargar entradas:
             </span>
             <div class="export-period-btns">
               <button class="period-btn" @click="lab.exportEntriesCsv('day')">Hoy</button>
@@ -307,44 +307,9 @@ function goCorrecciones() {
   border-color: rgba(34, 197, 94, 0.5);
 }
 
-.logs-badge {
-  background: var(--surface-overlay);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 0.05rem 0.45rem;
-  font-size: 0.72rem;
-  font-weight: 900;
-  color: var(--text-muted);
-}
-
-.logs-empty {
-  font-size: 0.82rem;
-  font-weight: 800;
-  color: var(--text-muted);
-  padding: 0.6rem 0;
-}
-
-.logs-loading {
-  position: relative;
-  height: 48px;
-}
-
-.logs-feed {
-  display: grid;
-  gap: 0.5rem;
-  max-height: 520px;
-  overflow-y: auto;
-  padding-right: 2px;
-}
-
-.logs-feed::-webkit-scrollbar {
-  width: 4px;
-}
-
-.logs-feed::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.3);
-  border-radius: 2px;
-}
+/* .logs-badge, .logs-empty, .logs-loading, .logs-feed, .log-card* → global.css */
+/* BandejaTab usa max-height mayor por su layout de columna completa */
+.logs-feed { --logs-feed-max-h: 520px; }
 
 /* ── Entry block (entrada + salidas agrupadas) ───────────────────────── */
 .entry-block {
@@ -353,29 +318,13 @@ function goCorrecciones() {
   gap: 0;
 }
 
-/* ── Entrada card ────────────────────────────────────────────────────── */
-.log-card {
-  border-radius: 12px;
-  padding: 0.6rem 0.65rem;
-  font-size: 0.8rem;
-  font-weight: 800;
-}
-
+/* ── Entrada card (específico de BandejaTab) ── */
 .entry-card {
   cursor: pointer;
   transition: transform 100ms ease, border-color 120ms ease, background 120ms ease;
   user-select: none;
 }
-
-.entry-card:hover {
-  transform: translateX(2px);
-}
-
-.log-card--in {
-  border: 1px solid rgba(34, 197, 94, 0.18);
-  background: rgba(34, 197, 94, 0.05);
-  border-left: 3px solid rgba(34, 197, 94, 0.5);
-}
+.entry-card:hover { transform: translateX(2px); }
 
 .entry-card--open.log-card--in {
   border-bottom-left-radius: 0;
@@ -384,63 +333,17 @@ function goCorrecciones() {
   background: rgba(34, 197, 94, 0.09);
 }
 
-.log-card__top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.2rem;
-}
-
 .entry-card__right {
   display: flex;
   align-items: center;
   gap: 0.4rem;
 }
-
 .entry-card__chev {
   font-size: 0.65rem;
   color: var(--text-subtle);
-  transition: transform 180ms ease;
+  transition: transform var(--transition-base);
 }
-
-.entry-card__chev--open {
-  transform: rotate(180deg);
-}
-
-.log-card__folio {
-  font-weight: 1000;
-  font-size: 0.82rem;
-  color: var(--text-primary);
-}
-
-.log-card__date {
-  font-size: 0.72rem;
-  font-weight: 800;
-  color: var(--text-muted);
-}
-
-.log-card__client {
-  font-weight: 900;
-  color: var(--text-primary);
-  margin-bottom: 0.15rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.log-card__meta {
-  display: flex;
-  justify-content: space-between;
-  color: var(--text-muted);
-  font-size: 0.76rem;
-}
-
-.log-card__pill {
-  background: var(--border);
-  padding: 0.05rem 0.4rem;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-}
+.entry-card__chev--open { transform: rotate(180deg); }
 
 .log-card__mica-summary {
   display: flex;
@@ -448,13 +351,12 @@ function goCorrecciones() {
   gap: 0.3rem;
   margin-top: 0.3rem;
 }
-
 .mica-chip {
   font-size: 0.7rem;
   font-weight: 900;
   background: var(--c-primary-alpha);
   border: 1px solid rgba(144, 111, 225, 0.2);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding: 0.05rem 0.35rem;
   color: var(--c-primary);
 }

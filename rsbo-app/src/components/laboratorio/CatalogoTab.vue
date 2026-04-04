@@ -5,7 +5,7 @@
         <div class="panel__head">
           <div>
             <h2 class="panel__title">Catálogo de códigos</h2>
-            <p class="panel__hint">Códigos reales desde inventario (DB) + impresión/CSV.</p>
+            <p class="panel__hint">Codigos reales desde inventario + impresion y descarga.</p>
           </div>
         </div>
 
@@ -61,7 +61,7 @@
                     :loading="lab.loadingExportCat.value"
                     @click="lab.exportCatalogCsv"
                   >
-                    CSV
+                    Excel
                   </b-button>
                 </div>
               </div>

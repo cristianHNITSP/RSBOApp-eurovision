@@ -35,11 +35,11 @@ function rangeArr(start, end, step) {
 
 /**
  * BASE monofocal / bifocal / Younger:
- *   0 → 8 en paso 0.50
- *   8.5, 10, 12, 14 (paso irregular)
+ *   0.25, luego 0.5 → 8 en paso 0.50
+ *   8.5, 10, 12, 14 (paso irregular de 2 en 2)
  */
 function buildBifocalBaseAxis() {
-  return [...rangeArr(0, 8, 0.5), 8.5, 10, 12, 14];
+  return [0.25, ...rangeArr(0.5, 8, 0.5), 8.5, 10, 12, 14];
 }
 
 /**
@@ -99,18 +99,18 @@ function buildAddAxis(maxAdd) {
 
 /**
  * SPH negativo tórico CL:
- *   0 → -6.0 en paso 0.25, luego -6.5 → -10.0 en paso 0.5
+ *   0 → -20 en paso 0.25 (uniforme)
  */
 function buildToricoSphNegAxis() {
-  return [...rangeArr(0, -6.0, 0.25), ...rangeArr(-6.5, -10.0, 0.5)];
+  return rangeArr(0, -20, 0.25);
 }
 
 /**
  * SPH positivo tórico CL:
- *   0.0 → +6.0 en paso 0.25
+ *   +0.75 → +10.0 en paso 0.25
  */
 function buildToricoSphPosAxis() {
-  return rangeArr(0.0, 6.0, 0.25);
+  return rangeArr(0.75, 10.0, 0.25);
 }
 
 /**
@@ -197,8 +197,8 @@ const PER_BASE_AXIS = {
 
   // ── CL SPH_CYL_AXIS (tórico) ─────────────────────────────────────────────
   torico: {
-    sphNegAxis: buildToricoSphNegAxis(),   // [0, -0.25, ..., -6, -6.5, ..., -10]
-    sphPosAxis: buildToricoSphPosAxis(),   // [0, 0.25, ..., 6]
+    sphNegAxis: buildToricoSphNegAxis(),   // [0, -0.25, ..., -20]
+    sphPosAxis: buildToricoSphPosAxis(),   // [0.75, 1.00, ..., 10]
     cylAxis:    buildToricoClCylAxis(),    // [0.75, 1.25, 1.75, 2.25]
     axisAxis:   buildToricoAxisDegrees(),  // [180, 170, ..., 10]
   },

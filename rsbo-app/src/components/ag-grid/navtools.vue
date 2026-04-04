@@ -175,7 +175,7 @@
 
               <p class="control">
                 <b-button class="rbtn" size="is-small" type="is-light" icon-left="file-export" @click="emit('export')">
-                  Exportar
+                  Generar Excel
                 </b-button>
               </p>
             </b-field>

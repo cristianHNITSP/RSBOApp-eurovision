@@ -735,8 +735,7 @@ watch(selectedOrder, (o) => {
   color: var(--text-muted);
 }
 
-/* Soft divider */
-.soft-hr { border: none; border-top: 1px dashed var(--border); margin: 1rem 0; }
+/* .soft-hr, .empty* → global.css */
 
 /* Font bold util */
 .font-bold { font-weight: 1000; }
@@ -745,12 +744,6 @@ watch(selectedOrder, (o) => {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
     "Liberation Mono", "Courier New", monospace;
 }
-
-.empty { padding: 2rem 1rem; text-align: center; color: var(--text-muted); }
-.empty--mini { padding: 1.2rem 0.75rem; }
-.empty__icon { font-size: 1.6rem; color: rgba(144, 111, 225, 0.9); }
-.empty__title { margin: 0.5rem 0 0; font-weight: 1000; color: var(--text-primary); }
-.empty__text { margin: 0.25rem 0 0; font-weight: 800; }
 
 /* ── Historial ── */
 .history-section { }

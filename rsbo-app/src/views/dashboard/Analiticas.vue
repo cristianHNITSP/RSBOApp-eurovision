@@ -201,788 +201,478 @@
 
     <!-- ══ MAIN GRID ══ -->
     <section class="an-main">
-      <div class="an-col-main">
+      <DynamicTabs v-model="anTab" :tabs="AN_TABS">
 
-        <!-- Inventory activity — root/eurovision -->
-        <div v-if="canSeeMovements" class="gcard mb-5">
-          <div class="gcard-bar" style="background:linear-gradient(90deg,var(--c-primary),#2563eb)"></div>
-          <div class="gc-head">
-            <div class="gc-ico" style="background:var(--c-primary-alpha);color:var(--c-primary)"><i class="fas fa-arrows-rotate"></i></div>
-            <div>
-              <div class="gc-title">Actividad de inventario óptico</div>
-              <div class="gc-sub">Movimientos registrados en bases y micas — últimos 30 días</div>
-            </div>
-          </div>
-          <div class="gc-body">
-            <div class="an-trio">
-              <div class="an-trio-item">
-                <div class="at-lbl">Movimientos</div>
-                <div class="at-val" style="color:var(--c-primary)" v-if="!isLoading">{{ fmtn(s?.movementsTotal30d) }}</div>
-                <b-skeleton v-else :width="90" :height="32" animated />
-                <div class="at-cap">Total del período</div>
-              </div>
-              <div class="an-trio-sep"></div>
-              <div class="an-trio-item">
-                <div class="at-lbl">Entradas</div>
-                <div class="at-val" style="color:#10b981" v-if="!isLoading">{{ fmtn(s?.entries30d) }}</div>
-                <b-skeleton v-else :width="70" :height="32" animated />
-                <div class="at-cap">{{ entriesPct }}% del total</div>
-              </div>
-              <div class="an-trio-sep"></div>
-              <div class="an-trio-item">
-                <div class="at-lbl">Salidas</div>
-                <div class="at-val" style="color:#3b82f6" v-if="!isLoading">{{ fmtn(s?.exits30d) }}</div>
-                <b-skeleton v-else :width="70" :height="32" animated />
-                <div class="at-cap">{{ exitsPct }}% del total</div>
-              </div>
-              <div class="an-trio-sep"></div>
-              <div class="an-trio-item">
-                <div class="at-lbl">Hoy</div>
-                <div class="at-val" style="color:#f59e0b" v-if="!isLoading">{{ s?.movementsToday ?? 0 }}</div>
-                <b-skeleton v-else :width="60" :height="32" animated />
-                <div class="at-cap">Actividad del día</div>
-              </div>
-            </div>
-
-            <div class="an-bars mt-4" v-if="!isLoading">
-              <div class="an-bar-row">
-                <span class="an-bar-lbl">Entradas</span>
-                <div class="an-bar-track"><div class="an-bar-fill" :style="{ width: entriesPct + '%', background: 'linear-gradient(90deg,#10b981,#34d399)' }"></div></div>
-                <span class="an-bar-pct">{{ entriesPct }}%</span>
-              </div>
-              <div class="an-bar-row">
-                <span class="an-bar-lbl">Salidas</span>
-                <div class="an-bar-track"><div class="an-bar-fill" :style="{ width: exitsPct + '%', background: 'linear-gradient(90deg,#3b82f6,#60a5fa)' }"></div></div>
-                <span class="an-bar-pct">{{ exitsPct }}%</span>
-              </div>
-            </div>
-
-            <div class="an-chips mt-3">
-              <div class="an-chip">
-                <div class="ach-lbl">Rotación estimada</div>
-                <div class="ach-val">{{ rotationIndex }}<span class="ach-unit"> v/año</span></div>
-              </div>
-              <div class="an-chip">
-                <div class="ach-lbl">Con stock</div>
-                <div class="ach-val">{{ fmtn(s?.withStock) }}</div>
-              </div>
-              <div class="an-chip">
-                <div class="ach-lbl">Sin stock</div>
-                <div class="ach-val" style="color:#f59e0b">{{ fmtn((s?.totalCombinations ?? 0) - (s?.withStock ?? 0)) }}</div>
-              </div>
-              <div class="an-chip">
-                <div class="ach-lbl">Cobertura</div>
-                <div class="ach-val" style="color:#10b981">{{ s?.coveragePct ?? 0 }}%</div>
-              </div>
-              <div class="an-chip">
-                <div class="ach-lbl">Promedio por celda</div>
-                <div class="ach-val">{{ s?.opticAvgPerCell ?? 0 }}<span class="ach-unit"> pzas</span></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Inventory families — root/eurovision -->
-        <div v-if="canSeeInventory" class="gcard mb-5">
-          <div class="gcard-bar" style="background:linear-gradient(90deg,#3b82f6,#06b6d4)"></div>
-          <div class="gc-head">
-            <div class="gc-ico" style="background:rgba(59,130,246,.16);color:#3b82f6"><i class="fas fa-chart-pie"></i></div>
-            <div>
-              <div class="gc-title">Distribución por tipo de lente óptico</div>
-              <div class="gc-sub">Porcentaje de piezas activas por familia de producto (bases y micas)</div>
-            </div>
-          </div>
-          <div class="gc-body">
-            <div v-if="!isLoading">
-              <div v-if="s?.topFamilies?.length" class="an-families">
-                <div v-for="fam in s.topFamilies" :key="fam.name" class="an-family-row">
-                  <div class="an-family-head">
-                    <span class="an-family-name">{{ fam.name }}</span>
-                    <span class="an-family-pct">{{ fam.percentage }}%</span>
+        <!-- ═══════════════ TAB: INVENTARIO ════════════════════════════ -->
+        <template #inventario>
+          <div class="an-tab-two-col">
+            <div class="an-col-main">
+              <!-- Inventory activity -->
+              <div v-if="canSeeMovements" class="gcard mb-5">
+                <div class="gcard-bar" style="background:linear-gradient(90deg,var(--c-primary),#2563eb)"></div>
+                <div class="gc-head">
+                  <div class="gc-ico" style="background:var(--c-primary-alpha);color:var(--c-primary)"><i class="fas fa-arrows-rotate"></i></div>
+                  <div>
+                    <div class="gc-title">Actividad de inventario óptico</div>
+                    <div class="gc-sub">Movimientos registrados en bases y micas — últimos 30 días</div>
                   </div>
-                  <div class="an-bar-track">
-                    <div class="an-bar-fill" :style="{ width: fam.percentage + '%', background: 'linear-gradient(90deg,#3b82f6,var(--c-primary))' }"></div>
+                </div>
+                <div class="gc-body">
+                  <div class="an-trio">
+                    <div class="an-trio-item">
+                      <div class="at-lbl">Movimientos</div>
+                      <div class="at-val" style="color:var(--c-primary)" v-if="!isLoading">{{ fmtn(s?.movementsTotal30d) }}</div>
+                      <b-skeleton v-else :width="90" :height="32" animated />
+                      <div class="at-cap">Total del período</div>
+                    </div>
+                    <div class="an-trio-sep"></div>
+                    <div class="an-trio-item">
+                      <div class="at-lbl">Entradas</div>
+                      <div class="at-val" style="color:#10b981" v-if="!isLoading">{{ fmtn(s?.entries30d) }}</div>
+                      <b-skeleton v-else :width="70" :height="32" animated />
+                      <div class="at-cap">{{ entriesPct }}% del total</div>
+                    </div>
+                    <div class="an-trio-sep"></div>
+                    <div class="an-trio-item">
+                      <div class="at-lbl">Salidas</div>
+                      <div class="at-val" style="color:#3b82f6" v-if="!isLoading">{{ fmtn(s?.exits30d) }}</div>
+                      <b-skeleton v-else :width="70" :height="32" animated />
+                      <div class="at-cap">{{ exitsPct }}% del total</div>
+                    </div>
+                    <div class="an-trio-sep"></div>
+                    <div class="an-trio-item">
+                      <div class="at-lbl">Hoy</div>
+                      <div class="at-val" style="color:#f59e0b" v-if="!isLoading">{{ s?.movementsToday ?? 0 }}</div>
+                      <b-skeleton v-else :width="60" :height="32" animated />
+                      <div class="at-cap">Actividad del día</div>
+                    </div>
+                  </div>
+
+                  <div class="an-bars mt-4" v-if="!isLoading">
+                    <div class="an-bar-row">
+                      <span class="an-bar-lbl">Entradas</span>
+                      <div class="an-bar-track"><div class="an-bar-fill" :style="{ width: entriesPct + '%', background: 'linear-gradient(90deg,#10b981,#34d399)' }"></div></div>
+                      <span class="an-bar-pct">{{ entriesPct }}%</span>
+                    </div>
+                    <div class="an-bar-row">
+                      <span class="an-bar-lbl">Salidas</span>
+                      <div class="an-bar-track"><div class="an-bar-fill" :style="{ width: exitsPct + '%', background: 'linear-gradient(90deg,#3b82f6,#60a5fa)' }"></div></div>
+                      <span class="an-bar-pct">{{ exitsPct }}%</span>
+                    </div>
+                  </div>
+
+                  <div class="an-chips mt-3">
+                    <div class="an-chip"><div class="ach-lbl">Rotación estimada</div><div class="ach-val">{{ rotationIndex }}<span class="ach-unit"> v/año</span></div></div>
+                    <div class="an-chip"><div class="ach-lbl">Con stock</div><div class="ach-val">{{ fmtn(s?.withStock) }}</div></div>
+                    <div class="an-chip"><div class="ach-lbl">Sin stock</div><div class="ach-val" style="color:#f59e0b">{{ fmtn((s?.totalCombinations ?? 0) - (s?.withStock ?? 0)) }}</div></div>
+                    <div class="an-chip"><div class="ach-lbl">Cobertura</div><div class="ach-val" style="color:#10b981">{{ s?.coveragePct ?? 0 }}%</div></div>
+                    <div class="an-chip"><div class="ach-lbl">Promedio por celda</div><div class="ach-val">{{ s?.opticAvgPerCell ?? 0 }}<span class="ach-unit"> pzas</span></div></div>
                   </div>
                 </div>
               </div>
-              <p v-else class="an-empty">Sin datos de familias en este período.</p>
-            </div>
-            <div v-else>
-              <b-skeleton width="100%" :height="46" animated class="mb-2" />
-              <b-skeleton width="100%" :height="46" animated class="mb-2" />
-              <b-skeleton width="80%" :height="46" animated />
-            </div>
-          </div>
-        </div>
 
-        <!-- Lentes de Contacto — Inventario separado -->
-        <div v-if="canSeeInventory" class="gcard mb-5">
-          <div class="gcard-bar" style="background:linear-gradient(90deg,#06b6d4,#0d9488)"></div>
-          <div class="gc-head">
-            <div class="gc-ico" style="background:rgba(6,182,212,.16);color:#06b6d4"><i class="fas fa-eye"></i></div>
-            <div>
-              <div class="gc-title">Inventario de Lentes de Contacto</div>
-              <div class="gc-sub">Existencias, cobertura y distribución por tipo de lente de contacto</div>
-            </div>
-          </div>
-          <div class="gc-body">
-
-            <div class="an-trio">
-              <div class="an-trio-item">
-                <div class="at-lbl">Hojas activas</div>
-                <div class="at-val" style="color:#06b6d4" v-if="!isLoading">{{ s?.clActiveSheets ?? 0 }}</div>
-                <b-skeleton v-else :width="50" :height="32" animated />
-                <div class="at-cap">Plantillas de lentes de contacto</div>
-              </div>
-              <div class="an-trio-sep"></div>
-              <div class="an-trio-item">
-                <div class="at-lbl">Existencias totales</div>
-                <div class="at-val" style="color:#0d9488" v-if="!isLoading">{{ fmtn(s?.clTotalStock) }}</div>
-                <b-skeleton v-else :width="70" :height="32" animated />
-                <div class="at-cap">Piezas en almacén</div>
-              </div>
-              <div class="an-trio-sep"></div>
-              <div class="an-trio-item">
-                <div class="at-lbl">Combinaciones</div>
-                <div class="at-val" style="color:#3b82f6" v-if="!isLoading">{{ fmtn(s?.clTotalCombinations) }}</div>
-                <b-skeleton v-else :width="70" :height="32" animated />
-                <div class="at-cap">Esférica, Cilíndrica, Eje, Adición</div>
-              </div>
-              <div class="an-trio-sep"></div>
-              <div class="an-trio-item">
-                <div class="at-lbl">Cobertura</div>
-                <div class="at-val" style="color:#10b981" v-if="!isLoading">{{ s?.clCoveragePct ?? 0 }}%</div>
-                <b-skeleton v-else :width="50" :height="32" animated />
-                <div class="at-cap">{{ fmtn(s?.clWithStock) }} con stock</div>
-              </div>
-            </div>
-
-            <div class="an-chips mt-3">
-              <div class="an-chip">
-                <div class="ach-lbl">Promedio por celda</div>
-                <div class="ach-val">{{ s?.clAvgPerCell ?? 0 }}<span class="ach-unit"> pzas</span></div>
-              </div>
-              <div class="an-chip">
-                <div class="ach-lbl">Con stock</div>
-                <div class="ach-val">{{ fmtn(s?.clWithStock) }}</div>
-              </div>
-              <div class="an-chip">
-                <div class="ach-lbl">Sin stock</div>
-                <div class="ach-val" style="color:#f59e0b">{{ fmtn((s?.clTotalCombinations ?? 0) - (s?.clWithStock ?? 0)) }}</div>
-              </div>
-            </div>
-
-            <div class="an-divider my-3"><span>Distribución por tipo de lente de contacto</span></div>
-
-            <div v-if="!isLoading">
-              <div v-if="s?.clDistribution?.length" class="an-families">
-                <div v-for="fam in s.clDistribution" :key="fam.name" class="an-family-row">
-                  <div class="an-family-head">
-                    <span class="an-family-name">{{ fam.name }}</span>
-                    <span class="an-family-pct">{{ fam.percentage }}%</span>
+              <!-- Inventory families -->
+              <div class="gcard mb-5">
+                <div class="gcard-bar" style="background:linear-gradient(90deg,#3b82f6,#06b6d4)"></div>
+                <div class="gc-head">
+                  <div class="gc-ico" style="background:rgba(59,130,246,.16);color:#3b82f6"><i class="fas fa-chart-pie"></i></div>
+                  <div>
+                    <div class="gc-title">Distribución por tipo de lente óptico</div>
+                    <div class="gc-sub">Porcentaje de piezas activas por familia de producto (bases y micas)</div>
                   </div>
-                  <div class="an-bar-track">
-                    <div class="an-bar-fill" :style="{ width: fam.percentage + '%', background: 'linear-gradient(90deg,#06b6d4,#0d9488)' }"></div>
+                </div>
+                <div class="gc-body">
+                  <div v-if="!isLoading">
+                    <div v-if="s?.topFamilies?.length" class="an-families">
+                      <div v-for="fam in s.topFamilies" :key="fam.name" class="an-family-row">
+                        <div class="an-family-head"><span class="an-family-name">{{ fam.name }}</span><span class="an-family-pct">{{ fam.percentage }}%</span></div>
+                        <div class="an-bar-track"><div class="an-bar-fill" :style="{ width: fam.percentage + '%', background: 'linear-gradient(90deg,#3b82f6,var(--c-primary))' }"></div></div>
+                      </div>
+                    </div>
+                    <p v-else class="an-empty">Sin datos de familias en este período.</p>
                   </div>
-                  <div class="an-family-detail">
-                    <span>{{ fmtn(fam.stock) }} existencias</span>
-                    <span>{{ fmtn(fam.combinations) }} combinaciones</span>
-                    <span>{{ fam.sheets }} plantilla{{ fam.sheets !== 1 ? 's' : '' }}</span>
+                  <div v-else>
+                    <b-skeleton width="100%" :height="46" animated class="mb-2" />
+                    <b-skeleton width="100%" :height="46" animated class="mb-2" />
+                    <b-skeleton width="80%" :height="46" animated />
                   </div>
                 </div>
               </div>
-              <p v-else class="an-empty">Sin datos de lentes de contacto en este período.</p>
-            </div>
-            <div v-else>
-              <b-skeleton width="100%" :height="46" animated class="mb-2" />
-              <b-skeleton width="100%" :height="46" animated class="mb-2" />
-              <b-skeleton width="80%" :height="46" animated />
-            </div>
-          </div>
-        </div>
 
-        <!-- Plantillas con menor cobertura (Lentes de Contacto) -->
-        <div v-if="canSeeInventory && s?.clTopLowStock?.length" class="gcard mb-5">
-          <div class="gcard-bar" style="background:linear-gradient(90deg,#f59e0b,#ef4444)"></div>
-          <div class="gc-head">
-            <div class="gc-ico" style="background:rgba(245,158,11,.16);color:#f59e0b"><i class="fas fa-triangle-exclamation"></i></div>
-            <div>
-              <div class="gc-title">Menor cobertura — Lentes de Contacto</div>
-              <div class="gc-sub">Plantillas con menor porcentaje de celdas con stock</div>
-            </div>
-          </div>
-          <div class="gc-body">
-            <div class="an-low-stock-list">
-              <div v-for="sh in s.clTopLowStock" :key="sh.id" class="an-low-stock-row">
-                <div class="als-info">
-                  <div class="als-name">{{ sh.nombre }}</div>
-                  <div class="als-tipo">{{ sh.tipo }}</div>
+              <!-- Lentes de Contacto -->
+              <div class="gcard mb-5">
+                <div class="gcard-bar" style="background:linear-gradient(90deg,#06b6d4,#0d9488)"></div>
+                <div class="gc-head">
+                  <div class="gc-ico" style="background:rgba(6,182,212,.16);color:#06b6d4"><i class="fas fa-eye"></i></div>
+                  <div>
+                    <div class="gc-title">Inventario de Lentes de Contacto</div>
+                    <div class="gc-sub">Existencias, cobertura y distribución por tipo de lente de contacto</div>
+                  </div>
                 </div>
-                <div class="als-metrics">
-                  <span class="als-stock">{{ fmtn(sh.stock) }} piezas</span>
-                  <span class="als-cov" :style="{ color: sh.coverage < 30 ? '#ef4444' : sh.coverage < 60 ? '#f59e0b' : '#10b981' }">{{ sh.coverage }}%</span>
-                </div>
-                <div class="an-bar-track als-bar">
-                  <div class="an-bar-fill" :style="{ width: sh.coverage + '%', background: sh.coverage < 30 ? '#ef4444' : sh.coverage < 60 ? '#f59e0b' : '#10b981' }"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Plantillas con mayor stock (Lentes de Contacto) -->
-        <div v-if="canSeeInventory && s?.clTopHighStock?.length" class="gcard mb-5">
-          <div class="gcard-bar" style="background:linear-gradient(90deg,#10b981,#06b6d4)"></div>
-          <div class="gc-head">
-            <div class="gc-ico" style="background:rgba(16,185,129,.16);color:#10b981"><i class="fas fa-ranking-star"></i></div>
-            <div>
-              <div class="gc-title">Mayor stock — Lentes de Contacto</div>
-              <div class="gc-sub">Plantillas con más existencias acumuladas</div>
-            </div>
-          </div>
-          <div class="gc-body">
-            <div class="an-low-stock-list">
-              <div v-for="sh in s.clTopHighStock" :key="sh.id" class="an-low-stock-row">
-                <div class="als-info">
-                  <div class="als-name">{{ sh.nombre }}</div>
-                  <div class="als-tipo">{{ sh.tipo }}</div>
-                </div>
-                <div class="als-metrics">
-                  <span class="als-stock" style="color:#10b981">{{ fmtn(sh.stock) }} piezas</span>
-                  <span class="als-cov">{{ sh.coverage }}%</span>
+                <div class="gc-body">
+                  <div class="an-trio">
+                    <div class="an-trio-item"><div class="at-lbl">Hojas activas</div><div class="at-val" style="color:#06b6d4" v-if="!isLoading">{{ s?.clActiveSheets ?? 0 }}</div><b-skeleton v-else :width="50" :height="32" animated /><div class="at-cap">Plantillas de lentes de contacto</div></div>
+                    <div class="an-trio-sep"></div>
+                    <div class="an-trio-item"><div class="at-lbl">Existencias totales</div><div class="at-val" style="color:#0d9488" v-if="!isLoading">{{ fmtn(s?.clTotalStock) }}</div><b-skeleton v-else :width="70" :height="32" animated /><div class="at-cap">Piezas en almacén</div></div>
+                    <div class="an-trio-sep"></div>
+                    <div class="an-trio-item"><div class="at-lbl">Combinaciones</div><div class="at-val" style="color:#3b82f6" v-if="!isLoading">{{ fmtn(s?.clTotalCombinations) }}</div><b-skeleton v-else :width="70" :height="32" animated /><div class="at-cap">Esférica, Cilíndrica, Eje, Adición</div></div>
+                    <div class="an-trio-sep"></div>
+                    <div class="an-trio-item"><div class="at-lbl">Cobertura</div><div class="at-val" style="color:#10b981" v-if="!isLoading">{{ s?.clCoveragePct ?? 0 }}%</div><b-skeleton v-else :width="50" :height="32" animated /><div class="at-cap">{{ fmtn(s?.clWithStock) }} con stock</div></div>
+                  </div>
+                  <div class="an-chips mt-3">
+                    <div class="an-chip"><div class="ach-lbl">Promedio por celda</div><div class="ach-val">{{ s?.clAvgPerCell ?? 0 }}<span class="ach-unit"> pzas</span></div></div>
+                    <div class="an-chip"><div class="ach-lbl">Con stock</div><div class="ach-val">{{ fmtn(s?.clWithStock) }}</div></div>
+                    <div class="an-chip"><div class="ach-lbl">Sin stock</div><div class="ach-val" style="color:#f59e0b">{{ fmtn((s?.clTotalCombinations ?? 0) - (s?.clWithStock ?? 0)) }}</div></div>
+                  </div>
+                  <div class="an-divider my-3"><span>Distribución por tipo de lente de contacto</span></div>
+                  <div v-if="!isLoading">
+                    <div v-if="s?.clDistribution?.length" class="an-families">
+                      <div v-for="fam in s.clDistribution" :key="fam.name" class="an-family-row">
+                        <div class="an-family-head"><span class="an-family-name">{{ fam.name }}</span><span class="an-family-pct">{{ fam.percentage }}%</span></div>
+                        <div class="an-bar-track"><div class="an-bar-fill" :style="{ width: fam.percentage + '%', background: 'linear-gradient(90deg,#06b6d4,#0d9488)' }"></div></div>
+                        <div class="an-family-detail"><span>{{ fmtn(fam.stock) }} existencias</span><span>{{ fmtn(fam.combinations) }} combinaciones</span><span>{{ fam.sheets }} plantilla{{ fam.sheets !== 1 ? 's' : '' }}</span></div>
+                      </div>
+                    </div>
+                    <p v-else class="an-empty">Sin datos de lentes de contacto en este período.</p>
+                  </div>
+                  <div v-else>
+                    <b-skeleton width="100%" :height="46" animated class="mb-2" />
+                    <b-skeleton width="100%" :height="46" animated class="mb-2" />
+                    <b-skeleton width="80%" :height="46" animated />
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
 
-        <!-- Plantillas con menor cobertura (Inventario Optico) -->
-        <div v-if="canSeeInventory && s?.opticTopLowStock?.length" class="gcard mb-5">
-          <div class="gcard-bar" style="background:linear-gradient(90deg,#f59e0b,#ec4899)"></div>
-          <div class="gc-head">
-            <div class="gc-ico" style="background:rgba(245,158,11,.16);color:#f59e0b"><i class="fas fa-triangle-exclamation"></i></div>
-            <div>
-              <div class="gc-title">Menor cobertura — Inventario Optico</div>
-              <div class="gc-sub">Plantillas de bases y micas con menor stock</div>
-            </div>
-          </div>
-          <div class="gc-body">
-            <div class="an-low-stock-list">
-              <div v-for="sh in s.opticTopLowStock" :key="sh.id" class="an-low-stock-row">
-                <div class="als-info">
-                  <div class="als-name">{{ sh.nombre }}</div>
-                  <div class="als-tipo">{{ sh.tipo }}</div>
+              <!-- Low stock CL -->
+              <div v-if="s?.clTopLowStock?.length" class="gcard mb-5">
+                <div class="gcard-bar" style="background:linear-gradient(90deg,#f59e0b,#ef4444)"></div>
+                <div class="gc-head">
+                  <div class="gc-ico" style="background:rgba(245,158,11,.16);color:#f59e0b"><i class="fas fa-triangle-exclamation"></i></div>
+                  <div><div class="gc-title">Menor cobertura — Lentes de Contacto</div><div class="gc-sub">Plantillas con menor porcentaje de celdas con stock</div></div>
                 </div>
-                <div class="als-metrics">
-                  <span class="als-stock">{{ fmtn(sh.stock) }} piezas</span>
-                  <span class="als-cov" :style="{ color: sh.coverage < 30 ? '#ef4444' : sh.coverage < 60 ? '#f59e0b' : '#10b981' }">{{ sh.coverage }}%</span>
-                </div>
-                <div class="an-bar-track als-bar">
-                  <div class="an-bar-fill" :style="{ width: sh.coverage + '%', background: sh.coverage < 30 ? '#ef4444' : sh.coverage < 60 ? '#f59e0b' : '#10b981' }"></div>
+                <div class="gc-body">
+                  <div class="an-low-stock-list">
+                    <div v-for="sh in s.clTopLowStock" :key="sh.id" class="an-low-stock-row">
+                      <div class="als-info"><div class="als-name">{{ sh.nombre }}</div><div class="als-tipo">{{ sh.tipo }}</div></div>
+                      <div class="als-metrics"><span class="als-stock">{{ fmtn(sh.stock) }} piezas</span><span class="als-cov" :style="{ color: sh.coverage < 30 ? '#ef4444' : sh.coverage < 60 ? '#f59e0b' : '#10b981' }">{{ sh.coverage }}%</span></div>
+                      <div class="an-bar-track als-bar"><div class="an-bar-fill" :style="{ width: sh.coverage + '%', background: sh.coverage < 30 ? '#ef4444' : sh.coverage < 60 ? '#f59e0b' : '#10b981' }"></div></div>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
 
-        <!-- Devolutions analytics — root/eurovision/supervisor/laboratorio -->
-        <div v-if="canSeeDevolutions" class="gcard mb-5">
-          <div class="gcard-bar" style="background:linear-gradient(90deg,#ec4899,#f43f5e,#f59e0b)"></div>
-          <div class="gc-head">
-            <div class="gc-ico" style="background:rgba(236,72,153,.16);color:#ec4899"><i class="fas fa-rotate-left"></i></div>
-            <div>
-              <div class="gc-title">Analíticas de devoluciones</div>
-              <div class="gc-sub">Estado, tendencias y tasa de aprobación del período</div>
-            </div>
-          </div>
-          <div class="gc-body">
-            <div class="an-devol-grid">
-              <div class="an-devol-cell">
-                <div class="adc-ico" style="background:rgba(245,158,11,.15);color:#f59e0b"><i class="fas fa-hourglass-half"></i></div>
-                <div class="adc-val" style="color:#f59e0b" v-if="!isLoading">{{ s?.devolucionesPendientes ?? 0 }}</div>
-                <b-skeleton v-else :width="40" :height="24" animated />
-                <div class="adc-lbl">Pendientes</div>
-              </div>
-              <div class="an-devol-cell">
-                <div class="adc-ico" style="background:rgba(59,130,246,.15);color:#3b82f6"><i class="fas fa-magnifying-glass"></i></div>
-                <div class="adc-val" style="color:#3b82f6" v-if="!isLoading">{{ s?.devolucionesEnRevision ?? 0 }}</div>
-                <b-skeleton v-else :width="40" :height="24" animated />
-                <div class="adc-lbl">En revisión</div>
-              </div>
-              <div class="an-devol-cell">
-                <div class="adc-ico" style="background:rgba(16,185,129,.15);color:#10b981"><i class="fas fa-circle-check"></i></div>
-                <div class="adc-val" style="color:#10b981" v-if="!isLoading">{{ s?.devolucionesAprobadas ?? 0 }}</div>
-                <b-skeleton v-else :width="40" :height="24" animated />
-                <div class="adc-lbl">Aprobadas</div>
-              </div>
-              <div class="an-devol-cell">
-                <div class="adc-ico" style="background:rgba(239,68,68,.15);color:#ef4444"><i class="fas fa-circle-xmark"></i></div>
-                <div class="adc-val" style="color:#ef4444" v-if="!isLoading">{{ s?.devolucionesRechazadas ?? 0 }}</div>
-                <b-skeleton v-else :width="40" :height="24" animated />
-                <div class="adc-lbl">Rechazadas</div>
-              </div>
-              <div class="an-devol-cell">
-                <div class="adc-ico" style="background:var(--c-primary-alpha);color:var(--c-primary)"><i class="fas fa-box-archive"></i></div>
-                <div class="adc-val" style="color:var(--c-primary)" v-if="!isLoading">{{ s?.devolucionesProcesadas ?? 0 }}</div>
-                <b-skeleton v-else :width="40" :height="24" animated />
-                <div class="adc-lbl">Procesadas</div>
-              </div>
-              <div class="an-devol-cell">
-                <div class="adc-ico" style="background:rgba(236,72,153,.15);color:#ec4899"><i class="fas fa-calendar-day"></i></div>
-                <div class="adc-val" style="color:#ec4899" v-if="!isLoading">{{ s?.devolucionesHoy ?? 0 }}</div>
-                <b-skeleton v-else :width="40" :height="24" animated />
-                <div class="adc-lbl">Hoy</div>
-              </div>
-            </div>
-
-            <div class="an-divider my-3"><span>Tendencia temporal</span></div>
-            <div class="an-bars" v-if="!isLoading">
-              <div class="an-bar-row">
-                <span class="an-bar-lbl">7 días</span>
-                <div class="an-bar-track"><div class="an-bar-fill" :style="{ width: devol7dPct + '%', background: 'linear-gradient(90deg,#ec4899,#f43f5e)' }"></div></div>
-                <span class="an-bar-pct">{{ s?.devolucionesTotal7d ?? 0 }}</span>
-              </div>
-              <div class="an-bar-row">
-                <span class="an-bar-lbl">30 días</span>
-                <div class="an-bar-track"><div class="an-bar-fill" :style="{ width: '100%', background: 'linear-gradient(90deg,var(--c-primary),#ec4899)' }"></div></div>
-                <span class="an-bar-pct">{{ s?.devolucionesTotal30d ?? 0 }}</span>
-              </div>
-            </div>
-
-            <div class="an-devol-rate mt-3" v-if="!isLoading">
-              <div class="adr-head">
-                <span class="adr-label"><i class="fas fa-chart-line mr-1"></i> Tasa de aprobación</span>
-                <span class="adr-val" :style="{ color: devolApprovalRate >= 70 ? '#10b981' : devolApprovalRate >= 50 ? '#f59e0b' : '#ef4444' }">{{ devolApprovalRate }}%</span>
-              </div>
-              <b-progress :value="devolApprovalRate" size="is-small" :type="devolApprovalRate >= 70 ? 'is-success' : devolApprovalRate >= 50 ? 'is-warning' : 'is-danger'" :show-value="false" />
-              <p class="adr-desc">{{ devolApprovalRate >= 70 ? 'Alta aprobación — proceso fluido.' : devolApprovalRate >= 50 ? 'Tasa media — revisar criterios de rechazo.' : 'Baja aprobación — análisis de causas recomendado.' }}</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Orders analytics — all roles -->
-        <div v-if="canSeeOrders" class="gcard mb-5">
-          <div class="gcard-bar" style="background:linear-gradient(90deg,#3b82f6,var(--c-primary))"></div>
-          <div class="gc-head">
-            <div class="gc-ico" style="background:rgba(59,130,246,.16);color:#3b82f6"><i class="fas fa-flask-vial"></i></div>
-            <div>
-              <div class="gc-title">Analíticas de pedidos</div>
-              <div class="gc-sub">Métricas detalladas del flujo de pedidos del período</div>
-            </div>
-          </div>
-          <div class="gc-body">
-            <div class="an-stat-grid">
-              <div class="an-stat-cell">
-                <div class="asc-ico" style="background:rgba(245,158,11,.12);color:#f59e0b"><i class="fas fa-clock"></i></div>
-                <div class="asc-val" style="color:#f59e0b" v-if="!isLoading">{{ s?.ordersPending ?? 0 }}</div>
-                <b-skeleton v-else :width="60" :height="28" animated />
-                <div class="asc-lbl">Pendientes</div>
-                <div class="asc-cap">Abiertos / parciales</div>
-              </div>
-              <div class="an-stat-cell">
-                <div class="asc-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i class="fas fa-circle-check"></i></div>
-                <div class="asc-val" style="color:#10b981" v-if="!isLoading">{{ s?.ordersClosed30d ?? 0 }}</div>
-                <b-skeleton v-else :width="60" :height="28" animated />
-                <div class="asc-lbl">Cerrados (30d)</div>
-                <div class="asc-cap">Este mes</div>
-              </div>
-              <div class="an-stat-cell">
-                <div class="asc-ico" style="background:rgba(239,68,68,.12);color:#ef4444"><i class="fas fa-ban"></i></div>
-                <div class="asc-val" style="color:#ef4444" v-if="!isLoading">{{ s?.ordersCancelledAll ?? 0 }}</div>
-                <b-skeleton v-else :width="60" :height="28" animated />
-                <div class="asc-lbl">Cancelados</div>
-                <div class="asc-cap">Histórico total</div>
-              </div>
-              <div class="an-stat-cell">
-                <div class="asc-ico" style="background:var(--c-primary-alpha);color:var(--c-primary)"><i class="fas fa-plus"></i></div>
-                <div class="asc-val" style="color:var(--c-primary)" v-if="!isLoading">{{ s?.ordersToday ?? 0 }}</div>
-                <b-skeleton v-else :width="60" :height="28" animated />
-                <div class="asc-lbl">Creados hoy</div>
-                <div class="asc-cap">Nuevos pedidos</div>
-              </div>
-              <div class="an-stat-cell">
-                <div class="asc-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i class="fas fa-flag-checkered"></i></div>
-                <div class="asc-val" style="color:#10b981" v-if="!isLoading">{{ s?.ordersClosedToday ?? 0 }}</div>
-                <b-skeleton v-else :width="60" :height="28" animated />
-                <div class="asc-lbl">Cerrados hoy</div>
-                <div class="asc-cap">Del día actual</div>
-              </div>
-              <div class="an-stat-cell">
-                <div class="asc-ico" style="background:rgba(59,130,246,.12);color:#3b82f6"><i class="fas fa-layer-group"></i></div>
-                <div class="asc-val" style="color:#3b82f6" v-if="!isLoading">{{ fmtn(s?.ordersClosedAll) }}</div>
-                <b-skeleton v-else :width="60" :height="28" animated />
-                <div class="asc-lbl">Total histórico</div>
-                <div class="asc-cap">Cerrados acumulados</div>
-              </div>
-            </div>
-
-            <template v-if="canSeeLab">
-              <div class="an-divider my-3"><span>Métricas de laboratorio</span></div>
-              <div class="an-stat-grid">
-                <div class="an-stat-cell">
-                  <div class="asc-ico" style="background:rgba(6,182,212,.12);color:#06b6d4"><i class="fas fa-rotate"></i></div>
-                  <div class="asc-val" :style="{ color: (s?.corrections30d ?? 0) > 10 ? '#f59e0b' : '#06b6d4' }" v-if="!isLoading">{{ s?.corrections30d ?? 0 }}</div>
-                  <b-skeleton v-else :width="60" :height="28" animated />
-                  <div class="asc-lbl">Correcciones (30d)</div>
-                  <div class="asc-cap">Solicitudes</div>
+              <!-- High stock CL -->
+              <div v-if="s?.clTopHighStock?.length" class="gcard mb-5">
+                <div class="gcard-bar" style="background:linear-gradient(90deg,#10b981,#06b6d4)"></div>
+                <div class="gc-head">
+                  <div class="gc-ico" style="background:rgba(16,185,129,.16);color:#10b981"><i class="fas fa-ranking-star"></i></div>
+                  <div><div class="gc-title">Mayor stock — Lentes de Contacto</div><div class="gc-sub">Plantillas con más existencias acumuladas</div></div>
                 </div>
-                <div class="an-stat-cell">
-                  <div class="asc-ico" style="background:rgba(6,182,212,.12);color:#06b6d4"><i class="fas fa-barcode"></i></div>
-                  <div class="asc-val" style="color:#06b6d4" v-if="!isLoading">{{ s?.scansToday ?? 0 }}</div>
-                  <b-skeleton v-else :width="60" :height="28" animated />
-                  <div class="asc-lbl">Escaneos hoy</div>
-                  <div class="asc-cap">Salidas escáner</div>
-                </div>
-                <div class="an-stat-cell">
-                  <div class="asc-ico" style="background:var(--c-primary-alpha);color:var(--c-primary)"><i class="fas fa-pencil"></i></div>
-                  <div class="asc-val" style="color:var(--c-primary)" v-if="!isLoading">{{ s?.edits30d ?? 0 }}</div>
-                  <b-skeleton v-else :width="60" :height="28" animated />
-                  <div class="asc-lbl">Ediciones (30d)</div>
-                  <div class="asc-cap">Cambios a pedidos</div>
-                </div>
-                <div class="an-stat-cell">
-                  <div class="asc-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i class="fas fa-check"></i></div>
-                  <div class="asc-val" style="color:#10b981" v-if="!isLoading">{{ s?.ordersClosedToday ?? 0 }}</div>
-                  <b-skeleton v-else :width="60" :height="28" animated />
-                  <div class="asc-lbl">Cerrados hoy</div>
-                  <div class="asc-cap">Del día actual</div>
+                <div class="gc-body">
+                  <div class="an-low-stock-list">
+                    <div v-for="sh in s.clTopHighStock" :key="sh.id" class="an-low-stock-row">
+                      <div class="als-info"><div class="als-name">{{ sh.nombre }}</div><div class="als-tipo">{{ sh.tipo }}</div></div>
+                      <div class="als-metrics"><span class="als-stock" style="color:#10b981">{{ fmtn(sh.stock) }} piezas</span><span class="als-cov">{{ sh.coverage }}%</span></div>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </template>
-          </div>
-        </div>
 
-        <!-- Lab quality — laboratorio/root/eurovision -->
-        <div v-if="canSeeLab" class="gcard mb-5">
-          <div class="gcard-bar" style="background:linear-gradient(90deg,#06b6d4,#3b82f6,var(--c-primary))"></div>
-          <div class="gc-head">
-            <div class="gc-ico" style="background:rgba(6,182,212,.16);color:#06b6d4"><i class="fas fa-microscope"></i></div>
-            <div>
-              <div class="gc-title">Calidad del laboratorio</div>
-              <div class="gc-sub">Eficiencia de procesamiento y tasa de correcciones del período</div>
-            </div>
-          </div>
-          <div class="gc-body">
-            <div class="an-stat-grid">
-              <div class="an-stat-cell">
-                <div class="asc-ico" style="background:rgba(6,182,212,.12);color:#06b6d4"><i class="fas fa-rotate"></i></div>
-                <div class="asc-val" :style="{ color: (s?.corrections7d ?? 0) > 5 ? '#f59e0b' : '#10b981' }" v-if="!isLoading">{{ s?.corrections7d ?? 0 }}</div>
-                <b-skeleton v-else :width="60" :height="28" animated />
-                <div class="asc-lbl">Correcciones (7d)</div>
-                <div class="asc-cap">Última semana</div>
-              </div>
-              <div class="an-stat-cell">
-                <div class="asc-ico" style="background:var(--c-primary-alpha);color:var(--c-primary)"><i class="fas fa-list-check"></i></div>
-                <div class="asc-val" style="color:var(--c-primary)" v-if="!isLoading">{{ s?.corrections30d ?? 0 }}</div>
-                <b-skeleton v-else :width="60" :height="28" animated />
-                <div class="asc-lbl">Correcciones (30d)</div>
-                <div class="asc-cap">Total período</div>
-              </div>
-              <div class="an-stat-cell">
-                <div class="asc-ico" style="background:rgba(6,182,212,.12);color:#06b6d4"><i class="fas fa-barcode"></i></div>
-                <div class="asc-val" style="color:#06b6d4" v-if="!isLoading">{{ s?.scansToday ?? 0 }}</div>
-                <b-skeleton v-else :width="60" :height="28" animated />
-                <div class="asc-lbl">Escaneos hoy</div>
-                <div class="asc-cap">Salidas escáner</div>
-              </div>
-              <div class="an-stat-cell">
-                <div class="asc-ico" style="background:rgba(59,130,246,.12);color:#3b82f6"><i class="fas fa-pen-to-square"></i></div>
-                <div class="asc-val" style="color:#3b82f6" v-if="!isLoading">{{ s?.edits30d ?? 0 }}</div>
-                <b-skeleton v-else :width="60" :height="28" animated />
-                <div class="asc-lbl">Ediciones (30d)</div>
-                <div class="asc-cap">Modificaciones</div>
-              </div>
-            </div>
-
-            <div class="an-quality-bar mt-4" v-if="!isLoading">
-              <div class="aqb-head">
-                <span class="aqb-lbl"><i class="fas fa-chart-line mr-1"></i> Tasa de corrección</span>
-                <span class="aqb-val" :style="{ color: correctionRate > 10 ? '#ef4444' : correctionRate > 5 ? '#f59e0b' : '#10b981' }">{{ correctionRate }}%</span>
-              </div>
-              <b-progress :value="correctionRate" size="is-small" :type="correctionRate > 10 ? 'is-danger' : correctionRate > 5 ? 'is-warning' : 'is-success'" :show-value="false" />
-              <div class="aqb-desc">{{ correctionRate <= 5 ? 'Calidad excelente — mantener procesos.' : correctionRate <= 10 ? 'Calidad aceptable — revisar técnicas.' : 'Alta tasa — intervención recomendada.' }}</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- My activity — ventas only -->
-        <div v-if="isVentas" class="gcard mb-5">
-          <div class="gcard-bar" style="background:linear-gradient(90deg,#10b981,#65a30d)"></div>
-          <div class="gc-head">
-            <div class="gc-ico" style="background:rgba(16,185,129,.16);color:#10b981"><i class="fas fa-chart-line"></i></div>
-            <div>
-              <div class="gc-title">Mi actividad</div>
-              <div class="gc-sub">Resumen de tu operación en el período activo</div>
-            </div>
-          </div>
-          <div class="gc-body">
-            <div class="an-stat-grid">
-              <div class="an-stat-cell">
-                <div class="asc-ico" style="background:var(--c-primary-alpha);color:var(--c-primary)"><i class="fas fa-plus-circle"></i></div>
-                <div class="asc-val" style="color:var(--c-primary)" v-if="!isLoading">{{ s?.ordersToday ?? 0 }}</div>
-                <b-skeleton v-else :width="60" :height="28" animated />
-                <div class="asc-lbl">Pedidos hoy</div>
-                <div class="asc-cap">Nuevos pedidos</div>
-              </div>
-              <div class="an-stat-cell">
-                <div class="asc-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i class="fas fa-check-circle"></i></div>
-                <div class="asc-val" style="color:#10b981" v-if="!isLoading">{{ s?.ordersClosedToday ?? 0 }}</div>
-                <b-skeleton v-else :width="60" :height="28" animated />
-                <div class="asc-lbl">Cerrados hoy</div>
-                <div class="asc-cap">Completados</div>
-              </div>
-              <div class="an-stat-cell">
-                <div class="asc-ico" style="background:rgba(245,158,11,.12);color:#f59e0b"><i class="fas fa-clipboard-list"></i></div>
-                <div class="asc-val" style="color:#f59e0b" v-if="!isLoading">{{ s?.ordersPending ?? 0 }}</div>
-                <b-skeleton v-else :width="60" :height="28" animated />
-                <div class="asc-lbl">En curso</div>
-                <div class="asc-cap">Pendientes activos</div>
-              </div>
-              <div class="an-stat-cell">
-                <div class="asc-ico" style="background:rgba(59,130,246,.12);color:#3b82f6"><i class="fas fa-layer-group"></i></div>
-                <div class="asc-val" style="color:#3b82f6" v-if="!isLoading">{{ fmtn(s?.ordersClosedAll) }}</div>
-                <b-skeleton v-else :width="60" :height="28" animated />
-                <div class="asc-lbl">Total histórico</div>
-                <div class="asc-cap">Cerrados acumulados</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Supervisor operations quality -->
-        <div v-if="isSupervisor" class="gcard mb-5">
-          <div class="gcard-bar" style="background:linear-gradient(90deg,#0891b2,#0d9488)"></div>
-          <div class="gc-head">
-            <div class="gc-ico" style="background:rgba(8,145,178,.16);color:#0891b2"><i class="fas fa-star-half-stroke"></i></div>
-            <div>
-              <div class="gc-title">Calidad operativa</div>
-              <div class="gc-sub">Indicadores de rendimiento del equipo y la operación</div>
-            </div>
-          </div>
-          <div class="gc-body">
-            <div class="an-stat-grid">
-              <div class="an-stat-cell">
-                <div class="asc-ico" style="background:rgba(239,68,68,.12);color:#ef4444"><i class="fas fa-rotate"></i></div>
-                <div class="asc-val" :style="{ color: (s?.corrections30d ?? 0) > 10 ? '#ef4444' : '#10b981' }" v-if="!isLoading">{{ s?.corrections30d ?? 0 }}</div>
-                <b-skeleton v-else :width="50" :height="28" animated />
-                <div class="asc-lbl">Correcciones (30d)</div>
-                <div class="asc-cap">Del equipo de lab</div>
-              </div>
-              <div class="an-stat-cell">
-                <div class="asc-ico" style="background:rgba(59,130,246,.12);color:#3b82f6"><i class="fas fa-pencil"></i></div>
-                <div class="asc-val" style="color:#3b82f6" v-if="!isLoading">{{ s?.edits30d ?? 0 }}</div>
-                <b-skeleton v-else :width="50" :height="28" animated />
-                <div class="asc-lbl">Ediciones (30d)</div>
-                <div class="asc-cap">Cambios a pedidos</div>
-              </div>
-              <div class="an-stat-cell">
-                <div class="asc-ico" style="background:rgba(6,182,212,.12);color:#06b6d4"><i class="fas fa-barcode"></i></div>
-                <div class="asc-val" style="color:#06b6d4" v-if="!isLoading">{{ s?.scansToday ?? 0 }}</div>
-                <b-skeleton v-else :width="50" :height="28" animated />
-                <div class="asc-lbl">Escaneos hoy</div>
-                <div class="asc-cap">Actividad del día</div>
-              </div>
-              <div class="an-stat-cell">
-                <div class="asc-ico" style="background:rgba(239,68,68,.12);color:#ef4444"><i class="fas fa-ban"></i></div>
-                <div class="asc-val" style="color:#ef4444" v-if="!isLoading">{{ s?.ordersCancelledAll ?? 0 }}</div>
-                <b-skeleton v-else :width="50" :height="28" animated />
-                <div class="asc-lbl">Cancelados total</div>
-                <div class="asc-cap">Histórico</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- ══ SIDEBAR ══ -->
-      <div class="an-col-side">
-
-        <!-- Service level — root/eurovision/supervisor -->
-        <div v-if="canSeeReports" class="gcard mb-4">
-          <div class="gcard-bar" style="background:linear-gradient(90deg,var(--c-primary),#2563eb)"></div>
-          <div class="gc-head">
-            <div class="gc-ico" style="background:var(--c-primary-alpha);color:var(--c-primary)"><i class="fas fa-gauge-high"></i></div>
-            <div>
-              <div class="gc-title">Nivel de servicio</div>
-              <div class="gc-sub">Pedidos sin correcciones (30d)</div>
-            </div>
-          </div>
-          <div class="gc-body">
-            <template v-if="!isLoading">
-              <div class="sl-display">
-                <div class="sl-ring" :class="serviceLevelClass">
-                  <span class="sl-pct">{{ s?.serviceLevel ?? 0 }}%</span>
-                  <span class="sl-label-sm">{{ serviceLevelStatus }}</span>
+              <!-- Low stock Optico -->
+              <div v-if="s?.opticTopLowStock?.length" class="gcard mb-5">
+                <div class="gcard-bar" style="background:linear-gradient(90deg,#f59e0b,#ec4899)"></div>
+                <div class="gc-head">
+                  <div class="gc-ico" style="background:rgba(245,158,11,.16);color:#f59e0b"><i class="fas fa-triangle-exclamation"></i></div>
+                  <div><div class="gc-title">Menor cobertura — Inventario Optico</div><div class="gc-sub">Plantillas de bases y micas con menor stock</div></div>
                 </div>
-                <div class="sl-details">
-                  <div class="sl-row"><span class="sl-k">Pedidos cerrados</span><b class="sl-v">{{ s?.ordersClosed30d ?? 0 }}</b></div>
-                  <div class="sl-row"><span class="sl-k">Con corrección</span><b class="sl-v">{{ s?.corrections30d ?? 0 }}</b></div>
-                  <div class="sl-row"><span class="sl-k">Tasa corrección</span><b class="sl-v">{{ correctionRate }}%</b></div>
-                  <div class="sl-row"><span class="sl-k">Período</span><b class="sl-v">{{ s?.periodLabel || '30d' }}</b></div>
+                <div class="gc-body">
+                  <div class="an-low-stock-list">
+                    <div v-for="sh in s.opticTopLowStock" :key="sh.id" class="an-low-stock-row">
+                      <div class="als-info"><div class="als-name">{{ sh.nombre }}</div><div class="als-tipo">{{ sh.tipo }}</div></div>
+                      <div class="als-metrics"><span class="als-stock">{{ fmtn(sh.stock) }} piezas</span><span class="als-cov" :style="{ color: sh.coverage < 30 ? '#ef4444' : sh.coverage < 60 ? '#f59e0b' : '#10b981' }">{{ sh.coverage }}%</span></div>
+                      <div class="an-bar-track als-bar"><div class="an-bar-fill" :style="{ width: sh.coverage + '%', background: sh.coverage < 30 ? '#ef4444' : sh.coverage < 60 ? '#f59e0b' : '#10b981' }"></div></div>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <b-progress :value="s?.serviceLevel ?? 0" size="is-small" :type="serviceLevelTagType" :show-value="false" class="mt-3" />
-              <div class="sl-chip" :class="`sl-chip-${serviceLevelClass}`">
-                <i class="fas fa-circle-info"></i>
-                {{ serviceLevelStatus }} — {{ serviceLevelComment }}
-              </div>
-            </template>
-            <template v-else>
-              <b-skeleton width="100%" :height="92" animated class="mb-2" />
-              <b-skeleton width="100%" :height="8" animated />
-            </template>
-          </div>
-        </div>
+            </div>
 
-        <!-- Inventory coverage — root/eurovision -->
-        <div v-if="canSeeInventory" class="gcard mb-4">
-          <div class="gcard-bar" style="background:linear-gradient(90deg,#10b981,#3b82f6)"></div>
-          <div class="gc-head">
-            <div class="gc-ico" style="background:rgba(16,185,129,.16);color:#10b981"><i class="fas fa-database"></i></div>
-            <div>
-              <div class="gc-title">Cobertura de inventario óptico</div>
-              <div class="gc-sub">Estado general del stock de bases y micas</div>
+            <!-- Sidebar inventario -->
+            <div class="an-col-side">
+              <div class="gcard mb-4">
+                <div class="gcard-bar" style="background:linear-gradient(90deg,#10b981,#3b82f6)"></div>
+                <div class="gc-head">
+                  <div class="gc-ico" style="background:rgba(16,185,129,.16);color:#10b981"><i class="fas fa-database"></i></div>
+                  <div><div class="gc-title">Cobertura de inventario óptico</div><div class="gc-sub">Estado general del stock de bases y micas</div></div>
+                </div>
+                <div class="gc-body">
+                  <template v-if="!isLoading">
+                    <div class="cov-row"><span class="cov-k">Combinaciones totales</span><b class="cov-v">{{ fmtn(s?.totalCombinations) }}</b></div>
+                    <div class="cov-row"><span class="cov-k">Con stock</span><b class="cov-v" style="color:#10b981">{{ fmtn(s?.withStock) }}</b></div>
+                    <div class="cov-row"><span class="cov-k">Cobertura</span><b class="cov-v">{{ s?.coveragePct ?? 0 }}%</b></div>
+                    <b-progress :value="s?.coveragePct ?? 0" size="is-small" type="is-primary" :show-value="false" class="my-2" />
+                    <div class="cov-row"><span class="cov-k">Existencias totales</span><b class="cov-v">{{ fmtn(s?.totalStock) }}</b></div>
+                    <div class="cov-row"><span class="cov-k">Alertas críticas</span><b-tag :type="(s?.criticalAlerts ?? 0) > 0 ? 'is-danger' : 'is-success'" size="is-small" class="is-rounded">{{ s?.criticalAlerts ?? 0 }}</b-tag></div>
+                    <div class="cov-row"><span class="cov-k">Stock seguro</span><b class="cov-v">{{ safeStockPct }}%</b></div>
+                    <b-progress :value="safeStockPct" size="is-small" type="is-info" :show-value="false" class="mt-1" />
+                  </template>
+                  <template v-else><b-skeleton width="100%" :height="140" animated /></template>
+                </div>
+              </div>
+              <div class="gcard mb-4">
+                <div class="gcard-bar" style="background:linear-gradient(90deg,#06b6d4,#0d9488)"></div>
+                <div class="gc-head">
+                  <div class="gc-ico" style="background:rgba(6,182,212,.16);color:#06b6d4"><i class="fas fa-eye"></i></div>
+                  <div><div class="gc-title">Cobertura lentes de contacto</div><div class="gc-sub">Estado del stock de lentes de contacto</div></div>
+                </div>
+                <div class="gc-body">
+                  <template v-if="!isLoading">
+                    <div class="cov-row"><span class="cov-k">Hojas activas</span><b class="cov-v">{{ s?.clActiveSheets ?? 0 }}</b></div>
+                    <div class="cov-row"><span class="cov-k">Combinaciones totales</span><b class="cov-v">{{ fmtn(s?.clTotalCombinations) }}</b></div>
+                    <div class="cov-row"><span class="cov-k">Con stock</span><b class="cov-v" style="color:#10b981">{{ fmtn(s?.clWithStock) }}</b></div>
+                    <div class="cov-row"><span class="cov-k">Cobertura</span><b class="cov-v">{{ s?.clCoveragePct ?? 0 }}%</b></div>
+                    <b-progress :value="s?.clCoveragePct ?? 0" size="is-small" type="is-info" :show-value="false" class="my-2" />
+                    <div class="cov-row"><span class="cov-k">Existencias totales</span><b class="cov-v">{{ fmtn(s?.clTotalStock) }}</b></div>
+                    <div class="cov-row"><span class="cov-k">Promedio por celda</span><b class="cov-v">{{ s?.clAvgPerCell ?? 0 }}</b></div>
+                  </template>
+                  <template v-else><b-skeleton width="100%" :height="120" animated /></template>
+                </div>
+              </div>
             </div>
           </div>
-          <div class="gc-body">
-            <template v-if="!isLoading">
-              <div class="cov-row"><span class="cov-k">Combinaciones totales</span><b class="cov-v">{{ fmtn(s?.totalCombinations) }}</b></div>
-              <div class="cov-row"><span class="cov-k">Con stock</span><b class="cov-v" style="color:#10b981">{{ fmtn(s?.withStock) }}</b></div>
-              <div class="cov-row"><span class="cov-k">Cobertura</span><b class="cov-v">{{ s?.coveragePct ?? 0 }}%</b></div>
-              <b-progress :value="s?.coveragePct ?? 0" size="is-small" type="is-primary" :show-value="false" class="my-2" />
-              <div class="cov-row"><span class="cov-k">Existencias totales</span><b class="cov-v">{{ fmtn(s?.totalStock) }}</b></div>
-              <div class="cov-row">
-                <span class="cov-k">Alertas críticas</span>
-                <b-tag :type="(s?.criticalAlerts ?? 0) > 0 ? 'is-danger' : 'is-success'" size="is-small" class="is-rounded">{{ s?.criticalAlerts ?? 0 }}</b-tag>
-              </div>
-              <div class="cov-row"><span class="cov-k">Stock seguro</span><b class="cov-v">{{ safeStockPct }}%</b></div>
-              <b-progress :value="safeStockPct" size="is-small" type="is-info" :show-value="false" class="mt-1" />
-            </template>
-            <template v-else>
-              <b-skeleton width="100%" :height="140" animated />
-            </template>
-          </div>
-        </div>
+        </template>
 
-        <!-- CL coverage sidebar -->
-        <div v-if="canSeeInventory" class="gcard mb-4">
-          <div class="gcard-bar" style="background:linear-gradient(90deg,#06b6d4,#0d9488)"></div>
-          <div class="gc-head">
-            <div class="gc-ico" style="background:rgba(6,182,212,.16);color:#06b6d4"><i class="fas fa-eye"></i></div>
-            <div>
-              <div class="gc-title">Cobertura lentes de contacto</div>
-              <div class="gc-sub">Estado del stock de lentes de contacto</div>
-            </div>
-          </div>
-          <div class="gc-body">
-            <template v-if="!isLoading">
-              <div class="cov-row"><span class="cov-k">Hojas activas</span><b class="cov-v">{{ s?.clActiveSheets ?? 0 }}</b></div>
-              <div class="cov-row"><span class="cov-k">Combinaciones totales</span><b class="cov-v">{{ fmtn(s?.clTotalCombinations) }}</b></div>
-              <div class="cov-row"><span class="cov-k">Con stock</span><b class="cov-v" style="color:#10b981">{{ fmtn(s?.clWithStock) }}</b></div>
-              <div class="cov-row"><span class="cov-k">Cobertura</span><b class="cov-v">{{ s?.clCoveragePct ?? 0 }}%</b></div>
-              <b-progress :value="s?.clCoveragePct ?? 0" size="is-small" type="is-info" :show-value="false" class="my-2" />
-              <div class="cov-row"><span class="cov-k">Existencias totales</span><b class="cov-v">{{ fmtn(s?.clTotalStock) }}</b></div>
-              <div class="cov-row"><span class="cov-k">Promedio por celda</span><b class="cov-v">{{ s?.clAvgPerCell ?? 0 }}</b></div>
-            </template>
-            <template v-else>
-              <b-skeleton width="100%" :height="120" animated />
-            </template>
-          </div>
-        </div>
+        <!-- ═══════════════ TAB: PEDIDOS ═══════════════════════════════ -->
+        <template #pedidos>
+          <div class="an-tab-two-col">
+            <div class="an-col-main">
+              <!-- Orders analytics -->
+              <div class="gcard mb-5">
+                <div class="gcard-bar" style="background:linear-gradient(90deg,#3b82f6,var(--c-primary))"></div>
+                <div class="gc-head">
+                  <div class="gc-ico" style="background:rgba(59,130,246,.16);color:#3b82f6"><i class="fas fa-flask-vial"></i></div>
+                  <div><div class="gc-title">Analíticas de pedidos</div><div class="gc-sub">Métricas detalladas del flujo de pedidos del período</div></div>
+                </div>
+                <div class="gc-body">
+                  <div class="an-stat-grid">
+                    <div class="an-stat-cell"><div class="asc-ico" style="background:rgba(245,158,11,.12);color:#f59e0b"><i class="fas fa-clock"></i></div><div class="asc-val" style="color:#f59e0b" v-if="!isLoading">{{ s?.ordersPending ?? 0 }}</div><b-skeleton v-else :width="60" :height="28" animated /><div class="asc-lbl">Pendientes</div><div class="asc-cap">Abiertos / parciales</div></div>
+                    <div class="an-stat-cell"><div class="asc-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i class="fas fa-circle-check"></i></div><div class="asc-val" style="color:#10b981" v-if="!isLoading">{{ s?.ordersClosed30d ?? 0 }}</div><b-skeleton v-else :width="60" :height="28" animated /><div class="asc-lbl">Cerrados (30d)</div><div class="asc-cap">Este mes</div></div>
+                    <div class="an-stat-cell"><div class="asc-ico" style="background:rgba(239,68,68,.12);color:#ef4444"><i class="fas fa-ban"></i></div><div class="asc-val" style="color:#ef4444" v-if="!isLoading">{{ s?.ordersCancelledAll ?? 0 }}</div><b-skeleton v-else :width="60" :height="28" animated /><div class="asc-lbl">Cancelados</div><div class="asc-cap">Histórico total</div></div>
+                    <div class="an-stat-cell"><div class="asc-ico" style="background:var(--c-primary-alpha);color:var(--c-primary)"><i class="fas fa-plus"></i></div><div class="asc-val" style="color:var(--c-primary)" v-if="!isLoading">{{ s?.ordersToday ?? 0 }}</div><b-skeleton v-else :width="60" :height="28" animated /><div class="asc-lbl">Creados hoy</div><div class="asc-cap">Nuevos pedidos</div></div>
+                    <div class="an-stat-cell"><div class="asc-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i class="fas fa-flag-checkered"></i></div><div class="asc-val" style="color:#10b981" v-if="!isLoading">{{ s?.ordersClosedToday ?? 0 }}</div><b-skeleton v-else :width="60" :height="28" animated /><div class="asc-lbl">Cerrados hoy</div><div class="asc-cap">Del día actual</div></div>
+                    <div class="an-stat-cell"><div class="asc-ico" style="background:rgba(59,130,246,.12);color:#3b82f6"><i class="fas fa-layer-group"></i></div><div class="asc-val" style="color:#3b82f6" v-if="!isLoading">{{ fmtn(s?.ordersClosedAll) }}</div><b-skeleton v-else :width="60" :height="28" animated /><div class="asc-lbl">Total histórico</div><div class="asc-cap">Cerrados acumulados</div></div>
+                  </div>
+                  <template v-if="canSeeLab">
+                    <div class="an-divider my-3"><span>Métricas de laboratorio</span></div>
+                    <div class="an-stat-grid">
+                      <div class="an-stat-cell"><div class="asc-ico" style="background:rgba(6,182,212,.12);color:#06b6d4"><i class="fas fa-rotate"></i></div><div class="asc-val" :style="{ color: (s?.corrections30d ?? 0) > 10 ? '#f59e0b' : '#06b6d4' }" v-if="!isLoading">{{ s?.corrections30d ?? 0 }}</div><b-skeleton v-else :width="60" :height="28" animated /><div class="asc-lbl">Correcciones (30d)</div><div class="asc-cap">Solicitudes</div></div>
+                      <div class="an-stat-cell"><div class="asc-ico" style="background:rgba(6,182,212,.12);color:#06b6d4"><i class="fas fa-barcode"></i></div><div class="asc-val" style="color:#06b6d4" v-if="!isLoading">{{ s?.scansToday ?? 0 }}</div><b-skeleton v-else :width="60" :height="28" animated /><div class="asc-lbl">Escaneos hoy</div><div class="asc-cap">Salidas escáner</div></div>
+                      <div class="an-stat-cell"><div class="asc-ico" style="background:var(--c-primary-alpha);color:var(--c-primary)"><i class="fas fa-pencil"></i></div><div class="asc-val" style="color:var(--c-primary)" v-if="!isLoading">{{ s?.edits30d ?? 0 }}</div><b-skeleton v-else :width="60" :height="28" animated /><div class="asc-lbl">Ediciones (30d)</div><div class="asc-cap">Cambios a pedidos</div></div>
+                      <div class="an-stat-cell"><div class="asc-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i class="fas fa-check"></i></div><div class="asc-val" style="color:#10b981" v-if="!isLoading">{{ s?.ordersClosedToday ?? 0 }}</div><b-skeleton v-else :width="60" :height="28" animated /><div class="asc-lbl">Cerrados hoy</div><div class="asc-cap">Del día actual</div></div>
+                    </div>
+                  </template>
+                </div>
+              </div>
 
-        <!-- Devolutions sidebar summary — devolutions access -->
-        <div v-if="canSeeDevolutions" class="gcard mb-4">
-          <div class="gcard-bar" style="background:linear-gradient(90deg,#ec4899,#f43f5e)"></div>
-          <div class="gc-head">
-            <div class="gc-ico" style="background:rgba(236,72,153,.16);color:#ec4899"><i class="fas fa-rotate-left"></i></div>
-            <div>
-              <div class="gc-title">Devoluciones</div>
-              <div class="gc-sub">Resumen rápido del estado actual</div>
-            </div>
-          </div>
-          <div class="gc-body">
-            <template v-if="!isLoading">
-              <div class="cov-row">
-                <span class="cov-k">Pendientes</span>
-                <b-tag :type="(s?.devolucionesPendientes ?? 0) > 0 ? 'is-warning' : 'is-light'" size="is-small" class="is-rounded">{{ s?.devolucionesPendientes ?? 0 }}</b-tag>
-              </div>
-              <div class="cov-row"><span class="cov-k">En revisión</span><b class="cov-v">{{ s?.devolucionesEnRevision ?? 0 }}</b></div>
-              <div class="cov-row"><span class="cov-k">Aprobadas</span><b class="cov-v" style="color:#10b981">{{ s?.devolucionesAprobadas ?? 0 }}</b></div>
-              <div class="cov-row"><span class="cov-k">Rechazadas</span><b class="cov-v" style="color:#ef4444">{{ s?.devolucionesRechazadas ?? 0 }}</b></div>
-              <div class="cov-row"><span class="cov-k">Procesadas</span><b class="cov-v">{{ s?.devolucionesProcesadas ?? 0 }}</b></div>
-              <div class="an-divider my-2"></div>
-              <div class="cov-row"><span class="cov-k">Total (30d)</span><b class="cov-v">{{ s?.devolucionesTotal30d ?? 0 }}</b></div>
-              <div class="cov-row"><span class="cov-k">Total (7d)</span><b class="cov-v">{{ s?.devolucionesTotal7d ?? 0 }}</b></div>
-              <div class="cov-row"><span class="cov-k">Hoy</span><b class="cov-v">{{ s?.devolucionesHoy ?? 0 }}</b></div>
-              <div class="cov-row">
-                <span class="cov-k">Tasa aprobación</span>
-                <b class="cov-v" :style="{ color: devolApprovalRate >= 70 ? '#10b981' : devolApprovalRate >= 50 ? '#f59e0b' : '#ef4444' }">{{ devolApprovalRate }}%</b>
-              </div>
-            </template>
-            <template v-else>
-              <b-skeleton width="100%" :height="170" animated />
-            </template>
-          </div>
-        </div>
-
-        <!-- System metrics — root only -->
-        <div v-if="isRoot" class="gcard mb-4">
-          <div class="gcard-bar" style="background:linear-gradient(90deg,#dc2626,#ea580c)"></div>
-          <div class="gc-head">
-            <div class="gc-ico" style="background:rgba(220,38,38,.16);color:#dc2626"><i class="fas fa-server"></i></div>
-            <div>
-              <div class="gc-title">Métricas del sistema</div>
-              <div class="gc-sub">Indicadores globales de operación</div>
-            </div>
-          </div>
-          <div class="gc-body">
-            <div class="cov-row"><span class="cov-k">Hist. cerrados</span><b class="cov-v" v-if="!isLoading">{{ fmtn(s?.ordersClosedAll) }}</b><b-skeleton v-else :width="55" :height="16" animated /></div>
-            <div class="cov-row"><span class="cov-k">Total cancelados</span><b class="cov-v" v-if="!isLoading">{{ s?.ordersCancelledAll ?? 0 }}</b><b-skeleton v-else :width="45" :height="16" animated /></div>
-            <div class="cov-row"><span class="cov-k">Ediciones (30d)</span><b class="cov-v" v-if="!isLoading">{{ s?.edits30d ?? 0 }}</b><b-skeleton v-else :width="45" :height="16" animated /></div>
-            <div class="cov-row"><span class="cov-k">Movimientos hoy</span><b class="cov-v" v-if="!isLoading">{{ s?.movementsToday ?? 0 }}</b><b-skeleton v-else :width="45" :height="16" animated /></div>
-            <div class="cov-row"><span class="cov-k">Movimientos (30d)</span><b class="cov-v" v-if="!isLoading">{{ fmtn(s?.movementsTotal30d) }}</b><b-skeleton v-else :width="55" :height="16" animated /></div>
-            <div class="cov-row"><span class="cov-k">Índice rotación</span><b class="cov-v" v-if="!isLoading">{{ rotationIndex }} v/año</b><b-skeleton v-else :width="55" :height="16" animated /></div>
-          </div>
-        </div>
-
-        <!-- Export actions — canExportReports -->
-        <div v-if="canExportReports" class="gcard mb-4">
-          <div class="gcard-bar" style="background:linear-gradient(90deg,#6366f1,#0891b2)"></div>
-          <div class="gc-head">
-            <div class="gc-ico" style="background:rgba(99,102,241,.16);color:#6366f1"><i class="fas fa-file-export"></i></div>
-            <div>
-              <div class="gc-title">Exportar reportes</div>
-              <div class="gc-sub">Acciones de exportación disponibles</div>
-            </div>
-          </div>
-          <div class="gc-body">
-            <div class="an-export-tiles">
-              <div class="an-export-tile" v-if="canSeeInventory">
-                <i class="fas fa-boxes-stacked"></i><span>Inventario</span>
-              </div>
-              <div class="an-export-tile">
-                <i class="fas fa-flask-vial"></i><span>Pedidos</span>
-              </div>
-              <div class="an-export-tile" v-if="canSeeDevolutions">
-                <i class="fas fa-rotate-left"></i><span>Devoluciones</span>
-              </div>
-              <div class="an-export-tile" v-if="canSeeLab">
-                <i class="fas fa-microscope"></i><span>Laboratorio</span>
+              <!-- My activity — ventas -->
+              <div v-if="isVentas" class="gcard mb-5">
+                <div class="gcard-bar" style="background:linear-gradient(90deg,#10b981,#65a30d)"></div>
+                <div class="gc-head">
+                  <div class="gc-ico" style="background:rgba(16,185,129,.16);color:#10b981"><i class="fas fa-chart-line"></i></div>
+                  <div><div class="gc-title">Mi actividad</div><div class="gc-sub">Resumen de tu operación en el período activo</div></div>
+                </div>
+                <div class="gc-body">
+                  <div class="an-stat-grid">
+                    <div class="an-stat-cell"><div class="asc-ico" style="background:var(--c-primary-alpha);color:var(--c-primary)"><i class="fas fa-plus-circle"></i></div><div class="asc-val" style="color:var(--c-primary)" v-if="!isLoading">{{ s?.ordersToday ?? 0 }}</div><b-skeleton v-else :width="60" :height="28" animated /><div class="asc-lbl">Pedidos hoy</div><div class="asc-cap">Nuevos pedidos</div></div>
+                    <div class="an-stat-cell"><div class="asc-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i class="fas fa-check-circle"></i></div><div class="asc-val" style="color:#10b981" v-if="!isLoading">{{ s?.ordersClosedToday ?? 0 }}</div><b-skeleton v-else :width="60" :height="28" animated /><div class="asc-lbl">Cerrados hoy</div><div class="asc-cap">Completados</div></div>
+                    <div class="an-stat-cell"><div class="asc-ico" style="background:rgba(245,158,11,.12);color:#f59e0b"><i class="fas fa-clipboard-list"></i></div><div class="asc-val" style="color:#f59e0b" v-if="!isLoading">{{ s?.ordersPending ?? 0 }}</div><b-skeleton v-else :width="60" :height="28" animated /><div class="asc-lbl">En curso</div><div class="asc-cap">Pendientes activos</div></div>
+                    <div class="an-stat-cell"><div class="asc-ico" style="background:rgba(59,130,246,.12);color:#3b82f6"><i class="fas fa-layer-group"></i></div><div class="asc-val" style="color:#3b82f6" v-if="!isLoading">{{ fmtn(s?.ordersClosedAll) }}</div><b-skeleton v-else :width="60" :height="28" animated /><div class="asc-lbl">Total histórico</div><div class="asc-cap">Cerrados acumulados</div></div>
+                  </div>
+                </div>
               </div>
             </div>
-            <p class="an-export-note"><i class="fas fa-circle-info mr-1"></i> Módulo de exportación en desarrollo.</p>
-          </div>
-        </div>
 
-      </div>
+            <!-- Sidebar pedidos -->
+            <div class="an-col-side">
+              <div v-if="canSeeReports" class="gcard mb-4">
+                <div class="gcard-bar" style="background:linear-gradient(90deg,var(--c-primary),#2563eb)"></div>
+                <div class="gc-head">
+                  <div class="gc-ico" style="background:var(--c-primary-alpha);color:var(--c-primary)"><i class="fas fa-gauge-high"></i></div>
+                  <div><div class="gc-title">Nivel de servicio</div><div class="gc-sub">Pedidos sin correcciones (30d)</div></div>
+                </div>
+                <div class="gc-body">
+                  <template v-if="!isLoading">
+                    <div class="sl-display">
+                      <div class="sl-ring" :class="serviceLevelClass"><span class="sl-pct">{{ s?.serviceLevel ?? 0 }}%</span><span class="sl-label-sm">{{ serviceLevelStatus }}</span></div>
+                      <div class="sl-details">
+                        <div class="sl-row"><span class="sl-k">Pedidos cerrados</span><b class="sl-v">{{ s?.ordersClosed30d ?? 0 }}</b></div>
+                        <div class="sl-row"><span class="sl-k">Con corrección</span><b class="sl-v">{{ s?.corrections30d ?? 0 }}</b></div>
+                        <div class="sl-row"><span class="sl-k">Tasa corrección</span><b class="sl-v">{{ correctionRate }}%</b></div>
+                        <div class="sl-row"><span class="sl-k">Período</span><b class="sl-v">{{ s?.periodLabel || '30d' }}</b></div>
+                      </div>
+                    </div>
+                    <b-progress :value="s?.serviceLevel ?? 0" size="is-small" :type="serviceLevelTagType" :show-value="false" class="mt-3" />
+                    <div class="sl-chip" :class="`sl-chip-${serviceLevelClass}`"><i class="fas fa-circle-info"></i> {{ serviceLevelStatus }} — {{ serviceLevelComment }}</div>
+                  </template>
+                  <template v-else><b-skeleton width="100%" :height="92" animated class="mb-2" /><b-skeleton width="100%" :height="8" animated /></template>
+                </div>
+              </div>
+
+              <div v-if="isRoot" class="gcard mb-4">
+                <div class="gcard-bar" style="background:linear-gradient(90deg,#dc2626,#ea580c)"></div>
+                <div class="gc-head">
+                  <div class="gc-ico" style="background:rgba(220,38,38,.16);color:#dc2626"><i class="fas fa-server"></i></div>
+                  <div><div class="gc-title">Métricas del sistema</div><div class="gc-sub">Indicadores globales de operación</div></div>
+                </div>
+                <div class="gc-body">
+                  <div class="cov-row"><span class="cov-k">Hist. cerrados</span><b class="cov-v" v-if="!isLoading">{{ fmtn(s?.ordersClosedAll) }}</b><b-skeleton v-else :width="55" :height="16" animated /></div>
+                  <div class="cov-row"><span class="cov-k">Total cancelados</span><b class="cov-v" v-if="!isLoading">{{ s?.ordersCancelledAll ?? 0 }}</b><b-skeleton v-else :width="45" :height="16" animated /></div>
+                  <div class="cov-row"><span class="cov-k">Ediciones (30d)</span><b class="cov-v" v-if="!isLoading">{{ s?.edits30d ?? 0 }}</b><b-skeleton v-else :width="45" :height="16" animated /></div>
+                  <div class="cov-row"><span class="cov-k">Movimientos hoy</span><b class="cov-v" v-if="!isLoading">{{ s?.movementsToday ?? 0 }}</b><b-skeleton v-else :width="45" :height="16" animated /></div>
+                  <div class="cov-row"><span class="cov-k">Movimientos (30d)</span><b class="cov-v" v-if="!isLoading">{{ fmtn(s?.movementsTotal30d) }}</b><b-skeleton v-else :width="55" :height="16" animated /></div>
+                  <div class="cov-row"><span class="cov-k">Índice rotación</span><b class="cov-v" v-if="!isLoading">{{ rotationIndex }} v/año</b><b-skeleton v-else :width="55" :height="16" animated /></div>
+                </div>
+              </div>
+
+              <div v-if="canExportReports" class="gcard mb-4">
+                <div class="gcard-bar" style="background:linear-gradient(90deg,#6366f1,#0891b2)"></div>
+                <div class="gc-head">
+                  <div class="gc-ico" style="background:rgba(99,102,241,.16);color:#6366f1"><i class="fas fa-file-export"></i></div>
+                  <div><div class="gc-title">Exportar reportes</div><div class="gc-sub">Acciones de exportación disponibles</div></div>
+                </div>
+                <div class="gc-body">
+                  <div class="an-export-tiles">
+                    <div class="an-export-tile" v-if="canSeeInventory"><i class="fas fa-boxes-stacked"></i><span>Inventario</span></div>
+                    <div class="an-export-tile"><i class="fas fa-flask-vial"></i><span>Pedidos</span></div>
+                    <div class="an-export-tile" v-if="canSeeDevolutions"><i class="fas fa-rotate-left"></i><span>Devoluciones</span></div>
+                    <div class="an-export-tile" v-if="canSeeLab"><i class="fas fa-microscope"></i><span>Laboratorio</span></div>
+                  </div>
+                  <p class="an-export-note"><i class="fas fa-circle-info mr-1"></i> Módulo de exportación en desarrollo.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <!-- ═══════════════ TAB: DEVOLUCIONES ══════════════════════════ -->
+        <template #devoluciones>
+          <div class="an-tab-two-col">
+            <div class="an-col-main">
+              <div class="gcard mb-5">
+                <div class="gcard-bar" style="background:linear-gradient(90deg,#ec4899,#f43f5e,#f59e0b)"></div>
+                <div class="gc-head">
+                  <div class="gc-ico" style="background:rgba(236,72,153,.16);color:#ec4899"><i class="fas fa-rotate-left"></i></div>
+                  <div><div class="gc-title">Analíticas de devoluciones</div><div class="gc-sub">Estado, tendencias y tasa de aprobación del período</div></div>
+                </div>
+                <div class="gc-body">
+                  <div class="an-devol-grid">
+                    <div class="an-devol-cell"><div class="adc-ico" style="background:rgba(245,158,11,.15);color:#f59e0b"><i class="fas fa-hourglass-half"></i></div><div class="adc-val" style="color:#f59e0b" v-if="!isLoading">{{ s?.devolucionesPendientes ?? 0 }}</div><b-skeleton v-else :width="40" :height="24" animated /><div class="adc-lbl">Pendientes</div></div>
+                    <div class="an-devol-cell"><div class="adc-ico" style="background:rgba(59,130,246,.15);color:#3b82f6"><i class="fas fa-magnifying-glass"></i></div><div class="adc-val" style="color:#3b82f6" v-if="!isLoading">{{ s?.devolucionesEnRevision ?? 0 }}</div><b-skeleton v-else :width="40" :height="24" animated /><div class="adc-lbl">En revisión</div></div>
+                    <div class="an-devol-cell"><div class="adc-ico" style="background:rgba(16,185,129,.15);color:#10b981"><i class="fas fa-circle-check"></i></div><div class="adc-val" style="color:#10b981" v-if="!isLoading">{{ s?.devolucionesAprobadas ?? 0 }}</div><b-skeleton v-else :width="40" :height="24" animated /><div class="adc-lbl">Aprobadas</div></div>
+                    <div class="an-devol-cell"><div class="adc-ico" style="background:rgba(239,68,68,.15);color:#ef4444"><i class="fas fa-circle-xmark"></i></div><div class="adc-val" style="color:#ef4444" v-if="!isLoading">{{ s?.devolucionesRechazadas ?? 0 }}</div><b-skeleton v-else :width="40" :height="24" animated /><div class="adc-lbl">Rechazadas</div></div>
+                    <div class="an-devol-cell"><div class="adc-ico" style="background:var(--c-primary-alpha);color:var(--c-primary)"><i class="fas fa-box-archive"></i></div><div class="adc-val" style="color:var(--c-primary)" v-if="!isLoading">{{ s?.devolucionesProcesadas ?? 0 }}</div><b-skeleton v-else :width="40" :height="24" animated /><div class="adc-lbl">Procesadas</div></div>
+                    <div class="an-devol-cell"><div class="adc-ico" style="background:rgba(236,72,153,.15);color:#ec4899"><i class="fas fa-calendar-day"></i></div><div class="adc-val" style="color:#ec4899" v-if="!isLoading">{{ s?.devolucionesHoy ?? 0 }}</div><b-skeleton v-else :width="40" :height="24" animated /><div class="adc-lbl">Hoy</div></div>
+                  </div>
+
+                  <div class="an-divider my-3"><span>Tendencia temporal</span></div>
+                  <div class="an-bars" v-if="!isLoading">
+                    <div class="an-bar-row"><span class="an-bar-lbl">7 días</span><div class="an-bar-track"><div class="an-bar-fill" :style="{ width: devol7dPct + '%', background: 'linear-gradient(90deg,#ec4899,#f43f5e)' }"></div></div><span class="an-bar-pct">{{ s?.devolucionesTotal7d ?? 0 }}</span></div>
+                    <div class="an-bar-row"><span class="an-bar-lbl">30 días</span><div class="an-bar-track"><div class="an-bar-fill" :style="{ width: '100%', background: 'linear-gradient(90deg,var(--c-primary),#ec4899)' }"></div></div><span class="an-bar-pct">{{ s?.devolucionesTotal30d ?? 0 }}</span></div>
+                  </div>
+
+                  <div class="an-devol-rate mt-3" v-if="!isLoading">
+                    <div class="adr-head"><span class="adr-label"><i class="fas fa-chart-line mr-1"></i> Tasa de aprobación</span><span class="adr-val" :style="{ color: devolApprovalRate >= 70 ? '#10b981' : devolApprovalRate >= 50 ? '#f59e0b' : '#ef4444' }">{{ devolApprovalRate }}%</span></div>
+                    <b-progress :value="devolApprovalRate" size="is-small" :type="devolApprovalRate >= 70 ? 'is-success' : devolApprovalRate >= 50 ? 'is-warning' : 'is-danger'" :show-value="false" />
+                    <p class="adr-desc">{{ devolApprovalRate >= 70 ? 'Alta aprobación — proceso fluido.' : devolApprovalRate >= 50 ? 'Tasa media — revisar criterios de rechazo.' : 'Baja aprobación — análisis de causas recomendado.' }}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Sidebar devoluciones -->
+            <div class="an-col-side">
+              <div class="gcard mb-4">
+                <div class="gcard-bar" style="background:linear-gradient(90deg,#ec4899,#f43f5e)"></div>
+                <div class="gc-head">
+                  <div class="gc-ico" style="background:rgba(236,72,153,.16);color:#ec4899"><i class="fas fa-rotate-left"></i></div>
+                  <div><div class="gc-title">Devoluciones</div><div class="gc-sub">Resumen rápido del estado actual</div></div>
+                </div>
+                <div class="gc-body">
+                  <template v-if="!isLoading">
+                    <div class="cov-row"><span class="cov-k">Pendientes</span><b-tag :type="(s?.devolucionesPendientes ?? 0) > 0 ? 'is-warning' : 'is-light'" size="is-small" class="is-rounded">{{ s?.devolucionesPendientes ?? 0 }}</b-tag></div>
+                    <div class="cov-row"><span class="cov-k">En revisión</span><b class="cov-v">{{ s?.devolucionesEnRevision ?? 0 }}</b></div>
+                    <div class="cov-row"><span class="cov-k">Aprobadas</span><b class="cov-v" style="color:#10b981">{{ s?.devolucionesAprobadas ?? 0 }}</b></div>
+                    <div class="cov-row"><span class="cov-k">Rechazadas</span><b class="cov-v" style="color:#ef4444">{{ s?.devolucionesRechazadas ?? 0 }}</b></div>
+                    <div class="cov-row"><span class="cov-k">Procesadas</span><b class="cov-v">{{ s?.devolucionesProcesadas ?? 0 }}</b></div>
+                    <div class="an-divider my-2"></div>
+                    <div class="cov-row"><span class="cov-k">Total (30d)</span><b class="cov-v">{{ s?.devolucionesTotal30d ?? 0 }}</b></div>
+                    <div class="cov-row"><span class="cov-k">Total (7d)</span><b class="cov-v">{{ s?.devolucionesTotal7d ?? 0 }}</b></div>
+                    <div class="cov-row"><span class="cov-k">Hoy</span><b class="cov-v">{{ s?.devolucionesHoy ?? 0 }}</b></div>
+                    <div class="cov-row"><span class="cov-k">Tasa aprobación</span><b class="cov-v" :style="{ color: devolApprovalRate >= 70 ? '#10b981' : devolApprovalRate >= 50 ? '#f59e0b' : '#ef4444' }">{{ devolApprovalRate }}%</b></div>
+                  </template>
+                  <template v-else><b-skeleton width="100%" :height="170" animated /></template>
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <!-- ═══════════════ TAB: LABORATORIO ═══════════════════════════ -->
+        <template #laboratorio>
+          <div class="an-tab-single-col">
+            <div class="gcard mb-5">
+              <div class="gcard-bar" style="background:linear-gradient(90deg,#06b6d4,#3b82f6,var(--c-primary))"></div>
+              <div class="gc-head">
+                <div class="gc-ico" style="background:rgba(6,182,212,.16);color:#06b6d4"><i class="fas fa-microscope"></i></div>
+                <div><div class="gc-title">Calidad del laboratorio</div><div class="gc-sub">Eficiencia de procesamiento y tasa de correcciones del período</div></div>
+              </div>
+              <div class="gc-body">
+                <div class="an-stat-grid">
+                  <div class="an-stat-cell"><div class="asc-ico" style="background:rgba(6,182,212,.12);color:#06b6d4"><i class="fas fa-rotate"></i></div><div class="asc-val" :style="{ color: (s?.corrections7d ?? 0) > 5 ? '#f59e0b' : '#10b981' }" v-if="!isLoading">{{ s?.corrections7d ?? 0 }}</div><b-skeleton v-else :width="60" :height="28" animated /><div class="asc-lbl">Correcciones (7d)</div><div class="asc-cap">Última semana</div></div>
+                  <div class="an-stat-cell"><div class="asc-ico" style="background:var(--c-primary-alpha);color:var(--c-primary)"><i class="fas fa-list-check"></i></div><div class="asc-val" style="color:var(--c-primary)" v-if="!isLoading">{{ s?.corrections30d ?? 0 }}</div><b-skeleton v-else :width="60" :height="28" animated /><div class="asc-lbl">Correcciones (30d)</div><div class="asc-cap">Total período</div></div>
+                  <div class="an-stat-cell"><div class="asc-ico" style="background:rgba(6,182,212,.12);color:#06b6d4"><i class="fas fa-barcode"></i></div><div class="asc-val" style="color:#06b6d4" v-if="!isLoading">{{ s?.scansToday ?? 0 }}</div><b-skeleton v-else :width="60" :height="28" animated /><div class="asc-lbl">Escaneos hoy</div><div class="asc-cap">Salidas escáner</div></div>
+                  <div class="an-stat-cell"><div class="asc-ico" style="background:rgba(59,130,246,.12);color:#3b82f6"><i class="fas fa-pen-to-square"></i></div><div class="asc-val" style="color:#3b82f6" v-if="!isLoading">{{ s?.edits30d ?? 0 }}</div><b-skeleton v-else :width="60" :height="28" animated /><div class="asc-lbl">Ediciones (30d)</div><div class="asc-cap">Modificaciones</div></div>
+                </div>
+                <div class="an-quality-bar mt-4" v-if="!isLoading">
+                  <div class="aqb-head"><span class="aqb-lbl"><i class="fas fa-chart-line mr-1"></i> Tasa de corrección</span><span class="aqb-val" :style="{ color: correctionRate > 10 ? '#ef4444' : correctionRate > 5 ? '#f59e0b' : '#10b981' }">{{ correctionRate }}%</span></div>
+                  <b-progress :value="correctionRate" size="is-small" :type="correctionRate > 10 ? 'is-danger' : correctionRate > 5 ? 'is-warning' : 'is-success'" :show-value="false" />
+                  <div class="aqb-desc">{{ correctionRate <= 5 ? 'Calidad excelente — mantener procesos.' : correctionRate <= 10 ? 'Calidad aceptable — revisar técnicas.' : 'Alta tasa — intervención recomendada.' }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <!-- ═══════════════ TAB: SUPERVISION ═══════════════════════════ -->
+        <template #supervision>
+          <div class="an-tab-single-col">
+            <div class="gcard mb-5">
+              <div class="gcard-bar" style="background:linear-gradient(90deg,#0891b2,#0d9488)"></div>
+              <div class="gc-head">
+                <div class="gc-ico" style="background:rgba(8,145,178,.16);color:#0891b2"><i class="fas fa-star-half-stroke"></i></div>
+                <div><div class="gc-title">Calidad operativa</div><div class="gc-sub">Indicadores de rendimiento del equipo y la operación</div></div>
+              </div>
+              <div class="gc-body">
+                <div class="an-stat-grid">
+                  <div class="an-stat-cell"><div class="asc-ico" style="background:rgba(239,68,68,.12);color:#ef4444"><i class="fas fa-rotate"></i></div><div class="asc-val" :style="{ color: (s?.corrections30d ?? 0) > 10 ? '#ef4444' : '#10b981' }" v-if="!isLoading">{{ s?.corrections30d ?? 0 }}</div><b-skeleton v-else :width="50" :height="28" animated /><div class="asc-lbl">Correcciones (30d)</div><div class="asc-cap">Del equipo de lab</div></div>
+                  <div class="an-stat-cell"><div class="asc-ico" style="background:rgba(59,130,246,.12);color:#3b82f6"><i class="fas fa-pencil"></i></div><div class="asc-val" style="color:#3b82f6" v-if="!isLoading">{{ s?.edits30d ?? 0 }}</div><b-skeleton v-else :width="50" :height="28" animated /><div class="asc-lbl">Ediciones (30d)</div><div class="asc-cap">Cambios a pedidos</div></div>
+                  <div class="an-stat-cell"><div class="asc-ico" style="background:rgba(6,182,212,.12);color:#06b6d4"><i class="fas fa-barcode"></i></div><div class="asc-val" style="color:#06b6d4" v-if="!isLoading">{{ s?.scansToday ?? 0 }}</div><b-skeleton v-else :width="50" :height="28" animated /><div class="asc-lbl">Escaneos hoy</div><div class="asc-cap">Actividad del día</div></div>
+                  <div class="an-stat-cell"><div class="asc-ico" style="background:rgba(239,68,68,.12);color:#ef4444"><i class="fas fa-ban"></i></div><div class="asc-val" style="color:#ef4444" v-if="!isLoading">{{ s?.ordersCancelledAll ?? 0 }}</div><b-skeleton v-else :width="50" :height="28" animated /><div class="asc-lbl">Cancelados total</div><div class="asc-cap">Histórico</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
+
+      </DynamicTabs>
     </section>
 
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, onActivated, toRef } from 'vue'
+import { ref, computed, onMounted, onActivated, toRef } from 'vue'
+import DynamicTabs from '@/components/DynamicTabs.vue'
 import { useDashboardStats } from '@/composables/useDashboardStats'
 
 const props = defineProps({
@@ -1000,6 +690,18 @@ const {
 
 const s         = computed(() => stats.value)
 const isLoading = computed(() => props.loading || statsLoading.value)
+
+// ── Tabs ──
+const anTab = ref('inventario')
+const AN_TABS = computed(() => {
+  const tabs = []
+  if (canSeeInventory.value)   tabs.push({ key: 'inventario',   label: 'Inventario',    icon: 'cubes-stacked' })
+  if (canSeeOrders.value)      tabs.push({ key: 'pedidos',      label: 'Pedidos',       icon: 'flask-vial' })
+  if (canSeeDevolutions.value) tabs.push({ key: 'devoluciones', label: 'Devoluciones',  icon: 'rotate-left', badge: s.value?.devolucionesPendientes || 0, badgeType: 'warning' })
+  if (canSeeLab.value)         tabs.push({ key: 'laboratorio',  label: 'Laboratorio',   icon: 'microscope' })
+  if (isSupervisor.value || isRoot.value) tabs.push({ key: 'supervision', label: 'Supervision', icon: 'eye' })
+  return tabs
+})
 
 onMounted(() => { loadStats() })
 onActivated(() => { loadStats() })
@@ -1242,10 +944,15 @@ function fmtn(value) {
 .an-main {
   position: relative;
   z-index: 1;
+  padding: 1.25rem;
+}
+.an-tab-two-col {
   display: grid;
   grid-template-columns: 1fr 320px;
   gap: 1.25rem;
-  padding: 1.25rem;
+}
+.an-tab-single-col {
+  max-width: 960px;
 }
 .an-col-main, .an-col-side { display: flex; flex-direction: column; }
 
@@ -1455,7 +1162,7 @@ function fmtn(value) {
 
 /* ── Responsive ── */
 @media (max-width: 1100px) {
-  .an-main { grid-template-columns: 1fr; }
+  .an-tab-two-col { grid-template-columns: 1fr; }
   .an-col-side { flex-direction: row; flex-wrap: wrap; gap: 1rem; }
   .an-col-side > * { flex: 1 1 calc(50% - 0.5rem); min-width: 240px; }
 }

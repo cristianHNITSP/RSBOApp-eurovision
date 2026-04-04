@@ -72,19 +72,18 @@
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from "vue";
 import { AgGridVue } from "ag-grid-vue3";
-import {
-  AllCommunityModule,
-  ModuleRegistry,
-  themeQuartz,
-  iconSetQuartzBold,
-  colorSchemeLight,
-  colorSchemeDark
-} from "ag-grid-community";
+import { AllCommunityModule, ModuleRegistry } from "ag-grid-community";
 import navtools from "@/components/ag-grid/navtools.vue";
 import { useSheetApi } from "@/composables/useSheetApi";
 import { useGridHistory } from "@/composables/useGridHistory";
 import { useUnsavedGuard } from "@/composables/useUnsavedGuard";
 import { labToast } from "@/composables/useLabToast";
+import { exportAgGridToXlsx } from "@/composables/useExcelExport";
+import {
+  useAgGridBase, localeText,
+  ackOk, ackErr, msgFromErr, statusFromErr, normalizeAxiosOk,
+  numOr, isNumeric, to2, fmtSigned, isMultipleOfStep,
+} from "@/composables/useAgGridBase";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -97,29 +96,7 @@ const props = defineProps({
 
 const { fetchItems, saveChunk, reseedSheet, getSheet } = useSheetApi(() => props.apiType);
 
-/* ===================== ACK helpers ===================== */
-const ackOk = (ack, message = "Ok", status = 200) => {
-  if (typeof ack === "function") ack({ ok: true, status, message });
-};
-const ackErr = (ack, message = "Error", status = 400) => {
-  if (typeof ack === "function") ack({ ok: false, status, message });
-  else alert(message);
-};
-const msgFromErr = (e, fallback = "Error de servidor") =>
-  e?.response?.data?.message || e?.response?.data?.error || e?.message || fallback;
-const statusFromErr = (e) => e?.response?.status ?? 0;
-const normalizeAxiosOk = (res) => {
-  const status = res?.status ?? 200;
-  const body = res?.data ?? null;
-  if (body?.ok === false) return { ok: false, status, message: body?.message || "Operación rechazada" };
-  return { ok: true, status, message: body?.message || "Operación exitosa" };
-};
-
-/* ===================== Helpers numéricos ===================== */
-const numOr = (v, dflt) => {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : dflt;
-};
+/* ===================== Helpers desde useAgGridBase ===================== */
 
 const gridApi = ref(null);
 const rowData = ref([]);
@@ -168,80 +145,6 @@ const raf = () =>
   });
 
 /* === AG-Grid tema reactivo al dark mode === */
-const _darkMode = ref(document.documentElement.getAttribute("data-theme") === "dark");
-const _themeObserver = new MutationObserver(() => {
-  _darkMode.value = document.documentElement.getAttribute("data-theme") === "dark";
-});
-onMounted(() => _themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] }));
-onBeforeUnmount(() => _themeObserver.disconnect());
-
-const themeCustom = computed(() => {
-  const d = _darkMode.value;
-  return themeQuartz
-    .withPart(iconSetQuartzBold, d ? colorSchemeDark : colorSchemeLight)
-    .withParams(d ? {
-      accentColor: "#a788f0",
-      backgroundColor: "#161b22",
-      foregroundColor: "#e2e8f0",
-      borderColor: "#2d3748",
-      borderRadius: 10,
-      wrapperBorder: true,
-      wrapperBorderRadius: 10,
-      columnBorder: true,
-      rowBorder: true,
-      headerBackgroundColor: "#1a1f2e",
-      headerTextColor: "#c4b5fd",
-      headerFontSize: 11,
-      headerFontWeight: 600,
-      fontFamily: "Satoshi, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-      fontSize: 12,
-      spacing: 3,
-      oddRowBackgroundColor: "#18202e",
-    } : {
-      accentColor: "#7957d5",
-      backgroundColor: "#ffffff",
-      foregroundColor: "#2d2242",
-      borderColor: "#e5e5f0",
-      borderRadius: 10,
-      wrapperBorder: true,
-      wrapperBorderRadius: 10,
-      columnBorder: true,
-      rowBorder: true,
-      headerBackgroundColor: "#f5f3ff",
-      headerTextColor: "#4527a0",
-      headerFontSize: 11,
-      headerFontWeight: 600,
-      fontFamily: "Satoshi, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-      fontSize: 12,
-      spacing: 3,
-      oddRowBackgroundColor: "#fbfbff",
-    });
-});
-
-const localeText = { noRowsToShow: "No hay filas para mostrar", loadingOoo: "Cargando..." };
-
-const isNumeric = (v) => /^-?\d+(\.\d+)?$/.test(String(v ?? "").trim());
-const to2 = (n) => {
-  const num = Number(n);
-  if (!Number.isFinite(num)) return 0;
-  return Number(num.toFixed(2));
-};
-const fmtSigned = (n) => {
-  const num = Number(n);
-  if (!Number.isFinite(num)) return String(n ?? "");
-  const s = num.toFixed(2);
-  return num >= 0 ? `+${s}` : s;
-};
-
-const isMultipleOfStep = (value, step) => {
-  const v = Number(value);
-  const st = Number(step);
-  if (!Number.isFinite(v) || !Number.isFinite(st) || st <= 0) return false;
-  const abs = Math.abs(v);
-  const mult = Math.round(abs / st);
-  return Math.abs(mult * st - abs) < 1e-6;
-};
-
 /** ✅ BASE va en 0.50 */
 const BASE_STEP = 0.50;
 
@@ -309,11 +212,7 @@ const isLowStock = (v) => {
   return n > 0 && n <= LOW_STOCK_THRESHOLD.value;
 };
 
-/** ✅ Reglas a nivel fila (barato y súper natural visualmente) */
-const rowClassRules = computed(() => ({
-  "ag-row--stock-zero": (p) => isZeroStock(p?.data?.existencias),
-  "ag-row--stock-low": (p) => isLowStock(p?.data?.existencias)
-}));
+const { themeCustom, rowClassRules } = useAgGridBase({ isZeroStock, isLowStock });
 
 function markChanged({ base, existencias, _oldValue }) {
   const b = to2(base);
@@ -442,17 +341,10 @@ async function loadRows() {
   const { data } = await fetchItems(props.sheetId, buildItemsQueryForView());
   const items = data?.data || [];
 
-  const itemBases = items
-    .map((i) => to2(i.base))
-    .filter((b) => b >= P.baseMin && b <= P.baseMax);
-
-  // Solo backend axis + datos reales (sin generacion frontend)
-  const merged = [...backendAxis, ...itemBases]
-    .map(to2)
+  // Ejes 100% del backend — frontend solo reconstruye
+  const baseListUnique = [...new Set(backendAxis.map(to2))]
     .filter((b) => b >= P.baseMin && b <= P.baseMax)
     .filter((b) => baseFilterDisplay.value(b));
-
-  const baseListUnique = [...new Set(merged)];
 
   baseListUnique.sort((a, b) =>
     sortDirForView.value === "desc" ? b - a : a - b
@@ -728,11 +620,15 @@ async function handleSeed(ack) {
   }
 }
 
-function handleExport() {
-  if (!gridApi.value || typeof gridApi.value.exportDataAsCsv !== "function") return;
+async function handleExport() {
+  if (!gridApi.value) return;
   const nameSlug = sheetName.value.replace(/\s+/g, "_");
   const fecha = new Date().toISOString().slice(0, 10);
-  gridApi.value.exportDataAsCsv({ fileName: `reporte_inventario_${nameSlug || "base"}_${fecha}.csv` });
+  await exportAgGridToXlsx(gridApi.value, {
+    filename: `reporte_inventario_${nameSlug || "base"}_${fecha}`,
+    sheetName: String(sheetName.value || "Base").slice(0, 31),
+    title: `Inventario — ${sheetName.value || "Base"}`,
+  });
 }
 </script>
 

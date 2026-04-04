@@ -70,16 +70,9 @@
     <!-- Buscador -->
     <div class="help-search">
       <b-field label="Buscar en la ayuda" label-position="on-border" custom-class="help-search-label">
-        <b-input
-          ref="searchInputRef"
-          :value="search"
-          placeholder='Ej: "guardar", "pedido", "laboratorio", "notificación", "contraseña"...'
-          :icon="ICONS.search"
-          size="is-small"
-          @input="onSearchInput"
-          @update:modelValue="onSearchInput"
-          @keyup.esc="clearSearch"
-        />
+        <b-input ref="searchInputRef" :value="search"
+          placeholder='Ej: "guardar", "pedido", "laboratorio", "notificación", "contraseña"...' :icon="ICONS.search"
+          size="is-small" @input="onSearchInput" @update:modelValue="onSearchInput" @keyup.esc="clearSearch" />
       </b-field>
 
       <div v-if="search.trim() && quickMatches.length" class="help-results">
@@ -437,7 +430,468 @@
         </div>
       </template>
 
-      <!-- ══ TAB 4: MI CUENTA ═════════════════════════════════════════════════ -->
+      <!-- ══ TAB 4: NOMENCLATURAS ══════════════════════════════════════════════ -->
+      <template #nomenclaturas>
+        <div class="help-tab-content">
+
+          <!-- SKU -->
+          <article id="sec_sku" class="help-card help-anchor">
+            <header class="help-card-header">
+              <div class="help-card-title-block">
+                <b-icon :icon="ICONS.tags" size="is-small" class="mr-2" />
+                <h3>SKU (Código de planilla)</h3>
+              </div>
+              <b-tag type="is-primary is-light" size="is-small" rounded>Inventario</b-tag>
+            </header>
+
+            <p class="help-text">
+              El <strong>SKU</strong> es un código único que identifica cada planilla de inventario. Se genera
+              automáticamente al crear una planilla y resume sus características principales.
+            </p>
+
+            <div class="nomenclatura-example">
+              <div class="nomenclatura-example__code">JAP-TAI-BAS-POL-MON-BLN-A5F2</div>
+              <div class="nomenclatura-example__label">Ejemplo de SKU</div>
+            </div>
+
+            <div class="nomenclatura-breakdown">
+              <div class="nomenclatura-segment">
+                <span class="nomenclatura-segment__part">JAP</span>
+                <span class="nomenclatura-segment__desc">Proveedor (abreviatura, 3 letras)</span>
+              </div>
+              <span class="nomenclatura-sep">—</span>
+              <div class="nomenclatura-segment">
+                <span class="nomenclatura-segment__part">TAI</span>
+                <span class="nomenclatura-segment__desc">Marca (abreviatura, 3 letras)</span>
+              </div>
+              <span class="nomenclatura-sep">—</span>
+              <div class="nomenclatura-segment">
+                <span class="nomenclatura-segment__part">BAS</span>
+                <span class="nomenclatura-segment__desc">Tipo de matriz (ver sección Matrices)</span>
+              </div>
+              <span class="nomenclatura-sep">—</span>
+              <div class="nomenclatura-segment">
+                <span class="nomenclatura-segment__part">POL</span>
+                <span class="nomenclatura-segment__desc">Material (POL = Policarbonato, CR3 = CR-39)</span>
+              </div>
+              <span class="nomenclatura-sep">—</span>
+              <div class="nomenclatura-segment">
+                <span class="nomenclatura-segment__part">MON</span>
+                <span class="nomenclatura-segment__desc">Base / clave de la planilla</span>
+              </div>
+              <span class="nomenclatura-sep">—</span>
+              <div class="nomenclatura-segment">
+                <span class="nomenclatura-segment__part">BLN</span>
+                <span class="nomenclatura-segment__desc">Tratamiento (BLN = Blanco, AR = Antirreflejante)</span>
+              </div>
+              <span class="nomenclatura-sep">—</span>
+              <div class="nomenclatura-segment">
+                <span class="nomenclatura-segment__part">A5F2</span>
+                <span class="nomenclatura-segment__desc">Código aleatorio (evita duplicados)</span>
+              </div>
+            </div>
+
+            <div class="help-note">
+              <b-icon :icon="ICONS.info" size="is-small" class="mr-1" />
+              <span>
+                Las abreviaturas de proveedor y marca se generan tomando las primeras letras de cada
+                palabra. Si el nombre tiene varias palabras, se toma la primera letra de cada una.
+              </span>
+            </div>
+          </article>
+
+          <!-- Folios -->
+          <article id="sec_folios" class="help-card help-anchor">
+            <header class="help-card-header">
+              <div class="help-card-title-block">
+                <b-icon :icon="ICONS.hashtag" size="is-small" class="mr-2" />
+                <h3>Folios (Pedidos y Devoluciones)</h3>
+              </div>
+            </header>
+
+            <p class="help-text">
+              Cada pedido de laboratorio y cada devolución recibe un <strong>folio</strong> único que sirve
+              como referencia para rastrear el documento en todo el sistema.
+            </p>
+
+            <div class="nomenclatura-duo">
+              <div class="nomenclatura-duo__block">
+                <div class="nomenclatura-example">
+                  <div class="nomenclatura-example__code">LAB-20250328-A5F2</div>
+                  <div class="nomenclatura-example__label">Folio de laboratorio</div>
+                </div>
+                <div class="nomenclatura-breakdown nomenclatura-breakdown--compact">
+                  <div class="nomenclatura-segment">
+                    <span class="nomenclatura-segment__part">LAB</span>
+                    <span class="nomenclatura-segment__desc">Prefijo fijo: pedido de laboratorio</span>
+                  </div>
+                  <div class="nomenclatura-segment">
+                    <span class="nomenclatura-segment__part">20250328</span>
+                    <span class="nomenclatura-segment__desc">Fecha: AAAA MM DD (28 marzo 2025)</span>
+                  </div>
+                  <div class="nomenclatura-segment">
+                    <span class="nomenclatura-segment__part">A5F2</span>
+                    <span class="nomenclatura-segment__desc">4 caracteres hexadecimales aleatorios</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="nomenclatura-duo__block">
+                <div class="nomenclatura-example">
+                  <div class="nomenclatura-example__code">DEV-2025-00001</div>
+                  <div class="nomenclatura-example__label">Folio de devolución</div>
+                </div>
+                <div class="nomenclatura-breakdown nomenclatura-breakdown--compact">
+                  <div class="nomenclatura-segment">
+                    <span class="nomenclatura-segment__part">DEV</span>
+                    <span class="nomenclatura-segment__desc">Prefijo fijo: devolución</span>
+                  </div>
+                  <div class="nomenclatura-segment">
+                    <span class="nomenclatura-segment__part">2025</span>
+                    <span class="nomenclatura-segment__desc">Año en curso</span>
+                  </div>
+                  <div class="nomenclatura-segment">
+                    <span class="nomenclatura-segment__part">00001</span>
+                    <span class="nomenclatura-segment__desc">Consecutivo (5 dígitos, se reinicia cada año)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <!-- Código de barras -->
+          <article id="sec_codebar" class="help-card help-anchor">
+            <header class="help-card-header">
+              <div class="help-card-title-block">
+                <b-icon icon="barcode" size="is-small" class="mr-2" />
+                <h3>Código de barras (EAN-13)</h3>
+              </div>
+              <b-tag type="is-info is-light" size="is-small" rounded>13 dígitos</b-tag>
+            </header>
+
+            <p class="help-text">
+              Cada producto en el inventario tiene un código de barras en formato <strong>EAN-13</strong>
+              (estándar internacional de 13 dígitos). Se genera automáticamente a partir de la planilla
+              y las coordenadas ópticas del producto.
+            </p>
+
+            <div class="nomenclatura-example">
+              <div class="nomenclatura-example__code">2 7 9 0 1 2 3 4 5 6 7 8 9</div>
+              <div class="nomenclatura-example__label">Ejemplo de código EAN-13</div>
+            </div>
+
+            <div class="nomenclatura-breakdown nomenclatura-breakdown--compact">
+              <div class="nomenclatura-segment">
+                <span class="nomenclatura-segment__part">279</span>
+                <span class="nomenclatura-segment__desc">Prefijo interno fijo (identifica que es un producto
+                  RSBO)</span>
+              </div>
+              <div class="nomenclatura-segment">
+                <span class="nomenclatura-segment__part">012345678</span>
+                <span class="nomenclatura-segment__desc">9 dígitos generados a partir del ID de planilla + tipo de
+                  matriz + coordenadas ópticas</span>
+              </div>
+              <div class="nomenclatura-segment">
+                <span class="nomenclatura-segment__part">9</span>
+                <span class="nomenclatura-segment__desc">Dígito de control (verificación EAN-13)</span>
+              </div>
+            </div>
+
+            <div class="help-note">
+              <b-icon :icon="ICONS.info" size="is-small" class="mr-1" />
+              <span>
+                El código de barras se usa para <strong>escanear productos</strong> en el laboratorio.
+                Si un producto no tiene código asignado, no puede incluirse en un pedido.
+              </span>
+            </div>
+          </article>
+
+          <!-- Tipos de matriz -->
+          <article id="sec_matrices" class="help-card help-anchor">
+            <header class="help-card-header">
+              <div class="help-card-title-block">
+                <b-icon :icon="ICONS.glasses" size="is-small" class="mr-2" />
+                <h3>Tipos de matriz (tipo de lente)</h3>
+              </div>
+            </header>
+
+            <p class="help-text">
+              Cada planilla tiene un <strong>tipo de matriz</strong> que determina qué coordenadas ópticas
+              maneja y cómo se organiza la grilla de inventario.
+            </p>
+
+            <div class="nomenclatura-table">
+              <div class="nomenclatura-table__row nomenclatura-table__row--head">
+                <span>Clave</span>
+                <span>Tipo de lente</span>
+                <span>Coordenadas</span>
+              </div>
+              <div class="nomenclatura-table__row">
+                <span class="nomenclatura-segment__part">BASE</span>
+                <span>Monofocal (base)</span>
+                <span class="mono">base</span>
+              </div>
+              <div class="nomenclatura-table__row">
+                <span class="nomenclatura-segment__part">SPH_CYL</span>
+                <span>Monofocal esf. + cil.</span>
+                <span class="mono">sph, cyl</span>
+              </div>
+              <div class="nomenclatura-table__row">
+                <span class="nomenclatura-segment__part">SPH_ADD</span>
+                <span>Bifocal</span>
+                <span class="mono">sph, add, base_izq, base_der, eye</span>
+              </div>
+              <div class="nomenclatura-table__row">
+                <span class="nomenclatura-segment__part">BASE_ADD</span>
+                <span>Progresivo</span>
+                <span class="mono">base_izq, base_der, add, eye</span>
+              </div>
+              <div class="nomenclatura-table__row">
+                <span class="nomenclatura-segment__part">SPH_CYL_AXIS</span>
+                <span>Lente de contacto tórico</span>
+                <span class="mono">sph, cyl, axis</span>
+              </div>
+            </div>
+
+            <div class="help-soft">
+              <div class="help-soft__title">
+                <b-icon :icon="ICONS.eye" size="is-small" class="mr-1" />
+                Designación de ojo
+              </div>
+              <p class="help-soft__text">
+                En bifocales y progresivos, cada producto especifica el ojo:
+                <strong>OD</strong> = Ojo Derecho, <strong>OI</strong> = Ojo Izquierdo.
+                Las matrices tipo BASE y SPH_CYL no distinguen ojo.
+              </p>
+            </div>
+          </article>
+
+          <!-- Tratamientos -->
+          <article id="sec_tratamientos" class="help-card help-anchor">
+            <header class="help-card-header">
+              <div class="help-card-title-block">
+                <b-icon :icon="ICONS.palette2" size="is-small" class="mr-2" />
+                <h3>Claves de tratamiento</h3>
+              </div>
+            </header>
+
+            <p class="help-text">
+              Los tratamientos de lente se identifican con claves cortas que aparecen en el SKU y en los
+              filtros del catálogo.
+            </p>
+
+            <div class="nomenclatura-table">
+              <div class="nomenclatura-table__row nomenclatura-table__row--head">
+                <span>Clave</span>
+                <span>Tratamiento</span>
+                <span>Notas</span>
+              </div>
+              <div class="nomenclatura-table__row">
+                <span class="nomenclatura-segment__part">BCO</span>
+                <span>Blanco (sin tratamiento)</span>
+                <span class="muted">Todos los materiales</span>
+              </div>
+              <div class="nomenclatura-table__row">
+                <span class="nomenclatura-segment__part">AR</span>
+                <span>Antirreflejante</span>
+                <span class="muted">Todos excepto cristal</span>
+              </div>
+              <div class="nomenclatura-table__row">
+                <span class="nomenclatura-segment__part">ANTIBLE</span>
+                <span>Anti luz azul</span>
+                <span class="muted">Con o sin AR</span>
+              </div>
+              <div class="nomenclatura-table__row">
+                <span class="nomenclatura-segment__part">FOTO</span>
+                <span>Fotocromático</span>
+                <span class="muted">Con o sin AR</span>
+              </div>
+              <div class="nomenclatura-table__row">
+                <span class="nomenclatura-segment__part">FOTO_ANTIBLE</span>
+                <span>Fotocromático + Anti luz azul</span>
+                <span class="muted">Con o sin AR</span>
+              </div>
+              <div class="nomenclatura-table__row">
+                <span class="nomenclatura-segment__part">TRANSITIONS</span>
+                <span>Transitions (fotocromático marca)</span>
+                <span class="muted">Variantes: Gris, Café, Verde</span>
+              </div>
+              <div class="nomenclatura-table__row">
+                <span class="nomenclatura-segment__part">POLAR</span>
+                <span>Polarizado</span>
+                <span class="muted">Solo monofocal. Colores: Gris, Café, G15</span>
+              </div>
+              <div class="nomenclatura-table__row">
+                <span class="nomenclatura-segment__part">POLAR_ESPEJO</span>
+                <span>Polarizado + Espejado</span>
+                <span class="muted">Solo monofocal. 15 combinaciones de color</span>
+              </div>
+              <div class="nomenclatura-table__row">
+                <span class="nomenclatura-segment__part">CRISTAL_FOTO</span>
+                <span>Fotocromático (cristal)</span>
+                <span class="muted">Solo material Cristal</span>
+              </div>
+            </div>
+          </article>
+
+          <!-- Estados -->
+          <article id="sec_estados" class="help-card help-anchor">
+            <header class="help-card-header">
+              <div class="help-card-title-block">
+                <b-icon :icon="ICONS.list" size="is-small" class="mr-2" />
+                <h3>Estados del sistema</h3>
+              </div>
+            </header>
+
+            <p class="help-text">
+              Los pedidos y devoluciones pasan por diferentes estados. Aquí tienes lo que significa cada uno.
+            </p>
+
+            <div class="nomenclatura-duo">
+              <div class="nomenclatura-duo__block">
+                <p class="help-text"><strong>Pedidos de laboratorio</strong></p>
+                <div class="nomenclatura-status-list">
+                  <div class="nomenclatura-status">
+                    <span class="nomenclatura-status__dot nomenclatura-status__dot--pendiente"></span>
+                    <span><strong>pendiente</strong> — Pedido creado, sin atender</span>
+                  </div>
+                  <div class="nomenclatura-status">
+                    <span class="nomenclatura-status__dot nomenclatura-status__dot--parcial"></span>
+                    <span><strong>parcial</strong> — Algunos productos ya fueron surtidos</span>
+                  </div>
+                  <div class="nomenclatura-status">
+                    <span class="nomenclatura-status__dot nomenclatura-status__dot--cerrado"></span>
+                    <span><strong>cerrado</strong> — Todos los productos surtidos</span>
+                  </div>
+                  <div class="nomenclatura-status">
+                    <span class="nomenclatura-status__dot nomenclatura-status__dot--cancelado"></span>
+                    <span><strong>cancelado</strong> — Pedido cancelado (stock devuelto)</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="nomenclatura-duo__block">
+                <p class="help-text"><strong>Devoluciones</strong></p>
+                <div class="nomenclatura-status-list">
+                  <div class="nomenclatura-status">
+                    <span class="nomenclatura-status__dot nomenclatura-status__dot--pendiente"></span>
+                    <span><strong>pendiente</strong> — Devolución registrada</span>
+                  </div>
+                  <div class="nomenclatura-status">
+                    <span class="nomenclatura-status__dot nomenclatura-status__dot--parcial"></span>
+                    <span><strong>en_revision</strong> — En revisión</span>
+                  </div>
+                  <div class="nomenclatura-status">
+                    <span class="nomenclatura-status__dot nomenclatura-status__dot--cerrado"></span>
+                    <span><strong>aprobada</strong> / <strong>procesada</strong> — Aceptada y procesada</span>
+                  </div>
+                  <div class="nomenclatura-status">
+                    <span class="nomenclatura-status__dot nomenclatura-status__dot--cancelado"></span>
+                    <span><strong>rechazada</strong> — Devolución rechazada</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="help-soft">
+              <div class="help-soft__title">
+                <b-icon :icon="ICONS.info" size="is-small" class="mr-1" />
+                Condición de artículo devuelto
+              </div>
+              <p class="help-soft__text">
+                Al registrar una devolución, cada artículo se clasifica como:
+                <strong>bueno</strong> (reutilizable),
+                <strong>dañado</strong> o
+                <strong>defectuoso</strong>.
+              </p>
+            </div>
+          </article>
+
+          <!-- Coordenadas ópticas -->
+          <article id="sec_coordenadas" class="help-card help-anchor">
+            <header class="help-card-header">
+              <div class="help-card-title-block">
+                <b-icon :icon="ICONS.ruler" size="is-small" class="mr-2" />
+                <h3>Coordenadas ópticas y materiales</h3>
+              </div>
+            </header>
+
+            <p class="help-text">
+              Los valores ópticos de cada producto se representan con abreviaturas estándar de optometría.
+            </p>
+
+            <div class="nomenclatura-table">
+              <div class="nomenclatura-table__row nomenclatura-table__row--head">
+                <span>Abreviatura</span>
+                <span>Significado</span>
+                <span>Rango típico</span>
+              </div>
+              <div class="nomenclatura-table__row">
+                <span class="nomenclatura-segment__part">SPH</span>
+                <span>Esfera (poder esférico)</span>
+                <span class="mono">-20.00 a +20.00</span>
+              </div>
+              <div class="nomenclatura-table__row">
+                <span class="nomenclatura-segment__part">CYL</span>
+                <span>Cilindro (astigmatismo)</span>
+                <span class="mono">-6.00 a 0.00</span>
+              </div>
+              <div class="nomenclatura-table__row">
+                <span class="nomenclatura-segment__part">ADD</span>
+                <span>Adición (para lectura)</span>
+                <span class="mono">+0.50 a +4.00</span>
+              </div>
+              <div class="nomenclatura-table__row">
+                <span class="nomenclatura-segment__part">BASE</span>
+                <span>Curva base del lente</span>
+                <span class="mono">0.00 a 10.00</span>
+              </div>
+              <div class="nomenclatura-table__row">
+                <span class="nomenclatura-segment__part">AXIS</span>
+                <span>Eje del cilindro (grados)</span>
+                <span class="mono">0 a 180</span>
+              </div>
+              <div class="nomenclatura-table__row">
+                <span class="nomenclatura-segment__part">BI / BD</span>
+                <span>Base izquierda / Base derecha</span>
+                <span class="mono">Bifocales y progresivos</span>
+              </div>
+            </div>
+
+            <div class="help-soft">
+              <div class="help-soft__title">
+                <b-icon :icon="ICONS.glasses" size="is-small" class="mr-1" />
+                Materiales disponibles
+              </div>
+              <p class="help-soft__text">
+                <strong>CR-39</strong> (plástico estándar) ·
+                <strong>Policarbonato</strong> ·
+                <strong>1.56</strong> ·
+                <strong>1.61 MR-8</strong> ·
+                <strong>1.67</strong> ·
+                <strong>1.74</strong> (ultra delgado) ·
+                <strong>Cristal</strong> (vidrio).
+                El índice de refracción más alto = lente más delgado.
+              </p>
+            </div>
+            
+            <!-- 
+            <div class="help-note">
+              <b-icon :icon="ICONS.info" size="is-small" class="mr-1" />
+              <span>
+                En el sistema, los valores negativos se representan internamente con <strong>m</strong>
+                (ej: <code>m1d50</code> = -1.50) y el punto decimal con <strong>d</strong>
+                (ej: <code>2d50</code> = 2.50). Esto es solo interno; en pantalla siempre se muestra el
+                formato normal con signo y punto decimal.
+              </span>
+            </div>           
+            -->
+          </article>
+
+        </div>
+      </template>
+
+      <!-- ══ TAB 5: MI CUENTA ══════════════════════════════════════════════════ -->
       <template #cuenta>
         <div class="help-tab-content">
 
@@ -569,7 +1023,7 @@
         </div>
       </template>
 
-      <!-- ══ TAB 5: REFERENCIA RÁPIDA ════════════════════════════════════════ -->
+      <!-- ══ TAB 6: REFERENCIA RÁPIDA ════════════════════════════════════════ -->
       <template #referencia>
         <div class="help-tab-content">
 
@@ -693,13 +1147,8 @@
                     <span class="help-faq-section__count">{{ sec.items.length }}</span>
                   </div>
 
-                  <b-collapse
-                    v-for="qa in sec.items"
-                    :key="qa.id"
-                    class="help-faq-item"
-                    animation="fade"
-                    :open="openMap[qa.id] ?? qa.openByDefault"
-                  >
+                  <b-collapse v-for="qa in sec.items" :key="qa.id" class="help-faq-item" animation="fade"
+                    :open="openMap[qa.id] ?? qa.openByDefault">
                     <template #trigger="{ open }">
                       <div class="help-faq-trigger">
                         <span>{{ qa.q }}</span>
@@ -765,88 +1214,104 @@ import { useRoute, useRouter } from "vue-router";
 import DynamicTabs from "@/components/DynamicTabs.vue";
 
 const HELP_TABS = [
-  { key: "inicio",      label: "Inicio",      icon: "home" },
-  { key: "inventario",  label: "Inventario",  icon: "layer-group" },
-  { key: "ventas",      label: "Ventas & Lab", icon: "flask" },
-  { key: "cuenta",      label: "Mi cuenta",   icon: "cog" },
-  { key: "referencia",  label: "Referencia",  icon: "question-circle" },
+  { key: "inicio", label: "Inicio", icon: "home" },
+  { key: "inventario", label: "Inventario", icon: "layer-group" },
+  { key: "ventas", label: "Ventas & Lab", icon: "flask" },
+  { key: "nomenclaturas", label: "Nomenclaturas", icon: "tags" },
+  { key: "cuenta", label: "Mi cuenta", icon: "cog" },
+  { key: "referencia", label: "Referencia", icon: "question-circle" },
 ];
 
 const props = defineProps({
-  user:       { type: Object, default: () => null },
+  user: { type: Object, default: () => null },
   appVersion: { type: String, default: "" },
 });
 
 const router = useRouter();
-const route  = useRoute();
+const route = useRoute();
 
 const ICONS = Object.freeze({
-  help:       "life-ring",
-  save:       "save",
-  refresh:    "sync-alt",
-  restore:    "trash-restore",
-  user:       "user",
-  version:    "code-branch",
-  search:     "search",
-  results:    "list",
-  play:       "play-circle",
-  edit:       "pen",
-  export:     "file-export",
-  users:      "users",
-  userPlus:   "user-plus",
-  key:        "key",
-  trash:      "trash-alt",
-  shield:     "user-shield",
-  lock:       "lock",
-  wrench:     "wrench",
-  faq:        "question-circle",
-  support:    "headset",
-  mail:       "envelope",
-  formula:    "calculator",
-  keyboard:   "keyboard",
-  info:       "info-circle",
-  chevUp:     "chevron-up",
-  chevDown:   "chevron-down",
-  home:       "home",
-  bell:       "bell",
-  sidebar:    "bars",
-  inventory:  "layer-group",
-  cart:       "shopping-cart",
-  lab:        "flask",
-  scan:       "barcode",
-  check:      "check-circle",
+  help: "life-ring",
+  save: "save",
+  refresh: "sync-alt",
+  restore: "trash-restore",
+  user: "user",
+  version: "code-branch",
+  search: "search",
+  results: "list",
+  play: "play-circle",
+  edit: "pen",
+  export: "file-export",
+  users: "users",
+  userPlus: "user-plus",
+  key: "key",
+  trash: "trash-alt",
+  shield: "user-shield",
+  lock: "lock",
+  wrench: "wrench",
+  faq: "question-circle",
+  support: "headset",
+  mail: "envelope",
+  formula: "calculator",
+  keyboard: "keyboard",
+  info: "info-circle",
+  chevUp: "chevron-up",
+  chevDown: "chevron-down",
+  home: "home",
+  bell: "bell",
+  sidebar: "bars",
+  inventory: "layer-group",
+  cart: "shopping-cart",
+  lab: "flask",
+  scan: "barcode",
+  check: "check-circle",
   correction: "exclamation-circle",
-  history:    "history",
-  config:     "cog",
-  palette:    "palette",
-  pin:        "star",
-  list:       "list-ul",
+  history: "history",
+  config: "cog",
+  palette: "palette",
+  pin: "star",
+  list: "list-ul",
+  tags: "tags",
+  hashtag: "hashtag",
+  barcode: "barcode",
+  eye: "eye",
+  glasses: "glasses",
+  palette2: "fill-drip",
+  ruler: "ruler-combined",
 });
 
 /* ── Tabs ─────────────────────────────────────────────────────────────────── */
-const VALID_TABS = ["inicio", "inventario", "ventas", "cuenta", "referencia"];
+const VALID_TABS = ["inicio", "inventario", "ventas", "nomenclaturas", "cuenta", "referencia"];
 
 // Map: section anchor id → tab value
 const SECTION_TAB = {
-  sec_inicio:         "inicio",
+  sec_inicio: "inicio",
   sec_notificaciones: "inicio",
-  sec_inventario:     "inventario",
-  sec_ventas:         "ventas",
-  sec_laboratorio:    "ventas",
-  sec_config:         "cuenta",
-  sec_usuarios:       "cuenta",
-  sec_atajos:         "referencia",
-  sec_solucion:       "referencia",
-  sec_faq:            "referencia",
-  sec_soporte:        "referencia",
+  sec_inventario: "inventario",
+  sec_ventas: "ventas",
+  sec_laboratorio: "ventas",
+  sec_config: "cuenta",
+  sec_usuarios: "cuenta",
+  sec_sku: "nomenclaturas",
+  sec_folios: "nomenclaturas",
+  sec_codebar: "nomenclaturas",
+  sec_matrices: "nomenclaturas",
+  sec_tratamientos: "nomenclaturas",
+  sec_estados: "nomenclaturas",
+  sec_coordenadas: "nomenclaturas",
+  sec_atajos: "referencia",
+  sec_solucion: "referencia",
+  sec_faq: "referencia",
+  sec_soporte: "referencia",
 };
 
 const TAB_LABELS = {
-  inicio:      "Inicio",
-  inventario:  "Inventario",
-  ventas:      "Ventas & Lab",
-  cuenta:      "Mi cuenta",
-  referencia:  "Referencia",
+  inicio: "Inicio",
+  inventario: "Inventario",
+  ventas: "Ventas & Lab",
+  nomenclaturas: "Nomenclaturas",
+  cuenta: "Mi cuenta",
+  referencia: "Referencia",
 };
 
 const activeTab = ref("inicio");
@@ -862,17 +1327,17 @@ watch(() => route.query.tab, syncTabFromRoute);
 watch(() => activeTab.value, (newTab) => {
   if (route.query.tab === newTab) return;
   router.replace({
-    name:   route.name,
+    name: route.name,
     params: route.params,
-    query:  { ...route.query, tab: newTab },
-    hash:   route.hash,
-  }).catch(() => {});
+    query: { ...route.query, tab: newTab },
+    hash: route.hash,
+  }).catch(() => { });
 });
 
 const tabLabelForSection = (sectionId) => TAB_LABELS[SECTION_TAB[sectionId]] ?? "";
 
 /* ── Search ───────────────────────────────────────────────────────────────── */
-const search         = ref("");
+const search = ref("");
 const searchInputRef = ref(null);
 
 const onSearchInput = (payload) => {
@@ -897,16 +1362,23 @@ const displayRole = computed(() => {
 });
 
 const searchCatalog = computed(() => [
-  { id: "sec_inicio",         title: "Inicio y menú",             icon: ICONS.home,      text: "inicio dashboard barra lateral menú notificaciones búsqueda global campana" },
-  { id: "sec_inventario",     title: "Inventario",                icon: ICONS.inventory, text: "planilla celda guardar exportar plantilla bases micas negativa positiva existencias" },
-  { id: "sec_ventas",         title: "Crear pedido de ventas",    icon: ICONS.cart,      text: "ventas pedido carrito cliente enviar laboratorio historial comprobante folio" },
-  { id: "sec_laboratorio",    title: "Laboratorio",               icon: ICONS.lab,       text: "laboratorio pedido escanear código barras cerrar pedido surtir corrección bandeja catálogo" },
-  { id: "sec_notificaciones", title: "Notificaciones",            icon: ICONS.bell,      text: "notificación aviso campana badge no leída fijar estrella descartar tiempo real" },
-  { id: "sec_config",         title: "Configuración y seguridad", icon: ICONS.config,    text: "perfil editar avatar foto contraseña seguridad sesiones dispositivos tema oscuro fuente accesibilidad" },
-  { id: "sec_usuarios",       title: "Usuarios",                  icon: ICONS.users,     text: "usuario nuevo rol crear editar contraseña papelera restaurar permisos" },
-  { id: "sec_atajos",         title: "Atajos de teclado",         icon: ICONS.keyboard,  text: "ctrl s guardar ctrl z deshacer enter esc escape mac cmd" },
-  { id: "sec_solucion",       title: "Solución rápida",           icon: ICONS.wrench,    text: "no guarda no aparece pedido laboratorio escanear sesión cerrada menú rol" },
-  { id: "sec_soporte",        title: "Soporte",                   icon: ICONS.support,   text: "correo soporte reporte captura pantalla error" },
+  { id: "sec_inicio", title: "Inicio y menú", icon: ICONS.home, text: "inicio dashboard barra lateral menú notificaciones búsqueda global campana" },
+  { id: "sec_inventario", title: "Inventario", icon: ICONS.inventory, text: "planilla celda guardar exportar plantilla bases micas negativa positiva existencias" },
+  { id: "sec_ventas", title: "Crear pedido de ventas", icon: ICONS.cart, text: "ventas pedido carrito cliente enviar laboratorio historial comprobante folio" },
+  { id: "sec_laboratorio", title: "Laboratorio", icon: ICONS.lab, text: "laboratorio pedido escanear código barras cerrar pedido surtir corrección bandeja catálogo" },
+  { id: "sec_notificaciones", title: "Notificaciones", icon: ICONS.bell, text: "notificación aviso campana badge no leída fijar estrella descartar tiempo real" },
+  { id: "sec_config", title: "Configuración y seguridad", icon: ICONS.config, text: "perfil editar avatar foto contraseña seguridad sesiones dispositivos tema oscuro fuente accesibilidad" },
+  { id: "sec_usuarios", title: "Usuarios", icon: ICONS.users, text: "usuario nuevo rol crear editar contraseña papelera restaurar permisos" },
+  { id: "sec_sku", title: "SKU (código de planilla)", icon: ICONS.tags, text: "sku código planilla proveedor marca material tratamiento abreviatura inventario" },
+  { id: "sec_folios", title: "Folios de pedido", icon: ICONS.hashtag, text: "folio LAB DEV pedido laboratorio devolución número consecutivo fecha referencia" },
+  { id: "sec_codebar", title: "Código de barras EAN-13", icon: ICONS.barcode, text: "código barras ean 13 dígitos escanear producto 279 prefijo" },
+  { id: "sec_matrices", title: "Tipos de matriz", icon: ICONS.glasses, text: "matriz tipo lente BASE SPH CYL ADD monofocal bifocal progresivo tórico ojo OD OI" },
+  { id: "sec_tratamientos", title: "Claves de tratamiento", icon: ICONS.palette2, text: "tratamiento BCO AR ANTIBLE FOTO TRANSITIONS POLAR espejo cristal blanco antirreflejante fotocromático polarizado" },
+  { id: "sec_estados", title: "Estados del sistema", icon: ICONS.list, text: "estado pendiente parcial cerrado cancelado devolución aprobada rechazada procesada condición bueno dañado" },
+  { id: "sec_coordenadas", title: "Coordenadas ópticas", icon: ICONS.ruler, text: "coordenada SPH CYL ADD BASE AXIS ojo material CR-39 policarbonato índice refracción" },
+  { id: "sec_atajos", title: "Atajos de teclado", icon: ICONS.keyboard, text: "ctrl s guardar ctrl z deshacer enter esc escape mac cmd" },
+  { id: "sec_solucion", title: "Solución rápida", icon: ICONS.wrench, text: "no guarda no aparece pedido laboratorio escanear sesión cerrada menú rol" },
+  { id: "sec_soporte", title: "Soporte", icon: ICONS.support, text: "correo soporte reporte captura pantalla error" },
 ]);
 
 const quickMatches = computed(() => {
@@ -1020,6 +1492,56 @@ const sections = ref([
           "El supervisor recibirá una notificación específica. No uses esta opción para cancelar pedidos.",
         ],
         tags: ["corrección", "supervisor"],
+      },
+    ],
+  },
+  {
+    id: "nomen", title: "Nomenclaturas y códigos", icon: ICONS.tags,
+    items: [
+      {
+        id: "nm1",
+        q: "¿Cómo leo un SKU de planilla?",
+        a: [
+          "El SKU se divide en segmentos separados por guiones. De izquierda a derecha: proveedor, marca, tipo de matriz, material, base, tratamiento y un código aleatorio.",
+          "Por ejemplo: JAP-TAI-BAS-POL-MON-BLN-A5F2 significa proveedor JAP, marca TAI, tipo BASE, material Policarbonato, base MON, tratamiento Blanco.",
+        ],
+        tags: ["sku", "código", "planilla", "leer"],
+      },
+      {
+        id: "nm2",
+        q: "¿Qué significan LAB y DEV en los folios?",
+        a: [
+          "LAB es el prefijo de los pedidos de laboratorio (ej: LAB-20250328-A5F2). Después viene la fecha y un código aleatorio.",
+          "DEV es el prefijo de las devoluciones (ej: DEV-2025-00001). Después viene el año y un número consecutivo.",
+        ],
+        tags: ["folio", "LAB", "DEV", "pedido", "devolución"],
+      },
+      {
+        id: "nm3",
+        q: "¿Qué significa SPH, CYL, ADD en los productos?",
+        a: [
+          "SPH (esfera) es el poder óptico principal del lente. CYL (cilindro) corrige el astigmatismo. ADD (adición) es la potencia extra para lectura en bifocales/progresivos.",
+          "Estos valores se muestran con signo (+/-) y dos decimales. Por ejemplo: SPH -2.50 · CYL -1.00 · ADD +2.00.",
+        ],
+        tags: ["SPH", "CYL", "ADD", "coordenadas", "óptica"],
+      },
+      {
+        id: "nm4",
+        q: "¿Qué significan las claves de tratamiento como BCO, AR, FOTO?",
+        a: [
+          "BCO = Blanco (sin tratamiento), AR = Antirreflejante, FOTO = Fotocromático (se oscurece con el sol), ANTIBLE = Anti luz azul, POLAR = Polarizado.",
+          "Algunos tratamientos tienen variantes de color (Transitions: Gris, Café, Verde) o restricciones de material (CRISTAL_FOTO solo aplica a cristal).",
+        ],
+        tags: ["tratamiento", "BCO", "AR", "FOTO", "POLAR"],
+      },
+      {
+        id: "nm5",
+        q: "¿Qué es OD y OI?",
+        a: [
+          "OD significa Ojo Derecho (del latín 'Oculus Dexter') y OI significa Ojo Izquierdo ('Oculus Sinister').",
+          "Se usan en bifocales y progresivos donde cada ojo puede tener prescripción diferente. Las planillas monofocales tipo BASE y SPH_CYL no distinguen ojo.",
+        ],
+        tags: ["OD", "OI", "ojo", "bifocal", "progresivo"],
       },
     ],
   },
@@ -1165,7 +1687,7 @@ const scrollToId = async (id) => {
     return;
   }
   const parentRect = parent.getBoundingClientRect();
-  const elRect     = el.getBoundingClientRect();
+  const elRect = el.getBoundingClientRect();
   parent.scrollTo({ top: elRect.top - parentRect.top + parent.scrollTop - SCROLL_OFFSET, behavior: "smooth" });
 };
 
@@ -1177,7 +1699,7 @@ const goTo = async (id) => {
     await nextTick();
     await nextTick(); // Wait for tab content to render
   }
-  try { await router.replace({ ...route, hash: `#${id}` }); } catch {}
+  try { await router.replace({ ...route, hash: `#${id}` }); } catch { }
   await scrollToId(id);
 };
 
@@ -1200,13 +1722,13 @@ watch(
 
 /* ── Atajo "/" ────────────────────────────────────────────────────────────── */
 const focusSearch = () => {
-  const root  = searchInputRef.value?.$el || searchInputRef.value;
+  const root = searchInputRef.value?.$el || searchInputRef.value;
   const input = root?.querySelector?.("input");
   if (input) { input.focus(); input.select?.(); }
 };
 
 const onKeyDown = (e) => {
-  const tag    = (e.target?.tagName || "").toLowerCase();
+  const tag = (e.target?.tagName || "").toLowerCase();
   const typing = tag === "input" || tag === "textarea" || e.target?.isContentEditable;
   if (!typing && e.key === "/") { e.preventDefault(); focusSearch(); }
 };
@@ -1216,7 +1738,9 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
 </script>
 
 <style scoped>
-.help-anchor { scroll-margin-top: 96px; }
+.help-anchor {
+  scroll-margin-top: 96px;
+}
 
 .ayuda-section {
   border-radius: 14px;
@@ -1252,7 +1776,10 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
   margin-bottom: 0.25rem;
 }
 
-.help-title-block p { font-size: 0.82rem; color: var(--text-muted); }
+.help-title-block p {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
 
 .help-pill {
   display: inline-flex;
@@ -1278,7 +1805,11 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
   color: var(--text-muted);
 }
 
-.help-meta-line { display: flex; align-items: center; gap: 0.25rem; }
+.help-meta-line {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
 
 .help-quick {
   display: grid;
@@ -1310,12 +1841,34 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
   flex: 0 0 auto;
 }
 
-.help-quick__title { font-size: 0.78rem; font-weight: 800; color: var(--text-primary); margin: 0; line-height: 1.2; }
-.help-quick__text  { font-size: 0.78rem; color: var(--text-secondary); margin: 0.15rem 0 0; line-height: 1.25; }
+.help-quick__title {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0;
+  line-height: 1.2;
+}
 
-.help-search { margin-top: 0.25rem; }
-.help-search-label { font-size: 0.75rem; }
-.help-search-hint  { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.15rem; }
+.help-quick__text {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  margin: 0.15rem 0 0;
+  line-height: 1.25;
+}
+
+.help-search {
+  margin-top: 0.25rem;
+}
+
+.help-search-label {
+  font-size: 0.75rem;
+}
+
+.help-search-hint {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+}
 
 .help-results {
   margin-top: 0.35rem;
@@ -1334,7 +1887,12 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
   gap: 0.25rem;
 }
 
-.help-results__chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.35rem; }
+.help-results__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.35rem;
+}
 
 .help-index__chip {
   border: 1px solid var(--border-solid);
@@ -1392,12 +1950,35 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
     var(--surface-solid);
 }
 
-.help-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem; flex-wrap: wrap; gap: 0.35rem; }
-.help-card-title-block { display: inline-flex; align-items: center; gap: 0.35rem; }
-.help-card-header h3 { font-size: 0.92rem; font-weight: 800; color: var(--text-primary); }
+.help-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
 
-.help-text { font-size: 0.79rem; color: var(--text-secondary); }
-.mt-3 { margin-top: 0.75rem; }
+.help-card-title-block {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.help-card-header h3 {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.help-text {
+  font-size: 0.79rem;
+  color: var(--text-secondary);
+}
+
+.mt-3 {
+  margin-top: 0.75rem;
+}
 
 .help-list {
   margin-top: 0.45rem;
@@ -1410,7 +1991,12 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
   gap: 0.25rem;
 }
 
-.help-steps2 { margin-top: 0.55rem; display: flex; flex-direction: column; gap: 0.55rem; }
+.help-steps2 {
+  margin-top: 0.55rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
 
 .help-step2 {
   display: flex;
@@ -1436,8 +2022,19 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
   flex: 0 0 auto;
 }
 
-.help-step2__title { margin: 0; font-size: 0.82rem; font-weight: 800; color: var(--text-primary); }
-.help-step2__text  { margin: 0.15rem 0 0; font-size: 0.79rem; color: var(--text-secondary); line-height: 1.25; }
+.help-step2__title {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.help-step2__text {
+  margin: 0.15rem 0 0;
+  font-size: 0.79rem;
+  color: var(--text-secondary);
+  line-height: 1.25;
+}
 
 .help-soft {
   margin-top: 0.7rem;
@@ -1447,8 +2044,20 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
   padding: 0.65rem 0.7rem;
 }
 
-.help-soft__title { font-size: 0.78rem; font-weight: 800; display: inline-flex; align-items: center; color: var(--text-primary); }
-.help-soft__text  { margin: 0.25rem 0 0; font-size: 0.78rem; color: var(--text-secondary); line-height: 1.25; }
+.help-soft__title {
+  font-size: 0.78rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-primary);
+}
+
+.help-soft__text {
+  margin: 0.25rem 0 0;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.25;
+}
 
 .help-note {
   margin-top: 0.75rem;
@@ -1463,7 +2072,12 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
   gap: 0.35rem;
 }
 
-.help-split { display: grid; grid-template-columns: 1fr; gap: 0.6rem; margin-top: 0.55rem; }
+.help-split {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.6rem;
+  margin-top: 0.55rem;
+}
 
 .help-split__block {
   border: 1px solid var(--border-solid);
@@ -1472,7 +2086,12 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
   padding: 0.7rem 0.8rem;
 }
 
-.help-actions-grid { display: grid; grid-template-columns: 1fr; gap: 0.6rem; margin-top: 0.55rem; }
+.help-actions-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.6rem;
+  margin-top: 0.55rem;
+}
 
 .help-action {
   border: 1px solid var(--border);
@@ -1482,10 +2101,27 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
   box-shadow: var(--shadow-sm);
 }
 
-.help-action__title { font-size: 0.82rem; font-weight: 900; color: var(--text-primary); display: inline-flex; align-items: center; }
-.help-action__text  { margin: 0.25rem 0 0; font-size: 0.79rem; color: var(--text-secondary); line-height: 1.25; }
+.help-action__title {
+  font-size: 0.82rem;
+  font-weight: 900;
+  color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+}
 
-.help-fixes { margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.55rem; }
+.help-action__text {
+  margin: 0.25rem 0 0;
+  font-size: 0.79rem;
+  color: var(--text-secondary);
+  line-height: 1.25;
+}
+
+.help-fixes {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
 
 .help-fix {
   border: 1px solid var(--border);
@@ -1494,11 +2130,31 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
   background: var(--bg-subtle);
 }
 
-.help-fix__q { font-size: 0.82rem; font-weight: 900; color: var(--text-primary); }
-.help-fix__a { margin-top: 0.25rem; font-size: 0.79rem; color: var(--text-secondary); line-height: 1.25; }
+.help-fix__q {
+  font-size: 0.82rem;
+  font-weight: 900;
+  color: var(--text-primary);
+}
 
-.help-faq-list   { margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.6rem; }
-.help-faq-section { display: flex; flex-direction: column; gap: 0.35rem; }
+.help-fix__a {
+  margin-top: 0.25rem;
+  font-size: 0.79rem;
+  color: var(--text-secondary);
+  line-height: 1.25;
+}
+
+.help-faq-list {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.help-faq-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
 
 .help-faq-section__title {
   display: inline-flex;
@@ -1533,12 +2189,35 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
   cursor: pointer;
 }
 
-.help-faq-body { margin-top: 0.4rem; font-size: 0.78rem; color: var(--text-secondary); }
-.help-faq-body p+p { margin-top: 0.18rem; }
+.help-faq-body {
+  margin-top: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
 
-.help-tags    { margin-top: 0.4rem; display: flex; flex-wrap: wrap; gap: 0.25rem; }
-.help-tag     { font-size: 0.7rem; color: var(--c-primary); background: var(--c-primary-alpha); border-radius: 999px; padding: 0.1rem 0.45rem; border: 1px solid rgba(79, 70, 229, 0.15); }
-.help-no-results { margin-top: 0.4rem; }
+.help-faq-body p+p {
+  margin-top: 0.18rem;
+}
+
+.help-tags {
+  margin-top: 0.4rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.help-tag {
+  font-size: 0.7rem;
+  color: var(--c-primary);
+  background: var(--c-primary-alpha);
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  border: 1px solid rgba(79, 70, 229, 0.15);
+}
+
+.help-no-results {
+  margin-top: 0.4rem;
+}
 
 .help-contact {
   margin-top: 0.85rem;
@@ -1561,22 +2240,226 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
   border-radius: 999px;
 }
 
-.help-contact__email { margin: 0.45rem 0 0; font-size: 0.98rem; font-weight: 900; color: var(--text-primary); letter-spacing: 0.01em; }
+.help-contact__email {
+  margin: 0.45rem 0 0;
+  font-size: 0.98rem;
+  font-weight: 900;
+  color: var(--text-primary);
+  letter-spacing: 0.01em;
+}
 
-@keyframes panel-fade-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+/* ── Nomenclatura components ─────────────────────────────────────────────── */
+.nomenclatura-example {
+  margin: 0.65rem 0;
+  text-align: center;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  border: 1px dashed var(--border);
+  background: var(--bg-subtle);
+}
+
+.nomenclatura-example__code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 1.05rem;
+  font-weight: 1000;
+  color: var(--c-primary);
+  letter-spacing: 0.06em;
+  word-break: break-all;
+}
+
+.nomenclatura-example__label {
+  margin-top: 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.nomenclatura-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.nomenclatura-breakdown--compact {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.35rem;
+}
+
+.nomenclatura-segment {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-solid);
+}
+
+.nomenclatura-segment__part {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-weight: 1000;
+  font-size: 0.82rem;
+  color: var(--c-primary);
+  background: var(--c-primary-alpha);
+  padding: 0.1rem 0.4rem;
+  border-radius: 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.nomenclatura-segment__desc {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.nomenclatura-sep {
+  color: var(--text-muted);
+  font-weight: 900;
+  font-size: 0.85rem;
+}
+
+.nomenclatura-duo {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+  margin-top: 0.55rem;
+}
+
+.nomenclatura-duo__block {
+  border: 1px solid var(--border);
+  background: var(--bg-subtle);
+  border-radius: 14px;
+  padding: 0.75rem 0.85rem;
+}
+
+.nomenclatura-table {
+  margin-top: 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.nomenclatura-table__row {
+  display: grid;
+  grid-template-columns: minmax(80px, auto) 1fr 1fr;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.79rem;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+}
+
+.nomenclatura-table__row:last-child {
+  border-bottom: none;
+}
+
+.nomenclatura-table__row--head {
+  background: var(--c-primary-alpha);
+  font-weight: 900;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-primary);
+}
+
+.nomenclatura-status-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.45rem;
+}
+
+.nomenclatura-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.79rem;
+  color: var(--text-secondary);
+}
+
+.nomenclatura-status__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.nomenclatura-status__dot--pendiente {
+  background: rgba(245, 158, 11, 0.85);
+}
+
+.nomenclatura-status__dot--parcial {
+  background: rgba(59, 130, 246, 0.85);
+}
+
+.nomenclatura-status__dot--cerrado {
+  background: rgba(34, 197, 94, 0.85);
+}
+
+.nomenclatura-status__dot--cancelado {
+  background: rgba(239, 68, 68, 0.85);
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.muted {
+  color: var(--text-muted);
+  font-weight: 700;
 }
 
 @media (min-width: 1024px) {
-  .help-split          { grid-template-columns: 1fr 1fr; }
-  .help-actions-grid   { grid-template-columns: 1fr 1fr; }
-  .help-quick          { grid-template-columns: 1fr 1fr 1fr; }
+  .nomenclatura-duo {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@keyframes panel-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (min-width: 1024px) {
+  .help-split {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .help-actions-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .help-quick {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
 }
 
 @media (max-width: 768px) {
-  .ayuda-section { padding: 1rem; }
-  .help-header   { flex-direction: column; align-items: flex-start; }
-  .help-meta     { align-items: flex-start; }
+  .ayuda-section {
+    padding: 1rem;
+  }
+
+  .help-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .help-meta {
+    align-items: flex-start;
+  }
 }
 </style>

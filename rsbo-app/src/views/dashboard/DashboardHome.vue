@@ -117,516 +117,667 @@
     </section>
 
     <!-- ══════════════════════════════════════════════════════════════
-         MAIN — Contenido adaptado por rol
+         MAIN — Contenido adaptado por rol (con tabs)
     ══════════════════════════════════════════════════════════════ -->
     <section class="db-main" v-motion-fade-visible-once>
-      <div class="col-main">
+      <DynamicTabs v-model="dashTab" :tabs="DASH_TABS">
 
-        <!-- ─── INVENTARIO — root / eurovision ─── -->
-        <div v-if="canSeeInventory" class="gcard mb-5">
-          <div class="gc-head">
-            <div class="gc-head-left">
-              <div class="gc-badge-icon accent-purple"><i class="fas fa-cubes-stacked"></i></div>
-              <div>
-                <div class="gc-title">Estado del inventario</div>
-                <div class="gc-sub">Cobertura, stock y alertas en tiempo real</div>
-              </div>
-            </div>
-            <div class="gc-status-pill" :class="criticalAlerts > 0 ? 'sp-warn' : 'sp-ok'" v-if="!isLoading">
-              <i :class="criticalAlerts > 0 ? 'fas fa-triangle-exclamation' : 'fas fa-shield-check'"></i>
-              {{ criticalAlerts > 0 ? `${criticalAlerts} alertas críticas` : 'Sin alertas críticas' }}
-            </div>
-          </div>
-          <div class="gc-body">
-            <!-- Tri-metric band -->
-            <div class="triband">
-              <div class="triband-item">
-                <div class="tb-label">Cobertura del catálogo</div>
-                <div class="tb-val" v-if="!isLoading">
-                  <span class="tb-number gradient-purple">{{ s?.coveragePct ?? 0 }}</span>
-                  <span class="tb-unit">%</span>
+        <!-- ═══════════════ TAB: RESUMEN ═══════════════════════════════ -->
+        <template #resumen>
+          <div class="tab-two-col">
+            <div class="col-main">
+              <!-- ─── INVENTARIO — root / eurovision ─── -->
+              <div v-if="canSeeInventory" class="gcard mb-5">
+                <div class="gc-head">
+                  <div class="gc-head-left">
+                    <div class="gc-badge-icon accent-purple"><i class="fas fa-cubes-stacked"></i></div>
+                    <div>
+                      <div class="gc-title">Estado del inventario</div>
+                      <div class="gc-sub">Cobertura, stock y alertas en tiempo real</div>
+                    </div>
+                  </div>
+                  <div class="gc-status-pill" :class="criticalAlerts > 0 ? 'sp-warn' : 'sp-ok'" v-if="!isLoading">
+                    <i :class="criticalAlerts > 0 ? 'fas fa-triangle-exclamation' : 'fas fa-shield-check'"></i>
+                    {{ criticalAlerts > 0 ? `${criticalAlerts} alertas críticas` : 'Sin alertas críticas' }}
+                  </div>
                 </div>
-                <b-skeleton v-else :width="80" :height="32" animated class="mb-1" />
-                <b-progress v-if="!isLoading" :value="s?.coveragePct ?? 0" size="is-small" type="is-primary" :show-value="false" class="tb-prog" />
-              </div>
-              <div class="triband-sep"></div>
-              <div class="triband-item">
-                <div class="tb-label">Stock en rango seguro</div>
-                <div class="tb-val" v-if="!isLoading">
-                  <span class="tb-number gradient-blue">{{ safeStockPercent }}</span>
-                  <span class="tb-unit">%</span>
+                <div class="gc-body">
+                  <div class="triband">
+                    <div class="triband-item">
+                      <div class="tb-label">Cobertura del catálogo</div>
+                      <div class="tb-val" v-if="!isLoading">
+                        <span class="tb-number gradient-purple">{{ s?.coveragePct ?? 0 }}</span>
+                        <span class="tb-unit">%</span>
+                      </div>
+                      <b-skeleton v-else :width="80" :height="32" animated class="mb-1" />
+                      <b-progress v-if="!isLoading" :value="s?.coveragePct ?? 0" size="is-small" type="is-primary" :show-value="false" class="tb-prog" />
+                    </div>
+                    <div class="triband-sep"></div>
+                    <div class="triband-item">
+                      <div class="tb-label">Stock en rango seguro</div>
+                      <div class="tb-val" v-if="!isLoading">
+                        <span class="tb-number gradient-blue">{{ safeStockPercent }}</span>
+                        <span class="tb-unit">%</span>
+                      </div>
+                      <b-skeleton v-else :width="80" :height="32" animated class="mb-1" />
+                      <b-progress v-if="!isLoading" :value="safeStockPercent" size="is-small" type="is-info" :show-value="false" class="tb-prog" />
+                    </div>
+                    <div class="triband-sep"></div>
+                    <div class="triband-item">
+                      <div class="tb-label">Alertas críticas</div>
+                      <div class="tb-val" v-if="!isLoading">
+                        <span class="tb-number gradient-red">{{ criticalAlerts }}</span>
+                      </div>
+                      <b-skeleton v-else :width="60" :height="32" animated class="mb-1" />
+                      <b-progress v-if="!isLoading" :value="Math.min(criticalAlerts * 4, 100)" size="is-small" type="is-danger" :show-value="false" class="tb-prog" />
+                    </div>
+                  </div>
+                  <div class="gc-footer">
+                    <span class="gf-item"><i class="fas fa-rotate"></i> Sync: <b>{{ lastSyncLabel }}</b></span>
+                    <span class="gf-item"><i class="fas fa-table"></i> <b>{{ s?.activeSheets ?? '—' }}</b> hojas</span>
+                    <span class="gf-item"><i class="fas fa-layer-group"></i> <b>{{ formatNumber(s?.totalCombinations) }}</b> combinaciones</span>
+                    <span class="gf-item"><i class="fas fa-boxes-stacked"></i> <b>{{ formatNumber(s?.totalStock) }}</b> piezas</span>
+                  </div>
                 </div>
-                <b-skeleton v-else :width="80" :height="32" animated class="mb-1" />
-                <b-progress v-if="!isLoading" :value="safeStockPercent" size="is-small" type="is-info" :show-value="false" class="tb-prog" />
               </div>
-              <div class="triband-sep"></div>
-              <div class="triband-item">
-                <div class="tb-label">Alertas críticas</div>
-                <div class="tb-val" v-if="!isLoading">
-                  <span class="tb-number gradient-red">{{ criticalAlerts }}</span>
-                </div>
-                <b-skeleton v-else :width="60" :height="32" animated class="mb-1" />
-                <b-progress v-if="!isLoading" :value="Math.min(criticalAlerts * 4, 100)" size="is-small" type="is-danger" :show-value="false" class="tb-prog" />
-              </div>
-            </div>
 
-            <!-- Info footer -->
-            <div class="gc-footer">
-              <span class="gf-item"><i class="fas fa-rotate"></i> Sync: <b>{{ lastSyncLabel }}</b></span>
-              <span class="gf-item"><i class="fas fa-table"></i> <b>{{ s?.activeSheets ?? '—' }}</b> hojas</span>
-              <span class="gf-item"><i class="fas fa-layer-group"></i> <b>{{ formatNumber(s?.totalCombinations) }}</b> combinaciones</span>
-              <span class="gf-item"><i class="fas fa-boxes-stacked"></i> <b>{{ formatNumber(s?.totalStock) }}</b> piezas</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- ─── PEDIDOS Y LAB — todos ─── -->
-        <div v-if="canSeeOrders" class="gcard mb-5">
-          <div class="gc-head">
-            <div class="gc-head-left">
-              <div class="gc-badge-icon accent-blue"><i class="fas fa-flask-vial"></i></div>
-              <div>
-                <div class="gc-title">Pedidos y laboratorio</div>
-                <div class="gc-sub">Actividad operativa del período activo</div>
-              </div>
-            </div>
-          </div>
-          <div class="gc-body">
-            <div class="cell-grid">
-              <div class="mcell">
-                <div class="mcell-label">Pendientes</div>
-                <div class="mcell-val warn" v-if="!isLoading">{{ s?.ordersPending ?? 0 }}</div>
-                <b-skeleton v-else :width="56" :height="30" animated />
-                <div class="mcell-desc">Abiertos o parciales</div>
-              </div>
-              <div class="mcell">
-                <div class="mcell-label">Creados hoy</div>
-                <div class="mcell-val" v-if="!isLoading">{{ s?.ordersToday ?? 0 }}</div>
-                <b-skeleton v-else :width="56" :height="30" animated />
-                <div class="mcell-desc">Nuevos pedidos</div>
-              </div>
-              <div class="mcell">
-                <div class="mcell-label">Cerrados hoy</div>
-                <div class="mcell-val ok" v-if="!isLoading">{{ s?.ordersClosedToday ?? 0 }}</div>
-                <b-skeleton v-else :width="56" :height="30" animated />
-                <div class="mcell-desc">Completados</div>
-              </div>
-              <div class="mcell">
-                <div class="mcell-label">Cerrados (30d)</div>
-                <div class="mcell-val" v-if="!isLoading">{{ s?.ordersClosed30d ?? 0 }}</div>
-                <b-skeleton v-else :width="56" :height="30" animated />
-                <div class="mcell-desc">Este período</div>
-              </div>
-              <template v-if="canSeeLab">
-                <div class="mcell">
-                  <div class="mcell-label">Escaneos hoy</div>
-                  <div class="mcell-val accent" v-if="!isLoading">{{ s?.scansToday ?? 0 }}</div>
-                  <b-skeleton v-else :width="56" :height="30" animated />
-                  <div class="mcell-desc">Salidas por escáner</div>
+              <!-- ─── MI DESEMPEÑO — ventas ─── -->
+              <div v-if="isVentas" class="gcard mb-5">
+                <div class="gc-head">
+                  <div class="gc-head-left">
+                    <div class="gc-badge-icon accent-green"><i class="fas fa-chart-line"></i></div>
+                    <div>
+                      <div class="gc-title">Mi desempeño en ventas</div>
+                      <div class="gc-sub">Actividad del período activo</div>
+                    </div>
+                  </div>
                 </div>
-                <div class="mcell">
-                  <div class="mcell-label">Correcciones (7d)</div>
-                  <div class="mcell-val" :class="(s?.corrections7d ?? 0) > 5 ? 'warn' : ''" v-if="!isLoading">{{ s?.corrections7d ?? 0 }}</div>
-                  <b-skeleton v-else :width="56" :height="30" animated />
-                  <div class="mcell-desc">Activas esta semana</div>
+                <div class="gc-body">
+                  <div class="cell-grid">
+                    <div class="mcell">
+                      <div class="mcell-label">Creados hoy</div>
+                      <div class="mcell-val accent" v-if="!isLoading">{{ s?.ordersToday ?? 0 }}</div>
+                      <b-skeleton v-else :width="56" :height="30" animated />
+                      <div class="mcell-desc">Nuevos pedidos</div>
+                    </div>
+                    <div class="mcell">
+                      <div class="mcell-label">Cerrados hoy</div>
+                      <div class="mcell-val ok" v-if="!isLoading">{{ s?.ordersClosedToday ?? 0 }}</div>
+                      <b-skeleton v-else :width="56" :height="30" animated />
+                      <div class="mcell-desc">Completados</div>
+                    </div>
+                    <div class="mcell">
+                      <div class="mcell-label">Pendientes</div>
+                      <div class="mcell-val warn" v-if="!isLoading">{{ s?.ordersPending ?? 0 }}</div>
+                      <b-skeleton v-else :width="56" :height="30" animated />
+                      <div class="mcell-desc">En espera</div>
+                    </div>
+                    <div class="mcell">
+                      <div class="mcell-label">Cerrados (30d)</div>
+                      <div class="mcell-val" v-if="!isLoading">{{ s?.ordersClosed30d ?? 0 }}</div>
+                      <b-skeleton v-else :width="56" :height="30" animated />
+                      <div class="mcell-desc">Este período</div>
+                    </div>
+                    <div class="mcell">
+                      <div class="mcell-label">Cancelados</div>
+                      <div class="mcell-val danger" v-if="!isLoading">{{ s?.ordersCancelledAll ?? 0 }}</div>
+                      <b-skeleton v-else :width="56" :height="30" animated />
+                      <div class="mcell-desc">Total histórico</div>
+                    </div>
+                    <div class="mcell">
+                      <div class="mcell-label">Histórico total</div>
+                      <div class="mcell-val" v-if="!isLoading">{{ formatNumber(s?.ordersClosedAll) }}</div>
+                      <b-skeleton v-else :width="56" :height="30" animated />
+                      <div class="mcell-desc">Cerrados acumulados</div>
+                    </div>
+                  </div>
                 </div>
-              </template>
-            </div>
-          </div>
-        </div>
-
-        <!-- ─── DEVOLUCIONES — supervisor / root / eurovision ─── -->
-        <div v-if="canSeeDevolutions" class="gcard gcard-devol mb-5">
-          <div class="gc-head">
-            <div class="gc-head-left">
-              <div class="gc-badge-icon accent-orange"><i class="fas fa-rotate-left"></i></div>
-              <div>
-                <div class="gc-title">Devoluciones</div>
-                <div class="gc-sub">Gestión y seguimiento de retornos del laboratorio</div>
-              </div>
-            </div>
-            <button
-              v-if="canManageDevolutions"
-              class="gc-action-btn"
-              @click="$router.push('/layouts/devoluciones')"
-            >
-              <i class="fas fa-arrow-right"></i> Gestionar
-            </button>
-          </div>
-          <div class="gc-body">
-            <div class="cell-grid">
-              <div class="mcell mcell-orange">
-                <div class="mcell-label">Pendientes</div>
-                <div class="mcell-val warn" v-if="!isLoading">{{ s?.devolucionesPendientes ?? 0 }}</div>
-                <b-skeleton v-else :width="56" :height="30" animated />
-                <div class="mcell-desc">Esperando revisión</div>
-              </div>
-              <div class="mcell">
-                <div class="mcell-label">En revisión</div>
-                <div class="mcell-val accent" v-if="!isLoading">{{ s?.devolucionesEnRevision ?? 0 }}</div>
-                <b-skeleton v-else :width="56" :height="30" animated />
-                <div class="mcell-desc">Bajo análisis</div>
-              </div>
-              <div class="mcell">
-                <div class="mcell-label">Aprobadas</div>
-                <div class="mcell-val ok" v-if="!isLoading">{{ s?.devolucionesAprobadas ?? 0 }}</div>
-                <b-skeleton v-else :width="56" :height="30" animated />
-                <div class="mcell-desc">Lista para procesar</div>
-              </div>
-              <div class="mcell">
-                <div class="mcell-label">Procesadas</div>
-                <div class="mcell-val" v-if="!isLoading">{{ s?.devolucionesProcesadas ?? 0 }}</div>
-                <b-skeleton v-else :width="56" :height="30" animated />
-                <div class="mcell-desc">Completadas</div>
-              </div>
-              <div class="mcell">
-                <div class="mcell-label">Rechazadas</div>
-                <div class="mcell-val danger" v-if="!isLoading">{{ s?.devolucionesRechazadas ?? 0 }}</div>
-                <b-skeleton v-else :width="56" :height="30" animated />
-                <div class="mcell-desc">No aplicaban</div>
-              </div>
-              <div class="mcell">
-                <div class="mcell-label">Total (30d)</div>
-                <div class="mcell-val" v-if="!isLoading">{{ s?.devolucionesTotal30d ?? 0 }}</div>
-                <b-skeleton v-else :width="56" :height="30" animated />
-                <div class="mcell-desc">Este período</div>
               </div>
             </div>
 
-            <!-- ── Acciones rápidas: devoluciones pendientes ── -->
-            <template v-if="canManageDevolutions">
-              <div class="devol-quick-header">
-                <span><i class="fas fa-clock"></i> Pendientes de revisión</span>
-                <span v-if="loadingDevols" class="devol-loading-dot"></span>
-              </div>
-              <div v-if="!loadingDevols && pendingDevols.length === 0" class="devol-empty">
-                <i class="fas fa-circle-check"></i> Sin devoluciones pendientes
-              </div>
-              <div class="devol-row" v-for="dev in pendingDevols" :key="dev._id">
-                <div class="devol-row-info">
-                  <span class="devol-folio">{{ dev.folio }}</span>
-                  <span class="devol-cliente">{{ dev.cliente }}</span>
-                  <span class="devol-reason">{{ DEVOL_REASON_LABELS[dev.reason] || dev.reason }}</span>
-                  <span class="devol-time">{{ fmtTimeAgo(dev.createdAt) }}</span>
+            <!-- ══ Columna lateral (resumen) ══ -->
+            <div class="col-side">
+              <div v-if="canSeeReports" class="gcard mb-4">
+                <div class="gc-head">
+                  <div class="gc-head-left">
+                    <div class="gc-badge-icon accent-purple"><i class="fas fa-gauge-high"></i></div>
+                    <div>
+                      <div class="gc-title">Nivel de servicio</div>
+                      <div class="gc-sub">Últimos 30 días</div>
+                    </div>
+                  </div>
                 </div>
-                <div class="devol-row-actions">
-                  <button class="dqa-btn dqa-review" @click="quickDevAction(dev, 'en_revision')" title="Poner en revisión">
-                    <i class="fas fa-magnifying-glass"></i>
-                  </button>
-                  <button class="dqa-btn dqa-approve" @click="quickDevAction(dev, 'aprobada')" title="Aprobar">
-                    <i class="fas fa-check"></i>
-                  </button>
-                  <button class="dqa-btn dqa-reject" @click="quickDevAction(dev, 'rechazada')" title="Rechazar">
-                    <i class="fas fa-xmark"></i>
-                  </button>
+                <div class="gc-body">
+                  <template v-if="!isLoading">
+                    <div class="sl-wrap">
+                      <div class="sl-ring" :class="`sl-${serviceLevelClass}`">
+                        <span class="sl-pct">{{ s?.serviceLevel ?? 0 }}%</span>
+                        <span class="sl-tag">{{ serviceLevelStatus }}</span>
+                      </div>
+                      <div class="sl-rows">
+                        <div class="sl-row"><span>Cerrados</span><b>{{ s?.ordersClosed30d ?? 0 }}</b></div>
+                        <div class="sl-row"><span>Con corrección</span><b>{{ s?.corrections30d ?? 0 }}</b></div>
+                        <div class="sl-row"><span>Devol. aprobadas</span><b>{{ s?.devolucionesAprobadas ?? 0 }}</b></div>
+                        <div class="sl-row"><span>Ediciones (30d)</span><b>{{ s?.edits30d ?? 0 }}</b></div>
+                      </div>
+                    </div>
+                    <b-progress :value="s?.serviceLevel ?? 0" size="is-small" :type="serviceLevelTagType" :show-value="false" class="mt-3" />
+                  </template>
+                  <b-skeleton v-else :width="'100%'" :height="100" animated class="mb-2" />
+                </div>
+              </div>
+
+              <div v-if="isSupervisor" class="gcard">
+                <div class="gc-head">
+                  <div class="gc-head-left">
+                    <div class="gc-badge-icon accent-orange"><i class="fas fa-file-chart-column"></i></div>
+                    <div>
+                      <div class="gc-title">Reportes disponibles</div>
+                      <div class="gc-sub">Exportación de datos operativos</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="gc-body">
+                  <div class="report-tiles">
+                    <button class="rtile" @click="$router.push('/apps/inventario/reportes')">
+                      <i class="fas fa-boxes-stacked"></i>
+                      <div><div class="rtile-title">Inventario</div><div class="rtile-desc">Stock y cobertura por hoja</div></div>
+                      <i class="fas fa-download rtile-arrow"></i>
+                    </button>
+                    <button class="rtile" @click="$router.push('/apps/laboratorio')">
+                      <i class="fas fa-flask-vial"></i>
+                      <div><div class="rtile-title">Pedidos</div><div class="rtile-desc">Historial de lab (30d)</div></div>
+                      <i class="fas fa-arrow-right rtile-arrow"></i>
+                    </button>
+                    <button class="rtile" @click="$router.push('/layouts/devoluciones')">
+                      <i class="fas fa-rotate-left"></i>
+                      <div><div class="rtile-title">Devoluciones</div><div class="rtile-desc">Gestión y aprobación</div></div>
+                      <i class="fas fa-arrow-right rtile-arrow"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <!-- ═══════════════ TAB: OPERACIONES ═══════════════════════════ -->
+        <template #operaciones>
+          <div class="tab-single-col">
+            <!-- ─── PEDIDOS Y LAB ─── -->
+            <div v-if="canSeeOrders" class="gcard mb-5">
+              <div class="gc-head">
+                <div class="gc-head-left">
+                  <div class="gc-badge-icon accent-blue"><i class="fas fa-flask-vial"></i></div>
+                  <div>
+                    <div class="gc-title">Pedidos y laboratorio</div>
+                    <div class="gc-sub">Actividad operativa del período activo</div>
+                  </div>
+                </div>
+              </div>
+              <div class="gc-body">
+                <div class="cell-grid">
+                  <div class="mcell">
+                    <div class="mcell-label">Pendientes</div>
+                    <div class="mcell-val warn" v-if="!isLoading">{{ s?.ordersPending ?? 0 }}</div>
+                    <b-skeleton v-else :width="56" :height="30" animated />
+                    <div class="mcell-desc">Abiertos o parciales</div>
+                  </div>
+                  <div class="mcell">
+                    <div class="mcell-label">Creados hoy</div>
+                    <div class="mcell-val" v-if="!isLoading">{{ s?.ordersToday ?? 0 }}</div>
+                    <b-skeleton v-else :width="56" :height="30" animated />
+                    <div class="mcell-desc">Nuevos pedidos</div>
+                  </div>
+                  <div class="mcell">
+                    <div class="mcell-label">Cerrados hoy</div>
+                    <div class="mcell-val ok" v-if="!isLoading">{{ s?.ordersClosedToday ?? 0 }}</div>
+                    <b-skeleton v-else :width="56" :height="30" animated />
+                    <div class="mcell-desc">Completados</div>
+                  </div>
+                  <div class="mcell">
+                    <div class="mcell-label">Cerrados (30d)</div>
+                    <div class="mcell-val" v-if="!isLoading">{{ s?.ordersClosed30d ?? 0 }}</div>
+                    <b-skeleton v-else :width="56" :height="30" animated />
+                    <div class="mcell-desc">Este período</div>
+                  </div>
+                  <template v-if="canSeeLab">
+                    <div class="mcell">
+                      <div class="mcell-label">Escaneos hoy</div>
+                      <div class="mcell-val accent" v-if="!isLoading">{{ s?.scansToday ?? 0 }}</div>
+                      <b-skeleton v-else :width="56" :height="30" animated />
+                      <div class="mcell-desc">Salidas por escáner</div>
+                    </div>
+                    <div class="mcell">
+                      <div class="mcell-label">Correcciones (7d)</div>
+                      <div class="mcell-val" :class="(s?.corrections7d ?? 0) > 5 ? 'warn' : ''" v-if="!isLoading">{{ s?.corrections7d ?? 0 }}</div>
+                      <b-skeleton v-else :width="56" :height="30" animated />
+                      <div class="mcell-desc">Activas esta semana</div>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </div>
+
+            <!-- ─── COLA DE TRABAJO — laboratorio ─── -->
+            <div v-if="isLab" class="gcard gcard-lab mb-5">
+              <div class="gc-head">
+                <div class="gc-head-left">
+                  <div class="gc-badge-icon accent-cyan"><i class="fas fa-microscope"></i></div>
+                  <div>
+                    <div class="gc-title">Mi bandeja de trabajo</div>
+                    <div class="gc-sub">Flujo de procesamiento del día</div>
+                  </div>
+                </div>
+              </div>
+              <div class="gc-body">
+                <div class="pipeline">
+                  <div class="pipe-step">
+                    <div class="pipe-icon p-pending"><i class="fas fa-hourglass-half"></i></div>
+                    <div class="pipe-label">Por procesar</div>
+                    <div class="pipe-val" v-if="!isLoading">{{ s?.ordersPending ?? 0 }}</div>
+                    <b-skeleton v-else :width="44" :height="26" animated />
+                  </div>
+                  <div class="pipe-arrow"><i class="fas fa-chevron-right"></i></div>
+                  <div class="pipe-step">
+                    <div class="pipe-icon p-scan"><i class="fas fa-barcode"></i></div>
+                    <div class="pipe-label">Escaneados hoy</div>
+                    <div class="pipe-val" v-if="!isLoading">{{ s?.scansToday ?? 0 }}</div>
+                    <b-skeleton v-else :width="44" :height="26" animated />
+                  </div>
+                  <div class="pipe-arrow"><i class="fas fa-chevron-right"></i></div>
+                  <div class="pipe-step">
+                    <div class="pipe-icon p-done"><i class="fas fa-circle-check"></i></div>
+                    <div class="pipe-label">Cerrados hoy</div>
+                    <div class="pipe-val" v-if="!isLoading">{{ s?.ordersClosedToday ?? 0 }}</div>
+                    <b-skeleton v-else :width="44" :height="26" animated />
+                  </div>
+                  <div class="pipe-arrow"><i class="fas fa-chevron-right"></i></div>
+                  <div class="pipe-step">
+                    <div class="pipe-icon p-ret"><i class="fas fa-rotate-left"></i></div>
+                    <div class="pipe-label">Devoluciones</div>
+                    <div class="pipe-val" v-if="!isLoading">{{ s?.devolucionesPendientes ?? 0 }}</div>
+                    <b-skeleton v-else :width="44" :height="26" animated />
+                  </div>
+                </div>
+                <div class="gc-footer mt-3">
+                  <span class="gf-item"><i class="fas fa-wrench"></i> Correcciones (7d): <b>{{ s?.corrections7d ?? 0 }}</b></span>
+                  <span class="gf-item"><i class="fas fa-pen-to-square"></i> Ediciones (30d): <b>{{ s?.edits30d ?? 0 }}</b></span>
+                  <span class="gf-item"><i class="fas fa-ban"></i> Cancelados total: <b>{{ s?.ordersCancelledAll ?? 0 }}</b></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <!-- ═══════════════ TAB: DEVOLUCIONES ══════════════════════════ -->
+        <template #devoluciones>
+          <div class="tab-single-col">
+            <div class="gcard gcard-devol mb-5">
+              <div class="gc-head">
+                <div class="gc-head-left">
+                  <div class="gc-badge-icon accent-orange"><i class="fas fa-rotate-left"></i></div>
+                  <div>
+                    <div class="gc-title">Devoluciones</div>
+                    <div class="gc-sub">Gestión y seguimiento de retornos del laboratorio</div>
+                  </div>
+                </div>
+                <button
+                  v-if="canManageDevolutions"
+                  class="gc-action-btn"
+                  @click="$router.push('/layouts/devoluciones')"
+                >
+                  <i class="fas fa-arrow-right"></i> Gestionar
+                </button>
+              </div>
+              <div class="gc-body">
+                <div class="cell-grid">
+                  <div class="mcell mcell-orange">
+                    <div class="mcell-label">Pendientes</div>
+                    <div class="mcell-val warn" v-if="!isLoading">{{ s?.devolucionesPendientes ?? 0 }}</div>
+                    <b-skeleton v-else :width="56" :height="30" animated />
+                    <div class="mcell-desc">Esperando revisión</div>
+                  </div>
+                  <div class="mcell">
+                    <div class="mcell-label">En revisión</div>
+                    <div class="mcell-val accent" v-if="!isLoading">{{ s?.devolucionesEnRevision ?? 0 }}</div>
+                    <b-skeleton v-else :width="56" :height="30" animated />
+                    <div class="mcell-desc">Bajo análisis</div>
+                  </div>
+                  <div class="mcell">
+                    <div class="mcell-label">Aprobadas</div>
+                    <div class="mcell-val ok" v-if="!isLoading">{{ s?.devolucionesAprobadas ?? 0 }}</div>
+                    <b-skeleton v-else :width="56" :height="30" animated />
+                    <div class="mcell-desc">Lista para procesar</div>
+                  </div>
+                  <div class="mcell">
+                    <div class="mcell-label">Procesadas</div>
+                    <div class="mcell-val" v-if="!isLoading">{{ s?.devolucionesProcesadas ?? 0 }}</div>
+                    <b-skeleton v-else :width="56" :height="30" animated />
+                    <div class="mcell-desc">Completadas</div>
+                  </div>
+                  <div class="mcell">
+                    <div class="mcell-label">Rechazadas</div>
+                    <div class="mcell-val danger" v-if="!isLoading">{{ s?.devolucionesRechazadas ?? 0 }}</div>
+                    <b-skeleton v-else :width="56" :height="30" animated />
+                    <div class="mcell-desc">No aplicaban</div>
+                  </div>
+                  <div class="mcell">
+                    <div class="mcell-label">Total (30d)</div>
+                    <div class="mcell-val" v-if="!isLoading">{{ s?.devolucionesTotal30d ?? 0 }}</div>
+                    <b-skeleton v-else :width="56" :height="30" animated />
+                    <div class="mcell-desc">Este período</div>
+                  </div>
+                </div>
+
+                <template v-if="canManageDevolutions">
+                  <div class="devol-quick-header">
+                    <span><i class="fas fa-clock"></i> Pendientes de revisión</span>
+                    <span v-if="loadingDevols" class="devol-loading-dot"></span>
+                  </div>
+                  <div v-if="!loadingDevols && pendingDevols.length === 0" class="devol-empty">
+                    <i class="fas fa-circle-check"></i> Sin devoluciones pendientes
+                  </div>
+                  <div class="devol-row" v-for="dev in pendingDevols" :key="dev._id">
+                    <div class="devol-row-info">
+                      <span class="devol-folio">{{ dev.folio }}</span>
+                      <span class="devol-cliente">{{ dev.cliente }}</span>
+                      <span class="devol-reason">{{ DEVOL_REASON_LABELS[dev.reason] || dev.reason }}</span>
+                      <span class="devol-time">{{ fmtTimeAgo(dev.createdAt) }}</span>
+                    </div>
+                    <div class="devol-row-actions">
+                      <button class="dqa-btn dqa-review" @click="quickDevAction(dev, 'en_revision')" title="Poner en revisión">
+                        <i class="fas fa-magnifying-glass"></i>
+                      </button>
+                      <button class="dqa-btn dqa-approve" @click="quickDevAction(dev, 'aprobada')" title="Aprobar">
+                        <i class="fas fa-check"></i>
+                      </button>
+                      <button class="dqa-btn dqa-reject" @click="quickDevAction(dev, 'rechazada')" title="Rechazar">
+                        <i class="fas fa-xmark"></i>
+                      </button>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+
+            <!-- ─── LOGS DE CORRECCIONES ─── -->
+            <div v-if="canManageDevolutions" class="gcard gcard-corrections mb-5">
+              <div class="gc-head">
+                <div class="gc-head-left">
+                  <div class="gc-badge-icon accent-red"><i class="fas fa-wrench"></i></div>
+                  <div>
+                    <div class="gc-title">Correcciones y ediciones</div>
+                    <div class="gc-sub">Últimas solicitudes del área de ventas</div>
+                  </div>
+                </div>
+                <span class="gc-badge-count" v-if="correctionLogs.length">{{ correctionLogs.length }}</span>
+              </div>
+              <div class="gc-body">
+                <div v-if="loadingLogs" class="corr-log-skeleton">
+                  <div class="corr-skel-row" v-for="n in 3" :key="n">
+                    <b-skeleton :width="120" :height="12" animated />
+                    <b-skeleton :width="220" :height="12" animated class="ml-2"/>
+                  </div>
+                </div>
+                <div v-else-if="correctionLogs.length === 0" class="devol-empty">
+                  <i class="fas fa-circle-check"></i> Sin correcciones recientes
+                </div>
+                <div class="corr-log-list" v-else>
+                  <div class="corr-row" v-for="ev in correctionLogs" :key="ev._id">
+                    <div class="corr-type-dot" :class="ev.type === 'CORRECTION_REQUEST' ? 'dot-red' : 'dot-orange'">
+                      <i :class="ev.type === 'CORRECTION_REQUEST' ? 'fas fa-wrench' : 'fas fa-pen-to-square'"></i>
+                    </div>
+                    <div class="corr-body">
+                      <div class="corr-top-row">
+                        <span class="corr-type-label">{{ ev.type === 'CORRECTION_REQUEST' ? 'Corrección' : 'Edición' }}</span>
+                        <span class="corr-folio">{{ ev.details?.folio || '—' }}</span>
+                        <span class="corr-actor" v-if="ev.actor?.name">por <strong>{{ ev.actor.name }}</strong></span>
+                        <span class="corr-time">{{ fmtTimeAgo(ev.createdAt) }}</span>
+                      </div>
+                      <div class="corr-msg" v-if="ev.details?.message || ev.details?.motivo">
+                        {{ ev.details.message || ev.details.motivo }}
+                      </div>
+                      <div class="corr-msg corr-codebar" v-if="ev.details?.codebar">
+                        <i class="fas fa-barcode"></i> {{ ev.details.codebar }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <!-- ═══════════════ TAB: OPTICA ════════════════════════════════ -->
+        <template #optica>
+          <div class="tab-single-col">
+            <div v-if="optica.loading" class="optica-loading">
+              <b-skeleton :width="'100%'" :height="120" animated class="mb-4" />
+              <b-skeleton :width="'100%'" :height="120" animated class="mb-4" />
+              <b-skeleton :width="'100%'" :height="120" animated />
+            </div>
+            <template v-else>
+              <!-- Armazones -->
+              <div class="gcard mb-5">
+                <div class="gc-head">
+                  <div class="gc-head-left">
+                    <div class="gc-badge-icon accent-purple"><i class="fas fa-glasses"></i></div>
+                    <div>
+                      <div class="gc-title">Armazones</div>
+                      <div class="gc-sub">{{ optica.armazones.length }} registros</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="gc-body">
+                  <div class="cell-grid">
+                    <div class="mcell"><div class="mcell-label">Stock total</div><div class="mcell-val accent">{{ opticaStats.arm.total }}</div></div>
+                    <div class="mcell"><div class="mcell-label">Agotados</div><div class="mcell-val danger">{{ opticaStats.arm.agotado }}</div></div>
+                    <div class="mcell"><div class="mcell-label">Stock bajo</div><div class="mcell-val warn">{{ opticaStats.arm.bajo }}</div></div>
+                    <div class="mcell"><div class="mcell-label">Valor estimado</div><div class="mcell-val">{{ fmtMXN(opticaStats.arm.valor) }}</div></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Soluciones -->
+              <div class="gcard mb-5">
+                <div class="gc-head">
+                  <div class="gc-head-left">
+                    <div class="gc-badge-icon accent-blue"><i class="fas fa-droplet"></i></div>
+                    <div>
+                      <div class="gc-title">Soluciones</div>
+                      <div class="gc-sub">{{ optica.soluciones.length }} registros</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="gc-body">
+                  <div class="cell-grid">
+                    <div class="mcell"><div class="mcell-label">Stock total</div><div class="mcell-val accent">{{ opticaStats.sol.total }}</div></div>
+                    <div class="mcell"><div class="mcell-label">Agotados</div><div class="mcell-val danger">{{ opticaStats.sol.agotado }}</div></div>
+                    <div class="mcell"><div class="mcell-label">Stock bajo</div><div class="mcell-val warn">{{ opticaStats.sol.bajo }}</div></div>
+                    <div class="mcell"><div class="mcell-label">Por vencer</div><div class="mcell-val" :class="opticaStats.sol.porVencer > 0 ? 'warn' : ''">{{ opticaStats.sol.porVencer }}</div></div>
+                    <div class="mcell"><div class="mcell-label">Valor estimado</div><div class="mcell-val">{{ fmtMXN(opticaStats.sol.valor) }}</div></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Accesorios -->
+              <div class="gcard mb-5">
+                <div class="gc-head">
+                  <div class="gc-head-left">
+                    <div class="gc-badge-icon accent-green"><i class="fas fa-screwdriver-wrench"></i></div>
+                    <div>
+                      <div class="gc-title">Accesorios</div>
+                      <div class="gc-sub">{{ optica.accesorios.length }} registros</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="gc-body">
+                  <div class="cell-grid">
+                    <div class="mcell"><div class="mcell-label">Stock total</div><div class="mcell-val accent">{{ opticaStats.acc.total }}</div></div>
+                    <div class="mcell"><div class="mcell-label">Agotados</div><div class="mcell-val danger">{{ opticaStats.acc.agotado }}</div></div>
+                    <div class="mcell"><div class="mcell-label">Stock bajo</div><div class="mcell-val warn">{{ opticaStats.acc.bajo }}</div></div>
+                    <div class="mcell"><div class="mcell-label">Categorías</div><div class="mcell-val">{{ opticaStats.acc.categorias }}</div></div>
+                    <div class="mcell"><div class="mcell-label">Valor estimado</div><div class="mcell-val">{{ fmtMXN(opticaStats.acc.valor) }}</div></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Estuches -->
+              <div class="gcard mb-5">
+                <div class="gc-head">
+                  <div class="gc-head-left">
+                    <div class="gc-badge-icon accent-orange"><i class="fas fa-box"></i></div>
+                    <div>
+                      <div class="gc-title">Estuches</div>
+                      <div class="gc-sub">{{ optica.estuches.length }} registros</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="gc-body">
+                  <div class="cell-grid">
+                    <div class="mcell"><div class="mcell-label">Stock total</div><div class="mcell-val accent">{{ opticaStats.est.total }}</div></div>
+                    <div class="mcell"><div class="mcell-label">Agotados</div><div class="mcell-val danger">{{ opticaStats.est.agotado }}</div></div>
+                    <div class="mcell"><div class="mcell-label">Stock bajo</div><div class="mcell-val warn">{{ opticaStats.est.bajo }}</div></div>
+                    <div class="mcell"><div class="mcell-label">Tipos</div><div class="mcell-val">{{ opticaStats.est.tipos }}</div></div>
+                    <div class="mcell"><div class="mcell-label">Valor estimado</div><div class="mcell-val">{{ fmtMXN(opticaStats.est.valor) }}</div></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Equipos -->
+              <div class="gcard mb-5">
+                <div class="gc-head">
+                  <div class="gc-head-left">
+                    <div class="gc-badge-icon accent-cyan"><i class="fas fa-desktop"></i></div>
+                    <div>
+                      <div class="gc-title">Equipos</div>
+                      <div class="gc-sub">{{ optica.equipos.length }} registros</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="gc-body">
+                  <div class="cell-grid">
+                    <div class="mcell"><div class="mcell-label">Operativos</div><div class="mcell-val ok">{{ opticaStats.eqp.operativo }}</div></div>
+                    <div class="mcell"><div class="mcell-label">Mantenimiento</div><div class="mcell-val warn">{{ opticaStats.eqp.mantto }}</div></div>
+                    <div class="mcell"><div class="mcell-label">Fuera de servicio</div><div class="mcell-val danger">{{ opticaStats.eqp.fuera }}</div></div>
+                    <div class="mcell"><div class="mcell-label">Próx. mantenimiento</div><div class="mcell-val" :class="opticaStats.eqp.proxMantto > 0 ? 'warn' : ''">{{ opticaStats.eqp.proxMantto }}</div></div>
+                    <div class="mcell"><div class="mcell-label">Total equipos</div><div class="mcell-val">{{ opticaStats.eqp.total }}</div></div>
+                  </div>
                 </div>
               </div>
             </template>
           </div>
-        </div>
+        </template>
 
-        <!-- ─── LOGS DE CORRECCIONES — supervisor / eurovision ─── -->
-        <div v-if="canManageDevolutions" class="gcard gcard-corrections mb-5">
-          <div class="gc-head">
-            <div class="gc-head-left">
-              <div class="gc-badge-icon accent-red"><i class="fas fa-wrench"></i></div>
-              <div>
-                <div class="gc-title">Correcciones y ediciones</div>
-                <div class="gc-sub">Últimas solicitudes del área de ventas</div>
-              </div>
-            </div>
-            <span class="gc-badge-count" v-if="correctionLogs.length">{{ correctionLogs.length }}</span>
-          </div>
-          <div class="gc-body">
-            <div v-if="loadingLogs" class="corr-log-skeleton">
-              <div class="corr-skel-row" v-for="n in 3" :key="n">
-                <b-skeleton :width="120" :height="12" animated />
-                <b-skeleton :width="220" :height="12" animated class="ml-2"/>
-              </div>
-            </div>
-            <div v-else-if="correctionLogs.length === 0" class="devol-empty">
-              <i class="fas fa-circle-check"></i> Sin correcciones recientes
-            </div>
-            <div class="corr-log-list" v-else>
-              <div class="corr-row" v-for="ev in correctionLogs" :key="ev._id">
-                <div class="corr-type-dot" :class="ev.type === 'CORRECTION_REQUEST' ? 'dot-red' : 'dot-orange'">
-                  <i :class="ev.type === 'CORRECTION_REQUEST' ? 'fas fa-wrench' : 'fas fa-pen-to-square'"></i>
-                </div>
-                <div class="corr-body">
-                  <div class="corr-top-row">
-                    <span class="corr-type-label">{{ ev.type === 'CORRECTION_REQUEST' ? 'Corrección' : 'Edición' }}</span>
-                    <span class="corr-folio">{{ ev.details?.folio || '—' }}</span>
-                    <span class="corr-actor" v-if="ev.actor?.name">por <strong>{{ ev.actor.name }}</strong></span>
-                    <span class="corr-time">{{ fmtTimeAgo(ev.createdAt) }}</span>
-                  </div>
-                  <div class="corr-msg" v-if="ev.details?.message || ev.details?.motivo">
-                    {{ ev.details.message || ev.details.motivo }}
-                  </div>
-                  <div class="corr-msg corr-codebar" v-if="ev.details?.codebar">
-                    <i class="fas fa-barcode"></i> {{ ev.details.codebar }}
+        <!-- ═══════════════ TAB: SUPERVISION ═══════════════════════════ -->
+        <template #supervision>
+          <div class="tab-two-col">
+            <div class="col-main">
+              <div class="gcard mb-5">
+                <div class="gc-head">
+                  <div class="gc-head-left">
+                    <div class="gc-badge-icon accent-cyan"><i class="fas fa-eye"></i></div>
+                    <div>
+                      <div class="gc-title">Panel de supervisión</div>
+                      <div class="gc-sub">Vista consolidada de operaciones</div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- ─── COLA DE TRABAJO — laboratorio ─── -->
-        <div v-if="isLab" class="gcard gcard-lab mb-5">
-          <div class="gc-head">
-            <div class="gc-head-left">
-              <div class="gc-badge-icon accent-cyan"><i class="fas fa-microscope"></i></div>
-              <div>
-                <div class="gc-title">Mi bandeja de trabajo</div>
-                <div class="gc-sub">Flujo de procesamiento del día</div>
-              </div>
-            </div>
-          </div>
-          <div class="gc-body">
-            <div class="pipeline">
-              <div class="pipe-step">
-                <div class="pipe-icon p-pending"><i class="fas fa-hourglass-half"></i></div>
-                <div class="pipe-label">Por procesar</div>
-                <div class="pipe-val" v-if="!isLoading">{{ s?.ordersPending ?? 0 }}</div>
-                <b-skeleton v-else :width="44" :height="26" animated />
-              </div>
-              <div class="pipe-arrow"><i class="fas fa-chevron-right"></i></div>
-              <div class="pipe-step">
-                <div class="pipe-icon p-scan"><i class="fas fa-barcode"></i></div>
-                <div class="pipe-label">Escaneados hoy</div>
-                <div class="pipe-val" v-if="!isLoading">{{ s?.scansToday ?? 0 }}</div>
-                <b-skeleton v-else :width="44" :height="26" animated />
-              </div>
-              <div class="pipe-arrow"><i class="fas fa-chevron-right"></i></div>
-              <div class="pipe-step">
-                <div class="pipe-icon p-done"><i class="fas fa-circle-check"></i></div>
-                <div class="pipe-label">Cerrados hoy</div>
-                <div class="pipe-val" v-if="!isLoading">{{ s?.ordersClosedToday ?? 0 }}</div>
-                <b-skeleton v-else :width="44" :height="26" animated />
-              </div>
-              <div class="pipe-arrow"><i class="fas fa-chevron-right"></i></div>
-              <div class="pipe-step">
-                <div class="pipe-icon p-ret"><i class="fas fa-rotate-left"></i></div>
-                <div class="pipe-label">Devoluciones</div>
-                <div class="pipe-val" v-if="!isLoading">{{ s?.devolucionesPendientes ?? 0 }}</div>
-                <b-skeleton v-else :width="44" :height="26" animated />
-              </div>
-            </div>
-            <div class="gc-footer mt-3">
-              <span class="gf-item"><i class="fas fa-wrench"></i> Correcciones (7d): <b>{{ s?.corrections7d ?? 0 }}</b></span>
-              <span class="gf-item"><i class="fas fa-pen-to-square"></i> Ediciones (30d): <b>{{ s?.edits30d ?? 0 }}</b></span>
-              <span class="gf-item"><i class="fas fa-ban"></i> Cancelados total: <b>{{ s?.ordersCancelledAll ?? 0 }}</b></span>
-            </div>
-          </div>
-        </div>
-
-        <!-- ─── MI DESEMPEÑO — ventas ─── -->
-        <div v-if="isVentas" class="gcard mb-5">
-          <div class="gc-head">
-            <div class="gc-head-left">
-              <div class="gc-badge-icon accent-green"><i class="fas fa-chart-line"></i></div>
-              <div>
-                <div class="gc-title">Mi desempeño en ventas</div>
-                <div class="gc-sub">Actividad del período activo</div>
-              </div>
-            </div>
-          </div>
-          <div class="gc-body">
-            <div class="cell-grid">
-              <div class="mcell">
-                <div class="mcell-label">Creados hoy</div>
-                <div class="mcell-val accent" v-if="!isLoading">{{ s?.ordersToday ?? 0 }}</div>
-                <b-skeleton v-else :width="56" :height="30" animated />
-                <div class="mcell-desc">Nuevos pedidos</div>
-              </div>
-              <div class="mcell">
-                <div class="mcell-label">Cerrados hoy</div>
-                <div class="mcell-val ok" v-if="!isLoading">{{ s?.ordersClosedToday ?? 0 }}</div>
-                <b-skeleton v-else :width="56" :height="30" animated />
-                <div class="mcell-desc">Completados</div>
-              </div>
-              <div class="mcell">
-                <div class="mcell-label">Pendientes</div>
-                <div class="mcell-val warn" v-if="!isLoading">{{ s?.ordersPending ?? 0 }}</div>
-                <b-skeleton v-else :width="56" :height="30" animated />
-                <div class="mcell-desc">En espera</div>
-              </div>
-              <div class="mcell">
-                <div class="mcell-label">Cerrados (30d)</div>
-                <div class="mcell-val" v-if="!isLoading">{{ s?.ordersClosed30d ?? 0 }}</div>
-                <b-skeleton v-else :width="56" :height="30" animated />
-                <div class="mcell-desc">Este período</div>
-              </div>
-              <div class="mcell">
-                <div class="mcell-label">Cancelados</div>
-                <div class="mcell-val danger" v-if="!isLoading">{{ s?.ordersCancelledAll ?? 0 }}</div>
-                <b-skeleton v-else :width="56" :height="30" animated />
-                <div class="mcell-desc">Total histórico</div>
-              </div>
-              <div class="mcell">
-                <div class="mcell-label">Histórico total</div>
-                <div class="mcell-val" v-if="!isLoading">{{ formatNumber(s?.ordersClosedAll) }}</div>
-                <b-skeleton v-else :width="56" :height="30" animated />
-                <div class="mcell-desc">Cerrados acumulados</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- ─── PANEL SUPERVISOR ─── -->
-        <div v-if="isSupervisor" class="gcard mb-5">
-          <div class="gc-head">
-            <div class="gc-head-left">
-              <div class="gc-badge-icon accent-cyan"><i class="fas fa-eye"></i></div>
-              <div>
-                <div class="gc-title">Panel de supervisión</div>
-                <div class="gc-sub">Vista consolidada de operaciones</div>
-              </div>
-            </div>
-          </div>
-          <div class="gc-body">
-            <div class="cell-grid">
-              <div class="mcell">
-                <div class="mcell-label">Pedidos activos</div>
-                <div class="mcell-val warn" v-if="!isLoading">{{ s?.ordersPending ?? 0 }}</div>
-                <b-skeleton v-else :width="56" :height="30" animated />
-                <div class="mcell-desc">Abiertos o parciales</div>
-              </div>
-              <div class="mcell">
-                <div class="mcell-label">Cerrados (30d)</div>
-                <div class="mcell-val ok" v-if="!isLoading">{{ s?.ordersClosed30d ?? 0 }}</div>
-                <b-skeleton v-else :width="56" :height="30" animated />
-                <div class="mcell-desc">Este período</div>
-              </div>
-              <div class="mcell">
-                <div class="mcell-label">Nivel de servicio</div>
-                <div class="mcell-val accent" v-if="!isLoading">{{ s?.serviceLevel ?? 0 }}%</div>
-                <b-skeleton v-else :width="56" :height="30" animated />
-                <div class="mcell-desc">Sin correcciones (30d)</div>
-              </div>
-              <div class="mcell">
-                <div class="mcell-label">Correcciones (30d)</div>
-                <div class="mcell-val" :class="(s?.corrections30d ?? 0) > 10 ? 'warn' : ''" v-if="!isLoading">{{ s?.corrections30d ?? 0 }}</div>
-                <b-skeleton v-else :width="56" :height="30" animated />
-                <div class="mcell-desc">Solicitudes totales</div>
-              </div>
-              <div class="mcell">
-                <div class="mcell-label">Devol. pendientes</div>
-                <div class="mcell-val" :class="(s?.devolucionesPendientes ?? 0) > 0 ? 'warn' : 'ok'" v-if="!isLoading">{{ s?.devolucionesPendientes ?? 0 }}</div>
-                <b-skeleton v-else :width="56" :height="30" animated />
-                <div class="mcell-desc">Esperando revisión</div>
-              </div>
-              <div class="mcell">
-                <div class="mcell-label">Ediciones (30d)</div>
-                <div class="mcell-val" v-if="!isLoading">{{ s?.edits30d ?? 0 }}</div>
-                <b-skeleton v-else :width="56" :height="30" animated />
-                <div class="mcell-desc">Modificaciones a pedidos</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- ══ Columna lateral ══ -->
-      <div class="col-side">
-
-        <!-- ─── NIVEL DE SERVICIO — supervisor / root / eurovision ─── -->
-        <div v-if="canSeeReports" class="gcard mb-4">
-          <div class="gc-head">
-            <div class="gc-head-left">
-              <div class="gc-badge-icon accent-purple"><i class="fas fa-gauge-high"></i></div>
-              <div>
-                <div class="gc-title">Nivel de servicio</div>
-                <div class="gc-sub">Últimos 30 días</div>
-              </div>
-            </div>
-          </div>
-          <div class="gc-body">
-            <template v-if="!isLoading">
-              <div class="sl-wrap">
-                <div class="sl-ring" :class="`sl-${serviceLevelClass}`">
-                  <span class="sl-pct">{{ s?.serviceLevel ?? 0 }}%</span>
-                  <span class="sl-tag">{{ serviceLevelStatus }}</span>
-                </div>
-                <div class="sl-rows">
-                  <div class="sl-row">
-                    <span>Cerrados</span>
-                    <b>{{ s?.ordersClosed30d ?? 0 }}</b>
-                  </div>
-                  <div class="sl-row">
-                    <span>Con corrección</span>
-                    <b>{{ s?.corrections30d ?? 0 }}</b>
-                  </div>
-                  <div class="sl-row">
-                    <span>Devol. aprobadas</span>
-                    <b>{{ s?.devolucionesAprobadas ?? 0 }}</b>
-                  </div>
-                  <div class="sl-row">
-                    <span>Ediciones (30d)</span>
-                    <b>{{ s?.edits30d ?? 0 }}</b>
+                <div class="gc-body">
+                  <div class="cell-grid">
+                    <div class="mcell">
+                      <div class="mcell-label">Pedidos activos</div>
+                      <div class="mcell-val warn" v-if="!isLoading">{{ s?.ordersPending ?? 0 }}</div>
+                      <b-skeleton v-else :width="56" :height="30" animated />
+                      <div class="mcell-desc">Abiertos o parciales</div>
+                    </div>
+                    <div class="mcell">
+                      <div class="mcell-label">Cerrados (30d)</div>
+                      <div class="mcell-val ok" v-if="!isLoading">{{ s?.ordersClosed30d ?? 0 }}</div>
+                      <b-skeleton v-else :width="56" :height="30" animated />
+                      <div class="mcell-desc">Este período</div>
+                    </div>
+                    <div class="mcell">
+                      <div class="mcell-label">Nivel de servicio</div>
+                      <div class="mcell-val accent" v-if="!isLoading">{{ s?.serviceLevel ?? 0 }}%</div>
+                      <b-skeleton v-else :width="56" :height="30" animated />
+                      <div class="mcell-desc">Sin correcciones (30d)</div>
+                    </div>
+                    <div class="mcell">
+                      <div class="mcell-label">Correcciones (30d)</div>
+                      <div class="mcell-val" :class="(s?.corrections30d ?? 0) > 10 ? 'warn' : ''" v-if="!isLoading">{{ s?.corrections30d ?? 0 }}</div>
+                      <b-skeleton v-else :width="56" :height="30" animated />
+                      <div class="mcell-desc">Solicitudes totales</div>
+                    </div>
+                    <div class="mcell">
+                      <div class="mcell-label">Devol. pendientes</div>
+                      <div class="mcell-val" :class="(s?.devolucionesPendientes ?? 0) > 0 ? 'warn' : 'ok'" v-if="!isLoading">{{ s?.devolucionesPendientes ?? 0 }}</div>
+                      <b-skeleton v-else :width="56" :height="30" animated />
+                      <div class="mcell-desc">Esperando revisión</div>
+                    </div>
+                    <div class="mcell">
+                      <div class="mcell-label">Ediciones (30d)</div>
+                      <div class="mcell-val" v-if="!isLoading">{{ s?.edits30d ?? 0 }}</div>
+                      <b-skeleton v-else :width="56" :height="30" animated />
+                      <div class="mcell-desc">Modificaciones a pedidos</div>
+                    </div>
                   </div>
                 </div>
               </div>
-              <b-progress :value="s?.serviceLevel ?? 0" size="is-small" :type="serviceLevelTagType" :show-value="false" class="mt-3" />
-            </template>
-            <b-skeleton v-else :width="'100%'" :height="100" animated class="mb-2" />
-          </div>
-        </div>
-
-        <!-- ─── REPORTES RÁPIDOS — supervisor ─── -->
-        <div v-if="isSupervisor" class="gcard">
-          <div class="gc-head">
-            <div class="gc-head-left">
-              <div class="gc-badge-icon accent-orange"><i class="fas fa-file-chart-column"></i></div>
-              <div>
-                <div class="gc-title">Reportes disponibles</div>
-                <div class="gc-sub">Exportación de datos operativos</div>
+            </div>
+            <div class="col-side">
+              <div class="gcard">
+                <div class="gc-head">
+                  <div class="gc-head-left">
+                    <div class="gc-badge-icon accent-orange"><i class="fas fa-file-chart-column"></i></div>
+                    <div>
+                      <div class="gc-title">Reportes disponibles</div>
+                      <div class="gc-sub">Exportación de datos operativos</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="gc-body">
+                  <div class="report-tiles">
+                    <button class="rtile" @click="$router.push('/apps/inventario/reportes')">
+                      <i class="fas fa-boxes-stacked"></i>
+                      <div><div class="rtile-title">Inventario</div><div class="rtile-desc">Stock y cobertura por hoja</div></div>
+                      <i class="fas fa-download rtile-arrow"></i>
+                    </button>
+                    <button class="rtile" @click="$router.push('/apps/laboratorio')">
+                      <i class="fas fa-flask-vial"></i>
+                      <div><div class="rtile-title">Pedidos</div><div class="rtile-desc">Historial de lab (30d)</div></div>
+                      <i class="fas fa-arrow-right rtile-arrow"></i>
+                    </button>
+                    <button class="rtile" @click="$router.push('/layouts/devoluciones')">
+                      <i class="fas fa-rotate-left"></i>
+                      <div><div class="rtile-title">Devoluciones</div><div class="rtile-desc">Gestión y aprobación</div></div>
+                      <i class="fas fa-arrow-right rtile-arrow"></i>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-          <div class="gc-body">
-            <div class="report-tiles">
-              <button class="rtile" @click="$router.push('/apps/inventario/reportes')">
-                <i class="fas fa-boxes-stacked"></i>
-                <div>
-                  <div class="rtile-title">Inventario</div>
-                  <div class="rtile-desc">Stock y cobertura por hoja</div>
-                </div>
-                <i class="fas fa-download rtile-arrow"></i>
-              </button>
-              <button class="rtile" @click="$router.push('/apps/laboratorio')">
-                <i class="fas fa-flask-vial"></i>
-                <div>
-                  <div class="rtile-title">Pedidos</div>
-                  <div class="rtile-desc">Historial de lab (30d)</div>
-                </div>
-                <i class="fas fa-arrow-right rtile-arrow"></i>
-              </button>
-              <button class="rtile" @click="$router.push('/layouts/devoluciones')">
-                <i class="fas fa-rotate-left"></i>
-                <div>
-                  <div class="rtile-title">Devoluciones</div>
-                  <div class="rtile-desc">Gestión y aprobación</div>
-                </div>
-                <i class="fas fa-arrow-right rtile-arrow"></i>
-              </button>
-            </div>
-          </div>
-        </div>
+        </template>
 
-      </div>
+      </DynamicTabs>
     </section>
 
   </div>
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onActivated, computed, toRef } from 'vue'
+import { ref, reactive, watch, onMounted, onActivated, computed, toRef } from 'vue'
+import DynamicTabs from '@/components/DynamicTabs.vue'
 import { useDashboardStats } from '@/composables/useDashboardStats'
 import { fetchDevolutions, updateDevolutionStatus } from '@/services/devolutions.js'
 import { listEvents } from '@/services/laboratorio.js'
 import { labToast } from '@/composables/useLabToast.js'
+import {
+  armazonesService, solucionesService,
+  accesoriosService, estuchesService, equiposService,
+} from '@/services/optica.js'
 
 const props = defineProps({ user: Object, loading: Boolean })
 
@@ -642,8 +793,61 @@ const {
 const s         = computed(() => stats.value)
 const isLoading = computed(() => props.loading || statsLoading.value)
 
-onMounted(() => { loadStats(); loadPendingDevols(); loadCorrectionLogs() })
-onActivated(() => { loadStats(); loadPendingDevols(); loadCorrectionLogs() })
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+const dashTab = ref('resumen')
+const DASH_TABS = computed(() => {
+  const tabs = [
+    { key: 'resumen',      label: 'Resumen',       icon: 'chart-pie' },
+    { key: 'operaciones',  label: 'Operaciones',   icon: 'flask-vial' },
+  ]
+  if (canSeeDevolutions.value) tabs.push({ key: 'devoluciones', label: 'Devoluciones', icon: 'rotate-left', badge: s.value?.devolucionesPendientes || 0, badgeType: 'warning' })
+  if (canSeeInventory.value)   tabs.push({ key: 'optica',       label: 'Optica',        icon: 'glasses' })
+  if (isSupervisor.value || isRoot.value) tabs.push({ key: 'supervision', label: 'Supervision', icon: 'eye' })
+  return tabs
+})
+
+// ── Optica stats ──────────────────────────────────────────────────────────────
+const optica = reactive({ loading: false, armazones: [], soluciones: [], accesorios: [], estuches: [], equipos: [] })
+const fmtMXN = n => Number(n||0).toLocaleString('es-MX',{style:'currency',currency:'MXN',minimumFractionDigits:0})
+
+const opticaStats = computed(() => {
+  const calc = (items) => ({
+    total:   items.reduce((s,a)=>s+(a.stock||0),0),
+    agotado: items.filter(a=>(a.stock||0)===0).length,
+    bajo:    items.filter(a=>(a.stock||0)>0&&(a.stock||0)<=3).length,
+    valor:   items.reduce((s,a)=>s+(a.precio||0)*(a.stock||0),0),
+  })
+  const arm = calc(optica.armazones)
+  const sol = { ...calc(optica.soluciones), porVencer: optica.soluciones.filter(l=>{ if(!l.caducidad)return false; const df=(new Date(l.caducidad)-new Date())/86400000; return df>0&&df<=180; }).length }
+  const acc = { ...calc(optica.accesorios), categorias: new Set(optica.accesorios.map(a=>a.categoria)).size }
+  const est = { ...calc(optica.estuches), tipos: new Set(optica.estuches.map(e=>e.tipo)).size }
+  const eqp = {
+    operativo: optica.equipos.filter(e=>e.estado==='Operativo').length,
+    mantto:    optica.equipos.filter(e=>e.estado==='Mantenimiento').length,
+    fuera:     optica.equipos.filter(e=>e.estado==='Fuera de servicio').length,
+    proxMantto:optica.equipos.filter(e=>{ if(!e.mantenimiento)return false; const df=(new Date(e.mantenimiento)-new Date())/86400000; return df>0&&df<=90; }).length,
+    total:     optica.equipos.length,
+  }
+  return { arm, sol, acc, est, eqp }
+})
+
+async function loadOptica() {
+  optica.loading = true
+  try {
+    const [a, sol, acc, est, eqp] = await Promise.all([
+      armazonesService.list(), solucionesService.list(),
+      accesoriosService.list(), estuchesService.list(), equiposService.list(),
+    ])
+    optica.armazones  = a?.data?.data   || []
+    optica.soluciones = sol?.data?.data  || []
+    optica.accesorios = acc?.data?.data  || []
+    optica.estuches   = est?.data?.data  || []
+    optica.equipos    = eqp?.data?.data  || []
+  } catch { /* silently fail */ } finally { optica.loading = false }
+}
+
+onMounted(() => { loadStats(); loadPendingDevols(); loadCorrectionLogs(); if (canSeeInventory.value) loadOptica() })
+onActivated(() => { loadStats(); loadPendingDevols(); loadCorrectionLogs(); if (canSeeInventory.value) loadOptica() })
 
 // ── Avatar ────────────────────────────────────────────────────────────────────
 const avatarLoaded = ref(false)
@@ -1037,12 +1241,18 @@ const visibleKpis = computed(() => {
 .db-main {
   position: relative;
   z-index: 1;
+  padding: 1.25rem;
+}
+.tab-two-col {
   display: grid;
   grid-template-columns: 1fr 340px;
   gap: 1.25rem;
-  padding: 1.25rem;
+}
+.tab-single-col {
+  max-width: 960px;
 }
 .col-main, .col-side { display:flex; flex-direction:column; }
+.optica-loading { max-width:960px; }
 
 /* ── Glass card ── */
 .gcard {
@@ -1301,7 +1511,7 @@ const visibleKpis = computed(() => {
 
 /* ── Responsive ── */
 @media (max-width:1100px) {
-  .db-main { grid-template-columns:1fr; }
+  .tab-two-col { grid-template-columns:1fr; }
   .col-side { flex-direction:row; flex-wrap:wrap; gap:1rem; }
   .col-side > * { flex:1 1 calc(50% - 0.5rem); min-width:240px; }
 }

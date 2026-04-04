@@ -201,11 +201,32 @@
 
                 <div class="panel__body">
                   <b-field label="Cliente *" class="mb-3">
-                    <b-input
+                    <b-autocomplete
                       v-model="cartCliente"
-                      placeholder="Nombre del cliente"
+                      :data="clienteSuggestions"
+                      field="nombre"
+                      placeholder="Buscar cliente recurrente o escribir nombre…"
                       icon="user"
-                    />
+                      :open-on-focus="true"
+                      :keep-first="false"
+                      :clearable="true"
+                      @select="selectCliente"
+                    >
+                      <template #default="{ option }">
+                        <div class="cliente-opt">
+                          <div class="cliente-opt__info">
+                            <span class="cliente-opt__name">{{ option.nombre }}</span>
+                            <span v-if="option.nota" class="cliente-opt__note">{{ option.nota }}</span>
+                          </div>
+                          <span class="cliente-opt__badge">{{ option.pedidos }} pedido{{ option.pedidos > 1 ? 's' : '' }}</span>
+                        </div>
+                      </template>
+                      <template #empty>
+                        <span class="cliente-opt__empty">
+                          <i class="fas fa-user-plus mr-1"></i>Nuevo cliente
+                        </span>
+                      </template>
+                    </b-autocomplete>
                   </b-field>
 
                   <b-field label="Notas" class="mb-3">
@@ -215,6 +236,46 @@
                       icon="sticky-note"
                     />
                   </b-field>
+
+                  <!-- Toggle datos adicionales del cliente -->
+                  <div class="nv-cliente-toggle mb-2">
+                    <span class="muted" style="font-size:0.82rem;font-weight:800">
+                      <i class="fas fa-user-tag mr-1"></i>Datos adicionales del cliente
+                    </span>
+                    <b-switch v-model="showClienteForm" size="is-small" />
+                  </div>
+
+                  <!-- Formulario nuevo cliente -->
+                  <div v-if="showClienteForm" class="nv-cliente-form mb-3">
+                    <b-field label="Nombre(s) *" class="mb-2">
+                      <b-input v-model="cartClienteNombres" placeholder="Nombre(s)" size="is-small" />
+                    </b-field>
+                    <b-field label="Apellidos" class="mb-2">
+                      <b-input v-model="cartClienteApellidos" placeholder="Apellidos" size="is-small" />
+                    </b-field>
+                    <b-field label="Empresa" class="mb-2">
+                      <b-input v-model="cartClienteEmpresa" placeholder="Empresa" size="is-small" icon="building" />
+                    </b-field>
+                    <b-field label="Contacto" class="mb-0">
+                      <b-input v-model="cartClienteContacto" placeholder="Tel / Email" size="is-small" icon="phone" />
+                    </b-field>
+                  </div>
+
+                  <!-- Condiciones de pago -->
+                  <div class="nv-pago-check mb-3">
+                    <p class="nv-pago-check__label">Condiciones de pago</p>
+                    <div class="nv-pago-check__opts">
+                      <b-checkbox
+                        v-for="op in PAGO_OPCIONES"
+                        :key="op.value"
+                        v-model="cartPago"
+                        :native-value="op.value"
+                        size="is-small"
+                      >
+                        {{ op.label }}
+                      </b-checkbox>
+                    </div>
+                  </div>
 
                   <hr class="soft-hr" />
 
@@ -264,6 +325,9 @@
                             @click="incCartQty(ci)"
                           />
                         </div>
+                        <span v-if="ci.precio" class="nv-precio-tag">
+                          ${{ ci.precio.toFixed(2) }} MXN
+                        </span>
                         <span class="stock-hint">stock: {{ ci.row.existencias }}</span>
                       </div>
                     </div>
@@ -275,6 +339,12 @@
                   <div class="bm-cart-summary">
                     <span class="muted">Total piezas:</span>
                     <span class="bm-cart-summary__val">{{ cartTotal }}</span>
+                  </div>
+                  <div v-if="cartTotalMonto > 0" class="bm-cart-summary mt-1">
+                    <span class="muted">Total:</span>
+                    <span class="bm-cart-summary__val" style="font-size:1.05rem">
+                      ${{ cartTotalMonto.toFixed(2) }} MXN
+                    </span>
                   </div>
 
                   <b-button
@@ -379,72 +449,81 @@
 
     <!-- ── Voucher modal ───────────────────────────────────────────────────── -->
 
-    <teleport to="body">  <b-modal v-model="voucherOpen" :width="500" scroll="keep">
+    <teleport to="body">  <b-modal v-model="voucherOpen" :width="560" scroll="keep">
       <div class="bm-voucher" v-if="lastVoucher">
-        <!-- Header del voucher -->
-        <div class="bm-voucher__head">
-          <div class="bm-voucher__logo">
-            <i class="fas fa-receipt"></i>
+
+        <!-- ── Nota de Venta (formato imprimible) ─────────────────────── -->
+        <div class="nv-nota">
+          <div class="nv-nota__title">NOTA DE VENTA</div>
+          <div class="nv-nota__info">
+            <span>CLIENTE: {{ lastVoucher.clienteDisplay || lastVoucher.cliente }}</span>
+            <span>FECHA: {{ fmtDateShort(lastVoucher.fecha) }}</span>
           </div>
-          <h2 class="bm-voucher__title">Comprobante de Venta</h2>
-          <div class="bm-voucher__subtitle">Bases y Micas</div>
-          <div class="bm-voucher__id mono">{{ lastVoucher.id }}</div>
+          <table class="nv-nota__table">
+            <thead>
+              <tr>
+                <th>CANTIDAD</th>
+                <th>PRODUCTO</th>
+                <th>PRECIO UNITARIO</th>
+                <th>TOTAL</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(line, i) in lastVoucher.lineas" :key="i">
+                <td class="nv-td-center">{{ line.qty }}</td>
+                <td>{{ line.title }}</td>
+                <td class="nv-td-center">
+                  {{ line.precio ? `${Number(line.precio).toFixed(2)} MXN` : '—' }}
+                </td>
+                <td class="nv-td-right">
+                  {{ line.precio ? (line.qty * line.precio).toFixed(2) : '—' }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="nv-nota__footer">
+            <div class="nv-nota__pago">
+              <div class="nv-nota__pago-label">CONDICIONES DE PAGO:</div>
+              <div class="nv-nota__pago-val">{{ lastVoucher.pagoDisplay || '—' }}</div>
+            </div>
+            <div class="nv-nota__total">
+              <div class="nv-nota__total-label">PRECIO TOTAL</div>
+              <div class="nv-nota__total-val">
+                {{ lastVoucher.totalMonto ? lastVoucher.totalMonto.toFixed(2) : '—' }}
+              </div>
+            </div>
+          </div>
         </div>
 
-        <!-- Datos del cliente -->
-        <div class="bm-voucher__meta">
+        <!-- ── Detalles adicionales ───────────────────────────────────── -->
+        <div class="bm-voucher__meta" style="margin-top:0.75rem">
           <div class="bm-voucher__row">
-            <span class="bm-voucher__label">Cliente</span>
-            <span class="bm-voucher__val">{{ lastVoucher.cliente }}</span>
-          </div>
-          <div class="bm-voucher__row">
-            <span class="bm-voucher__label">Fecha</span>
-            <span class="bm-voucher__val">{{ fmtDate(lastVoucher.fecha) }}</span>
+            <span class="bm-voucher__label">Total piezas</span>
+            <span class="bm-voucher__val">{{ lastVoucher.totalPiezas }}</span>
           </div>
           <div v-if="lastVoucher.note" class="bm-voucher__row">
             <span class="bm-voucher__label">Notas</span>
             <span class="bm-voucher__val">{{ lastVoucher.note }}</span>
           </div>
+          <div v-if="lastVoucher.clienteEmpresa" class="bm-voucher__row">
+            <span class="bm-voucher__label">Empresa</span>
+            <span class="bm-voucher__val">{{ lastVoucher.clienteEmpresa }}</span>
+          </div>
+          <div v-if="lastVoucher.clienteContacto" class="bm-voucher__row">
+            <span class="bm-voucher__label">Contacto</span>
+            <span class="bm-voucher__val">{{ lastVoucher.clienteContacto }}</span>
+          </div>
           <div class="bm-voucher__row">
             <span class="bm-voucher__label">Atendido por</span>
             <span class="bm-voucher__val">{{ lastVoucher.actor }}</span>
           </div>
-        </div>
-
-        <hr class="soft-hr" />
-
-        <!-- Líneas de venta -->
-        <div class="bm-voucher__lines">
-          <div class="bm-voucher__lines-head">
-            <span>Producto</span>
-            <span>Cant.</span>
-          </div>
-          <div
-            v-for="(line, i) in lastVoucher.lineas"
-            :key="i"
-            class="bm-voucher__line"
-          >
-            <div class="bm-voucher__line-info">
-              <div class="bm-voucher__line-title">{{ line.title }}</div>
-              <div class="bm-voucher__line-sub">{{ line.params }}</div>
-              <div v-if="line.codebar" class="mono muted" style="font-size:0.8rem">
-                {{ line.codebar }}
-              </div>
-              <div class="muted" style="font-size:0.78rem">{{ line.sheetNombre }}</div>
-            </div>
-            <div class="bm-voucher__line-qty">{{ line.qty }}</div>
+          <div class="bm-voucher__row">
+            <span class="bm-voucher__label">Folio</span>
+            <span class="bm-voucher__val mono">{{ lastVoucher.id }}</span>
           </div>
         </div>
 
-        <hr class="soft-hr" />
-
-        <!-- Total -->
-        <div class="bm-voucher__total">
-          <span class="bm-voucher__total-label">Total piezas</span>
-          <span class="bm-voucher__total-val">{{ lastVoucher.totalPiezas }}</span>
-        </div>
-
-        <!-- Lab order info -->
+        <!-- ── Lab order info ─────────────────────────────────────────── -->
         <div v-if="lastVoucher.labFolio" class="bm-voucher__lab-order">
           <i class="fas fa-flask bm-voucher__lab-icon"></i>
           <div>
@@ -471,14 +550,9 @@
           />
         </div>
 
-        <!-- Acciones -->
+        <!-- ── Acciones ───────────────────────────────────────────────── -->
         <div class="bm-voucher__actions">
-          <b-button
-            type="is-primary"
-            icon-left="print"
-            expanded
-            @click="printVoucher"
-          >
+          <b-button type="is-primary" icon-left="print" expanded @click="printVoucher">
             Imprimir / PDF
           </b-button>
           <b-button type="is-light" expanded @click="voucherOpen = false">
@@ -542,6 +616,7 @@ import { ref } from "vue";
 import {
   useBasesMicasVentas,
   fmtDate,
+  fmtDateShort,
   labStatusHuman,
   labStatusClass
 } from "@/composables/useBasesMicasVentas.js";
@@ -558,16 +633,29 @@ const {
   itemQuery, stockFilter,
   catalogPage, catalogPageSize,
   cartItems, cartCliente, cartNote,
+  cartClienteNombres, cartClienteApellidos,
+  cartClienteEmpresa, cartClienteContacto, cartPago,
   loadingSheets, loadingItems, loadingSale, loadingLabStatuses,
   voucherOpen, lastVoucher,
   labStatuses,
   selectedSheet, filteredItems, paginatedItems, catalogPages, cartTotal,
+  cartTotalMonto, cartClienteDisplay,
+  recentClientes, clienteSuggestions,
   buildRowTitle, sheetTitle,
   loadItems,
-  addToCart, removeFromCart, incCartQty, decCartQty, clearCart,
+  addToCart, removeFromCart, incCartQty, decCartQty, clearCart, selectCliente,
   registrarVenta, loadHistory,
   checkVoucherStatus, loadLabStatuses
 } = useBasesMicasVentas(() => props.user);
+
+const showClienteForm = ref(false);
+
+const PAGO_OPCIONES = [
+  { value: "trans",   label: "Transferencia (TRANS)" },
+  { value: "efec",    label: "Efectivo (EFEC)" },
+  { value: "credito", label: "Crédito" },
+  { value: "tarjeta", label: "Tarjeta C|D" },
+];
 
 const confirmClearOpen = ref(false);
 const confirmLabOpen   = ref(false);
@@ -749,50 +837,7 @@ function printVoucher() {
 
 .panel--sticky { position: sticky; top: 0.85rem; }
 
-.panel__head {
-  padding: 1rem;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.85rem;
-  flex-wrap: wrap;
-}
-
-.panel__head--compact { padding: 0.85rem 1rem; }
-
-.panel__title {
-  margin: 0;
-  font-weight: 1000;
-  font-size: 1.05rem;
-  color: var(--text-primary);
-}
-
-.panel__hint {
-  margin: 0.25rem 0 0;
-  color: var(--text-muted);
-  font-weight: 700;
-  font-size: 0.85rem;
-}
-
-.panel__badge {
-  margin-left: 0.5rem;
-  font-size: 0.78rem;
-  font-weight: 950;
-  padding: 0.2rem 0.55rem;
-  border-radius: 999px;
-  border: 1px solid var(--c-primary-alpha);
-  background: var(--c-primary-alpha);
-}
-
-.panel__headActions {
-  display: flex;
-  gap: 0.6rem;
-  align-items: flex-end;
-  flex-wrap: wrap;
-}
-
-.panel__body { padding: 1rem; position: relative; }
+/* .panel__* → global.css */
 
 /* ── Table ── */
 .nice-table :deep(.table) { border-radius: 14px; overflow: hidden; }
@@ -863,8 +908,7 @@ function printVoucher() {
 .qty-control { display: flex; gap: 0.35rem; align-items: center; }
 .stock-hint  { font-weight: 900; color: var(--text-muted); font-size: 0.82rem; }
 
-/* ── Soft divider ── */
-.soft-hr { border: none; border-top: 1px dashed var(--border); margin: 1rem 0; }
+/* .soft-hr → global.css */
 
 /* ── Cart summary ── */
 .bm-cart-summary {
@@ -879,12 +923,7 @@ function printVoucher() {
   color: var(--text-primary);
 }
 
-/* ── Empty state ── */
-.empty      { padding: 2.2rem 1rem; text-align: center; color: var(--text-muted); }
-.empty--mini { padding: 1.2rem 0.75rem; }
-.empty__icon  { font-size: 1.6rem; color: rgba(144, 111, 225, 0.9); }
-.empty__title { margin: 0.5rem 0 0; font-weight: 1000; color: var(--text-primary); }
-.empty__text  { margin: 0.25rem 0 0; font-weight: 800; }
+/* .empty* → global.css */
 
 /* ── Mono ── */
 .mono {
@@ -1074,6 +1113,58 @@ function printVoucher() {
   border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
+/* ── Cliente autocomplete dropdown ── */
+.cliente-opt {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.25rem 0;
+}
+
+.cliente-opt__info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.cliente-opt__name {
+  font-weight: 900;
+  color: var(--text-primary);
+  font-size: 0.88rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cliente-opt__note {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+.cliente-opt__badge {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  font-weight: 900;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: var(--c-primary-alpha);
+  color: var(--c-primary);
+  border: 1px solid var(--c-primary-alpha);
+}
+
+.cliente-opt__empty {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  padding: 0.25rem 0;
+}
+
 /* Lab badge in history */
 .lab-hist-badge { font-size: 0.72rem !important; font-weight: 900 !important; }
 
@@ -1090,6 +1181,166 @@ function printVoucher() {
     border-radius: 0;
     padding: 1.5rem;
   }
-  .bm-voucher__actions { display: none; }
+  .bm-voucher__actions,
+  .bm-voucher__meta,
+  .bm-voucher__lab-order { display: none !important; }
+  .nv-nota { border-color: #000 !important; }
+  .nv-nota__table thead th,
+  .nv-nota__table tbody td { border-color: #000 !important; }
+}
+
+/* ── Nota de Venta ── */
+.nv-nota {
+  border: 2px solid var(--border-solid);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.nv-nota__title {
+  text-align: center;
+  font-weight: 1000;
+  font-size: 1.05rem;
+  padding: 0.65rem;
+  border-bottom: 1px solid var(--border-solid);
+  background: var(--surface-overlay);
+  color: var(--text-primary);
+  letter-spacing: 0.06em;
+}
+
+.nv-nota__info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border-solid);
+  font-weight: 900;
+  font-size: 0.82rem;
+  color: var(--text-primary);
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  background: var(--surface-overlay);
+}
+
+.nv-nota__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.nv-nota__table thead th {
+  background: var(--surface-overlay);
+  font-weight: 1000;
+  text-align: center;
+  padding: 0.45rem 0.5rem;
+  border-bottom: 1px solid var(--border-solid);
+  border-right: 1px solid var(--border-solid);
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+}
+.nv-nota__table thead th:last-child { border-right: none; }
+
+.nv-nota__table tbody td {
+  padding: 0.4rem 0.55rem;
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  color: var(--text-primary);
+  font-weight: 800;
+}
+.nv-nota__table tbody td:last-child { border-right: none; }
+.nv-nota__table tbody tr:last-child td { border-bottom: none; }
+
+.nv-td-center { text-align: center; }
+.nv-td-right  { text-align: right; }
+
+.nv-nota__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: stretch;
+  border-top: 1px solid var(--border-solid);
+  background: var(--surface-overlay);
+}
+
+.nv-nota__pago {
+  padding: 0.6rem 0.75rem;
+  border-right: 1px solid var(--border-solid);
+  flex: 1;
+}
+
+.nv-nota__pago-label {
+  font-weight: 1000;
+  font-size: 0.75rem;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.nv-nota__pago-val {
+  font-weight: 800;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 0.2rem;
+}
+
+.nv-nota__total {
+  padding: 0.6rem 0.75rem;
+  text-align: right;
+  min-width: 130px;
+}
+
+.nv-nota__total-label {
+  font-weight: 1000;
+  font-size: 0.75rem;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.nv-nota__total-val {
+  font-size: 1.15rem;
+  font-weight: 1000;
+  color: var(--text-primary);
+  margin-top: 0.15rem;
+  border-top: 2px solid var(--border-solid);
+  padding-top: 0.15rem;
+}
+
+/* ── Nuevo cliente form ── */
+.nv-cliente-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.nv-cliente-form {
+  border: 1px solid var(--border);
+  background: var(--surface-overlay);
+  border-radius: 14px;
+  padding: 0.75rem;
+}
+
+/* ── Condiciones de pago checkboxes ── */
+.nv-pago-check__label {
+  font-weight: 900;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+}
+
+.nv-pago-check__opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.85rem;
+}
+
+/* ── Precio tag en cart item ── */
+.nv-precio-tag {
+  font-size: 0.82rem;
+  font-weight: 900;
+  color: var(--c-primary);
+  background: var(--c-primary-alpha);
+  border: 1px solid var(--c-primary-alpha);
+  border-radius: 999px;
+  padding: 0.15rem 0.5rem;
 }
 </style>

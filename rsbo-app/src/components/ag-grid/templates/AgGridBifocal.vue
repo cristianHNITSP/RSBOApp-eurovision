@@ -76,16 +76,18 @@ import { AgGridVue } from "ag-grid-vue3";
 import {
   AllCommunityModule,
   ModuleRegistry,
-  themeQuartz,
-  iconSetQuartzBold,
-  colorSchemeLight,
-  colorSchemeDark
 } from "ag-grid-community";
 import navtools from "@/components/ag-grid/navtools.vue";
 import { useSheetApi } from "@/composables/useSheetApi";
 import { useGridHistory } from "@/composables/useGridHistory";
 import { useUnsavedGuard } from "@/composables/useUnsavedGuard";
+import {
+  useAgGridBase, localeText,
+  ackOk, ackErr, msgFromErr, statusFromErr, normalizeAxiosOk,
+  numOr, isNumeric, to2, fmtSigned, isMultipleOfStep,
+} from "@/composables/useAgGridBase";
 import { labToast } from "@/composables/useLabToast";
+import { exportAgGridToXlsx } from "@/composables/useExcelExport";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -98,23 +100,6 @@ const props = defineProps({
 
 const { fetchItems, saveChunk, getSheet, reseedSheet } = useSheetApi(() => props.apiType);
 
-/* ===================== ACK helpers ===================== */
-const ackOk = (ack, message = "Ok", status = 200) => {
-  if (typeof ack === "function") ack({ ok: true, status, message });
-};
-const ackErr = (ack, message = "Error", status = 400) => {
-  if (typeof ack === "function") ack({ ok: false, status, message });
-  else alert(message);
-};
-const msgFromErr = (e, fallback = "Error de servidor") =>
-  e?.response?.data?.message || e?.response?.data?.error || e?.message || fallback;
-const statusFromErr = (e) => e?.response?.status ?? 0;
-const normalizeAxiosOk = (res) => {
-  const status = res?.status ?? 200;
-  const body = res?.data ?? null;
-  if (body?.ok === false) return { ok: false, status, message: body?.message || "Operación rechazada" };
-  return { ok: true, status, message: body?.message || "Operación exitosa" };
-};
 
 /* ===================== UI / Anim ===================== */
 const switchingView = ref(false);
@@ -124,44 +109,6 @@ const raf = () =>
     else setTimeout(resolve, 0);
   });
 
-/* === AG-Grid tema reactivo al dark mode === */
-const _darkMode = ref(document.documentElement.getAttribute("data-theme") === "dark");
-const _themeObserver = new MutationObserver(() => {
-  _darkMode.value = document.documentElement.getAttribute("data-theme") === "dark";
-});
-onMounted(() => _themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] }));
-onBeforeUnmount(() => _themeObserver.disconnect());
-
-const themeCustom = computed(() => {
-  const d = _darkMode.value;
-  return themeQuartz
-    .withPart(iconSetQuartzBold, d ? colorSchemeDark : colorSchemeLight)
-    .withParams(d ? {
-      accentColor: "#a788f0", backgroundColor: "#161b22", foregroundColor: "#e2e8f0",
-      borderColor: "#2d3748", borderRadius: 10, wrapperBorder: true, wrapperBorderRadius: 10,
-      columnBorder: true, rowBorder: true, headerBackgroundColor: "#1a1f2e",
-      headerTextColor: "#c4b5fd", headerFontSize: 11, headerFontWeight: 600,
-      fontFamily: "Satoshi, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-      fontSize: 12, spacing: 3, oddRowBackgroundColor: "#18202e",
-    } : {
-      accentColor: "#7957d5", backgroundColor: "#ffffff", foregroundColor: "#2d2242",
-      borderColor: "#e5e5f0", borderRadius: 10, wrapperBorder: true, wrapperBorderRadius: 10,
-      columnBorder: true, rowBorder: true, headerBackgroundColor: "#f5f3ff",
-      headerTextColor: "#4527a0", headerFontSize: 11, headerFontWeight: 600,
-      fontFamily: "Satoshi, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-      fontSize: 12, spacing: 3, oddRowBackgroundColor: "#fbfbff",
-    });
-});
-
-const localeText = { noRowsToShow: "No hay filas para mostrar", loadingOoo: "Cargando..." };
-
-/* ===================== Helpers numéricos ===================== */
-const isNumeric = (v) => /^-?\d+(\.\d+)?$/.test(String(v ?? "").trim());
-const to2 = (n) => {
-  const num = Number(n);
-  if (!Number.isFinite(num)) return 0;
-  return Number(num.toFixed(2));
-};
 const isQuarterStep = (value) => {
   const num = Number(value);
   if (!Number.isFinite(num)) return false;
@@ -178,13 +125,6 @@ function sortSphForView(values) {
   return [...new Set(values)].sort((a, b) => (dir === "desc" ? b - a : a - b));
 }
 
-
-const fmtSigned = (n) => {
-  const num = Number(n);
-  if (!Number.isFinite(num)) return String(n ?? "");
-  const s = num.toFixed(2);
-  return num >= 0 ? `+${s}` : s;
-};
 
 /* ===================== Actor normalizado ===================== */
 const effectiveActor = computed(() => {
@@ -286,11 +226,7 @@ function rowHasLowStock(row) {
   return false;
 }
 
-/** ✅ Reglas a nivel fila (suaves, pero útiles) */
-const rowClassRules = computed(() => ({
-  "ag-row--stock-zero": (p) => rowHasZeroStock(p?.data),
-  "ag-row--stock-low": (p) => !rowHasZeroStock(p?.data) && rowHasLowStock(p?.data)
-}));
+const { themeCustom, rowClassRules } = useAgGridBase({ isZeroStock, isLowStock });
 
 /* ===================== Límites físicos (source of truth) ===================== */
 const PHYS = computed(() => {
@@ -430,7 +366,7 @@ const columns = computed(() => {
       children: addCols.value.map((a) => ({
         headerName: fmtSigned(a),
         marryChildren: true,
-        children: [makeLeaf(`add_${norm(a)}_OD`, "OD", a, "OD"), makeLeaf(`add_${norm(a)}_OI`, "OI", a, "OI")]
+        children: [makeLeaf(`add_${norm(a)}_OD`, "Der.", a, "OD"), makeLeaf(`add_${norm(a)}_OI`, "Izq.", a, "OI")]
       }))
     }
   ];
@@ -471,12 +407,11 @@ async function loadRows() {
     .map((i) => ({ ...i, sph: to2(i.sph), add: to2(i.add), existencias: Number(i.existencias ?? 0) }))
     .filter((i) => inPhysSph(i.sph) && inPhysAdd(i.add));
 
-  // Ejes vienen del backend (tab.axis)
+  // Ejes 100% del backend — frontend solo reconstruye
   const backendSph = Array.isArray(tab?.axis?.sph) ? tab.axis.sph : [];
   const backendAdd = Array.isArray(tab?.axis?.add) ? tab.axis.add : [];
 
-  const addsFromData = items.map((i) => to2(i.add)).filter(inPhysAdd);
-  addCols.value = uniqSorted([...backendAdd, ...addsFromData]);
+  addCols.value = uniqSorted(backendAdd.filter(inPhysAdd));
 
   basesPorSph.value = new Map();
   for (const it of items) {
@@ -489,11 +424,9 @@ async function loadRows() {
   const key = (sph, add, eye) => `${to2(sph)}|${to2(add)}|${String(eye).toUpperCase()}`;
   const map = new Map(items.map((i) => [key(i.sph, i.add, i.eye), Number(i.existencias ?? 0)]));
 
-  // Merge backend axis con datos reales
-  const sphFromData = items.map((i) => to2(i.sph)).filter(inPhysSph);
+  // Ejes SPH 100% del backend
   const inView = (n) => (isNeg ? n <= 0 : n >= 0);
-  const sphMerged = [...backendSph, ...sphFromData].map(to2).filter(inView);
-  const axis = sortSphForView([...new Set(sphMerged)]);
+  const axis = sortSphForView([...new Set(backendSph.map(to2).filter(inView))]);
 
   rowData.value = axis.map((sph) => {
     const bases = basesPorSph.value.get(to2(sph)) || { base_izq: 0, base_der: 0 };
@@ -841,12 +774,16 @@ async function handleSeed(ack) {
   }
 }
 
-function handleExport() {
-  if (!gridApi.value || typeof gridApi.value.exportDataAsCsv !== "function") return;
+async function handleExport() {
+  if (!gridApi.value) return;
   const nameSlug = sheetName.value.replace(/\s+/g, "_");
   const posNeg = props.sphType === "sph-pos" ? "pos" : "neg";
   const fecha = new Date().toISOString().slice(0, 10);
-  gridApi.value.exportDataAsCsv({ fileName: `reporte_inventario_${nameSlug || "bifocal"}_${posNeg}_${fecha}.csv` });
+  await exportAgGridToXlsx(gridApi.value, {
+    filename: `reporte_inventario_${nameSlug || "bifocal"}_${posNeg}_${fecha}`,
+    sheetName: String(sheetName.value || "Bifocal").slice(0, 31),
+    title: `Inventario — ${sheetName.value || "Bifocal"} (${posNeg})`,
+  });
 }
 
 /* ===================== Filters / sort ===================== */

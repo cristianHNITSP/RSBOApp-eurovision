@@ -81,16 +81,18 @@ import { AgGridVue } from "ag-grid-vue3";
 import {
   AllCommunityModule,
   ModuleRegistry,
-  themeQuartz,
-  iconSetQuartzBold,
-  colorSchemeLight,
-  colorSchemeDark
 } from "ag-grid-community";
 import navtools from "@/components/ag-grid/navtools.vue";
 import { useSheetApi } from "@/composables/useSheetApi";
 import { useGridHistory } from "@/composables/useGridHistory";
 import { useUnsavedGuard } from "@/composables/useUnsavedGuard";
+import {
+  useAgGridBase, localeText,
+  ackOk, ackErr, msgFromErr, statusFromErr, normalizeAxiosOk,
+  numOr, isNumeric, to2, fmtSigned, isMultipleOfStep,
+} from "@/composables/useAgGridBase";
 import { labToast } from "@/composables/useLabToast";
+import { exportAgGridToXlsx } from "@/composables/useExcelExport";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -103,47 +105,12 @@ const props = defineProps({
 
 const { fetchItems, saveChunk, reseedSheet, getSheet } = useSheetApi(() => props.apiType);
 
-/* ===================== ACK helpers ===================== */
-const ackOk = (ack, message = "Ok", status = 200) => {
-  if (typeof ack === "function") ack({ ok: true, status, message });
-};
-const ackErr = (ack, message = "Error", status = 400) => {
-  if (typeof ack === "function") ack({ ok: false, status, message });
-  else alert(message);
-};
-const msgFromErr = (e, fallback = "Error de servidor") =>
-  e?.response?.data?.message || e?.response?.data?.error || e?.message || fallback;
-const statusFromErr = (e) => e?.response?.status ?? 0;
-const normalizeAxiosOk = (res) => {
-  const status = res?.status ?? 200;
-  const body = res?.data ?? null;
-  if (body?.ok === false) return { ok: false, status, message: body?.message || "Operacion rechazada" };
-  return { ok: true, status, message: body?.message || "Operacion exitosa" };
-};
-
-/* ===================== Helpers numericos ===================== */
-const numOr = (v, dflt) => {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : dflt;
-};
-const to2 = (n) => {
-  const num = Number(n);
-  if (!Number.isFinite(num)) return 0;
-  return Number(num.toFixed(2));
-};
 const isQuarterStep = (value) => {
   const num = Number(value);
   if (!Number.isFinite(num)) return false;
   const scaled = num * 4;
   return Math.abs(scaled - Math.round(scaled)) < 1e-6;
 };
-const fmtSigned = (n) => {
-  const num = Number(n);
-  if (!Number.isFinite(num)) return String(n ?? "");
-  const s = num.toFixed(2);
-  return num >= 0 ? `+${s}` : s;
-};
-const isNumeric = (v) => /^-?\d+(\.\d+)?$/.test(String(v ?? "").trim());
 
 const fmtCylHeader = (cDisp) => {
   const n = Number(cDisp);
@@ -215,36 +182,6 @@ const unsavedGuard = useUnsavedGuard({
   },
 });
 
-/* === AG-Grid tema reactivo al dark mode === */
-const _darkMode = ref(document.documentElement.getAttribute("data-theme") === "dark");
-const _themeObserver = new MutationObserver(() => {
-  _darkMode.value = document.documentElement.getAttribute("data-theme") === "dark";
-});
-onMounted(() => _themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] }));
-onBeforeUnmount(() => _themeObserver.disconnect());
-
-const themeCustom = computed(() => {
-  const d = _darkMode.value;
-  return themeQuartz
-    .withPart(iconSetQuartzBold, d ? colorSchemeDark : colorSchemeLight)
-    .withParams(d ? {
-      accentColor: "#a788f0", backgroundColor: "#161b22", foregroundColor: "#e2e8f0",
-      borderColor: "#2d3748", borderRadius: 10, wrapperBorder: true, wrapperBorderRadius: 10,
-      columnBorder: true, rowBorder: true, headerBackgroundColor: "#1a1f2e",
-      headerTextColor: "#c4b5fd", headerFontSize: 11, headerFontWeight: 600,
-      fontFamily: "Satoshi, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-      fontSize: 12, spacing: 3, oddRowBackgroundColor: "#18202e",
-    } : {
-      accentColor: "#7957d5", backgroundColor: "#ffffff", foregroundColor: "#2d2242",
-      borderColor: "#e5e5f0", borderRadius: 10, wrapperBorder: true, wrapperBorderRadius: 10,
-      columnBorder: true, rowBorder: true, headerBackgroundColor: "#f5f3ff",
-      headerTextColor: "#4527a0", headerFontSize: 11, headerFontWeight: 600,
-      fontFamily: "Satoshi, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-      fontSize: 12, spacing: 3, oddRowBackgroundColor: "#fbfbff",
-    });
-});
-
-const localeText = { noRowsToShow: "No hay filas para mostrar", loadingOoo: "Cargando..." };
 
 /* ===================== Actor normalizado ===================== */
 const effectiveActor = computed(() => {
@@ -291,10 +228,7 @@ function rowHasLowStock(row) {
   return false;
 }
 
-const rowClassRules = computed(() => ({
-  "ag-row--stock-zero": (p) => rowHasZeroStock(p?.data),
-  "ag-row--stock-low": (p) => !rowHasZeroStock(p?.data) && rowHasLowStock(p?.data)
-}));
+const { themeCustom, rowClassRules } = useAgGridBase({ isZeroStock, isLowStock });
 
 const phys = computed(() => {
   const pl = physicalLimits.value || {};
@@ -461,36 +395,29 @@ async function loadAllItems() {
       return true;
     });
 
-  // Degree axis from backend tab
+  // Ejes 100% del backend — frontend solo reconstruye
   const backendDegrees = Array.isArray(tab?.axis?.degrees) ? tab.axis.degrees : [];
-  const degreesFromData = [...new Set(allItems.value.map((i) => i.axis))];
-  const allDeg = [...new Set([...backendDegrees, ...degreesFromData])]
+  const allDeg = [...new Set(backendDegrees)]
     .filter((d) => Number.isFinite(d) && d >= 10 && d <= 180 && d % 10 === 0)
     .sort((a, b) => b - a);
-  degreeValues.value = allDeg.length ? allDeg : [180, 170, 160, 150, 140, 130, 120, 110, 100, 90, 80, 70, 60, 50, 40, 30, 20, 10];
+  degreeValues.value = allDeg;
 
   if (!degreeValues.value.includes(selectedDegree.value)) {
     selectedDegree.value = degreeValues.value[0] || 180;
   }
 
-  // SPH / CYL axes from backend
+  // SPH / CYL ejes 100% del backend
   const backendSph = Array.isArray(tab?.axis?.sph) ? tab.axis.sph : [];
   const backendCyl = Array.isArray(tab?.axis?.cyl) ? tab.axis.cyl : [];
 
-  const sphFromData = allItems.value.map((i) => i.sph);
-  const sphMerged = [...backendSph, ...sphFromData]
-    .map(to2)
+  const sphAxis = [...new Set(backendSph.map(to2))]
     .filter((s) => Number.isFinite(s) && s >= P.sphMin && s <= P.sphMax)
-    .filter((s) => isNeg ? s <= 0 : s >= 0);
-  const sphAxis = [...new Set(sphMerged)].sort((a, b) => isNeg ? b - a : a - b);
+    .filter((s) => isNeg ? s <= 0 : s >= 0)
+    .sort((a, b) => isNeg ? b - a : a - b);
 
-  const cylFromDataDisp = allItems.value
-    .map((i) => to2(Math.abs(i.cyl)))
-    .filter((n) => Number.isFinite(n) && n >= 0 && n <= P.cylAbsMax);
-  const cylMerged = [...backendCyl, ...cylFromDataDisp]
-    .map(to2)
-    .filter((n) => Number.isFinite(n) && n >= 0 && n <= P.cylAbsMax);
-  cylValues.value = [...new Set(cylMerged)].sort((a, b) => a - b);
+  cylValues.value = [...new Set(backendCyl.map(to2))]
+    .filter((n) => Number.isFinite(n) && n >= 0 && n <= P.cylAbsMax)
+    .sort((a, b) => a - b);
 
   buildRowsForDegree(sphAxis);
 }
@@ -506,12 +433,10 @@ function buildRowsForDegree(sphAxisOverride) {
   if (!sphAxis) {
     const tab = getTabForView();
     const backendSph = Array.isArray(tab?.axis?.sph) ? tab.axis.sph : [];
-    const sphFromData = items.map((i) => i.sph);
-    const sphMerged = [...backendSph, ...sphFromData]
-      .map(to2)
+    sphAxis = [...new Set(backendSph.map(to2))]
       .filter((s) => Number.isFinite(s) && s >= P.sphMin && s <= P.sphMax)
-      .filter((s) => isNeg ? s <= 0 : s >= 0);
-    sphAxis = [...new Set(sphMerged)].sort((a, b) => isNeg ? b - a : a - b);
+      .filter((s) => isNeg ? s <= 0 : s >= 0)
+      .sort((a, b) => isNeg ? b - a : a - b);
   }
 
   const key = (s, cDisp) => `${to2(s)}|${to2(cDisp)}`;
@@ -834,12 +759,16 @@ async function handleSeed(ack) {
   }
 }
 
-function handleExport() {
-  if (!gridApi.value || typeof gridApi.value.exportDataAsCsv !== "function") return;
+async function handleExport() {
+  if (!gridApi.value) return;
   const nameSlug = sheetName.value.replace(/\s+/g, "_");
   const posNeg = props.sphType === "sph-pos" ? "pos" : "neg";
   const fecha = new Date().toISOString().slice(0, 10);
-  gridApi.value.exportDataAsCsv({ fileName: `reporte_inventario_${nameSlug || "torico"}_${posNeg}_${selectedDegree.value}deg_${fecha}.csv` });
+  await exportAgGridToXlsx(gridApi.value, {
+    filename: `reporte_inventario_${nameSlug || "torico"}_${posNeg}_${selectedDegree.value}deg_${fecha}`,
+    sheetName: String(sheetName.value || "Torico").slice(0, 31),
+    title: `Inventario — ${sheetName.value || "Torico"} (${posNeg}, ${selectedDegree.value}°)`,
+  });
 }
 </script>
 

@@ -11,7 +11,6 @@ import { useMotionEffects } from "../composables/useMotionEffects";
 import { useNotifications } from "../composables/useNotificationsState";
 import { useAccessibility } from "../composables/useAccessibility";
 import { pendingOrdersCount } from "@/composables/useOrdersBadge.js";
-import { listOrders } from "@/services/laboratorio.js";
 import { fetchUnreadCount } from "@/services/notifications.js";
 
 
@@ -261,17 +260,6 @@ function handleClosePanel() {
 /* =========================
    Mount / Unmount
    ========================= */
-/* =========================
-   Pending orders badge (sidebar)
-   ========================= */
-async function refreshPendingCount() {
-  try {
-    const { data } = await listOrders({ status: "all", limit: 500 });
-    const orders = Array.isArray(data?.data) ? data.data : [];
-    pendingOrdersCount.value = orders.filter((o) => o.status === "pendiente" || o.status === "parcial").length;
-  } catch {}
-}
-
 async function refreshUnreadCount() {
   try {
     const { data } = await fetchUnreadCount();
@@ -281,9 +269,7 @@ async function refreshUnreadCount() {
 
 function _onLabWs(e) {
   const type = e?.detail?.type;
-  if (["LAB_ORDER_CREATE","LAB_ORDER_CANCEL","LAB_ORDER_CLOSE","LAB_ORDER_RESET"].includes(type)) {
-    refreshPendingCount();
-  }
+  // pendingOrdersCount lo actualiza useLaboratorioApi.loadOrders() vía updatePendingCount
   if (type === "NOTIFICATION_NEW" || type === "STOCK_ALERT") {
     refreshUnreadCount();
   }
@@ -301,7 +287,6 @@ onMounted(() => {
   if (mql.addEventListener) mql.addEventListener("change", onMediaChange);
   else mql.addListener(onMediaChange);
 
-  refreshPendingCount();
   refreshUnreadCount();
   window.addEventListener("lab:ws", _onLabWs);
 });

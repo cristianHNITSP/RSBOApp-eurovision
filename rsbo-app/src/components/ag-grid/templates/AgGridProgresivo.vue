@@ -75,16 +75,18 @@ import { AgGridVue } from "ag-grid-vue3";
 import {
   AllCommunityModule,
   ModuleRegistry,
-  themeQuartz,
-  iconSetQuartzBold,
-  colorSchemeLight,
-  colorSchemeDark
 } from "ag-grid-community";
 import navtools from "@/components/ag-grid/navtools.vue";
 import { useSheetApi } from "@/composables/useSheetApi";
 import { useGridHistory } from "@/composables/useGridHistory";
 import { useUnsavedGuard } from "@/composables/useUnsavedGuard";
+import {
+  useAgGridBase, localeText,
+  ackOk, ackErr, msgFromErr, statusFromErr, normalizeAxiosOk,
+  numOr, isNumeric, to2, fmtSigned, isMultipleOfStep,
+} from "@/composables/useAgGridBase";
 import { labToast } from "@/composables/useLabToast";
+import { exportAgGridToXlsx } from "@/composables/useExcelExport";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -97,28 +99,6 @@ const props = defineProps({
 
 const { fetchItems, saveChunk, reseedSheet, getSheet } = useSheetApi(() => props.apiType);
 
-/* ===================== ACK helpers ===================== */
-const ackOk = (ack, message = "Ok", status = 200) => {
-  if (typeof ack === "function") ack({ ok: true, status, message });
-};
-const ackErr = (ack, message = "Error", status = 400) => {
-  if (typeof ack === "function") ack({ ok: false, status, message });
-  else alert(message);
-};
-const msgFromErr = (e, fallback = "Error de servidor") =>
-  e?.response?.data?.message || e?.response?.data?.error || e?.message || fallback;
-const statusFromErr = (e) => e?.response?.status ?? 0;
-const normalizeAxiosOk = (res) => {
-  const status = res?.status ?? 200;
-  const body = res?.data ?? null;
-  if (body?.ok === false) return { ok: false, status, message: body?.message || "Operación rechazada" };
-  return { ok: true, status, message: body?.message || "Operación exitosa" };
-};
-
-const numOr = (v, dflt) => {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : dflt;
-};
 
 const gridApi = ref(null);
 const rowData = ref([]);
@@ -161,57 +141,11 @@ const raf = () =>
     else setTimeout(resolve, 0);
   });
 
-/* === AG-Grid tema reactivo al dark mode === */
-const _darkMode = ref(document.documentElement.getAttribute("data-theme") === "dark");
-const _themeObserver = new MutationObserver(() => {
-  _darkMode.value = document.documentElement.getAttribute("data-theme") === "dark";
-});
-onMounted(() => _themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] }));
-onBeforeUnmount(() => _themeObserver.disconnect());
-
-const themeCustom = computed(() => {
-  const d = _darkMode.value;
-  return themeQuartz
-    .withPart(iconSetQuartzBold, d ? colorSchemeDark : colorSchemeLight)
-    .withParams(d ? {
-      accentColor: "#a788f0", backgroundColor: "#161b22", foregroundColor: "#e2e8f0",
-      borderColor: "#2d3748", borderRadius: 10, wrapperBorder: true, wrapperBorderRadius: 10,
-      columnBorder: true, rowBorder: true, headerBackgroundColor: "#1a1f2e",
-      headerTextColor: "#c4b5fd", headerFontSize: 11, headerFontWeight: 600,
-      fontFamily: "Satoshi, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-      fontSize: 12, spacing: 3, oddRowBackgroundColor: "#18202e",
-    } : {
-      accentColor: "#7957d5", backgroundColor: "#ffffff", foregroundColor: "#2d2242",
-      borderColor: "#e5e5f0", borderRadius: 10, wrapperBorder: true, wrapperBorderRadius: 10,
-      columnBorder: true, rowBorder: true, headerBackgroundColor: "#f5f3ff",
-      headerTextColor: "#4527a0", headerFontSize: 11, headerFontWeight: 600,
-      fontFamily: "Satoshi, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-      fontSize: 12, spacing: 3, oddRowBackgroundColor: "#fbfbff",
-    });
-});
-
-const localeText = { noRowsToShow: "No hay filas para mostrar", loadingOoo: "Cargando..." };
-const isNumeric = (v) => /^-?\d+(\.\d+)?$/.test(String(v ?? "").trim());
-
-const to2 = (n) => {
-  const num = Number(n);
-  if (!Number.isFinite(num)) return 0;
-  return Number(num.toFixed(2));
-};
-
 const isQuarterStep = (value) => {
   const num = Number(value);
   if (!Number.isFinite(num)) return false;
   const scaled = num * 4;
   return Math.abs(scaled - Math.round(scaled)) < 1e-6;
-};
-
-
-const fmtSigned = (n) => {
-  const num = Number(n);
-  if (!Number.isFinite(num)) return String(n ?? "");
-  const s = num.toFixed(2);
-  return num >= 0 ? `+${s}` : s;
 };
 
 const baseViewId = computed(() =>
@@ -289,10 +223,7 @@ function rowHasLowStock(row) {
   return false;
 }
 
-const rowClassRules = computed(() => ({
-  "ag-row--stock-zero": (p) => rowHasZeroStock(p?.data),
-  "ag-row--stock-low": (p) => !rowHasZeroStock(p?.data) && rowHasLowStock(p?.data)
-}));
+const { themeCustom, rowClassRules } = useAgGridBase({ isZeroStock, isLowStock });
 
 const norm = (n) => String(n).replace(".", "_");
 const denorm = (s) => Number(String(s).replace("_", "."));
@@ -364,7 +295,7 @@ const columns = computed(() => [
       marryChildren: true,
       children: eyes.map((eye) => ({
         field: `add_${norm(add)}_${eye}`,
-        headerName: eye,
+        headerName: eye === "OD" ? "Der." : eye === "OI" ? "Izq." : eye,
         editable: true,
         minWidth: 90,
         maxWidth: 110,
@@ -458,29 +389,10 @@ async function loadRows() {
     .filter((b) => b >= P.baseMin && b <= P.baseMax)
     .filter((b) => (baseViewId.value === "base-neg" ? Number(b) <= 0 : Number(b) >= 0));
 
-  const isZeroKey = (bi, bd) => to2(bi) === 0 && to2(bd) === 0;
-
-  const itemBaseKeys = [
-    ...new Set(
-      items
-        .map((i) => `${to2(i.base_izq ?? 0)}|${to2(i.base_der ?? 0)}`)
-        .filter((k) => {
-          const [bi, bd] = k.split("|").map(Number);
-
-          if (!(bi >= P.baseMin && bi <= P.baseMax && bd >= P.baseMin && bd <= P.baseMax)) return false;
-
-          const anyNeg = bi < 0 || bd < 0;
-
-          if (isZeroKey(bi, bd)) return true;
-
-          return baseViewId.value === "base-neg" ? anyNeg : !anyNeg;
-        })
-    )
-  ];
-
+  // Ejes 100% del backend — frontend solo reconstruye
   const defaultBaseKeys = defBases.map((b) => `${to2(b)}|${to2(b)}`);
 
-  const baseRowsKeys = [...new Set([...defaultBaseKeys, ...itemBaseKeys])].sort((a, b) => {
+  const baseRowsKeys = [...new Set(defaultBaseKeys)].sort((a, b) => {
     if (a === "0|0") return -1;
     if (b === "0|0") return 1;
 
@@ -491,9 +403,7 @@ async function loadRows() {
     return abi === bbi ? dir * (abd - bbd) : dir * (abi - bbi);
   });
 
-  const itemAdds = [...new Set(items.map((i) => to2(i.add)))].filter((a) => a >= P.addMin && a <= P.addMax);
-  const addList = [...new Set([...defAddCols, ...itemAdds])]
-    .map(to2)
+  const addList = [...new Set(defAddCols)]
     .filter((a) => a >= P.addMin && a <= P.addMax)
     .sort((a, b) => a - b);
 
@@ -862,11 +772,15 @@ async function handleSeed(ack) {
   }
 }
 
-function handleExport() {
-  if (!gridApi.value || typeof gridApi.value.exportDataAsCsv !== "function") return;
+async function handleExport() {
+  if (!gridApi.value) return;
   const nameSlug = sheetName.value.replace(/\s+/g, "_");
   const fecha = new Date().toISOString().slice(0, 10);
-  gridApi.value.exportDataAsCsv({ fileName: `reporte_inventario_${nameSlug || "progresivo"}_${fecha}.csv` });
+  await exportAgGridToXlsx(gridApi.value, {
+    filename: `reporte_inventario_${nameSlug || "progresivo"}_${fecha}`,
+    sheetName: String(sheetName.value || "Progresivo").slice(0, 31),
+    title: `Inventario — ${sheetName.value || "Progresivo"}`,
+  });
 }
 </script>
 

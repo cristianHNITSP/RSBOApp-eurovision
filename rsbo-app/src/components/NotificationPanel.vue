@@ -41,6 +41,8 @@ export default {
   setup() {
     const activeMobileMenu = ref(null);
     const expandedId = ref(null);
+    // Timer para debounce del evento WS — evita recargas en ráfaga
+    let _wsDebounceTimer = null;
     return {
       activeMobileMenu,
       expandedId,
@@ -56,6 +58,10 @@ export default {
           notif.metadata.type === 'correction'
         ));
       },
+      _scheduleLoad(fn, ms = 800) {
+        clearTimeout(_wsDebounceTimer);
+        _wsDebounceTimer = setTimeout(fn, ms);
+      },
     };
   },
 
@@ -65,6 +71,7 @@ export default {
       loading: false,
       showRead: false,
       readingIds: [],   // IDs animándose al marcarse como leídas
+      _loadedAt: null,  // timestamp del último fetch (para control de stale)
     };
   },
 
@@ -92,7 +99,12 @@ export default {
 
   watch: {
     unreadCount(val) { this.$emit('update-unread', val); },
-    visible(val)     { if (val) this.load(); },
+    // Carga al abrir el panel; si ya tiene datos y < 60 s, reutiliza
+    visible(val) {
+      if (!val) return;
+      const stale = !this._loadedAt || (Date.now() - this._loadedAt) > 60_000;
+      if (!this.notifications.length || stale) this.load();
+    },
   },
 
   methods: {
@@ -112,6 +124,7 @@ export default {
       try {
         const { data } = await fetchNotifications({ limit: 80 });
         this.notifications = data.notifications ?? data ?? [];
+        this._loadedAt = Date.now();
         this.$emit('update-unread', this.unreadCount);
       } catch { /* silencioso */ } finally {
         this.loading = false;
@@ -180,12 +193,18 @@ export default {
     },
 
     _onWs(e) {
-      if (e?.detail?.type === 'NOTIFICATION_NEW') this.load();
+      if (e?.detail?.type !== 'NOTIFICATION_NEW') return;
+      if (this.visible) {
+        // Panel abierto: debounce 800 ms para no recargar en ráfaga
+        this._scheduleLoad(() => this.load());
+      }
+      // Panel cerrado: el badge ya lo actualiza DashboardLayout vía lab:ws; no recargamos la lista
     },
   },
 
   mounted() {
-    this.load();
+    // Carga lazy: solo si el panel ya está visible al montar (poco común pero posible)
+    if (this.visible) this.load();
     window.addEventListener('lab:ws', this._onWs);
   },
 

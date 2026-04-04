@@ -53,6 +53,13 @@ export function fmtDate(v) {
   });
 }
 
+export function fmtDateShort(v) {
+  if (!v) return "DD/MM/AAAA";
+  const d = new Date(v);
+  if (!Number.isFinite(d.getTime())) return "DD/MM/AAAA";
+  return d.toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
 export const labStatusHuman = (s) =>
   ({ pendiente: "Pendiente", parcial: "En proceso", cerrado: "Surtido completo", cancelado: "Cancelado" }[s] ||
   s ||
@@ -115,10 +122,33 @@ export function useBasesMicasVentas(getUser) {
   const catalogPage     = ref(1);
   const catalogPageSize = ref(15);
 
+  // ── Cliente cache (localStorage) ─────────────────────────────────────────
+  const CLIENT_CACHE_KEY = "rsbo_client_cache_v1";
+  function _readCache() {
+    try { return JSON.parse(localStorage.getItem(CLIENT_CACHE_KEY) || "{}"); }
+    catch { return {}; }
+  }
+  function _saveClientToCache(nombre, data) {
+    try {
+      const cache = _readCache();
+      cache[nombre.toLowerCase()] = { ...data, savedAt: Date.now() };
+      localStorage.setItem(CLIENT_CACHE_KEY, JSON.stringify(cache));
+    } catch {}
+  }
+  function _getClientFromCache(nombre) {
+    try { return _readCache()[nombre.toLowerCase()] || null; }
+    catch { return null; }
+  }
+
   // ── Cart ──────────────────────────────────────────────────────────────────
-  const cartItems   = ref([]);
-  const cartCliente = ref("");
-  const cartNote    = ref("");
+  const cartItems            = ref([]);
+  const cartCliente          = ref("");
+  const cartNote             = ref("");
+  const cartClienteNombres   = ref("");
+  const cartClienteApellidos = ref("");
+  const cartClienteEmpresa   = ref("");
+  const cartClienteContacto  = ref("");
+  const cartPago             = ref([]);
 
   // ── Loaders ───────────────────────────────────────────────────────────────
   const loadingSheets      = ref(false);
@@ -171,6 +201,51 @@ export function useBasesMicasVentas(getUser) {
   const cartTotal = computed(() =>
     cartItems.value.reduce((sum, ci) => sum + ci.qty, 0)
   );
+
+  const cartTotalMonto = computed(() =>
+    cartItems.value.reduce((sum, ci) => sum + ci.qty * (Number(ci.precio) || 0), 0)
+  );
+
+  const cartClienteDisplay = computed(() => {
+    const nombres   = cartClienteNombres.value.trim();
+    const apellidos = cartClienteApellidos.value.trim();
+    return [nombres, apellidos].filter(Boolean).join(" ") || cartCliente.value.trim();
+  });
+
+  // ── Clientes recurrentes (extraídos del historial) ─────────────────────
+  const recentClientes = computed(() => {
+    const map = new Map();
+    for (const sale of salesHistory.value) {
+      const name = (sale.cliente || "").trim();
+      if (!name) continue;
+      const existing = map.get(name);
+      if (!existing || new Date(sale.fecha) > new Date(existing.fecha)) {
+        map.set(name, { nombre: name, nota: sale.note || "", fecha: sale.fecha, pedidos: (existing?.pedidos || 0) + 1 });
+      } else {
+        existing.pedidos++;
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => b.pedidos - a.pedidos);
+  });
+
+  const clienteSuggestions = computed(() => {
+    const q = normTxt(cartCliente.value);
+    if (!q) return recentClientes.value;
+    return recentClientes.value.filter((c) => normTxt(c.nombre).includes(q));
+  });
+
+  function selectCliente(cliente) {
+    if (!cliente) return;
+    cartCliente.value = cliente.nombre;
+    if (cliente.nota && !cartNote.value) cartNote.value = cliente.nota;
+    const cached = _getClientFromCache(cliente.nombre);
+    if (cached) {
+      cartClienteNombres.value   = cached.nombres   || "";
+      cartClienteApellidos.value = cached.apellidos || "";
+      cartClienteEmpresa.value   = cached.empresa   || "";
+      cartClienteContacto.value  = cached.contacto  || "";
+    }
+  }
 
   // ── Sheet helpers ─────────────────────────────────────────────────────────
 
@@ -255,10 +330,11 @@ export function useBasesMicasVentas(getUser) {
 
     cartItems.value.push({
       key,
-      row:   { ...row },
+      row:    { ...row },
       sheetId: sheet.id,
-      sheet: { ...sheet },
-      qty:   1,
+      sheet:  { ...sheet },
+      qty:    1,
+      precio: Number(sheet.precioVenta || 0),
       title:  buildRowTitle(row, sheet),
       params: buildRowParams(row, sheet)
     });
@@ -281,9 +357,14 @@ export function useBasesMicasVentas(getUser) {
   }
 
   function clearCart() {
-    cartItems.value  = [];
-    cartCliente.value = "";
-    cartNote.value   = "";
+    cartItems.value            = [];
+    cartCliente.value          = "";
+    cartNote.value             = "";
+    cartClienteNombres.value   = "";
+    cartClienteApellidos.value = "";
+    cartClienteEmpresa.value   = "";
+    cartClienteContacto.value  = "";
+    cartPago.value             = [];
   }
 
   // ── Registrar venta → crea pedido de laboratorio ──────────────────────────
@@ -322,24 +403,44 @@ export function useBasesMicasVentas(getUser) {
 
       // Build voucher record (local)
       const saleLines = cartItems.value.map((ci) => ({
-        title:      ci.title,
-        params:     ci.params,
-        codebar:    ci.row.codebar || "",
-        qty:        ci.qty,
+        title:       ci.title,
+        params:      ci.params,
+        codebar:     ci.row.codebar || "",
+        qty:         ci.qty,
+        precio:      Number(ci.precio) || 0,
         sheetNombre: ci.sheet.nombre || ci.sheet.name || ""
       }));
 
+      const PAGO_LABELS = { trans: "TRANS", efec: "EFEC", credito: "CRÉDITO", tarjeta: "TARJETA C|D" };
+      const pagoDisplay = cartPago.value.map((p) => PAGO_LABELS[p] || p).join(" / ") || "—";
+
+      // Guardar datos del cliente en caché local para futuras ventas
+      _saveClientToCache(cartCliente.value.trim(), {
+        nombres:   cartClienteNombres.value.trim(),
+        apellidos: cartClienteApellidos.value.trim(),
+        empresa:   cartClienteEmpresa.value.trim(),
+        contacto:  cartClienteContacto.value.trim(),
+      });
+
       const voucher = {
-        id:          `VTA-${Date.now()}`,
-        labOrderId:  order?._id ? String(order._id) : null,
-        labFolio:    order?.folio || null,
-        labStatus:   "pendiente",
-        fecha:       new Date().toISOString(),
-        cliente:     cartCliente.value.trim(),
-        note:        cartNote.value.trim(),
-        lineas:      saleLines,
-        totalPiezas: cartTotal.value,
-        actor:       actor?.name || "Usuario"
+        id:               `VTA-${Date.now()}`,
+        labOrderId:       order?._id ? String(order._id) : null,
+        labFolio:         order?.folio || null,
+        labStatus:        "pendiente",
+        fecha:            new Date().toISOString(),
+        cliente:          cartCliente.value.trim(),
+        clienteDisplay:   cartClienteDisplay.value,
+        clienteNombres:   cartClienteNombres.value.trim(),
+        clienteApellidos: cartClienteApellidos.value.trim(),
+        clienteEmpresa:   cartClienteEmpresa.value.trim(),
+        clienteContacto:  cartClienteContacto.value.trim(),
+        pago:             [...cartPago.value],
+        pagoDisplay,
+        note:             cartNote.value.trim(),
+        lineas:           saleLines,
+        totalPiezas:      cartTotal.value,
+        totalMonto:       cartTotalMonto.value,
+        actor:            actor?.name || "Usuario"
       };
 
       lastVoucher.value = voucher;
@@ -436,6 +537,13 @@ export function useBasesMicasVentas(getUser) {
     catalogPage.value = 1;
   });
 
+  // Auto-fill cartCliente when nombres/apellidos are filled
+  watch([cartClienteNombres, cartClienteApellidos], () => {
+    const n = cartClienteNombres.value.trim();
+    const a = cartClienteApellidos.value.trim();
+    if (n || a) cartCliente.value = [n, a].filter(Boolean).join(" ");
+  });
+
   // Load lab statuses when switching to historial tab
   watch(activeTab, (tab) => {
     if (tab === "historial") loadLabStatuses();
@@ -457,17 +565,21 @@ export function useBasesMicasVentas(getUser) {
     itemQuery, stockFilter,
     catalogPage, catalogPageSize,
     cartItems, cartCliente, cartNote,
+    cartClienteNombres, cartClienteApellidos,
+    cartClienteEmpresa, cartClienteContacto, cartPago,
     loadingSheets, loadingItems, loadingSale, loadingLabStatuses,
     voucherOpen, lastVoucher,
     labStatuses,
     // computed
     selectedSheet, filteredItems, paginatedItems, catalogPages, cartTotal,
+    cartTotalMonto, cartClienteDisplay,
+    recentClientes, clienteSuggestions,
     // helpers
     buildRowTitle, buildRowParams, sheetTitle, fmtDate,
     labStatusHuman, labStatusClass,
     // actions
     loadSheets, loadItems,
-    addToCart, removeFromCart, incCartQty, decCartQty, clearCart,
+    addToCart, removeFromCart, incCartQty, decCartQty, clearCart, selectCliente,
     registrarVenta, loadHistory,
     checkVoucherStatus, loadLabStatuses
   };

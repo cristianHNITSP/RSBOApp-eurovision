@@ -64,19 +64,18 @@ async function listForUser({ roleName, userId, limit = 50, skip = 0 }) {
 
 /**
  * Cuenta las no leídas para el usuario (para el badge del frontend).
- * Excluye descartadas.
+ * Excluye descartadas. Usa countDocuments para evitar cargar todos los documentos a JS.
  */
 async function countUnread({ roleName, userId }) {
-  const userStr = String(userId);
   const filter = {
     $and: [
       visibilityFilter(roleName),
       notExpired(),
       { dismissedBy: { $nin: [userId] } },
+      { 'readBy.userId': { $ne: userId } },
     ],
   };
-  const all = await Notification.find(filter).select('readBy').lean();
-  return all.filter((n) => !n.readBy.some((r) => String(r.userId) === userStr)).length;
+  return Notification.countDocuments(filter);
 }
 
 /**
@@ -161,21 +160,22 @@ async function markRead({ notificationId, roleName, userId }) {
 
 /**
  * Marca TODAS las notificaciones visibles como leídas para el usuario.
+ * Usa updateMany para evitar N operaciones save individuales.
  */
 async function markAllRead({ roleName, userId }) {
-  const notifications = await Notification.find({
-    ...baseFilter(roleName),
-    'readBy.userId': { $ne: userId },
-  });
-
-  await Promise.all(
-    notifications.map((n) => {
-      n.readBy.push({ userId, readAt: new Date() });
-      return n.save();
-    })
+  const filter = {
+    $and: [
+      visibilityFilter(roleName),
+      notExpired(),
+      { dismissedBy: { $nin: [userId] } },
+      { 'readBy.userId': { $ne: userId } },
+    ],
+  };
+  const result = await Notification.updateMany(
+    filter,
+    { $push: { readBy: { userId, readAt: new Date() } } }
   );
-
-  return { marked: notifications.length };
+  return { marked: result.modifiedCount };
 }
 
 /**

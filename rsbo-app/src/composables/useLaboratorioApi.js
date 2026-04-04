@@ -1,5 +1,6 @@
 import { ref, reactive, computed, watch, onMounted, onBeforeUnmount } from "vue";
 import { labToast } from "@/composables/useLabToast.js";
+import { exportToXlsx } from "@/composables/useExcelExport.js";
 import { listSheets as invListSheets, fetchItems as invFetchItems } from "@/services/inventory";
 import { updatePendingCount } from "./useOrdersBadge.js";
 import { createGroupedNotification } from "@/services/notifications";
@@ -43,44 +44,12 @@ const fmtShort = (v) => {
 const eyeLabel = (e) => {
   if (!e) return "—";
   const s = String(e).toUpperCase();
-  if (s === "OD" || s === "R" || s === "RIGHT") return "Ojo Derecho (OD)";
-  if (s === "OS" || s === "L" || s === "LEFT") return "Ojo Izquierdo (OS)";
+  if (s === "OD" || s === "R" || s === "RIGHT") return "Derecho";
+  if (s === "OS" || s === "OI" || s === "L" || s === "LEFT") return "Izquierdo";
   return e;
 };
 
 const todaySlug = () => new Date().toISOString().slice(0, 10);
-
-function downloadBlob(filename, blob) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
-
-function toCsv(rows, headers) {
-  const BOM = "\uFEFF"; // UTF-8 BOM para compatibilidad con Excel en Windows
-  const esc = (v) => {
-    const s = String(v ?? "");
-    if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
-    return s;
-  };
-  const head = headers.map((h) => esc(h.label)).join(",");
-  const body = rows
-    .map((r) =>
-      headers
-        .map((h) => {
-          const raw = typeof h.transform === "function" ? h.transform(r) : r?.[h.key];
-          return esc(raw);
-        })
-        .join(",")
-    )
-    .join("\n");
-  return `${BOM}${head}\n${body}\n`;
-}
 
 function openPrintWindow({ title, bodyHtml }) {
   const w = window.open("", "_blank");
@@ -99,47 +68,148 @@ function openPrintWindow({ title, bodyHtml }) {
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; font-size: 13px; color: #1a202c; background: #fff; padding: 28px; }
-    .print-toolbar { display: flex; align-items: center; gap: 10px; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; margin-bottom: 20px; }
-    .print-toolbar button { background: #1d4ed8; color: #fff; border: none; border-radius: 6px; padding: 8px 20px; font-size: 13px; font-weight: 600; cursor: pointer; }
-    .print-toolbar button:hover { background: #1e40af; }
-    .print-toolbar span { font-size: 12px; color: #64748b; }
-    .print-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #1d4ed8; padding-bottom: 14px; margin-bottom: 20px; }
-    .print-header-left .doc-title { font-size: 22px; font-weight: 700; color: #1e3a8a; line-height: 1.2; }
-    .print-header-left .doc-subtitle { font-size: 12px; color: #64748b; margin-top: 4px; }
+
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+      font-size: 13px;
+      color: #0f172a;
+      background:
+        radial-gradient(circle at 0% 0%, rgba(121, 87, 213, 0.10), transparent 55%),
+        radial-gradient(circle at 100% 70%, rgba(236, 72, 153, 0.07), transparent 55%),
+        radial-gradient(circle at 40% 110%, rgba(249, 115, 22, 0.06), transparent 55%),
+        #f9fafb;
+      padding: 28px;
+      min-height: 100vh;
+    }
+
+    /* ── Toolbar (oculto al imprimir) ── */
+    .print-toolbar {
+      display: flex; align-items: center; gap: 12px;
+      background: rgba(255, 255, 255, 0.70);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(144, 111, 225, 0.18);
+      border-radius: 12px; padding: 12px 18px; margin-bottom: 24px;
+      box-shadow: 0 4px 16px rgba(88, 28, 135, 0.08);
+    }
+    .print-toolbar button {
+      background: linear-gradient(135deg, #906fe1, #7957d5);
+      color: #fff; border: none; border-radius: 8px;
+      padding: 9px 24px; font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: transform 120ms ease;
+      box-shadow: 0 4px 14px rgba(121, 87, 213, 0.30);
+    }
+    .print-toolbar button:hover { transform: translateY(-1px); }
+    .print-toolbar span { font-size: 12px; color: rgba(15, 23, 42, 0.55); }
+
+    /* ── Header ── */
+    .print-header {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      background: rgba(255, 255, 255, 0.65);
+      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(144, 111, 225, 0.14);
+      border-radius: 14px; padding: 20px 24px; margin-bottom: 22px;
+      box-shadow: 0 8px 30px rgba(88, 28, 135, 0.06);
+    }
+    .print-header-left .doc-title {
+      font-size: 22px; font-weight: 700;
+      background: linear-gradient(135deg, #7957d5, #906fe1);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; line-height: 1.2;
+    }
+    .print-header-left .doc-subtitle { font-size: 12px; color: rgba(15, 23, 42, 0.50); margin-top: 4px; }
     .print-header-right { text-align: right; }
-    .print-header-right .brand { font-size: 16px; font-weight: 800; color: #1d4ed8; letter-spacing: -0.5px; }
+    .print-header-right .brand {
+      font-size: 16px; font-weight: 800; color: #906fe1; letter-spacing: -0.5px;
+    }
     .print-header-right .gen-date { font-size: 11px; color: #94a3b8; margin-top: 3px; }
-    h2 { font-size: 15px; font-weight: 700; color: #1e3a8a; margin: 18px 0 8px; }
+
+    /* ── Typography ── */
+    h2 { font-size: 15px; font-weight: 700; color: #7957d5; margin: 18px 0 8px; }
     h3 { font-size: 13px; font-weight: 600; color: #334155; margin: 12px 0 6px; }
-    .muted { color: #64748b; }
-    .box { border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; margin: 12px 0; background: #f8fafc; }
-    .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; margin: 12px 0; }
-    .info-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 7px; padding: 10px 14px; }
-    .info-card .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: #94a3b8; font-weight: 600; }
-    .info-card .val { font-size: 14px; font-weight: 700; color: #1e293b; margin-top: 2px; }
+    .muted { color: rgba(15, 23, 42, 0.50); }
+
+    /* ── Glass box ── */
+    .box {
+      background: rgba(255, 255, 255, 0.60);
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(144, 111, 225, 0.12);
+      border-radius: 12px; padding: 14px 16px; margin: 12px 0;
+      box-shadow: 0 4px 20px rgba(88, 28, 135, 0.05);
+    }
+
+    /* ── Info cards grid ── */
+    .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin: 14px 0; }
+    .info-card {
+      background: rgba(255, 255, 255, 0.72);
+      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(144, 111, 225, 0.12);
+      border-radius: 10px; padding: 12px 16px;
+      box-shadow: 0 2px 10px rgba(88, 28, 135, 0.04);
+    }
+    .info-card .lbl {
+      font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px;
+      color: #906fe1; font-weight: 700;
+    }
+    .info-card .val { font-size: 14px; font-weight: 700; color: #0f172a; margin-top: 3px; }
     .info-card .val.mono { font-family: ui-monospace, 'Courier New', monospace; font-size: 13px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
-    thead tr { background: #1e3a8a; }
-    thead th { color: #fff; padding: 9px 11px; text-align: left; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; }
-    tbody tr:nth-child(even) { background: #f1f5f9; }
-    td { padding: 8px 11px; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
-    tfoot tr { background: #1e3a8a; }
-    tfoot td { color: #fff; font-weight: 700; padding: 9px 11px; border: none; }
+
+    /* ── Table ── */
+    table { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 10px; font-size: 12px; }
+    thead tr { background: linear-gradient(135deg, #7957d5, #906fe1); }
+    thead th {
+      color: #fff; padding: 10px 12px; text-align: left;
+      font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px;
+    }
+    thead th:first-child { border-radius: 10px 0 0 0; }
+    thead th:last-child { border-radius: 0 10px 0 0; }
+    tbody tr { background: rgba(255, 255, 255, 0.55); }
+    tbody tr:nth-child(even) { background: rgba(245, 243, 255, 0.60); }
+    tbody tr:hover { background: rgba(144, 111, 225, 0.06); }
+    td { padding: 9px 12px; border-bottom: 1px solid rgba(144, 111, 225, 0.08); vertical-align: middle; }
+    tfoot tr { background: linear-gradient(135deg, #7957d5, #906fe1); }
+    tfoot td {
+      color: #fff; font-weight: 700; padding: 10px 12px; border: none;
+    }
+    tfoot td:first-child { border-radius: 0 0 0 10px; }
+    tfoot td:last-child { border-radius: 0 0 10px 0; }
+
     .mono { font-family: ui-monospace, 'Courier New', monospace; font-size: 11px; }
     .right { text-align: right; }
     .center { text-align: center; }
+
+    /* ── Badges ── */
     .badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
-    .badge-blue { background: #dbeafe; color: #1d4ed8; }
-    .badge-green { background: #dcfce7; color: #166534; }
-    .badge-yellow { background: #fef9c3; color: #854d0e; }
-    .badge-red { background: #fee2e2; color: #991b1b; }
-    .badge-gray { background: #f1f5f9; color: #475569; }
-    .note-box { border-left: 4px solid #f59e0b; background: #fffbeb; border-radius: 0 6px 6px 0; padding: 10px 14px; margin: 10px 0; font-size: 12px; }
-    .print-footer { margin-top: 28px; padding-top: 12px; border-top: 1px solid #e2e8f0; font-size: 10px; color: #94a3b8; display: flex; justify-content: space-between; }
+    .badge-blue { background: rgba(144, 111, 225, 0.14); color: #7957d5; }
+    .badge-green { background: rgba(34, 197, 94, 0.14); color: #166534; }
+    .badge-yellow { background: rgba(245, 158, 11, 0.16); color: #854d0e; }
+    .badge-red { background: rgba(239, 68, 68, 0.14); color: #991b1b; }
+    .badge-gray { background: rgba(148, 163, 184, 0.14); color: #475569; }
+
+    /* ── Note box ── */
+    .note-box {
+      border-left: 4px solid #f59e0b;
+      background: rgba(255, 251, 235, 0.80);
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      border-radius: 0 8px 8px 0; padding: 10px 14px; margin: 10px 0; font-size: 12px;
+    }
+
+    /* ── Footer ── */
+    .print-footer {
+      margin-top: 28px; padding-top: 12px;
+      border-top: 1px solid rgba(144, 111, 225, 0.14);
+      font-size: 10px; color: #94a3b8;
+      display: flex; justify-content: space-between;
+    }
+
     @media print {
       .print-toolbar { display: none !important; }
-      body { padding: 0; }
+      body { padding: 0; background: #fff; }
+      .print-header, .box, .info-card {
+        backdrop-filter: none; -webkit-backdrop-filter: none;
+        background: #fff; border-color: #e5e7eb;
+      }
+      tbody tr { background: #fff !important; }
+      tbody tr:nth-child(even) { background: #f5f3ff !important; }
       @page { margin: 1.8cm 1.5cm; }
     }
   </style>
@@ -147,12 +217,12 @@ function openPrintWindow({ title, bodyHtml }) {
 <body>
   <div class="print-toolbar">
     <button onclick="window.print()">Imprimir / Guardar como PDF</button>
-    <span>Para guardar como PDF, selecciona "Guardar como PDF" en el diálogo de impresora.</span>
+    <span>Para guardar como PDF, selecciona "Guardar como PDF" en el dialogo de impresora.</span>
   </div>
   <div class="print-header">
     <div class="print-header-left">
       <div class="doc-title">${String(title || "Documento")}</div>
-      <div class="doc-subtitle">Sistema de gestión óptica · RSBO</div>
+      <div class="doc-subtitle">Sistema de gestion optica · RSBO</div>
     </div>
     <div class="print-header-right">
       <div class="brand">RSBO</div>
@@ -161,7 +231,7 @@ function openPrintWindow({ title, bodyHtml }) {
   </div>
   ${bodyHtml || ""}
   <div class="print-footer">
-    <span>RSBO — Sistema de Gestión Óptica</span>
+    <span>RSBO — Sistema de Gestion Optica</span>
     <span>${fechaGenerado}</span>
   </div>
 </body>
@@ -369,10 +439,10 @@ const normalizeAck = (ack, { successFallback = "Listo.", errorFallback = "Ocurri
 // ============================================================================
 
 const getMicaTypeName = (tipoMatriz) => ({
-  BASE: "Monofocal (Base)",
-  SPH_CYL: "Monofocal",
-  SPH_ADD: "Bifocal",
-  BASE_ADD: "Progresivo"
+  BASE: "Lente Monofocal (Base)",
+  SPH_CYL: "Lente Monofocal",
+  SPH_ADD: "Lente Bifocal",
+  BASE_ADD: "Lente Progresivo"
 }[tipoMatriz] || tipoMatriz || "—");
 
 function getPeriodStart(period) {
@@ -513,25 +583,37 @@ export function useLaboratorioApi(getUser) {
     return `${Math.floor(m / 60)}h`;
   });
 
+  const fmtVal = (v) => { const n = Number(v ?? 0); return n === 0 ? "—" : n.toFixed(2); };
+
   const buildRowTitle = (row, sheet) => {
     const t = sheet?.tipo_matriz;
-    if (t === "BASE") return `BASE ${Number(row.base ?? 0).toFixed(2)}`;
-    if (t === "SPH_CYL") return `SPH ${Number(row.sph ?? 0).toFixed(2)} · CYL ${Number(row.cyl ?? 0).toFixed(2)}`;
-    if (t === "SPH_ADD") return `${row.eye || ""} · SPH ${Number(row.sph ?? 0).toFixed(2)} · ADD ${Number(row.add ?? 0).toFixed(2)}`;
-    if (t === "BASE_ADD")
-      return `${row.eye || ""} · BI ${Number(row.base_izq ?? 0).toFixed(2)} · BD ${Number(row.base_der ?? 0).toFixed(2)} · ADD ${Number(row.add ?? 0).toFixed(2)}`;
-    return "Producto";
+    const name = sheet?.nombre || sheet?.name || "Producto";
+    if (t === "BASE") return `${name} · Base ${fmtVal(row.base)}`;
+    if (t === "SPH_CYL") return `${name} · Esfera ${fmtVal(row.sph)}, Cilindro ${fmtVal(row.cyl)}`;
+    if (t === "SPH_ADD") return `${name} · Ojo ${eyeLabel(row.eye)}`;
+    if (t === "BASE_ADD") return `${name} · Ojo ${eyeLabel(row.eye)}`;
+    return name;
   };
 
   const buildRowParams = (row, sheet) => {
     const t = sheet?.tipo_matriz;
-    if (t === "BASE") return `base=${Number(row.base ?? 0).toFixed(2)}`;
-    if (t === "SPH_CYL") return `sph=${Number(row.sph ?? 0).toFixed(2)} · cyl=${Number(row.cyl ?? 0).toFixed(2)}`;
-    if (t === "SPH_ADD")
-      return `sph=${Number(row.sph ?? 0).toFixed(2)} · add=${Number(row.add ?? 0).toFixed(2)} · bi=${Number(row.base_izq ?? 0).toFixed(2)} · bd=${Number(row.base_der ?? 0).toFixed(2)}`;
-    if (t === "BASE_ADD")
-      return `bi=${Number(row.base_izq ?? 0).toFixed(2)} · bd=${Number(row.base_der ?? 0).toFixed(2)} · add=${Number(row.add ?? 0).toFixed(2)}`;
-    return "—";
+    const parts = [];
+    if (t === "BASE") {
+      parts.push(`Base: ${fmtVal(row.base)}`);
+    } else if (t === "SPH_CYL") {
+      parts.push(`Esfera: ${fmtVal(row.sph)}`);
+      parts.push(`Cilindro: ${fmtVal(row.cyl)}`);
+    } else if (t === "SPH_ADD") {
+      parts.push(`Esfera: ${fmtVal(row.sph)}`);
+      parts.push(`Adicion: ${fmtVal(row.add)}`);
+      if (Number(row.base_izq ?? 0) !== 0) parts.push(`Base Izq: ${fmtVal(row.base_izq)}`);
+      if (Number(row.base_der ?? 0) !== 0) parts.push(`Base Der: ${fmtVal(row.base_der)}`);
+    } else if (t === "BASE_ADD") {
+      if (Number(row.base_izq ?? 0) !== 0) parts.push(`Base Izq: ${fmtVal(row.base_izq)}`);
+      if (Number(row.base_der ?? 0) !== 0) parts.push(`Base Der: ${fmtVal(row.base_der)}`);
+      parts.push(`Adicion: ${fmtVal(row.add)}`);
+    }
+    return parts.length ? parts.join(" · ") : "—";
   };
 
   // ======= Sheets =======
@@ -548,27 +630,35 @@ export function useLaboratorioApi(getUser) {
     };
   };
 
+  // ---- in-flight deduplication: evita peticiones paralelas idénticas ----
+  const _inFlight = { sheets: null, orders: null, items: null, events: null };
+
   async function loadSheets() {
+    if (_inFlight.sheets) return _inFlight.sheets;
     loadingSheets.value = true;
-    try {
-      const params = {
-        includeDeleted: includeDeleted.value ? "true" : "false",
-        q: String(sheetQuery.value || "").trim() || undefined
-      };
-      const { data } = await invListSheets(params);
-      const arr = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
-      const mapped = arr.map(normalizeSheet);
-      mapped.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime());
-      sheetsDB.value = mapped;
-      if (!selectedSheetId.value && mapped.length) selectedSheetId.value = mapped[0].id;
-      if (selectedSheetId.value && !sheetById(selectedSheetId.value) && mapped.length) selectedSheetId.value = mapped[0].id;
-      lastUpdatedAt.value = Date.now();
-    } catch (e) {
-      console.error("[LAB] loadSheets", e?.response?.data || e);
-      sheetsDB.value = [];
-    } finally {
-      loadingSheets.value = false;
-    }
+    _inFlight.sheets = (async () => {
+      try {
+        const params = {
+          includeDeleted: includeDeleted.value ? "true" : "false",
+          q: String(sheetQuery.value || "").trim() || undefined
+        };
+        const { data } = await invListSheets(params);
+        const arr = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+        const mapped = arr.map(normalizeSheet);
+        mapped.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime());
+        sheetsDB.value = mapped;
+        if (!selectedSheetId.value && mapped.length) selectedSheetId.value = mapped[0].id;
+        if (selectedSheetId.value && !sheetById(selectedSheetId.value) && mapped.length) selectedSheetId.value = mapped[0].id;
+        lastUpdatedAt.value = Date.now();
+      } catch (e) {
+        console.error("[LAB] loadSheets", e?.response?.data || e);
+        sheetsDB.value = [];
+      } finally {
+        loadingSheets.value = false;
+        _inFlight.sheets = null;
+      }
+    })();
+    return _inFlight.sheets;
   }
 
   async function loadItems(forceSheetId) {
@@ -579,26 +669,31 @@ export function useLaboratorioApi(getUser) {
       return;
     }
 
+    if (_inFlight.items) return _inFlight.items;
     loadingItems.value = true;
-    try {
-      const params = {
-        limit: Number(_itemsLimit.value || 5000),
-        q: String(itemQuery.value || "").trim() || undefined
-      };
-      const { data } = await invFetchItems(sheet.id, params);
-      const rows = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
-      itemsDB.value = rows.map((r, idx) => ({
-        ...r,
-        _k: String(r.codebar || "") ? `${r.codebar}` : `row_${idx}`,
-        existencias: Number(r.existencias || 0)
-      }));
-      lastUpdatedAt.value = Date.now();
-    } catch (e) {
-      console.error("[LAB] loadItems", e?.response?.data || e);
-      itemsDB.value = [];
-    } finally {
-      loadingItems.value = false;
-    }
+    _inFlight.items = (async () => {
+      try {
+        const params = {
+          limit: Number(_itemsLimit.value || 5000),
+          q: String(itemQuery.value || "").trim() || undefined
+        };
+        const { data } = await invFetchItems(sheet.id, params);
+        const rows = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+        itemsDB.value = rows.map((r, idx) => ({
+          ...r,
+          _k: String(r.codebar || "") ? `${r.codebar}` : `row_${idx}`,
+          existencias: Number(r.existencias || 0)
+        }));
+        lastUpdatedAt.value = Date.now();
+      } catch (e) {
+        console.error("[LAB] loadItems", e?.response?.data || e);
+        itemsDB.value = [];
+      } finally {
+        loadingItems.value = false;
+        _inFlight.items = null;
+      }
+    })();
+    return _inFlight.items;
   }
 
   // ======= Orders =======
@@ -630,32 +725,37 @@ export function useLaboratorioApi(getUser) {
   };
 
   async function loadOrders() {
+    if (_inFlight.orders) return _inFlight.orders;
     loadingOrders.value = true;
-    try {
-      const statusUi = String(orderStatusFilter.value || "open");
-      const statusParam = statusUi === "open" ? "all" : statusUi;
-      const params = {
-        status: statusParam,
-        q: String(orderQuery.value || "").trim() || undefined,
-        limit: 200
-      };
-      const { data } = await listOrders(params);
-      const arr = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
-      let mapped = arr.map(normalizeOrder);
-      updatePendingCount(arr.filter((o) => o.status === "pendiente" || o.status === "parcial").length);
-      if (statusUi === "open") mapped = mapped.filter((o) => o.status === "pendiente" || o.status === "parcial");
-      mapped.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-      ordersDB.value = mapped;
-      if (!selectedOrderId.value && mapped.length) selectedOrderId.value = mapped[0].id;
-      if (selectedOrderId.value && !mapped.find((x) => x.id === selectedOrderId.value) && mapped.length)
-        selectedOrderId.value = mapped[0].id;
-      lastUpdatedAt.value = Date.now();
-    } catch (e) {
-      console.error("[LAB] loadOrders", e?.response?.data || e);
-      ordersDB.value = [];
-    } finally {
-      loadingOrders.value = false;
-    }
+    _inFlight.orders = (async () => {
+      try {
+        const statusUi = String(orderStatusFilter.value || "open");
+        const statusParam = statusUi === "open" ? "all" : statusUi;
+        const params = {
+          status: statusParam,
+          q: String(orderQuery.value || "").trim() || undefined,
+          limit: 200
+        };
+        const { data } = await listOrders(params);
+        const arr = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+        let mapped = arr.map(normalizeOrder);
+        updatePendingCount(arr.filter((o) => o.status === "pendiente" || o.status === "parcial").length);
+        if (statusUi === "open") mapped = mapped.filter((o) => o.status === "pendiente" || o.status === "parcial");
+        mapped.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+        ordersDB.value = mapped;
+        if (!selectedOrderId.value && mapped.length) selectedOrderId.value = mapped[0].id;
+        if (selectedOrderId.value && !mapped.find((x) => x.id === selectedOrderId.value) && mapped.length)
+          selectedOrderId.value = mapped[0].id;
+        lastUpdatedAt.value = Date.now();
+      } catch (e) {
+        console.error("[LAB] loadOrders", e?.response?.data || e);
+        ordersDB.value = [];
+      } finally {
+        loadingOrders.value = false;
+        _inFlight.orders = null;
+      }
+    })();
+    return _inFlight.orders;
   }
 
   const selectedOrder = computed(() => ordersDB.value.find((o) => o.id === selectedOrderId.value) || null);
@@ -680,12 +780,22 @@ export function useLaboratorioApi(getUser) {
   const lineHuman = (line, sheet) => {
     const t = line?.tipoMatriz || sheet?.tipo_matriz;
     const p = line?.params || {};
-    const eye = line?.eye || "";
-    if (t === "BASE") return `BASE ${Number(p.base ?? 0).toFixed(2)}`;
-    if (t === "SPH_CYL") return `SPH ${Number(p.sph ?? 0).toFixed(2)} · CYL ${Number(p.cyl ?? 0).toFixed(2)}`;
-    if (t === "SPH_ADD") return `${eye} · SPH ${Number(p.sph ?? 0).toFixed(2)} · ADD ${Number(p.add ?? 0).toFixed(2)}`;
-    if (t === "BASE_ADD") return `${eye} · BI ${Number(p.base_izq ?? 0).toFixed(2)} · BD ${Number(p.base_der ?? 0).toFixed(2)} · ADD ${Number(p.add ?? 0).toFixed(2)}`;
-    return String(line?.codebar || "Línea");
+    const parts = [];
+    if (line?.eye) parts.push(`Ojo ${eyeLabel(line.eye)}`);
+    if (t === "BASE") {
+      parts.push(`Base ${fmtVal(p.base)}`);
+    } else if (t === "SPH_CYL") {
+      parts.push(`Esfera ${fmtVal(p.sph)}`);
+      parts.push(`Cilindro ${fmtVal(p.cyl)}`);
+    } else if (t === "SPH_ADD") {
+      parts.push(`Esfera ${fmtVal(p.sph)}`);
+      parts.push(`Adicion ${fmtVal(p.add)}`);
+    } else if (t === "BASE_ADD") {
+      if (Number(p.base_izq ?? 0) !== 0) parts.push(`Base Izq ${fmtVal(p.base_izq)}`);
+      if (Number(p.base_der ?? 0) !== 0) parts.push(`Base Der ${fmtVal(p.base_der)}`);
+      parts.push(`Adicion ${fmtVal(p.add)}`);
+    }
+    return parts.length ? parts.join(" · ") : String(line?.codebar || "Linea");
   };
 
   // ======= Eventos =======
@@ -724,31 +834,36 @@ export function useLaboratorioApi(getUser) {
   });
 
   async function loadEvents() {
+    if (_inFlight.events) return _inFlight.events;
     loadingEvents.value = true;
-    try {
-      const limit = 200;
-      const [en, ex, co] = await Promise.all([
-        listEvents({ type: "ORDER_CREATE", limit }),
-        listEvents({ type: "EXIT_SCAN", limit }),
-        listEvents({ type: "CORRECTION_REQUEST", limit })
-      ]);
+    _inFlight.events = (async () => {
+      try {
+        const limit = 200;
+        const [en, ex, co] = await Promise.all([
+          listEvents({ type: "ORDER_CREATE", limit }),
+          listEvents({ type: "EXIT_SCAN", limit }),
+          listEvents({ type: "CORRECTION_REQUEST", limit })
+        ]);
 
-      const ent = Array.isArray(en?.data?.data) ? en.data.data : Array.isArray(en?.data) ? en.data : [];
-      const sal = Array.isArray(ex?.data?.data) ? ex.data.data : Array.isArray(ex?.data) ? ex.data : [];
-      const cor = Array.isArray(co?.data?.data) ? co.data.data : Array.isArray(co?.data) ? co.data : [];
+        const ent = Array.isArray(en?.data?.data) ? en.data.data : Array.isArray(en?.data) ? en.data : [];
+        const sal = Array.isArray(ex?.data?.data) ? ex.data.data : Array.isArray(ex?.data) ? ex.data : [];
+        const cor = Array.isArray(co?.data?.data) ? co.data.data : Array.isArray(co?.data) ? co.data : [];
 
-      entryEvents.value = ent.map(mapEntryEvent);
-      exitEvents.value = sal.map(mapExitEvent);
-      correctionEvents.value = cor.map(mapCorrectionEvent);
-      lastUpdatedAt.value = Date.now();
-    } catch (e) {
-      console.error("[LAB] loadEvents", e?.response?.data || e);
-      entryEvents.value = [];
-      exitEvents.value = [];
-      correctionEvents.value = [];
-    } finally {
-      loadingEvents.value = false;
-    }
+        entryEvents.value = ent.map(mapEntryEvent);
+        exitEvents.value = sal.map(mapExitEvent);
+        correctionEvents.value = cor.map(mapCorrectionEvent);
+        lastUpdatedAt.value = Date.now();
+      } catch (e) {
+        console.error("[LAB] loadEvents", e?.response?.data || e);
+        entryEvents.value = [];
+        exitEvents.value = [];
+        correctionEvents.value = [];
+      } finally {
+        loadingEvents.value = false;
+        _inFlight.events = null;
+      }
+    })();
+    return _inFlight.events;
   }
 
   // Entradas del día
@@ -1133,7 +1248,7 @@ export function useLaboratorioApi(getUser) {
   };
 
   // ======= Export / Print =======
-  function exportInventoryCsv() {
+  async function exportInventoryCsv() {
     const sheet = selectedSheet.value;
     if (!sheet?.id) return;
 
@@ -1141,98 +1256,145 @@ export function useLaboratorioApi(getUser) {
     try {
       const rows = filteredItems.value;
       const tipo = sheet.tipo_matriz;
-      const baseHeaders = [
-        { key: "existencias", label: "Existencias" },
-        { key: "codebar", label: "Código de Barras" },
-        { key: "sku", label: "SKU" }
-      ];
 
       const tipoHeaders =
         tipo === "BASE"
-          ? [{ key: "base", label: "Base" }]
+          ? [{ key: "base", label: "Curva Base", width: 14 }]
           : tipo === "SPH_CYL"
           ? [
-              { key: "sph", label: "Esfera (SPH)" },
-              { key: "cyl", label: "Cilindro (CYL)" }
+              { key: "sph", label: "Esfera", width: 14 },
+              { key: "cyl", label: "Cilindro", width: 14 }
             ]
           : tipo === "SPH_ADD"
           ? [
-              { key: "eye", label: "Ojo", transform: (r) => eyeLabel(r.eye) },
-              { key: "sph", label: "Esfera (SPH)" },
-              { key: "add", label: "Adición (ADD)" },
-              { key: "base_izq", label: "Base Izquierda" },
-              { key: "base_der", label: "Base Derecha" }
+              { key: "eye", label: "Ojo", transform: (r) => eyeLabel(r.eye), width: 16 },
+              { key: "sph", label: "Esfera", width: 14 },
+              { key: "add", label: "Adicion", width: 14 },
+              { key: "base_izq", label: "Base Izquierda", width: 16 },
+              { key: "base_der", label: "Base Derecha", width: 16 }
             ]
           : tipo === "BASE_ADD"
           ? [
-              { key: "eye", label: "Ojo", transform: (r) => eyeLabel(r.eye) },
-              { key: "base_izq", label: "Base Izquierda" },
-              { key: "base_der", label: "Base Derecha" },
-              { key: "add", label: "Adición (ADD)" }
+              { key: "eye", label: "Ojo", transform: (r) => eyeLabel(r.eye), width: 16 },
+              { key: "base_izq", label: "Base Izquierda", width: 16 },
+              { key: "base_der", label: "Base Derecha", width: 16 },
+              { key: "add", label: "Adicion", width: 14 }
             ]
           : [];
 
-      const headers = [
-        ...baseHeaders,
+      // Producto primero, luego existencias
+      const columns = [
+        { key: "_title", label: "Producto", transform: (r) => buildRowTitle(r, sheet), width: 32 },
         ...tipoHeaders,
-        { key: "_title", label: "Descripción del Producto", transform: (r) => buildRowTitle(r, sheet) }
+        { key: "existencias", label: "Existencias", width: 14, align: "center" },
+        { key: "codebar", label: "Codigo de Barras", width: 18 },
+        { key: "sku", label: "Referencia", width: 14 }
       ];
-      const csv = toCsv(rows, headers);
-      downloadBlob(
-        `reporte_inventario_${String(sheet.nombre || "inventario").replace(/[^\w\-]+/g, "_")}_${sheet.tipo_matriz}_${todaySlug()}.csv`,
-        new Blob([csv], { type: "text/csv;charset=utf-8" })
-      );
+
+      const totalStock = rows.reduce((s, r) => s + Number(r.existencias || 0), 0);
+      await exportToXlsx({
+        filename: `reporte_inventario_${String(sheet.nombre || "inventario").replace(/[^\w\-]+/g, "_")}_${sheet.tipo_matriz}_${todaySlug()}`,
+        sheetName: String(sheet.nombre || "Inventario").slice(0, 31),
+        title: `Inventario — ${sheetTitle(sheet)}`,
+        subtitle: `${getMicaTypeName(sheet.tipo_matriz)}  |  ${prettyTrat(sheet.tratamientos)}`,
+        columns,
+        rows,
+        summaryCards: [
+          { label: "Productos", value: rows.length },
+          { label: "Stock Total", value: totalStock },
+          { label: "Tipo", value: getMicaTypeName(sheet.tipo_matriz) },
+        ],
+      });
       notify(`Inventario exportado: ${rows.length} filas`, "is-success", 2500);
     } catch (e) {
-      notify(normalizeAck(e, { errorFallback: "No se pudo exportar el CSV." })?.message, "is-danger");
+      notify(normalizeAck(e, { errorFallback: "No se pudo exportar el inventario." })?.message, "is-danger");
     } finally {
       loadingExportInv.value = false;
     }
   }
 
-  function exportCatalogCsv() {
+  async function exportCatalogCsv() {
     const sheet = selectedSheet.value;
     if (!sheet?.id) return;
 
     loadingExportCat.value = true;
     try {
       const rows = filteredCatalogRows.value;
-      const headers = [
-        { key: "existencias", label: "Existencias" },
-        { key: "codebar", label: "Código de Barras" },
-        { key: "sku", label: "SKU" },
-        { key: "_title", label: "Producto", transform: (r) => buildRowTitle(r, sheet) },
-        { key: "_params", label: "Parámetros", transform: (r) => buildRowParams(r, sheet) }
+      const tipo = sheet.tipo_matriz;
+      const detailCols =
+        tipo === "BASE"
+          ? [{ key: "base", label: "Curva Base", width: 14 }]
+          : tipo === "SPH_CYL"
+          ? [
+              { key: "sph", label: "Esfera", width: 14 },
+              { key: "cyl", label: "Cilindro", width: 14 }
+            ]
+          : tipo === "SPH_ADD"
+          ? [
+              { key: "eye", label: "Ojo", transform: (r) => eyeLabel(r.eye), width: 16 },
+              { key: "sph", label: "Esfera", width: 14 },
+              { key: "add", label: "Adicion", width: 14 },
+              { key: "base_izq", label: "Base Izquierda", width: 16 },
+              { key: "base_der", label: "Base Derecha", width: 16 }
+            ]
+          : tipo === "BASE_ADD"
+          ? [
+              { key: "eye", label: "Ojo", transform: (r) => eyeLabel(r.eye), width: 16 },
+              { key: "base_izq", label: "Base Izquierda", width: 16 },
+              { key: "base_der", label: "Base Derecha", width: 16 },
+              { key: "add", label: "Adicion", width: 14 }
+            ]
+          : [];
+      const columns = [
+        { key: "_title", label: "Producto", transform: (r) => buildRowTitle(r, sheet), width: 30 },
+        ...detailCols,
+        { key: "existencias", label: "Existencias", width: 14, align: "center" },
+        { key: "codebar", label: "Codigo de Barras", width: 18 },
+        { key: "sku", label: "Referencia", width: 14 }
       ];
-      const csv = toCsv(rows, headers);
-      downloadBlob(
-        `reporte_catalogo_${String(sheet.nombre || "catalogo").replace(/[^\w\-]+/g, "_")}_${sheet.tipo_matriz}_${todaySlug()}.csv`,
-        new Blob([csv], { type: "text/csv;charset=utf-8" })
-      );
-      notify(`Catálogo exportado: ${rows.length} productos`, "is-success", 2500);
+      const totalStock = rows.reduce((s, r) => s + Number(r.existencias || 0), 0);
+      await exportToXlsx({
+        filename: `reporte_catalogo_${String(sheet.nombre || "catalogo").replace(/[^\w\-]+/g, "_")}_${sheet.tipo_matriz}_${todaySlug()}`,
+        sheetName: "Catalogo",
+        title: `Catalogo — ${sheetTitle(sheet)}`,
+        subtitle: `${getMicaTypeName(sheet.tipo_matriz)}  |  ${prettyTrat(sheet.tratamientos)}`,
+        columns,
+        rows,
+        summaryCards: [
+          { label: "Productos", value: rows.length },
+          { label: "Stock Total", value: totalStock },
+        ],
+      });
+      notify(`Catalogo exportado: ${rows.length} productos`, "is-success", 2500);
     } catch (e) {
-      notify(normalizeAck(e, { errorFallback: "No se pudo exportar el catálogo." })?.message, "is-danger");
+      notify(normalizeAck(e, { errorFallback: "No se pudo exportar el catalogo." })?.message, "is-danger");
     } finally {
       loadingExportCat.value = false;
     }
   }
 
-  function exportOrdersCsv() {
+  async function exportOrdersCsv() {
     loadingExportOrders.value = true;
     try {
       const rows = ordersDB.value || [];
-      const headers = [
-        { key: "folio", label: "Folio" },
-        { key: "cliente", label: "Cliente" },
-        { key: "status", label: "Estatus", transform: (o) => statusHuman(o.status) },
-        { key: "createdAt", label: "Fecha de Creación", transform: (o) => fmtShort(o.createdAt) },
-        { key: "_progress", label: "Progreso (Surtidas/Total)", transform: (o) => `${orderPickedCount(o)}/${orderTotalCount(o)}` },
-        { key: "_micas", label: "Total de Micas", transform: (o) => String(o.lines?.length || 0) }
+      const columns = [
+        { key: "folio", label: "Folio", width: 16 },
+        { key: "cliente", label: "Cliente", width: 22 },
+        { key: "status", label: "Estatus", transform: (o) => statusHuman(o.status), width: 14 },
+        { key: "createdAt", label: "Fecha de Creacion", transform: (o) => fmtShort(o.createdAt), width: 20 },
+        { key: "_progress", label: "Entregados / Solicitados", transform: (o) => `${orderPickedCount(o)} de ${orderTotalCount(o)}`, width: 22 },
+        { key: "_micas", label: "Total de Lentes", transform: (o) => String(o.lines?.length || 0), width: 16, align: "center" }
       ];
-      downloadBlob(
-        `reporte_pedidos_${todaySlug()}.csv`,
-        new Blob([toCsv(rows, headers)], { type: "text/csv;charset=utf-8" })
-      );
+      await exportToXlsx({
+        filename: `reporte_pedidos_${todaySlug()}`,
+        sheetName: "Pedidos",
+        title: "Reporte de Pedidos",
+        columns,
+        rows,
+        summaryCards: [
+          { label: "Pedidos", value: rows.length },
+        ],
+      });
       notify(`Pedidos exportados: ${rows.length} registros`, "is-success", 2500);
     } catch (e) {
       notify(normalizeAck(e, { errorFallback: "No se pudo exportar pedidos." })?.message, "is-danger");
@@ -1246,17 +1408,24 @@ export function useLaboratorioApi(getUser) {
       const from = getPeriodStart(period);
       const { data } = await listEvents({ type: "ORDER_CREATE", from: from.toISOString(), limit: 2000 });
       const rows = (Array.isArray(data?.data) ? data.data : []).map(mapEntryEvent);
-      const headers = [
-        { key: "folio", label: "Folio" },
-        { key: "cliente", label: "Cliente" },
-        { key: "at", label: "Fecha y Hora" },
-        { key: "linesTotal", label: "Total de Micas" }
+      const columns = [
+        { key: "folio", label: "Folio", width: 16 },
+        { key: "cliente", label: "Cliente", width: 22 },
+        { key: "at", label: "Fecha y Hora", width: 22 },
+        { key: "linesTotal", label: "Total de Lentes", width: 16, align: "center" }
       ];
-      const periodName = { day: "hoy", week: "semana", month: "mes", year: "año" }[period] || period;
-      downloadBlob(
-        `reporte_entradas_${periodName}_${todaySlug()}.csv`,
-        new Blob([toCsv(rows, headers)], { type: "text/csv;charset=utf-8" })
-      );
+      const periodName = { day: "hoy", week: "semana", month: "mes", year: "ano" }[period] || period;
+      await exportToXlsx({
+        filename: `reporte_entradas_${periodName}_${todaySlug()}`,
+        sheetName: "Entradas",
+        title: `Reporte de Entradas — ${periodName}`,
+        columns,
+        rows,
+        summaryCards: [
+          { label: "Entradas", value: rows.length },
+          { label: "Periodo", value: periodName },
+        ],
+      });
       notify(`Entradas (${periodName}): ${rows.length} registros exportados`, "is-success", 3000);
     } catch (e) {
       notify(normalizeAck(e, { errorFallback: "No se pudo exportar entradas." })?.message, "is-danger");
@@ -1268,43 +1437,60 @@ export function useLaboratorioApi(getUser) {
       const from = getPeriodStart(period);
       const { data } = await listEvents({ type: "EXIT_SCAN", from: from.toISOString(), limit: 2000 });
       const rows = (Array.isArray(data?.data) ? data.data : []).map(mapExitEvent);
-      const headers = [
-        { key: "folio", label: "Folio" },
-        { key: "codebar", label: "Código de Barras" },
-        { key: "title", label: "Producto" },
-        { key: "micaType", label: "Tipo de Mica" },
-        { key: "at", label: "Fecha y Hora" }
+      const columns = [
+        { key: "folio", label: "Folio", width: 16 },
+        { key: "title", label: "Producto", width: 28 },
+        { key: "micaType", label: "Tipo de Lente", transform: (r) => getMicaTypeName(r.micaType), width: 20 },
+        { key: "codebar", label: "Codigo de Barras", width: 18 },
+        { key: "at", label: "Fecha y Hora", width: 22 }
       ];
-      const periodName = { day: "hoy", week: "semana", month: "mes", year: "año" }[period] || period;
-      downloadBlob(
-        `reporte_salidas_${periodName}_${todaySlug()}.csv`,
-        new Blob([toCsv(rows, headers)], { type: "text/csv;charset=utf-8" })
-      );
+      const periodName = { day: "hoy", week: "semana", month: "mes", year: "ano" }[period] || period;
+      await exportToXlsx({
+        filename: `reporte_salidas_${periodName}_${todaySlug()}`,
+        sheetName: "Salidas",
+        title: `Reporte de Salidas — ${periodName}`,
+        columns,
+        rows,
+        summaryCards: [
+          { label: "Salidas", value: rows.length },
+          { label: "Periodo", value: periodName },
+        ],
+      });
       notify(`Salidas (${periodName}): ${rows.length} registros exportados`, "is-success", 3000);
     } catch (e) {
       notify(normalizeAck(e, { errorFallback: "No se pudo exportar salidas." })?.message, "is-danger");
     }
   }
 
-  function exportOrderCsv(order) {
+  async function exportOrderCsv(order) {
     const o = order || selectedOrder.value;
     if (!o?.id) return;
 
     try {
       const sheet = sheetById(o.sheetId);
-      const headers = [
-        { key: "codebar", label: "Código de Barras" },
-        { key: "qty", label: "Cantidad Pedida" },
-        { key: "picked", label: "Cantidad Surtida" },
-        { key: "_human", label: "Descripción de Mica", transform: (l) => lineHuman(l, sheet) },
-        { key: "micaType", label: "Tipo de Mica" },
-        { key: "eye", label: "Ojo", transform: (l) => eyeLabel(l.eye) },
-        { key: "_params", label: "Parámetros", transform: (l) => JSON.stringify(l?.params || {}) }
+      const columns = [
+        { key: "_human", label: "Descripcion del Lente", transform: (l) => lineHuman(l, sheet), width: 30 },
+        { key: "micaType", label: "Tipo de Lente", transform: (l) => getMicaTypeName(l.micaType), width: 20 },
+        { key: "eye", label: "Ojo", transform: (l) => eyeLabel(l.eye), width: 16 },
+        { key: "qty", label: "Cantidad Solicitada", width: 18, align: "center" },
+        { key: "picked", label: "Cantidad Entregada", width: 18, align: "center" },
+        { key: "codebar", label: "Codigo de Barras", width: 18 }
       ];
-      downloadBlob(
-        `pedido_${String(o.folio || o.id)}_${todaySlug()}.csv`,
-        new Blob([toCsv(o.lines || [], headers)], { type: "text/csv;charset=utf-8" })
-      );
+      const picked = orderPickedCount(o);
+      const total = orderTotalCount(o);
+      await exportToXlsx({
+        filename: `pedido_${String(o.folio || o.id)}_${todaySlug()}`,
+        sheetName: "Pedido",
+        title: `Pedido — ${String(o.folio || o.id)}`,
+        subtitle: `Cliente: ${o.cliente || "—"}  |  Estatus: ${statusHuman(o.status)}`,
+        columns,
+        rows: o.lines || [],
+        summaryCards: [
+          { label: "Folio", value: String(o.folio || o.id) },
+          { label: "Cliente", value: o.cliente || "—" },
+          { label: "Progreso", value: `${picked}/${total}` },
+        ],
+      });
       notify(`Pedido ${o.folio} exportado correctamente`, "is-success", 2500);
     } catch (e) {
       notify(normalizeAck(e, { errorFallback: "No se pudo exportar el pedido." })?.message, "is-danger");
@@ -1358,15 +1544,15 @@ export function useLaboratorioApi(getUser) {
           <div class="val">${prettyTrat(sheet.tratamientos) || "—"}</div>
         </div>
         <div class="info-card">
-          <div class="lbl">Tipo de Matriz</div>
-          <div class="val">${sheet.tipo_matriz || "—"}</div>
+          <div class="lbl">Tipo de Lente</div>
+          <div class="val">${getMicaTypeName(sheet.tipo_matriz)}</div>
         </div>
         <div class="info-card">
-          <div class="lbl">Página</div>
+          <div class="lbl">Pagina</div>
           <div class="val">${catalogPage.value} de ${catalogPages.value}</div>
         </div>
         <div class="info-card">
-          <div class="lbl">Stock Total (página)</div>
+          <div class="lbl">Stock Total (pagina)</div>
           <div class="val">${totalStock} unidades</div>
         </div>
       </div>
@@ -1374,10 +1560,11 @@ export function useLaboratorioApi(getUser) {
         <table>
           <thead>
             <tr>
-              <th class="right">Existencias</th>
               <th>Producto</th>
-              <th>Código de Barras</th>
-              <th class="center">Código EAN-13</th>
+              <th>Detalles</th>
+              <th class="center">Existencias</th>
+              <th>Codigo de Barras</th>
+              <th class="center">Codigo EAN-13</th>
             </tr>
           </thead>
           <tbody>
@@ -1385,11 +1572,9 @@ export function useLaboratorioApi(getUser) {
               const cb = String(r.codebar || "");
               const svg = cb && isEan13(cb) ? ean13SvgString(cb, 2, 70) : "";
               return `<tr>
-                <td class="right"><b>${Number(r.existencias || 0)}</b></td>
-                <td>
-                  <div style="font-weight:600;">${buildRowTitle(r, sheet)}</div>
-                  <div class="muted" style="font-size:11px;">${buildRowParams(r, sheet)}</div>
-                </td>
+                <td><div style="font-weight:600;">${buildRowTitle(r, sheet)}</div></td>
+                <td style="font-size:11px;">${buildRowParams(r, sheet)}</td>
+                <td class="center"><b>${Number(r.existencias || 0)}</b></td>
                 <td class="mono">${cb || "—"}</td>
                 <td class="center">${svg || `<span class="muted">—</span>`}</td>
               </tr>`;
@@ -1397,8 +1582,9 @@ export function useLaboratorioApi(getUser) {
           </tbody>
           <tfoot>
             <tr>
-              <td class="right">${totalStock}</td>
-              <td colspan="3">Total de existencias en esta página (${rows.length} productos)</td>
+              <td colspan="2">Total: ${rows.length} productos</td>
+              <td class="center">${totalStock}</td>
+              <td colspan="2">Stock total en esta pagina</td>
             </tr>
           </tfoot>
         </table>
@@ -1440,8 +1626,8 @@ export function useLaboratorioApi(getUser) {
           <div class="val">${o.createdAtShort || fmtShort(o.createdAt)}</div>
         </div>
         <div class="info-card">
-          <div class="lbl">Progreso de Surtido</div>
-          <div class="val">${picked} / ${total} micas (${pct}%)</div>
+          <div class="lbl">Progreso de Entrega</div>
+          <div class="val">${picked} de ${total} lentes (${pct}%)</div>
         </div>
       </div>
       ${o.note ? `<div class="note-box"><b>Observación:</b> ${sanitizeUserText(o.note)}</div>` : ""}
@@ -1449,13 +1635,13 @@ export function useLaboratorioApi(getUser) {
         <table>
           <thead>
             <tr>
-              <th>Descripción de Mica</th>
-              <th>Tipo de Mica</th>
+              <th>Descripcion del Lente</th>
+              <th>Tipo de Lente</th>
               <th>Ojo</th>
-              <th class="right">Cant. Pedida</th>
-              <th class="right">Cant. Surtida</th>
-              <th>Código de Barras</th>
-              <th class="center">Código EAN-13</th>
+              <th class="right">Solicitados</th>
+              <th class="right">Entregados</th>
+              <th>Codigo de Barras</th>
+              <th class="center">Codigo EAN-13</th>
             </tr>
           </thead>
           <tbody>
@@ -1465,10 +1651,10 @@ export function useLaboratorioApi(getUser) {
               const pendiente = Number(l.qty || 0) - Number(l.picked || 0);
               return `<tr>
                 <td><div style="font-weight:600;">${lineHuman(l, sheet)}</div></td>
-                <td>${l.micaType || "—"}</td>
+                <td>${getMicaTypeName(l.micaType)}</td>
                 <td>${eyeLabel(l.eye)}</td>
                 <td class="right">${Number(l.qty || 0)}</td>
-                <td class="right">${Number(l.picked || 0)}${pendiente > 0 ? ` <span class="muted" style="font-size:10px;">(${pendiente} pend.)</span>` : ""}</td>
+                <td class="right">${Number(l.picked || 0)}${pendiente > 0 ? ` <span class="muted" style="font-size:10px;">(faltan ${pendiente})</span>` : ""}</td>
                 <td class="mono">${cb || "—"}</td>
                 <td class="center">${svg || `<span class="muted">—</span>`}</td>
               </tr>`;
@@ -1479,7 +1665,7 @@ export function useLaboratorioApi(getUser) {
               <td colspan="3">Total del pedido</td>
               <td class="right">${total}</td>
               <td class="right">${picked}</td>
-              <td colspan="2">${pct}% surtido</td>
+              <td colspan="2">${pct}% entregado</td>
             </tr>
           </tfoot>
         </table>
@@ -1502,7 +1688,10 @@ export function useLaboratorioApi(getUser) {
   });
 
   watch([includeDeleted, sheetQuery], () => loadSheets());
-  watch([selectedSheetId], () => loadItems());
+  // _isMounting previene que el watch dispare loadItems durante el mount inicial
+  // (loadSheets setea selectedSheetId y causaría una carga duplicada)
+  let _isMounting = false;
+  watch([selectedSheetId], () => { if (!_isMounting) loadItems(); });
 
   async function refreshAll() {
     loadingRefreshAll.value = true;
@@ -1532,7 +1721,11 @@ export function useLaboratorioApi(getUser) {
   }
 
   onMounted(async () => {
-    await Promise.all([loadSheets(), loadOrders(), loadItems(), loadEvents()]);
+    _isMounting = true;
+    // sheets/orders/events en paralelo; items depende de selectedSheetId que setea loadSheets
+    await Promise.all([loadSheets(), loadOrders(), loadEvents()]);
+    await loadItems(); // una sola vez, ya con el sheetId correcto
+    _isMounting = false;
     window.addEventListener("lab:ws", _onWsEvent);
   });
 

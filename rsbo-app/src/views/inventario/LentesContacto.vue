@@ -280,27 +280,7 @@ const resolverGridProps = (sheet, activeInternal) => {
             <p class="psh-desc">Gestiona el stock de lentes de contacto: esféricos, tóricos, coloridos y multifocales.</p>
           </div>
 
-          <!-- VIEW TOGGLE -->
-          <div class="view-toggle">
-            <b-tooltip label="Vista Excel (AG-Grid)" position="is-bottom">
-              <button
-                class="vt-btn"
-                :class="{ 'vt-btn--active': viewMode === 'excel' }"
-                @click="viewMode = 'excel'"
-              >
-                <i class="fas fa-table-cells-large"></i>
-              </button>
-            </b-tooltip>
-            <b-tooltip label="Vista Tabla (Glassmorphism)" position="is-bottom">
-              <button
-                class="vt-btn"
-                :class="{ 'vt-btn--active': viewMode === 'glass' }"
-                @click="viewMode = 'glass'"
-              >
-                <i class="fas fa-table-list"></i>
-              </button>
-            </b-tooltip>
-          </div>
+          <!-- VIEW TOGGLE (disabled) -->
         </div>
 
         <div class="psh-quick mt-3">

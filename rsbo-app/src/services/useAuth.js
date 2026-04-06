@@ -33,14 +33,14 @@ export function useAuth() {
    * Navegar a perfil
    */
   const profile = (router) => {
-    router.push('/layouts/mi.perfil.panel')
+    router.push('/l/mi.perfil.panel')
   }
 
   /**
    * Navegar a configuración
    */
   const settings = (router) => {
-    router.push('/layouts/config.panel')
+    router.push('/l/config.panel')
   }
 
   /**

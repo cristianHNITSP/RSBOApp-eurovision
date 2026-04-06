@@ -55,7 +55,7 @@
 
         <!-- Columna derecha: solo Mi perfil -->
         <div class="hero-right" v-if="!loading">
-          <button class="profile-cta" @click="$router.push('/layouts/mi.perfil.panel')">
+          <button class="profile-cta" @click="$router.push('/l/mi.perfil.panel')">
             <img :src="avatarUrl" class="pcta-avatar" alt="" />
             <div class="pcta-info">
               <span class="pcta-name">{{ firstName }}</span>
@@ -289,7 +289,7 @@
                       <div><div class="rtile-title">Pedidos</div><div class="rtile-desc">Historial de lab (30d)</div></div>
                       <i class="fas fa-arrow-right rtile-arrow"></i>
                     </button>
-                    <button class="rtile" @click="$router.push('/layouts/devoluciones')">
+                    <button class="rtile" @click="$router.push('/l/devoluciones')">
                       <i class="fas fa-rotate-left"></i>
                       <div><div class="rtile-title">Devoluciones</div><div class="rtile-desc">Gestión y aprobación</div></div>
                       <i class="fas fa-arrow-right rtile-arrow"></i>
@@ -425,7 +425,7 @@
                 <button
                   v-if="canManageDevolutions"
                   class="gc-action-btn"
-                  @click="$router.push('/layouts/devoluciones')"
+                  @click="$router.push('/l/devoluciones')"
                 >
                   <i class="fas fa-arrow-right"></i> Gestionar
                 </button>
@@ -749,7 +749,7 @@
                       <div><div class="rtile-title">Pedidos</div><div class="rtile-desc">Historial de lab (30d)</div></div>
                       <i class="fas fa-arrow-right rtile-arrow"></i>
                     </button>
-                    <button class="rtile" @click="$router.push('/layouts/devoluciones')">
+                    <button class="rtile" @click="$router.push('/l/devoluciones')">
                       <i class="fas fa-rotate-left"></i>
                       <div><div class="rtile-title">Devoluciones</div><div class="rtile-desc">Gestión y aprobación</div></div>
                       <i class="fas fa-arrow-right rtile-arrow"></i>

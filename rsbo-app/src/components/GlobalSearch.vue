@@ -287,9 +287,9 @@ function selectItem(item) {
       router.push({ name: item.routeName, query: item.routeQuery || {} });
     }
   } else if (item.type === 'sheet') {
-    router.push({ path: '/layouts/inventario/bases-micas', query: { sheetId: item.id } });
+    router.push({ path: '/l/inventario/bases-micas', query: { sheetId: item.id } });
   } else if (item.type === 'order') {
-    router.push({ path: '/layouts/ventas/laboratorio', query: { orderId: item.id } });
+    router.push({ path: '/l/ventas/laboratorio', query: { orderId: item.id } });
   }
   query.value = '';
 }

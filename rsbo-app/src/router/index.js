@@ -9,9 +9,9 @@ const routes = [
     component: () => import("../views/Landing.vue"),
   },
   {
-    path: "/layouts",
+    path: "/l",
     component: () => import("../layouts/DashboardLayout.vue"),
-    redirect: "/layouts/home",
+    redirect: "/l/home",
     meta: { requiresAuth: true },
     children: [
       {
@@ -117,7 +117,7 @@ const routes = [
 ];
 
 const router = createRouter({
-  history: createWebHistory("/app.rsbo.eurovision/"),
+  history: createWebHistory("/"),
   routes,
 });
 
@@ -142,7 +142,7 @@ router.beforeEach(async (to, from, next) => {
   const requiresAuth = to.matched.some((record) => record.meta.requiresAuth);
 
   // Caso especial: si intenta ir a "/" con sesión válida, NO se permite,
-  // se manda a /layouts/home — excepto root, que va al panel admin
+  // se manda a /l/home — excepto root, que va al panel admin
   if (to.name === "Landing") {
     try {
       const { data } = await checkSession();

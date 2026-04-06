@@ -237,17 +237,17 @@ export default {
       const labBadge = count > 0 ? String(count) : null;
       return [
         { group: "Principal" },
-        { label: "Dashboard", icon: "tachometer-alt", path: "/layouts/home" },
-        { label: "Analíticas", icon: "chart-line", path: "/layouts/analiticas", badge: "Nuevo", badgeType: "is-success" },
+        { label: "Dashboard", icon: "tachometer-alt", path: "/l/home" },
+        { label: "Analíticas", icon: "chart-line", path: "/l/analiticas", badge: "Nuevo", badgeType: "is-success" },
         { group: "Gestión" },
-        { label: "Usuarios", icon: "users", path: "/layouts/usuarios" },
+        { label: "Usuarios", icon: "users", path: "/l/usuarios" },
         {
           label: "Inventario",
           icon: "box-open",
           children: [
-            { label: "Bases y Micas", icon: "glasses", path: "/layouts/inventario/bases-micas" },
-            { label: "Óptica", icon: "eye", path: "/layouts/inventario/optica" },
-            { label: "Lentes de Contacto", icon: "circle", path: "/layouts/inventario/lentes-contacto" },
+            { label: "Bases y Micas", icon: "glasses", path: "/l/inventario/bases-micas" },
+            { label: "Óptica", icon: "eye", path: "/l/inventario/optica" },
+            { label: "Lentes de Contacto", icon: "circle", path: "/l/inventario/lentes-contacto" },
           ],
         },
         {
@@ -256,16 +256,16 @@ export default {
           badge: labBadge,
           badgeType: "is-warning",
           children: [
-            { label: "Laboratorio", icon: "flask", path: "/layouts/ventas/laboratorio", badge: labBadge, badgeType: "is-warning" },
-            { label: "Bases y Micas", icon: "glasses", path: "/layouts/ventas/bases-micas", badge: labBadge, badgeType: "is-warning" },
-            { label: "Óptica", icon: "eye", path: "/layouts/ventas/optica" },
-            { label: "Lentes de Contacto", icon: "circle", path: "/layouts/ventas/lentes-contacto" },
+            { label: "Laboratorio", icon: "flask", path: "/l/ventas/laboratorio", badge: labBadge, badgeType: "is-warning" },
+            { label: "Bases y Micas", icon: "glasses", path: "/l/ventas/bases-micas", badge: labBadge, badgeType: "is-warning" },
+            { label: "Óptica", icon: "eye", path: "/l/ventas/optica" },
+            { label: "Lentes de Contacto", icon: "circle", path: "/l/ventas/lentes-contacto" },
           ],
         },
-        { label: "Devoluciones", icon: "rotate-left", path: "/layouts/devoluciones" },
+        { label: "Devoluciones", icon: "rotate-left", path: "/l/devoluciones" },
         { group: "Otros" },
-        { label: "Ajustes", icon: "cog", path: "/layouts/config.panel" },
-        { label: "Ayuda", icon: "question-circle", path: "/layouts/Ayuda" },
+        { label: "Ajustes", icon: "cog", path: "/l/config.panel" },
+        { label: "Ayuda", icon: "question-circle", path: "/l/Ayuda" },
       ];
     },
     submenuStyles() {

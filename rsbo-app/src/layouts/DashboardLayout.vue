@@ -392,7 +392,7 @@ export default {
             <div class="dashboard-toolbar__left">
               <div class="breadcrumb-wrapper">
                 <b-breadcrumb separator="succeeds" size="is-small" class="is-size-7-mobile">
-                  <b-breadcrumb-item href="/layouts/home">Dashboard</b-breadcrumb-item>
+                  <b-breadcrumb-item href="/l/home">Dashboard</b-breadcrumb-item>
                   <b-breadcrumb-item active>{{ currentRouteName }}</b-breadcrumb-item>
                 </b-breadcrumb>
               </div>

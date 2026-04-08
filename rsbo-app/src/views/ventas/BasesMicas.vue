@@ -237,28 +237,35 @@
                     />
                   </b-field>
 
-                  <!-- Toggle datos adicionales del cliente -->
-                  <div class="nv-cliente-toggle mb-2">
-                    <span class="muted" style="font-size:0.82rem;font-weight:800">
-                      <i class="fas fa-user-tag mr-1"></i>Datos adicionales del cliente
-                    </span>
-                    <b-switch v-model="showClienteForm" size="is-small" />
-                  </div>
-
-                  <!-- Formulario nuevo cliente -->
-                  <div v-if="showClienteForm" class="nv-cliente-form mb-3">
-                    <b-field label="Nombre(s) *" class="mb-2">
-                      <b-input v-model="cartClienteNombres" placeholder="Nombre(s)" size="is-small" />
-                    </b-field>
-                    <b-field label="Apellidos" class="mb-2">
-                      <b-input v-model="cartClienteApellidos" placeholder="Apellidos" size="is-small" />
-                    </b-field>
-                    <b-field label="Empresa" class="mb-2">
-                      <b-input v-model="cartClienteEmpresa" placeholder="Empresa" size="is-small" icon="building" />
-                    </b-field>
-                    <b-field label="Contacto" class="mb-0">
-                      <b-input v-model="cartClienteContacto" placeholder="Tel / Email" size="is-small" icon="phone" />
-                    </b-field>
+                  <!-- Datos adicionales del cliente (siempre visibles, opcionales) -->
+                  <p class="nv-cliente-section-label mb-2">
+                    <i class="fas fa-user-tag mr-1"></i>Datos adicionales del cliente
+                  </p>
+                  <div class="nv-cliente-form mb-3">
+                    <div class="columns is-mobile is-variable is-2 mb-0">
+                      <div class="column">
+                        <b-field label="Nombre(s)" class="mb-2">
+                          <b-input v-model="cartClienteNombres" placeholder="Nombre(s)" size="is-small" />
+                        </b-field>
+                      </div>
+                      <div class="column">
+                        <b-field label="Apellidos" class="mb-2">
+                          <b-input v-model="cartClienteApellidos" placeholder="Apellidos" size="is-small" />
+                        </b-field>
+                      </div>
+                    </div>
+                    <div class="columns is-mobile is-variable is-2 mb-0">
+                      <div class="column">
+                        <b-field label="Empresa" class="mb-0">
+                          <b-input v-model="cartClienteEmpresa" placeholder="Empresa" size="is-small" icon="building" />
+                        </b-field>
+                      </div>
+                      <div class="column">
+                        <b-field label="Contacto" class="mb-0">
+                          <b-input v-model="cartClienteContacto" placeholder="Tel / Email" size="is-small" icon="phone" />
+                        </b-field>
+                      </div>
+                    </div>
                   </div>
 
                   <!-- Condiciones de pago -->
@@ -647,8 +654,6 @@ const {
   registrarVenta, loadHistory,
   checkVoucherStatus, loadLabStatuses
 } = useBasesMicasVentas(() => props.user);
-
-const showClienteForm = ref(false);
 
 const PAGO_OPCIONES = [
   { value: "trans",   label: "Transferencia (TRANS)" },
@@ -1305,11 +1310,11 @@ function printVoucher() {
   padding-top: 0.15rem;
 }
 
-/* ── Nuevo cliente form ── */
-.nv-cliente-toggle {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+/* ── Datos adicionales del cliente ── */
+.nv-cliente-section-label {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--text-muted);
 }
 
 .nv-cliente-form {

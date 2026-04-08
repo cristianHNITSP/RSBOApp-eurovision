@@ -61,7 +61,16 @@
                     :aria-pressed="img === selectedAvatar"
                     :title="img === selectedAvatar ? 'Seleccionado' : 'Seleccionar'"
                   >
-                    <img :src="img" alt="Avatar option" />
+                    <div class="av-media">
+                      <b-skeleton v-show="!_imgCache[img]" :width="74" :height="74" animated circle class="av-skel" />
+                      <img
+                        :src="img"
+                        alt="Avatar option"
+                        class="av-img"
+                        :class="{ 'av-img--loaded': _imgCache[img] }"
+                        @load="onImgLoad(img)"
+                      />
+                    </div>
                     <span class="badge" v-if="img === selectedAvatar">
                       <i class="fas fa-check"></i>
                     </span>
@@ -93,7 +102,10 @@
 </template>
 
 <script setup>
-import { ref, watch, computed } from "vue";
+import { ref, watch, computed, reactive } from "vue";
+
+// Module-level cache — persists across modal opens and component remounts
+const _imgCache = reactive({});
 import { avatarCategories } from "@/services/myUserCRUD";
 import DynamicTabs from "@/components/DynamicTabs.vue";
 
@@ -154,6 +166,10 @@ function closeModal() {
 
 function selectAvatar(img) {
   selectedAvatar.value = img;
+}
+
+function onImgLoad(src) {
+  _imgCache[src] = true;
 }
 
 function confirmSelection() {
@@ -346,7 +362,31 @@ function confirmSelection() {
   margin: 0 auto;
   transition: transform 140ms ease, filter 140ms ease;
 }
-.avatar-option img {
+.avatar-option:hover { transform: scale(1.05); }
+
+/* Media wrapper — skeleton + img overlap in the same 74×74 circle */
+.av-media {
+  position: relative;
+  width: 74px;
+  height: 74px;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.av-skel {
+  position: absolute !important;
+  inset: 0;
+  margin: 0 !important;
+}
+.av-skel :deep(.b-skeleton-item) {
+  width: 74px !important;
+  height: 74px !important;
+  border-radius: 999px !important;
+}
+
+/* Image: always rendered but invisible until loaded */
+.av-img {
+  position: absolute;
+  inset: 0;
   width: 74px;
   height: 74px;
   border-radius: 999px;
@@ -354,16 +394,16 @@ function confirmSelection() {
   display: block;
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
   outline: 2px solid transparent;
-  transition: outline-color 140ms ease, box-shadow 140ms ease;
+  transition: outline-color 140ms ease, box-shadow 140ms ease, opacity 240ms ease;
+  opacity: 0;
 }
-.avatar-option:hover {
-  transform: scale(1.05);
-}
-.avatar-option:hover img {
+.av-img--loaded { opacity: 1; }
+
+.avatar-option:hover .av-img--loaded {
   box-shadow: 0 14px 32px rgba(15, 23, 42, 0.16);
   outline-color: rgba(99, 102, 241, 0.35);
 }
-.avatar-option.is-selected img {
+.avatar-option.is-selected .av-img--loaded {
   outline-color: rgba(109, 40, 217, 0.65);
   box-shadow: 0 18px 36px rgba(109, 40, 217, 0.18);
 }

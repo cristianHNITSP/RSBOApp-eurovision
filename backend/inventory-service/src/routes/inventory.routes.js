@@ -132,16 +132,27 @@ const models = { MatrixBase, MatrixSphCyl, MatrixBifocal, MatrixProgresivo };
 
 /* ======================= SHEETS ======================= */
 
-router.get("/", cacheMiddleware(KEYS.sheetsList("inventory"), 30), async (req, res) => {
+router.get("/",
+  cacheMiddleware((req) => {
+    const p = req.query.page || 1;
+    const l = req.query.limit || 6;
+    const q = encodeURIComponent(req.query.q || "");
+    const f = req.query.focusId || "";
+    const d = req.query.includeDeleted || "false";
+    return `inv:inventory:sheets:${p}:${l}:${q}:${f}:${d}`;
+  }, 30),
+  async (req, res) => {
   try {
     const includeDeleted = String(req.query.includeDeleted) === "true";
     const q = String(req.query.q || "").trim();
+    const focusId = String(req.query.focusId || "").trim();
+    const limit = Math.min(Math.max(parseInt(req.query.limit) || 6, 1), 50);
 
-    const query = includeDeleted ? {} : { isDeleted: { $ne: true } };
+    const dbQuery = includeDeleted ? {} : { isDeleted: { $ne: true } };
 
     if (q) {
       const rx = new RegExp(escapeRegExp(q), "i");
-      query.$or = [
+      dbQuery.$or = [
         { sku: rx },
         { nombre: rx },
         { material: rx },
@@ -159,11 +170,25 @@ router.get("/", cacheMiddleware(KEYS.sheetsList("inventory"), 30), async (req, r
       ];
     }
 
-    if (req.query.sku) query.sku = String(req.query.sku).trim().toUpperCase();
+    if (req.query.sku) dbQuery.sku = String(req.query.sku).trim().toUpperCase();
 
-    const sheets = await InventorySheet.find(query).sort({ updatedAt: -1, createdAt: -1 });
+    const SORT = { updatedAt: -1, createdAt: -1 };
+    const total = await InventorySheet.countDocuments(dbQuery);
+    const totalPages = Math.max(Math.ceil(total / limit), 1);
 
-    // backfill SKU únicamente
+    // When focusId provided, find which page contains that sheet
+    let page = Math.max(parseInt(req.query.page) || 1, 1);
+    if (focusId) {
+      const allIds = await InventorySheet.find(dbQuery).sort(SORT).select("_id").lean();
+      const idx = allIds.findIndex((d) => String(d._id) === focusId);
+      if (idx >= 0) page = Math.floor(idx / limit) + 1;
+    }
+    page = Math.min(page, totalPages);
+    const skip = (page - 1) * limit;
+
+    const sheets = await InventorySheet.find(dbQuery).sort(SORT).skip(skip).limit(limit);
+
+    // backfill SKU for this page only
     for (const s of sheets) {
       if (!s.sku) {
         try {
@@ -192,7 +217,11 @@ router.get("/", cacheMiddleware(KEYS.sheetsList("inventory"), 30), async (req, r
       physicalLimits: PHYSICAL_LIMITS
     }));
 
-    res.json({ ok: true, data });
+    res.json({
+      ok: true,
+      data,
+      meta: { total, page, limit, totalPages, hasMore: page < totalPages, hasPrior: page > 1 }
+    });
   } catch (err) {
     console.error("GET /inventory error:", err);
     res.status(500).json({ ok: false, message: "Error al listar hojas" });
@@ -370,7 +399,7 @@ router.post(
         });
       }
 
-      cacheDel(KEYS.sheetsList("inventory"));
+      invalidatePattern("inv:inventory:sheets:*");
       cacheDel(KEYS.stats());
 
       res.status(201).json({
@@ -784,7 +813,7 @@ router.delete(
       });
 
       invalidatePattern(KEYS.sheetPattern(req.params.sheetId));
-      cacheDel(KEYS.sheetsList("inventory"));
+      invalidatePattern("inv:inventory:sheets:*");
       cacheDel(KEYS.stats());
       res.json({ ok: true, message: "Hoja eliminada (soft-delete)" });
     } catch (err) {

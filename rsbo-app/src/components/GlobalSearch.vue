@@ -175,6 +175,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
+import { useDebounceFn } from '@vueuse/core';
 import { globalSearch, flattenResults } from '../services/search.service';
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -187,9 +188,9 @@ const wrapperRef  = ref(null);
 const inputRef    = ref(null);
 const dropdownRef = ref(null);
 
-let debounceTimer = null;
-
 const router = useRouter();
+
+const debouncedSearch = useDebounceFn(runSearch, 320);
 
 // ── Computed ──────────────────────────────────────────────────────────────────
 /**
@@ -219,14 +220,13 @@ function onFocus() {
 function onInput() {
   cursor.value = -1;
   isOpen.value = true;
-  clearTimeout(debounceTimer);
   if (query.value.length < 2) {
     flatItems.value = [];
     loading.value   = false;
     return;
   }
   loading.value = true;
-  debounceTimer = setTimeout(runSearch, 320);
+  debouncedSearch();
 }
 
 async function runSearch() {

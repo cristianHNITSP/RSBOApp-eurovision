@@ -4,87 +4,20 @@
     <!-- ══════════════════════════════════════════════════════════════
          HERO — Bienvenido a Eurovisión
     ══════════════════════════════════════════════════════════════ -->
-    <section class="db-hero" v-motion-fade-visible-once>
-      <div class="hero-role-line" :style="roleBannerStyle"></div>
-
-      <div class="hero-body">
-
-        <!-- Columna izquierda: avatar + datos -->
-        <div class="hero-left">
-          <!-- Avatar con ring de color de rol -->
-          <div class="avatar-shell" :style="{ '--rc': roleRingColor }">
-            <div class="avatar-inner">
-              <b-skeleton v-if="!avatarLoaded" :width="96" :height="96" animated style="border-radius:50%" />
-              <img v-else :src="avatarUrl" alt="avatar" class="avatar-img" />
-            </div>
-            <div class="avatar-status-dot"></div>
-          </div>
-
-          <!-- Info -->
-          <div class="hero-info">
-            <div class="badge-row">
-              <span class="role-chip" :style="rolePillStyle">
-                <i :class="roleIconClass"></i>
-                {{ roleLabel }}
-              </span>
-              <span class="env-chip">{{ environmentLabel }}</span>
-            </div>
-
-            <h1 class="hero-welcome-line">
-              Bienvenido a <span class="brand-gradient">Eurovisión</span>
-            </h1>
-            <h2 class="hero-name" v-if="!loading">
-              {{ greeting }}, <strong>{{ firstName }}</strong>
-            </h2>
-            <b-skeleton v-else :width="220" :height="28" animated class="mt-1" />
-
-            <p class="hero-bio" v-if="!loading">{{ userBio }}</p>
-            <b-skeleton v-else :width="300" :height="16" animated class="mt-1 mb-1" />
-
-            <div class="hero-meta" v-if="!loading">
-              <span class="hm-item">
-                <i class="fas fa-clock"></i>
-                Último acceso: <b>{{ lastLoginLabel }}</b>
-              </span>
-              <span class="hm-item" v-if="user?.email">
-                <i class="fas fa-envelope"></i> {{ user.email }}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Columna derecha: solo Mi perfil -->
-        <div class="hero-right" v-if="!loading">
-          <button class="profile-cta" @click="$router.push('/l/mi.perfil.panel')">
-            <img :src="avatarUrl" class="pcta-avatar" alt="" />
-            <div class="pcta-info">
-              <span class="pcta-name">{{ firstName }}</span>
-              <span class="pcta-label">Administrar perfil</span>
-            </div>
-            <i class="fas fa-arrow-right pcta-arrow"></i>
-          </button>
-
-          <!-- Stats rápidas en el hero -->
-          <div class="hero-quick-stats" v-if="!isLoading">
-            <div class="hqs-item" v-if="canSeeInventory">
-              <div class="hqs-val">{{ s?.activeSheets ?? '—' }}</div>
-              <div class="hqs-label">Hojas</div>
-            </div>
-            <div class="hqs-sep" v-if="canSeeInventory"></div>
-            <div class="hqs-item" v-if="canSeeOrders">
-              <div class="hqs-val">{{ s?.ordersPending ?? '—' }}</div>
-              <div class="hqs-label">Pendientes</div>
-            </div>
-            <div class="hqs-sep" v-if="canSeeOrders && canSeeDevolutions"></div>
-            <div class="hqs-item" v-if="canSeeDevolutions">
-              <div class="hqs-val">{{ s?.devolucionesPendientes ?? '—' }}</div>
-              <div class="hqs-label">Devoluc.</div>
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </section>
+    <DashboardHero
+      :user="props.user"
+      :loading="isLoading"
+      :stats="s"
+      :role-label="roleLabel"
+      :role-icon-class="roleIconClass"
+      :role-ring-color="roleRingColor"
+      :role-banner-style="roleBannerStyle"
+      :role-pill-style="rolePillStyle"
+      :environment-label="environmentLabel"
+      :can-see-inventory="canSeeInventory"
+      :can-see-orders="canSeeOrders"
+      :can-see-devolutions="canSeeDevolutions"
+    />
 
     <!-- ══════════════════════════════════════════════════════════════
          KPIs — Métricas clave por rol
@@ -551,123 +484,7 @@
 
         <!-- ═══════════════ TAB: OPTICA ════════════════════════════════ -->
         <template #optica>
-          <div class="tab-single-col">
-            <div v-if="optica.loading" class="optica-loading">
-              <b-skeleton :width="'100%'" :height="120" animated class="mb-4" />
-              <b-skeleton :width="'100%'" :height="120" animated class="mb-4" />
-              <b-skeleton :width="'100%'" :height="120" animated />
-            </div>
-            <template v-else>
-              <!-- Armazones -->
-              <div class="gcard mb-5">
-                <div class="gc-head">
-                  <div class="gc-head-left">
-                    <div class="gc-badge-icon accent-purple"><i class="fas fa-glasses"></i></div>
-                    <div>
-                      <div class="gc-title">Armazones</div>
-                      <div class="gc-sub">{{ optica.armazones.length }} registros</div>
-                    </div>
-                  </div>
-                </div>
-                <div class="gc-body">
-                  <div class="cell-grid">
-                    <div class="mcell"><div class="mcell-label">Stock total</div><div class="mcell-val accent">{{ opticaStats.arm.total }}</div></div>
-                    <div class="mcell"><div class="mcell-label">Agotados</div><div class="mcell-val danger">{{ opticaStats.arm.agotado }}</div></div>
-                    <div class="mcell"><div class="mcell-label">Stock bajo</div><div class="mcell-val warn">{{ opticaStats.arm.bajo }}</div></div>
-                    <div class="mcell"><div class="mcell-label">Valor estimado</div><div class="mcell-val">{{ fmtMXN(opticaStats.arm.valor) }}</div></div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Soluciones -->
-              <div class="gcard mb-5">
-                <div class="gc-head">
-                  <div class="gc-head-left">
-                    <div class="gc-badge-icon accent-blue"><i class="fas fa-droplet"></i></div>
-                    <div>
-                      <div class="gc-title">Soluciones</div>
-                      <div class="gc-sub">{{ optica.soluciones.length }} registros</div>
-                    </div>
-                  </div>
-                </div>
-                <div class="gc-body">
-                  <div class="cell-grid">
-                    <div class="mcell"><div class="mcell-label">Stock total</div><div class="mcell-val accent">{{ opticaStats.sol.total }}</div></div>
-                    <div class="mcell"><div class="mcell-label">Agotados</div><div class="mcell-val danger">{{ opticaStats.sol.agotado }}</div></div>
-                    <div class="mcell"><div class="mcell-label">Stock bajo</div><div class="mcell-val warn">{{ opticaStats.sol.bajo }}</div></div>
-                    <div class="mcell"><div class="mcell-label">Por vencer</div><div class="mcell-val" :class="opticaStats.sol.porVencer > 0 ? 'warn' : ''">{{ opticaStats.sol.porVencer }}</div></div>
-                    <div class="mcell"><div class="mcell-label">Valor estimado</div><div class="mcell-val">{{ fmtMXN(opticaStats.sol.valor) }}</div></div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Accesorios -->
-              <div class="gcard mb-5">
-                <div class="gc-head">
-                  <div class="gc-head-left">
-                    <div class="gc-badge-icon accent-green"><i class="fas fa-screwdriver-wrench"></i></div>
-                    <div>
-                      <div class="gc-title">Accesorios</div>
-                      <div class="gc-sub">{{ optica.accesorios.length }} registros</div>
-                    </div>
-                  </div>
-                </div>
-                <div class="gc-body">
-                  <div class="cell-grid">
-                    <div class="mcell"><div class="mcell-label">Stock total</div><div class="mcell-val accent">{{ opticaStats.acc.total }}</div></div>
-                    <div class="mcell"><div class="mcell-label">Agotados</div><div class="mcell-val danger">{{ opticaStats.acc.agotado }}</div></div>
-                    <div class="mcell"><div class="mcell-label">Stock bajo</div><div class="mcell-val warn">{{ opticaStats.acc.bajo }}</div></div>
-                    <div class="mcell"><div class="mcell-label">Categorías</div><div class="mcell-val">{{ opticaStats.acc.categorias }}</div></div>
-                    <div class="mcell"><div class="mcell-label">Valor estimado</div><div class="mcell-val">{{ fmtMXN(opticaStats.acc.valor) }}</div></div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Estuches -->
-              <div class="gcard mb-5">
-                <div class="gc-head">
-                  <div class="gc-head-left">
-                    <div class="gc-badge-icon accent-orange"><i class="fas fa-box"></i></div>
-                    <div>
-                      <div class="gc-title">Estuches</div>
-                      <div class="gc-sub">{{ optica.estuches.length }} registros</div>
-                    </div>
-                  </div>
-                </div>
-                <div class="gc-body">
-                  <div class="cell-grid">
-                    <div class="mcell"><div class="mcell-label">Stock total</div><div class="mcell-val accent">{{ opticaStats.est.total }}</div></div>
-                    <div class="mcell"><div class="mcell-label">Agotados</div><div class="mcell-val danger">{{ opticaStats.est.agotado }}</div></div>
-                    <div class="mcell"><div class="mcell-label">Stock bajo</div><div class="mcell-val warn">{{ opticaStats.est.bajo }}</div></div>
-                    <div class="mcell"><div class="mcell-label">Tipos</div><div class="mcell-val">{{ opticaStats.est.tipos }}</div></div>
-                    <div class="mcell"><div class="mcell-label">Valor estimado</div><div class="mcell-val">{{ fmtMXN(opticaStats.est.valor) }}</div></div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Equipos -->
-              <div class="gcard mb-5">
-                <div class="gc-head">
-                  <div class="gc-head-left">
-                    <div class="gc-badge-icon accent-cyan"><i class="fas fa-desktop"></i></div>
-                    <div>
-                      <div class="gc-title">Equipos</div>
-                      <div class="gc-sub">{{ optica.equipos.length }} registros</div>
-                    </div>
-                  </div>
-                </div>
-                <div class="gc-body">
-                  <div class="cell-grid">
-                    <div class="mcell"><div class="mcell-label">Operativos</div><div class="mcell-val ok">{{ opticaStats.eqp.operativo }}</div></div>
-                    <div class="mcell"><div class="mcell-label">Mantenimiento</div><div class="mcell-val warn">{{ opticaStats.eqp.mantto }}</div></div>
-                    <div class="mcell"><div class="mcell-label">Fuera de servicio</div><div class="mcell-val danger">{{ opticaStats.eqp.fuera }}</div></div>
-                    <div class="mcell"><div class="mcell-label">Próx. mantenimiento</div><div class="mcell-val" :class="opticaStats.eqp.proxMantto > 0 ? 'warn' : ''">{{ opticaStats.eqp.proxMantto }}</div></div>
-                    <div class="mcell"><div class="mcell-label">Total equipos</div><div class="mcell-val">{{ opticaStats.eqp.total }}</div></div>
-                  </div>
-                </div>
-              </div>
-            </template>
-          </div>
+          <DashboardTabOptica :optica="optica" :stats="opticaStats" />
         </template>
 
         <!-- ═══════════════ TAB: SUPERVISION ═══════════════════════════ -->
@@ -768,8 +585,10 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch, onMounted, onActivated, computed, toRef } from 'vue'
+import { ref, reactive, onMounted, onActivated, computed, toRef } from 'vue'
 import DynamicTabs from '@/components/DynamicTabs.vue'
+import DashboardHero from '@/components/dashboard/DashboardHero.vue'
+import DashboardTabOptica from '@/components/dashboard/DashboardTabOptica.vue'
 import { useDashboardStats } from '@/composables/useDashboardStats'
 import { fetchDevolutions, updateDevolutionStatus } from '@/services/devolutions.js'
 import { listEvents } from '@/services/laboratorio.js'
@@ -785,7 +604,7 @@ const userRef = toRef(props, 'user')
 const {
   stats, loading: statsLoading, load: loadStats,
   role, canSeeInventory, canSeeOrders, canSeeReports,
-  canSeeLab, canSeeMovements, canManageUsers,
+  canSeeLab,
   canSeeDevolutions, canManageDevolutions,
   isRoot, isLab, isVentas, isSupervisor,
 } = useDashboardStats(userRef)
@@ -808,7 +627,6 @@ const DASH_TABS = computed(() => {
 
 // ── Optica stats ──────────────────────────────────────────────────────────────
 const optica = reactive({ loading: false, armazones: [], soluciones: [], accesorios: [], estuches: [], equipos: [] })
-const fmtMXN = n => Number(n||0).toLocaleString('es-MX',{style:'currency',currency:'MXN',minimumFractionDigits:0})
 
 const opticaStats = computed(() => {
   const calc = (items) => ({
@@ -849,22 +667,6 @@ async function loadOptica() {
 onMounted(() => { loadStats(); loadPendingDevols(); loadCorrectionLogs(); if (canSeeInventory.value) loadOptica() })
 onActivated(() => { loadStats(); loadPendingDevols(); loadCorrectionLogs(); if (canSeeInventory.value) loadOptica() })
 
-// ── Avatar ────────────────────────────────────────────────────────────────────
-const avatarLoaded = ref(false)
-const avatarUrl    = ref('https://github.com/octocat.png')
-
-function loadAvatar(url) {
-  avatarLoaded.value = false
-  avatarUrl.value = url
-  const img = new Image()
-  img.src = url
-  img.onload  = () => { avatarLoaded.value = true }
-  img.onerror = () => { avatarUrl.value = 'https://github.com/octocat.png'; avatarLoaded.value = true }
-}
-
-watch(() => props.user?.avatar, v => loadAvatar(v?.trim() ? v : 'https://github.com/octocat.png'), { immediate: true })
-onActivated(() => loadAvatar(props.user?.avatar?.trim() ? props.user.avatar : 'https://github.com/octocat.png'))
-
 // ── Entorno ───────────────────────────────────────────────────────────────────
 const environmentLabel = computed(() => {
   const env = import.meta.env.VITE_APP_ENV || import.meta.env.MODE || 'local'
@@ -873,18 +675,6 @@ const environmentLabel = computed(() => {
   if (/dev/i.test(env)) return 'Desarrollo'
   return 'Entorno local'
 })
-const appVersion = import.meta.env.VITE_APP_VERSION || 'v1.0.0'
-
-// ── Saludo ────────────────────────────────────────────────────────────────────
-const greeting   = computed(() => { const h = new Date().getHours(); return h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches' })
-const firstName  = computed(() => (props.user?.name || 'Usuario').split(' ')[0])
-const userBio    = computed(() => props.user?.bio || roleDefaultBio.value)
-
-const lastLoginLabel = computed(() => {
-  if (!props.user?.lastLogin) return 'Primera sesión'
-  return new Intl.DateTimeFormat('es-ES', { day:'2-digit', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit' }).format(new Date(props.user.lastLogin))
-})
-
 // ── Rol meta ──────────────────────────────────────────────────────────────────
 const ROLE_META = {
   root:        { label:'Administrador del sistema',   icon:'fas fa-crown',         ring:'#dc2626', banner:'linear-gradient(90deg,#dc2626,#ea580c)', pill:{ background:'rgba(220,38,38,.15)',color:'#dc2626',border:'1px solid rgba(220,38,38,.3)' } },
@@ -899,14 +689,6 @@ const roleIconClass  = computed(() => meta.value.icon)
 const roleRingColor  = computed(() => meta.value.ring)
 const roleBannerStyle = computed(() => ({ background: meta.value.banner }))
 const rolePillStyle  = computed(() => meta.value.pill)
-
-const roleDefaultBio = computed(() => ({
-  root:        'Control total del sistema Eurovisión. Gestiona usuarios, inventario, ventas y configuración global.',
-  eurovision:  'Encargado general de la óptica. Supervisa inventario, pedidos, reportes y equipo de trabajo.',
-  supervisor:  'Supervisa operaciones diarias. Monitorea pedidos, revisa devoluciones y analiza desempeño del equipo.',
-  ventas:      'Atención al cliente y gestión de pedidos. Crea órdenes y da seguimiento a pedidos del laboratorio.',
-  laboratorio: 'Técnico de laboratorio. Procesa pedidos, registra escaneos y gestiona correcciones.',
-})[role.value] || 'Usuario del sistema Eurovisión.')
 
 // ── Nivel de servicio ─────────────────────────────────────────────────────────
 const serviceLevelStatus = computed(() => { const sl = s.value?.serviceLevel || 0; return sl >= 97 ? 'Excelente' : sl >= 90 ? 'Bueno' : sl >= 80 ? 'Aceptable' : 'A mejorar' })

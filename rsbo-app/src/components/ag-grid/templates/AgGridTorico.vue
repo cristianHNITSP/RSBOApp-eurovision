@@ -362,7 +362,7 @@ function buildFetchQueryForView() {
     sphMax: isNeg ? 0 : P.sphMax,
     cylMin: Math.min(P.cylMin, 0),
     cylMax: 0,
-    limit: 50000
+    limit: 2000
   };
 }
 

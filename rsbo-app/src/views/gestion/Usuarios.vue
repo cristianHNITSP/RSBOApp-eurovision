@@ -1,156 +1,20 @@
 <template>
   <section class="panel-usuarios-section">
     <!-- BANNER + ACCIONES SUPERIORES (CENTRADO EN USUARIO SELECCIONADO) -->
-    <div
-      v-if="selectedUser"
-      ref="bannerRef"
-      class="selected-user-banner"
-      :class="{ 'selected-user-banner--pulse': bannerPulse }"
-    >
-      <div class="selected-user-banner__left">
-        <!-- AvatarPicker (banner) -->
-        <AvatarPicker
-          :modelValue="selectedUser.profile?.avatar || ''"
-          :placeholder="FALLBACK_AVATAR"
-          :editMode="canEditAvatar(selectedUser)"
-          :size="44"
-          @update:modelValue="(val) => onAvatarPicked(selectedUser, val)"
-        />
+    <UserBanner
+      :user="selectedUser"
+      :fallback-avatar="FALLBACK_AVATAR"
+      :permission-catalog="permissionsCatalog"
+      :loading="loading"
+      @avatar-picked="onAvatarPicked"
+      @open-create="openCreate"
+      @reload="loadUsers"
+      @edit="openEdit"
+      @change-password="openPassword"
+      @soft-delete="confirmSoftDelete"
+      @restore="confirmRestore"
+    />
 
-        <div class="selected-user-banner__text">
-          <div class="selected-user-banner__name-row">
-            <span class="selected-user-banner__name">
-              {{ selectedUser.name }}
-              <b-tag v-if="selectedUser.isMe" type="is-light" size="is-small" class="ml-2">Yo</b-tag>
-            </span>
-
-            <span class="selected-user-banner__role">
-              {{ selectedUser.roleLabel }}
-              <span v-if="selectedUser.deletedAt" style="opacity: 0.9">· En papelera</span>
-            </span>
-          </div>
-
-          <p class="selected-user-banner__bio">
-            {{ selectedUser.profile?.bio || "—" }}
-          </p>
-        </div>
-      </div>
-
-      <div class="selected-user-banner__center">
-        <span class="selected-user-banner__email">{{ selectedUser.email }}</span>
-      </div>
-
-      <div class="selected-user-banner__right">
-        <div class="chip chip--light">{{ formatDateTime(selectedUser.lastLogin) }}</div>
-
-        <div
-          class="chip"
-          :class="
-            selectedUser.deletedAt
-              ? 'chip--status-inactive'
-              : selectedUser.isActive
-              ? 'chip--status-active'
-              : 'chip--status-inactive'
-          "
-        >
-          {{ selectedUser.deletedAt ? "Eliminado" : selectedUser.isActive ? "Activo" : "Inactivo" }}
-        </div>
-
-
-        <div class="selected-user-banner__created">Alta: {{ formatDate(selectedUser.createdAt) }}</div>
-      </div>
-
-      <!-- Acciones superiores -->
-      <div class="selected-user-actions">
-        <div class="selected-user-actions__left">
-          <!-- ✅ FontAwesome (fas) -->
-          <b-button size="is-small" type="is-light" icon-left="user-plus" @click="openCreate()">
-            Nuevo usuario
-          </b-button>
-
-          <b-button size="is-small" type="is-light" icon-left="sync-alt" :loading="loading" @click="loadUsers()">
-            Recargar
-          </b-button>
-        </div>
-
-        <div class="selected-user-actions__right">
-          <b-button size="is-small" type="is-light" icon-left="info-circle" @click="toggleBannerDetails">
-            {{ showBannerDetails ? "Ocultar detalles" : "Ver detalles" }}
-          </b-button>
-
-          <b-button
-            size="is-small"
-            type="is-light"
-            icon-left="pen"
-            :disabled="selectedUser.isMe || !!selectedUser.deletedAt"
-            @click="openEdit(selectedUser)"
-          >
-            Editar
-          </b-button>
-
-          <b-button
-            size="is-small"
-            type="is-light"
-            icon-left="key"
-            :disabled="selectedUser.isMe || !!selectedUser.deletedAt"
-            @click="openPassword(selectedUser)"
-          >
-            Contraseña
-          </b-button>
-
-          <b-button
-            v-if="!selectedUser.deletedAt"
-            size="is-small"
-            type="is-warning"
-            icon-left="trash"
-            :disabled="selectedUser.isMe"
-            @click="confirmSoftDelete(selectedUser)"
-          >
-            Papelera
-          </b-button>
-
-          <b-button v-else size="is-small" type="is-success" icon-left="undo" @click="confirmRestore(selectedUser)">
-            Restaurar
-          </b-button>
-        </div>
-      </div>
-
-      <!-- Detalles del usuario (se muestran EN EL BANNER, no en desplegable de tabla) -->
-      <transition name="banner-details">
-        <div v-if="showBannerDetails" class="banner-details" @click.stop>
-          <div class="banner-details__grid">
-            <div class="banner-details__item">
-              <p class="banner-details__k">Teléfono</p>
-              <p class="banner-details__v">{{ selectedUser.profile?.phone || "No registrado" }}</p>
-            </div>
-
-            <div class="banner-details__item">
-              <p class="banner-details__k">Descripción del rol</p>
-              <p class="banner-details__v">{{ selectedUser.roleDescription || "—" }}</p>
-            </div>
-
-            <div class="banner-details__item banner-details__item--full">
-              <p class="banner-details__k">Permisos</p>
-              <div class="banner-details__perms">
-                <b-tag
-                  v-for="perm in selectedUser.rolePermissions"
-                  :key="perm"
-                  size="is-small"
-                  type="is-light"
-                  class="banner-details__perm-tag"
-                >
-                  {{ formatPermissionLabel(perm) }}
-                </b-tag>
-
-                <span v-if="!selectedUser.rolePermissions?.length" class="banner-details__empty">
-                  Sin permisos configurados
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </transition>
-    </div>
 
     <!-- HEADER PANEL -->
     <header class="panel-usuarios-header page-section-header">
@@ -304,144 +168,43 @@
       </template>
     </b-table>
 
-    <!-- MODAL EDITAR (sin avatar) -->
-    <b-modal v-model="editOpen" has-modal-card trap-focus :destroy-on-hide="true" animation="zoom-in">
-      <div class="modal-card">
-        <header class="modal-card-head">
-          <p class="modal-card-title">Editar usuario</p>
-          <button class="delete" aria-label="close" @click="editOpen = false"></button>
-        </header>
-
-        <section class="modal-card-body">
-          <b-field label="Nombre"><b-input v-model="editForm.name" /></b-field>
-          <b-field label="Correo"><b-input v-model="editForm.email" type="email" /></b-field>
-          <b-field label="Teléfono"><b-input v-model="editForm.phone" /></b-field>
-          <b-field label="Bio"><b-input v-model="editForm.bio" type="textarea" /></b-field>
-
-          <b-field label="Rol">
-            <b-select v-model="editForm.role" expanded>
-              <option v-for="r in roles" :key="r._id" :value="r._id">{{ formatRoleLabel(r.name) }}</option>
-            </b-select>
-          </b-field>
-
-          <b-field label="Estado">
-            <b-switch v-model="editForm.isActive">Activo</b-switch>
-          </b-field>
-        </section>
-
-        <footer class="modal-card-foot" style="justify-content: flex-end; gap: 0.5rem">
-          <b-button @click="editOpen = false">Cancelar</b-button>
-          <b-button type="is-primary" :loading="saving" @click="saveEdit">Guardar</b-button>
-        </footer>
-      </div>
-    </b-modal>
-
-    <!-- MODAL PASSWORD -->
-    <b-modal v-model="passOpen" has-modal-card trap-focus :destroy-on-hide="true" animation="zoom-in">
-      <div class="modal-card">
-        <header class="modal-card-head">
-          <p class="modal-card-title">Cambiar contraseña</p>
-          <button class="delete" aria-label="close" @click="passOpen = false"></button>
-        </header>
-
-        <section class="modal-card-body">
-          <p class="mb-2"><strong>{{ passUser?.name }}</strong> · {{ passUser?.email }}</p>
-
-          <b-field label="Nueva contraseña">
-            <b-input v-model="newPassword" type="password" password-reveal />
-          </b-field>
-
-          <div class="password-tools">
-            <!-- ✅ FontAwesome -->
-            <b-button size="is-small" type="is-light" icon-left="shield-alt" @click="generateIntoPassword()">
-              Generar segura
-            </b-button>
-            <b-button size="is-small" type="is-light" icon-left="copy" @click="copyText(newPassword)">
-              Copiar
-            </b-button>
-            <span class="is-size-7 has-text-grey">Mínimo 10 caracteres recomendado.</span>
-          </div>
-        </section>
-
-        <footer class="modal-card-foot" style="justify-content: flex-end; gap: 0.5rem">
-          <b-button @click="passOpen = false">Cancelar</b-button>
-          <b-button type="is-primary" :loading="saving" @click="savePassword">Actualizar</b-button>
-        </footer>
-      </div>
-    </b-modal>
-
-    <!-- MODAL CREAR USUARIO (avatar integrado) -->
-    <b-modal v-model="createOpen" has-modal-card trap-focus :destroy-on-hide="true" animation="zoom-in">
-      <div class="modal-card">
-        <header class="modal-card-head">
-          <p class="modal-card-title">Nuevo usuario</p>
-          <button class="delete" aria-label="close" @click="createOpen = false"></button>
-        </header>
-
-        <section class="modal-card-body">
-          <div class="create-avatar">
-            <AvatarPicker
-              :modelValue="createForm.avatar || ''"
-              :placeholder="FALLBACK_AVATAR"
-              :editMode="true"
-              :size="56"
-              @update:modelValue="(val) => (createForm.avatar = val)"
-            />
-
-            <div class="create-avatar__hint">
-              <p class="is-size-7 has-text-grey m-0">Foto de perfil</p>
-              <p class="is-size-6 has-text-weight-semibold m-0">{{ createForm.name || "Nuevo usuario" }}</p>
-              <p class="is-size-7 has-text-grey m-0">Toca el avatar para cambiarlo.</p>
-            </div>
-          </div>
-
-          <hr class="my-3" />
-
-          <b-field label="Nombre"><b-input v-model="createForm.name" /></b-field>
-          <b-field label="Correo"><b-input v-model="createForm.email" type="email" /></b-field>
-          <b-field label="Teléfono"><b-input v-model="createForm.phone" /></b-field>
-          <b-field label="Bio"><b-input v-model="createForm.bio" type="textarea" /></b-field>
-
-          <b-field label="Rol">
-            <b-select v-model="createForm.role" expanded>
-              <option v-for="r in roles" :key="r._id" :value="r._id">{{ formatRoleLabel(r.name) }}</option>
-            </b-select>
-          </b-field>
-
-          <b-field label="Estado">
-            <b-switch v-model="createForm.isActive">Activo</b-switch>
-          </b-field>
-
-          <b-field label="Contraseña">
-            <b-input v-model="createForm.password" type="text" />
-          </b-field>
-
-          <div class="password-tools">
-            <!-- ✅ FontAwesome -->
-            <b-button size="is-small" type="is-light" icon-left="shield-alt" @click="generateIntoCreate()">
-              Generar segura
-            </b-button>
-            <b-button size="is-small" type="is-light" icon-left="copy" @click="copyText(createForm.password)">
-              Copiar
-            </b-button>
-            <span class="is-size-7 has-text-grey">Se recomienda guardarla y dársela al usuario.</span>
-          </div>
-        </section>
-
-        <footer class="modal-card-foot" style="justify-content: flex-end; gap: 0.5rem">
-          <b-button @click="createOpen = false">Cancelar</b-button>
-          <b-button type="is-primary" :loading="saving" @click="createUser">Crear</b-button>
-        </footer>
-      </div>
-    </b-modal>
+    <!-- MODALES -->
+    <UserEditModal
+      v-model="editOpen"
+      :user="editUser"
+      :roles="roles"
+      :saving="saving"
+      @save="saveEdit"
+    />
+    <UserPasswordModal
+      v-model="passOpen"
+      :user="passUser"
+      :saving="saving"
+      @save="savePassword"
+      @toast="toast"
+    />
+    <UserCreateModal
+      v-model="createOpen"
+      :roles="roles"
+      :saving="saving"
+      :fallback-avatar="FALLBACK_AVATAR"
+      @save="createUser"
+      @toast="toast"
+    />
   </section>
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, ref, watch } from "vue";
-import AvatarPicker from "../../components/AvatarPicker.vue";
+import { computed, onMounted, ref, watch } from "vue";
+import { useDebounceFn } from "@vueuse/core";
+import AvatarPicker from "@/components/AvatarPicker.vue";
+import UserBanner      from "@/components/usuarios/UserBanner.vue";
+import UserEditModal   from "@/components/usuarios/UserEditModal.vue";
+import UserPasswordModal from "@/components/usuarios/UserPasswordModal.vue";
+import UserCreateModal from "@/components/usuarios/UserCreateModal.vue";
 import { usersService } from "../../services/usersService.js";
 import { labToast } from "@/composables/useLabToast";
+import { formatRoleLabel, roleTagType } from "@/utils/roleHelpers.js";
 
 const roles = ref([]);
 const usersRaw = ref([]);
@@ -466,68 +229,13 @@ const sortDir = ref("asc");
 
 const selectedUser = ref(null);
 
-/* Banner focus */
-const bannerRef = ref(null);
-const bannerPulse = ref(false);
-const showBannerDetails = ref(false);
-
-let pulseT = null;
-let hasUserInteracted = false;
-
-function isElementMostlyVisible(el, ratio = 0.7) {
-  if (!el) return true;
-  const rect = el.getBoundingClientRect();
-  const vh = window.innerHeight || document.documentElement.clientHeight;
-  const visibleTop = Math.max(rect.top, 0);
-  const visibleBottom = Math.min(rect.bottom, vh);
-  const visibleHeight = Math.max(0, visibleBottom - visibleTop);
-  const h = Math.max(1, rect.height);
-  return visibleHeight / h >= ratio;
-}
-
-async function focusBannerIfNeeded() {
-  await nextTick();
-  const el = bannerRef.value;
-  if (!el) return;
-
-  // Pulso visual siempre
-  bannerPulse.value = false;
-  if (pulseT) clearTimeout(pulseT);
-  bannerPulse.value = true;
-  pulseT = setTimeout(() => (bannerPulse.value = false), 650);
-
-  // Si el usuario está abajo y selecciona, subimos al banner
-  if (hasUserInteracted && !isElementMostlyVisible(el, 0.65)) {
-    el.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-}
-
-function toggleBannerDetails() {
-  showBannerDetails.value = !showBannerDetails.value;
-  if (showBannerDetails.value) focusBannerIfNeeded();
-}
-
 /* Modales */
-const editOpen = ref(false);
-const passOpen = ref(false);
+const editOpen   = ref(false);
+const passOpen   = ref(false);
 const createOpen = ref(false);
 
-const editUserId = ref(null);
-const editForm = ref({ name: "", email: "", phone: "", bio: "", role: null, isActive: true });
-
+const editUser = ref(null);
 const passUser = ref(null);
-const newPassword = ref("");
-
-const createForm = ref({
-  name: "",
-  email: "",
-  phone: "",
-  bio: "",
-  avatar: "",
-  role: null,
-  isActive: true,
-  password: "",
-});
 
 const toast = (message, type = "is-danger", duration = 3000) => {
   labToast.show(message, type, duration);
@@ -542,16 +250,8 @@ const FALLBACK_AVATAR =
   <path d="M18 86c7-17 20-24 30-24s23 7 30 24" fill="rgba(255,255,255,.9)"/>
   </svg>`);
 
-function safeAvatar(u) {
-  const src = u?.profile?.avatar;
-  return src && String(src).trim() ? src : FALLBACK_AVATAR;
-}
-
 function canEditAvatar(u) {
-  if (!u) return false;
-  if (u.isMe) return false;
-  if (u.deletedAt) return false;
-  return true;
+  return !!(u && !u.isMe && !u.deletedAt);
 }
 
 function setUserAvatarLocal(userId, avatar) {
@@ -583,58 +283,19 @@ async function onAvatarPicked(user, newAvatar) {
   }
 }
 
-const ROLE_LABELS = {
-  root:        "Root",
-  eurovision:  "Eurovisión",
-  supervisor:  "Supervisor",
-  ventas:      "Ventas",
-  laboratorio: "Laboratorio",
-};
-
-const ROLE_TAG_TYPES = {
-  root:        "is-dark",
-  eurovision:  "is-primary",
-  supervisor:  "is-info",
-  ventas:      "is-success",
-  laboratorio: "is-warning",
-};
-
-function formatRoleLabel(name) {
-  if (!name || name === "sin-rol") return "Sin rol";
-  return ROLE_LABELS[String(name).toLowerCase()] ||
-    (name.charAt(0).toUpperCase() + name.slice(1).replace(/_/g, " "));
-}
-
-function roleTagType(roleName) {
-  return ROLE_TAG_TYPES[String(roleName || "").toLowerCase()] || "is-light";
-}
-
-function formatPermissionLabel(code) {
-  if (!code) return "—";
-  const cat = permissionsCatalog.value;
-  if (cat && typeof cat === "object" && cat[code]) return String(cat[code]);
-  const pretty = String(code).replace(/[_-]/g, " ").toLowerCase();
-  return pretty.charAt(0).toUpperCase() + pretty.slice(1);
-}
 
 function formatDateTime(value) {
   if (!value) return "Nunca ha iniciado sesión";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleString("es-MX", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 function formatDate(value) {
   if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" });
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
 function rowClass(row) {
@@ -643,7 +304,6 @@ function rowClass(row) {
 }
 
 function selectRow(row) {
-  hasUserInteracted = true;
   selectedUser.value = row;
 }
 
@@ -717,26 +377,12 @@ watch(users, (list) => {
   if (found) selectedUser.value = found;
 });
 
-/* Cuando cambia el usuario seleccionado */
-watch(
-  selectedUser,
-  async (u, prev) => {
-    if (!u) return;
-    if (prev && String(prev._id) !== String(u._id)) showBannerDetails.value = false;
-    await focusBannerIfNeeded();
-  },
-  { flush: "post" }
-);
-
 /* debounce búsqueda */
-let t = null;
-watch(searchQuery, () => {
-  clearTimeout(t);
-  t = setTimeout(() => {
-    currentPage.value = 1;
-    loadUsers();
-  }, 260);
-});
+const _debouncedLoadUsers = useDebounceFn(() => {
+  currentPage.value = 1;
+  loadUsers();
+}, 260);
+watch(searchQuery, _debouncedLoadUsers);
 
 watch([roleFilter, statusFilter, perPage], () => {
   currentPage.value = 1;
@@ -759,31 +405,15 @@ function onSort(field, order) {
 function openEdit(u) {
   if (u.isMe) return toast("No puedes editar tu propio usuario", "is-warning");
   if (u.deletedAt) return toast("No puedes editar un usuario en papelera", "is-warning");
-
-  editUserId.value = u._id;
-  editForm.value = {
-    name: u.name || "",
-    email: u.email || "",
-    phone: u.profile?.phone || "",
-    bio: u.profile?.bio || "",
-    role: typeof u.role === "string" ? u.role : u.role?._id || u.roleDoc?._id || null,
-    isActive: !!u.isActive,
-  };
+  editUser.value = u;
   editOpen.value = true;
 }
 
-async function saveEdit() {
-  if (!editUserId.value) return;
+async function saveEdit(data) {
+  if (!editUser.value?._id) return;
   saving.value = true;
   try {
-    await usersService.updateUser(editUserId.value, {
-      name: editForm.value.name,
-      email: editForm.value.email,
-      phone: editForm.value.phone,
-      bio: editForm.value.bio,
-      role: editForm.value.role,
-      isActive: editForm.value.isActive,
-    });
+    await usersService.updateUser(editUser.value._id, data);
     toast("Usuario actualizado", "is-success", 2000);
     editOpen.value = false;
     await loadUsers();
@@ -799,38 +429,15 @@ function openPassword(u) {
   if (u.isMe) return toast("No puedes cambiar tu propia contraseña aquí", "is-warning");
   if (u.deletedAt) return toast("No puedes editar un usuario en papelera", "is-warning");
   passUser.value = u;
-  newPassword.value = "";
   passOpen.value = true;
 }
 
-function generateSecurePassword(len = 16) {
-  const lower = "abcdefghjkmnpqrstuvwxyz";
-  const upper = "ABCDEFGHJKMNPQRSTUVWXYZ";
-  const nums = "23456789";
-  const syms = "!@#$%*_-+=";
-  const all = lower + upper + nums + syms;
-
-  const rand = (s) => s[Math.floor(Math.random() * s.length)];
-  let out = [rand(lower), rand(upper), rand(nums), rand(syms)];
-  for (let i = out.length; i < len; i++) out.push(rand(all));
-  out = out.sort(() => Math.random() - 0.5);
-  return out.join("");
-}
-
-function generateIntoPassword() {
-  newPassword.value = generateSecurePassword(16);
-  toast("Contraseña segura generada", "is-success", 1400);
-}
-
-async function savePassword() {
+async function savePassword(password) {
   if (!passUser.value?._id) return;
-  if (!newPassword.value || newPassword.value.length < 10) {
-    return toast("Recomendado mínimo 10 caracteres", "is-warning");
-  }
-
+  if (!password || password.length < 10) return toast("Recomendado mínimo 10 caracteres", "is-warning");
   saving.value = true;
   try {
-    await usersService.updatePassword(passUser.value._id, newPassword.value);
+    await usersService.updatePassword(passUser.value._id, password);
     toast("Contraseña actualizada", "is-success", 2000);
     passOpen.value = false;
   } catch (e) {
@@ -840,56 +447,17 @@ async function savePassword() {
   }
 }
 
-async function copyText(text) {
-  try {
-    await navigator.clipboard.writeText(String(text || ""));
-    toast("Copiado", "is-success", 1200);
-  } catch {
-    toast("No se pudo copiar", "is-warning", 1500);
-  }
-}
-
 /* CREAR */
 function openCreate() {
-  createForm.value = {
-    name: "",
-    email: "",
-    phone: "",
-    bio: "",
-    avatar: "",
-    role: roles.value?.[0]?._id || null,
-    isActive: true,
-    password: generateSecurePassword(16),
-  };
   createOpen.value = true;
 }
 
-function generateIntoCreate() {
-  createForm.value.password = generateSecurePassword(16);
-  toast("Contraseña segura generada", "is-success", 1400);
-}
-
-async function createUser() {
-  if (!createForm.value.name || !createForm.value.email || !createForm.value.role) {
-    return toast("Nombre, correo y rol son obligatorios", "is-warning");
-  }
-  if (!createForm.value.password || createForm.value.password.length < 10) {
-    return toast("Contraseña recomendada mínimo 10 caracteres", "is-warning");
-  }
-
+async function createUser(data) {
+  if (!data.name || !data.email || !data.role) return toast("Nombre, correo y rol son obligatorios", "is-warning");
+  if (!data.password || data.password.length < 10) return toast("Contraseña recomendada mínimo 10 caracteres", "is-warning");
   saving.value = true;
   try {
-    await usersService.createUser({
-      name: createForm.value.name,
-      email: createForm.value.email,
-      phone: createForm.value.phone,
-      bio: createForm.value.bio,
-      avatar: createForm.value.avatar,
-      role: createForm.value.role,
-      isActive: createForm.value.isActive,
-      password: createForm.value.password,
-    });
-
+    await usersService.createUser(data);
     toast("Usuario creado", "is-success", 2000);
     createOpen.value = false;
     currentPage.value = 1;

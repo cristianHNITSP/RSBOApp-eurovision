@@ -1,7 +1,8 @@
 <!-- DashboardLayout.vue -->
 <script setup>
-import { ref, watch, onMounted, onBeforeUnmount, onBeforeMount, computed, nextTick } from "vue";
-import { useRoute } from "vue-router";
+import { ref, watch, onMounted, onBeforeUnmount, onBeforeMount, computed, nextTick, getCurrentInstance } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { useAuth } from "@/services/useAuth";
 
 import Sidebar from "../components/Sidebar.vue";
 import NotificationPanel from "../components/NotificationPanel.vue";
@@ -258,6 +259,18 @@ function handleClosePanel() {
 }
 
 /* =========================
+   Auth / User
+   ========================= */
+const router  = useRouter();
+const { user, fetchUser, logout: _authLogout } = useAuth();
+const loading = ref(true);
+const _instance = getCurrentInstance();
+
+function profile()  { router.push('/l/mi.perfil.panel'); }
+function settings() { router.push('/l/config.panel'); }
+function logout()   { _authLogout(router, _instance?.proxy?.$buefy); }
+
+/* =========================
    Mount / Unmount
    ========================= */
 async function refreshUnreadCount() {
@@ -275,7 +288,7 @@ function _onLabWs(e) {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   setVhVar();
 
   window.addEventListener("resize", onResize, { passive: true });
@@ -289,6 +302,9 @@ onMounted(() => {
 
   refreshUnreadCount();
   window.addEventListener("lab:ws", _onLabWs);
+
+  await fetchUser();
+  loading.value = false;
 });
 
 onBeforeUnmount(() => {
@@ -304,42 +320,6 @@ onBeforeUnmount(() => {
 });
 </script>
 
-<script>
-import { useAuth } from "@/services/useAuth";
-
-export default {
-  name: "DashboardLayout",
-  data() {
-    return {
-      user: null,
-      loading: true,
-    };
-  },
-  methods: {
-    async fetchUserData() {
-      const { fetchUser, user } = useAuth();
-      await fetchUser();
-      this.user = user.value;
-      this.loading = false;
-    },
-    profile() {
-      const { profile } = useAuth();
-      profile(this.$router);
-    },
-    settings() {
-      const { settings } = useAuth();
-      settings(this.$router);
-    },
-    logout() {
-      const { logout } = useAuth();
-      logout(this.$router, this.$buefy);
-    },
-  },
-  mounted() {
-    this.fetchUserData();
-  },
-};
-</script>
 
 <template>
   <div class="app-layout" :style="layoutStyleVars">

@@ -10,6 +10,21 @@
       </template>
 
       <template v-else>
+        <!-- Left sentinel: triggers load-prior when scrolled into view -->
+        <div
+          v-if="hasPrior || loadingPrior"
+          ref="leftSentinel"
+          class="tab-sentinel tab-prior-pill"
+          @click="!loadingPrior && emit('load-prior')"
+          :title="loadingPrior ? 'Cargando…' : `Cargar ${priorCount} planillas anteriores`"
+        >
+          <span v-if="loadingPrior" class="tab-sentinel-spinner"></span>
+          <template v-else>
+            <i class="fas fa-chevron-left"></i>
+            <span>{{ priorCount }}</span>
+          </template>
+        </div>
+
         <div v-for="planilla in sheets" :key="planilla.id" :data-id="planilla.id" :class="[
           'tab-item',
           'tab-item--glass',
@@ -36,6 +51,15 @@
               ⋮
             </button>
           </template>
+        </div>
+
+        <!-- Right sentinel: IntersectionObserver triggers load-more -->
+        <div
+          v-if="hasMore || loadingMore"
+          ref="rightSentinel"
+          class="tab-sentinel tab-loading-pill"
+        >
+          <span class="tab-sentinel-spinner"></span>
         </div>
       </template>
     </div>
@@ -539,7 +563,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch, nextTick } from "vue";
+import { ref, onMounted, onBeforeUnmount, computed, watch, nextTick } from "vue";
 import Sortable from "sortablejs";
 import { useSheetApi } from "@/composables/useSheetApi";
 
@@ -608,11 +632,17 @@ const props = defineProps({
   apiType:          { type: String,  default: 'inventory' },
   materialRequired: { type: Boolean, default: true },
   showTratamiento:  { type: Boolean, default: true },
+  /** Pagination props */
+  hasMore:          { type: Boolean, default: false },
+  hasPrior:         { type: Boolean, default: false },
+  loadingMore:      { type: Boolean, default: false },
+  loadingPrior:     { type: Boolean, default: false },
+  priorCount:       { type: Number,  default: 0 },
 });
 
 const { createSheet, updateSheet, moveSheetToTrash } = useSheetApi(() => props.apiType);
 
-const emit = defineEmits(["update:active", "reorder", "crear", "update:internal", "deleted", "renamed"]);
+const emit = defineEmits(["update:active", "reorder", "crear", "update:internal", "deleted", "renamed", "load-more", "load-prior"]);
 
 /* ===================== CATÁLOGO DESDE BD ===================== */
 // Mapa key → CatalogBase (para lookups O(1))
@@ -1070,36 +1100,107 @@ const handleCrear = async () => {
   }
 };
 
-/* ===================== Drag & Drop de tabs ===================== */
-const tabsContainer = ref(null);
+/* ===================== Drag & Drop de tabs + sentinel observers ===================== */
+const tabsContainer  = ref(null);
+const rightSentinel  = ref(null);
+const leftSentinel   = ref(null);
+
+let _ioRight = null;
+let _ioLeft  = null;
+
+function _destroyObservers() {
+  _ioRight?.disconnect();
+  _ioLeft?.disconnect();
+  _ioRight = null;
+  _ioLeft  = null;
+}
+
+function _setupObservers() {
+  _destroyObservers();
+  const root = tabsContainer.value;
+  if (!root) return;
+
+  // Right sentinel → load next page
+  if (rightSentinel.value) {
+    _ioRight = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && props.hasMore && !props.loadingMore) {
+          emit("load-more");
+        }
+      },
+      { root, threshold: 0.1 }
+    );
+    _ioRight.observe(rightSentinel.value);
+  }
+
+  // Left sentinel → load prior page
+  if (leftSentinel.value) {
+    _ioLeft = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && props.hasPrior && !props.loadingPrior) {
+          emit("load-prior");
+        }
+      },
+      { root, threshold: 0.1 }
+    );
+    _ioLeft.observe(leftSentinel.value);
+  }
+}
+
 onMounted(() => {
   if (!tabsContainer.value) return;
+
   Sortable.create(tabsContainer.value, {
     animation: 150,
     ghostClass: "sortable-ghost",
-    filter: ".tab-agregar",
+    filter: ".tab-agregar, .tab-sentinel, .tab-prior-pill, .tab-loading-pill",
     preventOnFilter: false,
     delay: 200,
     delayOnTouchOnly: true,
     onEnd: (evt) => {
       if (props.loadingTabs) return;
 
-      const maxIndex = sheets.value.length - 1; // último es "nueva"
-      const oldIndex = evt.oldIndex;
-      const newIndex = evt.newIndex;
+      // Use data-id to locate items in the array — DOM indices may be
+      // offset by sentinel pills so we avoid relying on them.
+      const draggedId = evt.item?.dataset?.id;
+      if (!draggedId) return;
 
-      if (newIndex >= maxIndex) {
-        evt.from.insertBefore(evt.item, evt.from.children[oldIndex]);
+      const oldIdx = sheets.value.findIndex((s) => s.id === draggedId);
+      if (oldIdx < 0) return;
+
+      // Find the element now at evt.newIndex in the DOM and get its id
+      const targetEl = evt.from.children[evt.newIndex];
+      const targetId = targetEl?.dataset?.id;
+      const newIdx = targetId ? sheets.value.findIndex((s) => s.id === targetId) : -1;
+
+      const last = sheets.value.length - 1; // "nueva" is last
+      if (oldIdx >= last || newIdx < 0 || newIdx >= last || oldIdx === newIdx) {
+        // revert invalid drop
+        evt.from.insertBefore(evt.item, evt.from.children[oldIdx]);
         return;
       }
-      if (oldIndex === newIndex) return;
 
-      const moved = sheets.value.splice(oldIndex, 1)[0];
-      sheets.value.splice(newIndex, 0, moved);
-      emit("reorder", { oldIndex, newIndex });
+      const moved = sheets.value.splice(oldIdx, 1)[0];
+      sheets.value.splice(newIdx, 0, moved);
+      emit("reorder", { oldIndex: oldIdx, newIndex: newIdx });
     }
   });
+
+  _setupObservers();
 });
+
+onBeforeUnmount(() => {
+  _destroyObservers();
+});
+
+// Re-wire observers whenever sentinel visibility changes (they mount/unmount with v-if)
+watch(
+  [() => props.hasMore, () => props.hasPrior],
+  async () => {
+    await nextTick();
+    _setupObservers();
+  }
+);
 
 /* ===================== Modal acciones ===================== */
 const isActionsOpen = ref(false);
@@ -1629,6 +1730,58 @@ watch(
 </script>
 
 <style scoped>
+/* ── Pagination sentinels ── */
+.tab-sentinel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  height: 34px;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0 0.5rem;
+  gap: 0.3rem;
+  align-self: flex-end;
+  margin-bottom: 2px;
+  user-select: none;
+}
+
+.tab-prior-pill {
+  background: var(--c-primary-alpha);
+  color: var(--c-primary);
+  border: 1px solid var(--c-primary);
+  cursor: pointer;
+  transition: background 150ms, opacity 150ms;
+  min-width: 44px;
+}
+.tab-prior-pill:hover {
+  background: var(--c-primary);
+  color: #fff;
+}
+
+.tab-loading-pill {
+  background: var(--surface);
+  color: var(--text-muted);
+  border: 1px dashed var(--border);
+  min-width: 36px;
+  pointer-events: none;
+}
+
+.tab-sentinel-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: tab-spin 0.6s linear infinite;
+}
+
+@keyframes tab-spin {
+  to { transform: rotate(360deg); }
+}
+
 /* ✅ tu CSS tal cual lo traías (sin cambios) */
 .plantillas-contenedor {
   background: var(--surface);

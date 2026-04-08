@@ -2,6 +2,11 @@ import { ref, reactive, computed, watch, onMounted, onBeforeUnmount } from "vue"
 import { labToast } from "@/composables/useLabToast.js";
 import { exportToXlsx } from "@/composables/useExcelExport.js";
 import { listSheets as invListSheets, fetchItems as invFetchItems } from "@/services/inventory";
+import { fmtShort } from "@/utils/formatters";
+import { statusHuman, statusTagClass } from "@/utils/statusHelpers";
+import { openPrintWindow } from "@/utils/printWindow";
+import { isEan13, ean13SvgString } from "@/utils/ean13";
+import { normalizeAck, sanitizeUserText } from "@/utils/errorSanitizer";
 import { updatePendingCount } from "./useOrdersBadge.js";
 import { createGroupedNotification } from "@/services/notifications";
 import {
@@ -28,18 +33,6 @@ const normTxt = (s) =>
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
 
-const fmtShort = (v) => {
-  if (!v) return "—";
-  const d = new Date(v);
-  if (!Number.isFinite(d.getTime())) return "—";
-  return d.toLocaleString(undefined, {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit"
-  });
-};
 
 const eyeLabel = (e) => {
   if (!e) return "—";
@@ -51,388 +44,8 @@ const eyeLabel = (e) => {
 
 const todaySlug = () => new Date().toISOString().slice(0, 10);
 
-function openPrintWindow({ title, bodyHtml }) {
-  const w = window.open("", "_blank");
-  if (!w) return;
-  const now = new Date();
-  const fechaGenerado = now.toLocaleString("es-MX", {
-    day: "2-digit", month: "long", year: "numeric",
-    hour: "2-digit", minute: "2-digit"
-  });
-  w.document.open();
-  w.document.write(`<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8" />
-  <title>${String(title || "Documento")}</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    body {
-      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Arial, sans-serif;
-      font-size: 13px;
-      color: #0f172a;
-      background:
-        radial-gradient(circle at 0% 0%, rgba(121, 87, 213, 0.10), transparent 55%),
-        radial-gradient(circle at 100% 70%, rgba(236, 72, 153, 0.07), transparent 55%),
-        radial-gradient(circle at 40% 110%, rgba(249, 115, 22, 0.06), transparent 55%),
-        #f9fafb;
-      padding: 28px;
-      min-height: 100vh;
-    }
 
-    /* ── Toolbar (oculto al imprimir) ── */
-    .print-toolbar {
-      display: flex; align-items: center; gap: 12px;
-      background: rgba(255, 255, 255, 0.70);
-      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-      border: 1px solid rgba(144, 111, 225, 0.18);
-      border-radius: 12px; padding: 12px 18px; margin-bottom: 24px;
-      box-shadow: 0 4px 16px rgba(88, 28, 135, 0.08);
-    }
-    .print-toolbar button {
-      background: linear-gradient(135deg, #906fe1, #7957d5);
-      color: #fff; border: none; border-radius: 8px;
-      padding: 9px 24px; font-size: 13px; font-weight: 600;
-      cursor: pointer; transition: transform 120ms ease;
-      box-shadow: 0 4px 14px rgba(121, 87, 213, 0.30);
-    }
-    .print-toolbar button:hover { transform: translateY(-1px); }
-    .print-toolbar span { font-size: 12px; color: rgba(15, 23, 42, 0.55); }
-
-    /* ── Header ── */
-    .print-header {
-      display: flex; justify-content: space-between; align-items: flex-start;
-      background: rgba(255, 255, 255, 0.65);
-      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-      border: 1px solid rgba(144, 111, 225, 0.14);
-      border-radius: 14px; padding: 20px 24px; margin-bottom: 22px;
-      box-shadow: 0 8px 30px rgba(88, 28, 135, 0.06);
-    }
-    .print-header-left .doc-title {
-      font-size: 22px; font-weight: 700;
-      background: linear-gradient(135deg, #7957d5, #906fe1);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      background-clip: text; line-height: 1.2;
-    }
-    .print-header-left .doc-subtitle { font-size: 12px; color: rgba(15, 23, 42, 0.50); margin-top: 4px; }
-    .print-header-right { text-align: right; }
-    .print-header-right .brand {
-      font-size: 16px; font-weight: 800; color: #906fe1; letter-spacing: -0.5px;
-    }
-    .print-header-right .gen-date { font-size: 11px; color: #94a3b8; margin-top: 3px; }
-
-    /* ── Typography ── */
-    h2 { font-size: 15px; font-weight: 700; color: #7957d5; margin: 18px 0 8px; }
-    h3 { font-size: 13px; font-weight: 600; color: #334155; margin: 12px 0 6px; }
-    .muted { color: rgba(15, 23, 42, 0.50); }
-
-    /* ── Glass box ── */
-    .box {
-      background: rgba(255, 255, 255, 0.60);
-      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-      border: 1px solid rgba(144, 111, 225, 0.12);
-      border-radius: 12px; padding: 14px 16px; margin: 12px 0;
-      box-shadow: 0 4px 20px rgba(88, 28, 135, 0.05);
-    }
-
-    /* ── Info cards grid ── */
-    .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin: 14px 0; }
-    .info-card {
-      background: rgba(255, 255, 255, 0.72);
-      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-      border: 1px solid rgba(144, 111, 225, 0.12);
-      border-radius: 10px; padding: 12px 16px;
-      box-shadow: 0 2px 10px rgba(88, 28, 135, 0.04);
-    }
-    .info-card .lbl {
-      font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px;
-      color: #906fe1; font-weight: 700;
-    }
-    .info-card .val { font-size: 14px; font-weight: 700; color: #0f172a; margin-top: 3px; }
-    .info-card .val.mono { font-family: ui-monospace, 'Courier New', monospace; font-size: 13px; }
-
-    /* ── Table ── */
-    table { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 10px; font-size: 12px; }
-    thead tr { background: linear-gradient(135deg, #7957d5, #906fe1); }
-    thead th {
-      color: #fff; padding: 10px 12px; text-align: left;
-      font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px;
-    }
-    thead th:first-child { border-radius: 10px 0 0 0; }
-    thead th:last-child { border-radius: 0 10px 0 0; }
-    tbody tr { background: rgba(255, 255, 255, 0.55); }
-    tbody tr:nth-child(even) { background: rgba(245, 243, 255, 0.60); }
-    tbody tr:hover { background: rgba(144, 111, 225, 0.06); }
-    td { padding: 9px 12px; border-bottom: 1px solid rgba(144, 111, 225, 0.08); vertical-align: middle; }
-    tfoot tr { background: linear-gradient(135deg, #7957d5, #906fe1); }
-    tfoot td {
-      color: #fff; font-weight: 700; padding: 10px 12px; border: none;
-    }
-    tfoot td:first-child { border-radius: 0 0 0 10px; }
-    tfoot td:last-child { border-radius: 0 0 10px 0; }
-
-    .mono { font-family: ui-monospace, 'Courier New', monospace; font-size: 11px; }
-    .right { text-align: right; }
-    .center { text-align: center; }
-
-    /* ── Badges ── */
-    .badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
-    .badge-blue { background: rgba(144, 111, 225, 0.14); color: #7957d5; }
-    .badge-green { background: rgba(34, 197, 94, 0.14); color: #166534; }
-    .badge-yellow { background: rgba(245, 158, 11, 0.16); color: #854d0e; }
-    .badge-red { background: rgba(239, 68, 68, 0.14); color: #991b1b; }
-    .badge-gray { background: rgba(148, 163, 184, 0.14); color: #475569; }
-
-    /* ── Note box ── */
-    .note-box {
-      border-left: 4px solid #f59e0b;
-      background: rgba(255, 251, 235, 0.80);
-      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-      border-radius: 0 8px 8px 0; padding: 10px 14px; margin: 10px 0; font-size: 12px;
-    }
-
-    /* ── Footer ── */
-    .print-footer {
-      margin-top: 28px; padding-top: 12px;
-      border-top: 1px solid rgba(144, 111, 225, 0.14);
-      font-size: 10px; color: #94a3b8;
-      display: flex; justify-content: space-between;
-    }
-
-    @media print {
-      .print-toolbar { display: none !important; }
-      body { padding: 0; background: #fff; }
-      .print-header, .box, .info-card {
-        backdrop-filter: none; -webkit-backdrop-filter: none;
-        background: #fff; border-color: #e5e7eb;
-      }
-      tbody tr { background: #fff !important; }
-      tbody tr:nth-child(even) { background: #f5f3ff !important; }
-      @page { margin: 1.8cm 1.5cm; }
-    }
-  </style>
-</head>
-<body>
-  <div class="print-toolbar">
-    <button onclick="window.print()">Imprimir / Guardar como PDF</button>
-    <span>Para guardar como PDF, selecciona "Guardar como PDF" en el dialogo de impresora.</span>
-  </div>
-  <div class="print-header">
-    <div class="print-header-left">
-      <div class="doc-title">${String(title || "Documento")}</div>
-      <div class="doc-subtitle">Sistema de gestion optica · RSBO</div>
-    </div>
-    <div class="print-header-right">
-      <div class="brand">RSBO</div>
-      <div class="gen-date">Generado el ${fechaGenerado}</div>
-    </div>
-  </div>
-  ${bodyHtml || ""}
-  <div class="print-footer">
-    <span>RSBO — Sistema de Gestion Optica</span>
-    <span>${fechaGenerado}</span>
-  </div>
-</body>
-</html>`);
-  w.document.close();
-  w.focus();
-}
-
-// ============================================================================
-// BARCODE (EAN-13)
-// ============================================================================
-
-const onlyDigits = (s) => String(s || "").replace(/\D/g, "");
-
-function checksumEan13(d12) {
-  const digits = d12.split("").map((x) => Number(x));
-  let sum = 0;
-  for (let i = 0; i < 12; i++) sum += digits[i] * (i % 2 === 0 ? 1 : 3);
-  return (10 - (sum % 10)) % 10;
-}
-
-function normalizeEan13(raw) {
-  const d = onlyDigits(raw);
-  if (d.length === 12) return d + String(checksumEan13(d));
-  if (d.length === 13) return d;
-  return "";
-}
-
-function isEan13(raw) {
-  const d = onlyDigits(raw);
-  if (d.length !== 13) return false;
-  return Number(d[12]) === checksumEan13(d.slice(0, 12));
-}
-
-function ean13SvgString(value, scale = 2, height = 90) {
-  const quiet = 10;
-  const L = ["0001101", "0011001", "0010011", "0111101", "0100011", "0110001", "0101111", "0111011", "0110111", "0001011"];
-  const G = ["0100111", "0110011", "0011011", "0100001", "0011101", "0111001", "0000101", "0010001", "0001001", "0010111"];
-  const R = ["1110010", "1100110", "1101100", "1000010", "1011100", "1001110", "1010000", "1000100", "1001000", "1110100"];
-  const PARITY = ["LLLLLL", "LLGLGG", "LLGGLG", "LLGGGL", "LGLLGG", "LGGLLG", "LGGGLL", "LGLGLG", "LGLGGL", "LGGLGL"];
-
-  const ean = normalizeEan13(value);
-  if (!ean) return "";
-
-  const first = Number(ean[0]);
-  const left = ean.slice(1, 7).split("").map(Number);
-  const right = ean.slice(7, 13).split("").map(Number);
-  const parity = PARITY[first];
-
-  let bits = "101";
-  for (let i = 0; i < 6; i++) bits += parity[i] === "L" ? L[left[i]] : G[left[i]];
-  bits += "01010";
-  for (let i = 0; i < 6; i++) bits += R[right[i]];
-  bits += "101";
-
-  const isGuardBit = (i) => (i >= 0 && i <= 2) || (i >= 45 && i <= 49) || (i >= 92 && i <= 94);
-  const sc = Math.max(1, Number(scale || 2));
-  const normalH = Math.max(40, Number(height || 90));
-  const guardH = normalH + 10;
-  const textH = 18;
-  const w = (bits.length + quiet * 2) * sc;
-  const hSvg = guardH + textH + 6;
-
-  let rects = [];
-  let runStart = -1;
-  let runGuard = false;
-
-  for (let i = 0; i < bits.length; i++) {
-    const bit = bits[i];
-    const guard = isGuardBit(i);
-
-    if (bit === "1" && runStart === -1) {
-      runStart = i;
-      runGuard = guard;
-    } else if (bit === "1" && runStart !== -1 && runGuard !== guard) {
-      rects.push({ start: runStart, end: i - 1, guard: runGuard });
-      runStart = i;
-      runGuard = guard;
-    } else if (bit === "0" && runStart !== -1) {
-      rects.push({ start: runStart, end: i - 1, guard: runGuard });
-      runStart = -1;
-    }
-  }
-  if (runStart !== -1) rects.push({ start: runStart, end: bits.length - 1, guard: runGuard });
-
-  const rectsSvg = rects
-    .map(
-      (r) =>
-        `<rect x="${(quiet + r.start) * sc}" y="6" width="${(r.end - r.start + 1) * sc}" height="${r.guard ? guardH : normalH}" fill="#000" />`
-    )
-    .join("");
-
-  return `<svg width="${w}" height="${hSvg}" viewBox="0 0 ${w} ${hSvg}" role="img" aria-label="Barcode EAN-13" style="display:block">
-  <rect x="0" y="0" width="${w}" height="${hSvg}" fill="#fff"></rect>
-  ${rectsSvg}
-  <text x="${w / 2}" y="${guardH + textH}" text-anchor="middle" font-size="14" fill="#111"
-    font-family="ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Liberation Mono','Courier New',monospace">${ean}</text>
-</svg>`;
-}
-
-// ============================================================================
-// SAFE UI ERROR HANDLING
-// ============================================================================
-
-const stripHtml = (s) => String(s ?? "").replace(/<[^>]*>/g, "");
-const collapseWs = (s) => String(s ?? "").replace(/\s+/g, " ").trim();
-
-const looksLikeStackTrace = (s) => {
-  const t = String(s ?? "");
-  return (
-    /(\bat\s+.+\([^)]+\)\b)/.test(t) ||
-    /([A-Za-z]:\\|\/).+\.(js|ts|jsx|tsx|json|yml|yaml):\d+:\d+/.test(t) ||
-    /\b(node:internal|webpack|vite|chunk)\b/i.test(t)
-  );
-};
-
-const containsSensitive = (s) => {
-  const t = String(s ?? "");
-  if (!t) return false;
-  return [
-    /\bAuthorization:\s*Bearer\s+[A-Za-z0-9\-_\.]+\b/i,
-    /\bBearer\s+[A-Za-z0-9\-_\.]+\b/i,
-    /\beyJ[A-Za-z0-9\-_]+?\.[A-Za-z0-9\-_]+?\.[A-Za-z0-9\-_]+\b/,
-    /\bmongodb(\+srv)?:\/\/[^\s]+/i,
-    /\/\/[^/\s:]+:[^@\s]+@/i,
-    /\b(api[_-]?key|token|secret|password|passwd|pwd)\b\s*[:=]\s*["']?[^"'\s]+/i,
-    /\bPRIVATE KEY\b|\bBEGIN (RSA|EC|OPENSSH) PRIVATE KEY\b/i,
-    /\bAKIA[0-9A-Z]{16}\b/
-  ].some((re) => re.test(t));
-};
-
-const sanitizeUserText = (raw, { maxLen = 160 } = {}) => {
-  if (raw == null) return "";
-  let s = collapseWs(stripHtml(raw));
-  if (!s) return "";
-  if (containsSensitive(s) || looksLikeStackTrace(s)) return "";
-  if (s.length > maxLen) s = s.slice(0, maxLen - 1).trimEnd() + "…";
-  return s;
-};
-
-const guessCategory = (status, rawMsg) => {
-  const msg = String(rawMsg ?? "").toLowerCase();
-  if (msg.includes("network error") || msg.includes("failed to fetch") || msg.includes("econnrefused") || msg.includes("timeout") || msg.includes("etimedout"))
-    return "network";
-  if (status === 401) return "auth";
-  if (status === 403) return "forbidden";
-  if (status === 400 || status === 422) return "validation";
-  if (status === 404) return "notfound";
-  if (status === 409) return "conflict";
-  if (status === 429) return "ratelimit";
-  if (msg.includes("e11000") || msg.includes("duplicate key")) return "conflict";
-  if (msg.includes("casterror") || msg.includes("validationerror")) return "validation";
-  if (typeof status === "number" && status >= 500) return "server";
-  return "generic";
-};
-
-const categoryToPublicMessage = (category) => ({
-  network: "No se pudo conectar con el servidor. Revisa tu red o intenta de nuevo.",
-  auth: "Tu sesión expiró. Vuelve a iniciar sesión.",
-  forbidden: "No tienes permisos para realizar esta acción.",
-  validation: "Hay datos inválidos o fuera de rango. Revisa los valores e intenta de nuevo.",
-  notfound: "No se encontró el recurso solicitado.",
-  conflict: "Conflicto: ese registro o valor ya existe o está en uso.",
-  ratelimit: "Demasiadas solicitudes. Intenta nuevamente en unos segundos.",
-  server: "Error interno del servidor. Intenta más tarde.",
-  generic: "Ocurrió un error al procesar la operación. Intenta de nuevo."
-}[category] || "Ocurrió un error al procesar la operación. Intenta de nuevo.");
-
-const normalizeAck = (ack, { successFallback = "Listo.", errorFallback = "Ocurrió un error." } = {}) => {
-  if (!ack) return null;
-  if (typeof ack === "string") {
-    const safe = sanitizeUserText(ack);
-    return { ok: false, status: null, message: safe || errorFallback, _raw: ack };
-  }
-  if (ack instanceof Error) {
-    const status = ack?.response?.status ?? ack?.status ?? null;
-    const rawMsg = ack?.response?.data?.message ?? ack?.message ?? String(ack);
-    const safeMsg = sanitizeUserText(rawMsg);
-    return {
-      ok: false,
-      status,
-      message: safeMsg || categoryToPublicMessage(guessCategory(status, rawMsg)),
-      _raw: rawMsg
-    };
-  }
-  const status = ack?.status ?? ack?.statusCode ?? ack?.response?.status ?? ack?.response?.statusCode ?? null;
-  const ok = ack?.ok === true ? true : ack?.ok === false ? false : typeof status === "number" ? status < 400 : null;
-  const rawMsg = ack?.message ?? ack?.response?.data?.message ?? ack?.response?.data?.error ?? ack?.error ?? "";
-
-  if (ok === true) {
-    const safe = sanitizeUserText(rawMsg);
-    return { ok: true, status, message: safe || successFallback, _raw: rawMsg };
-  }
-  const safe = sanitizeUserText(rawMsg);
-  return {
-    ok: ok === null ? false : ok,
-    status,
-    message: safe || categoryToPublicMessage(guessCategory(status, rawMsg)) || errorFallback,
-    _raw: rawMsg
-  };
-};
 
 // ============================================================================
 // HELPERS DE MICAS
@@ -674,15 +287,20 @@ export function useLaboratorioApi(getUser) {
     _inFlight.items = (async () => {
       try {
         const params = {
-          limit: Number(_itemsLimit.value || 5000),
-          q: String(itemQuery.value || "").trim() || undefined
+          limit: Number(_itemsLimit.value || 500),
+          q: String(itemQuery.value || "").trim() || undefined,
+          signal: _ac.signal
         };
         const { data } = await invFetchItems(sheet.id, params);
         const rows = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+        // Pre-normalizamos campos de búsqueda para evitar recalcularlos en cada computed
         itemsDB.value = rows.map((r, idx) => ({
           ...r,
-          _k: String(r.codebar || "") ? `${r.codebar}` : `row_${idx}`,
-          existencias: Number(r.existencias || 0)
+          _k:          String(r.codebar || "") ? `${r.codebar}` : `row_${idx}`,
+          existencias: Number(r.existencias || 0),
+          _normTitle:  normTxt(buildRowTitle(r, sheet)),
+          _normParams: normTxt(buildRowParams(r, sheet)),
+          _normCode:   normTxt(r.codebar || "")
         }));
         lastUpdatedAt.value = Date.now();
       } catch (e) {
@@ -766,9 +384,7 @@ export function useLaboratorioApi(getUser) {
     if (mode.value === "surtir" && o.sheetId) selectedSheetId.value = o.sheetId;
   });
 
-  // ======= Status helpers =======
-  const statusHuman = (s) => ({ pendiente: "Pendiente", parcial: "Parcial", cerrado: "Cerrado", cancelado: "Cancelado" }[s] || s);
-  const statusTagClass = (s) => ({ pendiente: "is-warning", parcial: "is-info", cerrado: "is-success", cancelado: "is-danger" }[s] || "is-light");
+  // ======= Status helpers (importados de @/utils/statusHelpers) =======
   const orderTotalCount = (o) => (o?.lines || []).reduce((acc, l) => acc + Number(l.qty || 0), 0);
   const orderPickedCount = (o) => (o?.lines || []).reduce((acc, l) => acc + Math.min(Number(l.picked || 0), Number(l.qty || 0)), 0);
   const orderProgressPct = (o) => {
@@ -1142,22 +758,20 @@ export function useLaboratorioApi(getUser) {
   const filteredSheets = computed(() => sheetsDB.value);
 
   const filteredItems = computed(() => {
-    const sheet = selectedSheet.value;
     const rows = Array.isArray(itemsDB.value) ? itemsDB.value : [];
     const q = normTxt(itemQuery.value);
     const filter = String(stockFilter.value || "all");
     let out = rows;
 
-    if (filter === "withStock") out = out.filter((r) => Number(r.existencias || 0) > 0);
-    else if (filter === "zero") out = out.filter((r) => Number(r.existencias || 0) === 0);
+    if (filter === "withStock") out = out.filter((r) => r.existencias > 0);
+    else if (filter === "zero") out = out.filter((r) => r.existencias === 0);
 
     if (q) {
-      out = out.filter((r) => {
-        const t = buildRowTitle(r, sheet);
-        const p = buildRowParams(r, sheet);
-        const cb = String(r.codebar || "");
-        return normTxt(t).includes(q) || normTxt(p).includes(q) || normTxt(cb).includes(q);
-      });
+      out = out.filter((r) =>
+        (r._normTitle  || "").includes(q) ||
+        (r._normParams || "").includes(q) ||
+        (r._normCode   || "").includes(q)
+      );
     }
 
     return out;
@@ -1168,21 +782,19 @@ export function useLaboratorioApi(getUser) {
   });
 
   const filteredCatalogRows = computed(() => {
-    const sheet = selectedSheet.value;
     const rows = Array.isArray(itemsDB.value) ? itemsDB.value : [];
     const q = normTxt(catalogQuery.value);
     let out = rows;
 
-    if (catalogFilter.value === "withStock") out = out.filter((r) => r.codebar && Number(r.existencias || 0) > 0);
+    if (catalogFilter.value === "withStock") out = out.filter((r) => r.codebar && r.existencias > 0);
     else if (catalogFilter.value === "allCodes") out = out.filter((r) => !!r.codebar);
 
     if (q) {
-      out = out.filter((r) => {
-        const title = buildRowTitle(r, sheet);
-        const params = buildRowParams(r, sheet);
-        const cb = String(r.codebar || "");
-        return normTxt(title).includes(q) || normTxt(params).includes(q) || normTxt(cb).includes(q);
-      });
+      out = out.filter((r) =>
+        (r._normTitle  || "").includes(q) ||
+        (r._normParams || "").includes(q) ||
+        (r._normCode   || "").includes(q)
+      );
     }
 
     return out.map((r, idx) => ({
@@ -1201,11 +813,9 @@ export function useLaboratorioApi(getUser) {
     return filteredCatalogRows.value.slice((page - 1) * per, (page - 1) * per + per);
   });
 
-  const totalCodes = computed(() => {
-    let n = 0;
-    for (const r of itemsDB.value || []) if (r?.codebar && isEan13(r.codebar)) n++;
-    return n;
-  });
+  const totalCodes = computed(() =>
+    (itemsDB.value || []).filter((r) => r?.codebar && isEan13(r.codebar)).length
+  );
 
   const recentSheets = computed(() =>
     (sheetsDB.value || []).slice(0, 10).map((s) => ({
@@ -1720,6 +1330,9 @@ export function useLaboratorioApi(getUser) {
     }
   }
 
+  // ── AbortController — cancela requests pendientes al desmontar ──────────
+  let _ac = new AbortController();
+
   onMounted(async () => {
     _isMounting = true;
     // sheets/orders/events en paralelo; items depende de selectedSheetId que setea loadSheets
@@ -1730,6 +1343,7 @@ export function useLaboratorioApi(getUser) {
   });
 
   onBeforeUnmount(() => {
+    _ac.abort();
     window.removeEventListener("lab:ws", _onWsEvent);
   });
 

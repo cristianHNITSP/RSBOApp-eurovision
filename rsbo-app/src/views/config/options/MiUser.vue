@@ -166,7 +166,7 @@
                   <b-input
                     type="password"
                     placeholder="Nueva contraseña"
-                    v-model="formData.password"
+                    v-model="passForm.password"
                     :disabled="!isEditingPassword || loadingPassword || props.loading"
                     :loading="loadingPassword"
                     icon="lock"
@@ -185,7 +185,7 @@
                   <b-input
                     type="password"
                     placeholder="Confirmar contraseña"
-                    v-model="formData.confirmPassword"
+                    v-model="passForm.confirmPassword"
                     :disabled="!isEditingPassword || loadingPassword || props.loading"
                     :loading="loadingPassword"
                     icon="lock"
@@ -379,10 +379,12 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch, onMounted, computed } from "vue";
-import { userService, utils } from "../../../services/myUserCRUD";
+import { watch, computed } from "vue";
+import { utils } from "../../../services/myUserCRUD";
 import AvatarPicker from "../../../components/AvatarPicker.vue";
 import { labToast } from "@/composables/useLabToast";
+import { useProfileForm } from "@/composables/useProfileForm";
+import { usePasswordForm } from "@/composables/usePasswordForm";
 
 const avatarUrl = "https://cdn.jsdelivr.net/gh/alohe/avatars/png/vibrent_1.png";
 
@@ -393,231 +395,55 @@ const props = defineProps({
 
 const userId = computed(() => props.user?._id || props.user?.id || "");
 
-const isEditingProfile = ref(false);
-const isEditingPassword = ref(false);
+// ── Form composables ────────────────────────────────────────────────────────
+const {
+  form: formData,
+  errors: profileErrors,
+  isEditing: isEditingProfile,
+  loading: loadingProfile,
+  message: profileMessage,
+  success: profileSuccess,
+  init: initProfile,
+  startEdit: startProfileEdit,
+  cancelEdit,
+  clearFieldError: clearProfileError,
+  save: updateProfile,
+} = useProfileForm(userId);
 
-const loadingProfile = ref(false);
-const loadingPassword = ref(false);
+const {
+  form: passForm,
+  errors: passwordErrors,
+  isEditing: isEditingPassword,
+  loading: loadingPassword,
+  message: passwordMessage,
+  success: passwordSuccess,
+  toggle: togglePasswordEdit,
+  clearFieldError: clearPasswordError,
+  save: updatePassword,
+} = usePasswordForm(userId);
 
-const formData = reactive({
-  name: "",
-  email: "",
-  phone: "",
-  avatar: "",
-  bio: "",
-  password: "",
-  confirmPassword: "",
-});
-
-const profileMessage = ref("");
-const profileSuccess = ref(true);
-const passwordMessage = ref("");
-const passwordSuccess = ref(true);
-
-const profileErrors = reactive({ name: "", email: "", phone: "", bio: "" });
-const passwordErrors = reactive({ password: "", confirmPassword: "" });
-
-const originalData = reactive({});
-
-const displayName = computed(() => props.user?.name || "Error al cargar usuario.");
-const displayEmail = computed(() => props.user?.email || "Error al cargar el correo.");
-const roleName = computed(() => props.user?.role?.name || "Sin rol asignado");
-
-const statusLabel = computed(() => (props.user?.isActive ? "Activo" : "Inactivo"));
+// ── Derived display values ──────────────────────────────────────────────────
+const displayName    = computed(() => props.user?.name  || "Error al cargar usuario.");
+const displayEmail   = computed(() => props.user?.email || "Error al cargar el correo.");
+const roleName       = computed(() => props.user?.role?.name || "Sin rol asignado");
+const statusLabel    = computed(() => (props.user?.isActive ? "Activo" : "Inactivo"));
 const statusDotClass = computed(() => (props.user?.isActive ? "dot--ok" : "dot--bad"));
-
 const avatarPlaceholder = computed(() => props.user?.avatar || formData.avatar || avatarUrl);
 
-watch(
-  () => props.user,
-  (newUser) => {
-    if (newUser) initializeFormData(newUser);
-  },
-  { immediate: true }
-);
-
-function startProfileEdit() {
-  isEditingProfile.value = true;
-  profileMessage.value = "";
-}
-
-function cancelEdit() {
-  Object.assign(formData, originalData);
-  isEditingProfile.value = false;
-  profileMessage.value = "";
-  profileSuccess.value = true;
-  clearProfileErrors();
-}
-
-function togglePasswordEdit() {
-  if (isEditingPassword.value) {
-    formData.password = "";
-    formData.confirmPassword = "";
-    clearPasswordErrors();
-    passwordMessage.value = "";
-    passwordSuccess.value = true;
-    isEditingPassword.value = false;
-  } else {
-    isEditingPassword.value = true;
-    passwordMessage.value = "";
-  }
-}
-
-function clearProfileErrors() {
-  Object.keys(profileErrors).forEach((k) => (profileErrors[k] = ""));
-}
-function clearPasswordErrors() {
-  Object.keys(passwordErrors).forEach((k) => (passwordErrors[k] = ""));
-}
-function clearProfileError(field) {
-  profileErrors[field] = "";
-  if (profileMessage.value && !profileSuccess.value) profileMessage.value = "";
-}
-function clearPasswordError(field) {
-  passwordErrors[field] = "";
-  if (passwordMessage.value && !passwordSuccess.value) passwordMessage.value = "";
-}
-
-function validateProfile() {
-  let isValid = true;
-  clearProfileErrors();
-
-  if (!formData.name.trim()) {
-    profileErrors.name = "El nombre completo es requerido";
-    isValid = false;
-  }
-
-  if (!formData.email.trim()) {
-    profileErrors.email = "El correo electrónico es requerido";
-    isValid = false;
-  } else if (!/^\S+@\S+\.\S+$/.test(formData.email)) {
-    profileErrors.email = "El formato del correo electrónico es inválido";
-    isValid = false;
-  }
-
-  return isValid;
-}
-
-function validatePassword() {
-  let isValid = true;
-  clearPasswordErrors();
-
-  if (!formData.password) {
-    passwordErrors.password = "La nueva contraseña es requerida";
-    isValid = false;
-  } else if (formData.password.length < 6) {
-    passwordErrors.password = "La contraseña debe tener al menos 6 caracteres";
-    isValid = false;
-  }
-
-  if (!formData.confirmPassword) {
-    passwordErrors.confirmPassword = "Debe confirmar la contraseña";
-    isValid = false;
-  } else if (formData.password !== formData.confirmPassword) {
-    passwordErrors.confirmPassword = "Las contraseñas no coinciden";
-    isValid = false;
-  }
-
-  return isValid;
-}
-
-async function updateProfile() {
-  if (!validateProfile()) return;
-
-  if (!userId.value) {
-    profileMessage.value = "No se pudo identificar al usuario para actualizar.";
-    profileSuccess.value = false;
-    return;
-  }
-
-  loadingProfile.value = true;
-
-  const payload = {
-    name: formData.name,
-    email: formData.email,
-    phone: formData.phone,
-    avatar: formData.avatar,
-    bio: formData.bio,
-  };
-
-  const result = await userService.updateProfile(userId.value, payload);
-
-  if (result.success) {
-    profileMessage.value = "Perfil actualizado correctamente";
-    profileSuccess.value = true;
-    isEditingProfile.value = false;
-    Object.assign(originalData, payload);
-  } else {
-    profileMessage.value = result.message || "Ocurrió un error al actualizar el perfil";
-    profileSuccess.value = false;
-  }
-
-  loadingProfile.value = false;
-}
-
-async function updatePassword() {
-  if (!validatePassword()) return;
-
-  if (!userId.value) {
-    passwordMessage.value = "No se pudo identificar al usuario para actualizar la contraseña.";
-    passwordSuccess.value = false;
-    return;
-  }
-
-  loadingPassword.value = true;
-
-  const result = await userService.updatePassword(userId.value, formData.password);
-
-  if (result.success) {
-    passwordMessage.value = "Contraseña actualizada correctamente";
-    passwordSuccess.value = true;
-    formData.password = "";
-    formData.confirmPassword = "";
-    clearPasswordErrors();
-    isEditingPassword.value = false;
-  } else {
-    passwordMessage.value = result.message || "Ocurrió un error al actualizar la contraseña";
-    passwordSuccess.value = false;
-  }
-
-  loadingPassword.value = false;
-}
-
-function initializeFormData(user) {
-  Object.assign(formData, {
-    name: user.name || "",
-    email: user.email || "",
-    phone: user.phone || "",
-    bio: user.bio || "",
-    avatar: user.avatar || avatarUrl,
-    password: "",
-    confirmPassword: "",
-  });
-
-  Object.assign(originalData, {
-    name: formData.name,
-    email: formData.email,
-    phone: formData.phone,
-    bio: formData.bio,
-    avatar: formData.avatar,
-  });
-}
+watch(() => props.user, (u) => { if (u) initProfile(u) }, { immediate: true });
 
 async function copyEmail() {
   const email = String(props.user?.email || "").trim();
   if (!email) return;
-
   try {
     await navigator.clipboard.writeText(email);
     labToast.success("Correo copiado", 1800);
-  } catch (e) {
+  } catch {
     labToast.danger("No se pudo copiar el correo", 2200);
   }
 }
 
 const { formatDate, timeSince } = utils;
-
-onMounted(() => {});
 </script>
 
 <style scoped>

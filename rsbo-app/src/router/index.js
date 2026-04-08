@@ -1,6 +1,6 @@
 // src/router/index.js
 import { createRouter, createWebHistory } from "vue-router";
-import api from "../api/axios";
+import { sendRequest } from "../api/axios";
 
 const routes = [
   {
@@ -134,9 +134,9 @@ const ERROR_REASON_MAP = {
 
 const mapErrorToAuthReason = (code) => ERROR_REASON_MAP[code] || "unknown";
 
-// helper para no repetir
+// helper con deduplicación: si ya hay una sesión en vuelo no lanza otra
 const checkSession = () =>
-  api.get("/access/check-session", { withCredentials: true });
+  sendRequest({ method: "get", url: "/access/check-session", withCredentials: true });
 
 router.beforeEach(async (to, from, next) => {
   const requiresAuth = to.matched.some((record) => record.meta.requiresAuth);

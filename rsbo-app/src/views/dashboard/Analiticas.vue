@@ -1053,7 +1053,6 @@ function fmtn(value) {
 .adc-lbl { font-size: 0.62rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
 
 /* ── Devolution rate ── */
-.an-devol-rate {}
 .adr-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem; }
 .adr-label { font-size: 0.75rem; color: var(--text-muted); }
 .adr-val   { font-size: 1rem; font-weight: 700; }
@@ -1090,7 +1089,6 @@ function fmtn(value) {
 .an-divider::after { content: ''; flex: 1; height: 1px; background: var(--g-border); }
 
 /* ── Quality bar ── */
-.an-quality-bar {}
 .aqb-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.28rem; }
 .aqb-lbl  { font-size: 0.73rem; color: var(--text-muted); }
 .aqb-val  { font-size: 0.95rem; font-weight: 700; }
@@ -1244,7 +1242,7 @@ function fmtn(value) {
   display: flex;
   gap: 1rem;
   font-size: 0.68rem;
-  color: var(--text-muted, #94a3b8);
+  color: var(--text-muted);
   margin-top: 0.15rem;
 }
 </style>

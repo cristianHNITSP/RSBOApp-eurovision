@@ -109,7 +109,9 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Log en dev
+// Log en dev + manejo global de 401
+let _redirecting401 = false;
+
 api.interceptors.response.use(
   (res) => {
     if (import.meta.env.DEV) {
@@ -120,13 +122,29 @@ api.interceptors.response.use(
     }
     return res;
   },
-  (err) => {
+  async (err) => {
     if (import.meta.env.DEV) {
       // eslint-disable-next-line no-console
       console.warn(
         `[HTTP] !! ${err.config?.method?.toUpperCase()} ${err.config?.url} | status=${err.response?.status ?? "NO_RESP"} | reqId=${err.config?.headers?.["X-Request-Id"]}`
       );
     }
+
+    const status = err?.response?.status;
+    const url    = err?.config?.url || "";
+
+    // Redirigir al landing si la sesión expiró, excepto en rutas de auth
+    if (
+      status === 401 &&
+      !_redirecting401 &&
+      !/^\/(access|auth)/.test(url) &&
+      window.location.pathname !== "/"
+    ) {
+      _redirecting401 = true;
+      try { await api.post("/access/logout", {}); } catch { /* best-effort */ }
+      window.location.href = "/";
+    }
+
     return Promise.reject(err);
   }
 );

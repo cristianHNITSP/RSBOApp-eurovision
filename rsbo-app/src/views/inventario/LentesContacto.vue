@@ -1,6 +1,6 @@
 <!-- src/views/inventario/LentesContacto.vue -->
 <script setup>
-import { reactive, ref, computed, onMounted, watch, nextTick } from "vue";
+import { computed, ref, onMounted, watch, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import TabsManager from "@/components/TabsManager.vue";
 import { labToast } from "@/composables/useLabToast.js";
@@ -13,8 +13,7 @@ import AgGridProgresivo from "@/components/ag-grid/templates/AgGridProgresivo.vu
 import GlassTable       from "@/components/ag-grid/templates/GlassTable.vue";
 
 import { listContactLensSheets } from "@/services/contactlenses";
-
-const DEBUG_CL_VIEW = true;
+import { useSheetPagination } from "@/composables/useSheetPagination.js";
 
 const props = defineProps({
   user: { type: Object, required: false, default: null }
@@ -23,43 +22,76 @@ const props = defineProps({
 const route  = useRoute();
 const router = useRouter();
 
-const dynamicSheets     = reactive([{ id: "nueva", name: "+ Agregar" }]);
 const activeSheet       = ref("nueva");
 const activeInternalTab = ref(null);
-const loadingSheets     = ref(true);
 
 /** "excel" = AG-Grid | "glass" = Buefy GlassTable */
 const viewMode = ref("excel");
 
 /* ─────────────────────────────────────────────────────────────────────────
-   Foco desde búsqueda global
+   Normalización de planilla (raw → normalizado)
 ───────────────────────────────────────────────────────────────────────── */
-function applySheetFocus(sheetId) {
-  if (!sheetId) return false;
-  const found = dynamicSheets.find(s => s.id === sheetId);
-  if (found) {
-    activeSheet.value = sheetId;
-    return true;
-  }
-  return false;
+function mapSheet(s) {
+  if (!s) return null;
+  return {
+    id:   String(s._id ?? s.id),
+    sku:  s.sku ?? null,
+    name: s.nombre ?? s.name ?? "",
+
+    proveedor: s.proveedor && typeof s.proveedor === "object"
+      ? { id: s.proveedor.id ?? null, name: String(s.proveedor.name ?? "") }
+      : { id: null, name: "" },
+
+    marca: s.marca && typeof s.marca === "object"
+      ? { id: s.marca.id ?? null, name: String(s.marca.name ?? "") }
+      : { id: null, name: "" },
+
+    tipo_matriz:    s.tipo_matriz,
+    baseKey:        s.baseKey,
+    material:       s.material,
+
+    tratamiento:    s.tratamiento   ?? null,
+    variante:       s.variante      ?? null,
+
+    fechaCreacion:  s.fechaCreacion  ?? s.createdAt ?? null,
+    fechaCaducidad: s.fechaCaducidad ?? null,
+    fechaCompra:    s.fechaCompra    ?? null,
+    numFactura:     s.numFactura     ?? "",
+    loteProducto:   s.loteProducto   ?? "",
+    precioVenta:    s.precioVenta    ?? null,
+    precioCompra:   s.precioCompra   ?? null,
+
+    tratamientos: s.tratamientos || [],
+    tabs:         s.tabs         || [],
+    meta:         s.meta         || { observaciones: "", notas: "" }
+  };
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   Paginación de planillas
+───────────────────────────────────────────────────────────────────────── */
+const pager = useSheetPagination(listContactLensSheets, mapSheet);
+
+/** dynamicSheets = planillas paginadas + tab "nueva" al final */
+const dynamicSheets = computed(() => [
+  ...pager.sheets,
+  { id: "nueva", name: "+ Agregar" }
+]);
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Foco desde búsqueda global
+───────────────────────────────────────────────────────────────────────── */
 async function focusSheetFromQuery(sheetId) {
   if (!sheetId) return;
 
-  let attempts = 0;
-  while (loadingSheets.value && attempts < 40) {
-    await new Promise(r => setTimeout(r, 100));
-    attempts++;
-  }
-
-  await nextTick();
-  const applied = applySheetFocus(sheetId);
-
-  if (!applied) {
-    await cargarSheets();
+  if (pager.sheets.find((s) => s.id === sheetId)) {
+    activeSheet.value = sheetId;
+  } else {
+    await pager.init(sheetId);
     await nextTick();
-    applySheetFocus(sheetId);
+    if (pager.sheets.find((s) => s.id === sheetId)) {
+      activeSheet.value = sheetId;
+    }
   }
 
   const newQuery = { ...route.query };
@@ -72,6 +104,26 @@ watch(
   (id) => { if (id) focusSheetFromQuery(id); },
   { immediate: true }
 );
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Carga inicial
+───────────────────────────────────────────────────────────────────────── */
+onMounted(async () => {
+  const focusId = route.query.sheetId || null;
+  await pager.init(focusId || null);
+
+  if (focusId) {
+    await nextTick();
+    if (pager.sheets.find((s) => s.id === focusId)) {
+      activeSheet.value = focusId;
+    }
+    const newQuery = { ...route.query };
+    delete newQuery.sheetId;
+    router.replace({ query: Object.keys(newQuery).length ? newQuery : undefined });
+  } else if (pager.sheets.length) {
+    activeSheet.value = pager.sheets[0].id;
+  }
+});
 
 /* ─────────────────────────────────────────────────────────────────────────
    Configuración catálogo — categorías de lentes de contacto
@@ -111,130 +163,22 @@ const catalog = computed(() => ({
 }));
 
 /* ─────────────────────────────────────────────────────────────────────────
-   Carga de planillas
-───────────────────────────────────────────────────────────────────────── */
-async function cargarSheets() {
-  loadingSheets.value = true;
-  try {
-    const { data } = await listContactLensSheets();
-
-    if (DEBUG_CL_VIEW) {
-      const first = (data?.data || [])[0];
-      console.groupCollapsed("[CL][VIEW] listContactLensSheets first raw");
-      console.log(first);
-      console.log("keys:", first ? Object.keys(first) : []);
-      console.groupEnd();
-    }
-
-    const arr = (data?.data || []).map((s) => ({
-      id:   String(s._id),
-      sku:  s.sku,
-      name: s.nombre,
-
-      proveedor: s.proveedor && typeof s.proveedor === "object"
-        ? { id: s.proveedor.id ?? null, name: String(s.proveedor.name ?? "") }
-        : { id: null, name: "" },
-
-      marca: s.marca && typeof s.marca === "object"
-        ? { id: s.marca.id ?? null, name: String(s.marca.name ?? "") }
-        : { id: null, name: "" },
-
-      tipo_matriz:    s.tipo_matriz,
-      baseKey:        s.baseKey,
-      material:       s.material,
-
-      tratamiento:    s.tratamiento  ?? null,
-      variante:       s.variante     ?? null,
-
-      fechaCreacion:  s.fechaCreacion  ?? s.createdAt ?? null,
-      fechaCaducidad: s.fechaCaducidad ?? null,
-      fechaCompra:    s.fechaCompra    ?? null,
-      numFactura:     s.numFactura     ?? "",
-      loteProducto:   s.loteProducto   ?? "",
-      precioVenta:    s.precioVenta    ?? null,
-      precioCompra:   s.precioCompra   ?? null,
-
-      tratamientos: s.tratamientos || [],
-      tabs:         s.tabs         || [],
-      meta:         s.meta         || { observaciones: "", notas: "" }
-    }));
-
-    const addIndex   = dynamicSheets.findIndex((s) => s.id === "nueva");
-    const existentes = new Set(dynamicSheets.map((s) => s.id));
-    const aInsertar  = arr.filter((s) => !existentes.has(s.id));
-    if (aInsertar.length) dynamicSheets.splice(addIndex, 0, ...aInsertar);
-
-    if (aInsertar.length && activeSheet.value === "nueva" && !route.query.sheetId) {
-      activeSheet.value = aInsertar[0].id;
-    }
-  } catch (e) {
-    console.error("Error listContactLensSheets:", e?.response?.data || e);
-    labToast.danger("No se pudieron cargar las planillas. Verifica la conexión.");
-  } finally {
-    loadingSheets.value = false;
-  }
-}
-
-onMounted(async () => {
-  await cargarSheets();
-
-  if (route.query.sheetId) {
-    await focusSheetFromQuery(route.query.sheetId);
-  }
-});
-
-/* ─────────────────────────────────────────────────────────────────────────
    Handlers de TabsManager
 ───────────────────────────────────────────────────────────────────────── */
 function crearNuevaPlanilla({ result, tabs }) {
   const s = result;
   if (!s) return;
 
-  const newSheet = {
-    id:   String(s._id),
-    sku:  s.sku,
-    name: s.nombre,
-
-    proveedor: s.proveedor && typeof s.proveedor === "object"
-      ? { id: s.proveedor.id ?? null, name: String(s.proveedor.name ?? "") }
-      : { id: null, name: "" },
-
-    marca: s.marca && typeof s.marca === "object"
-      ? { id: s.marca.id ?? null, name: String(s.marca.name ?? "") }
-      : { id: null, name: "" },
-
-    tipo_matriz:    s.tipo_matriz,
-    baseKey:        s.baseKey,
-    material:       s.material,
-
-    tratamiento:    s.tratamiento  ?? null,
-    variante:       s.variante     ?? null,
-
-    fechaCreacion:  s.fechaCreacion  ?? s.createdAt ?? null,
-    fechaCaducidad: s.fechaCaducidad ?? null,
-    fechaCompra:    s.fechaCompra    ?? null,
-    numFactura:     s.numFactura     ?? "",
-    loteProducto:   s.loteProducto   ?? "",
-    precioVenta:    s.precioVenta    ?? null,
-    precioCompra:   s.precioCompra   ?? null,
-
-    tratamientos: s.tratamientos || [],
-    tabs:         tabs            || [],
-    meta:         s.meta         || { observaciones: "", notas: "" }
-  };
-
-  const addIndex = dynamicSheets.findIndex((x) => x.id === "nueva");
-  dynamicSheets.splice(addIndex >= 0 ? addIndex : dynamicSheets.length, 0, newSheet);
-  activeSheet.value = newSheet.id;
-  labToast.success(`Planilla creada: ${newSheet.name}`);
+  pager.prependSheet({ ...s, tabs: tabs || s.tabs || [] });
+  activeSheet.value = String(s._id ?? s.id);
+  labToast.success(`Planilla creada: ${s.nombre ?? s.name}`);
 }
 
 function reordenarSheets({ oldIndex, newIndex }) {
-  const last = dynamicSheets.length - 1;
+  const last = pager.sheets.length - 1;
   if (oldIndex >= last || newIndex >= last) return;
-  const moved = dynamicSheets.splice(oldIndex, 1)[0];
-  dynamicSheets.splice(newIndex, 0, moved);
-  if (activeSheet.value === moved.id) activeSheet.value = moved.id;
+  const moved = pager.sheets.splice(oldIndex, 1)[0];
+  pager.sheets.splice(newIndex, 0, moved);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -309,7 +253,12 @@ const resolverGridProps = (sheet, activeInternal) => {
           :active-id="activeSheet"
           :catalog="catalog"
           :actor="user"
-          :loading-tabs="loadingSheets"
+          :loading-tabs="pager.loadingForward.value && pager.sheets.length === 0"
+          :has-more="pager.hasMore.value"
+          :has-prior="pager.hasPrior.value"
+          :loading-more="pager.loadingForward.value"
+          :loading-prior="pager.loadingBackward.value"
+          :prior-count="pager.priorCount.value"
           api-type="contactlenses"
           :material-required="false"
           :show-tratamiento="false"
@@ -317,6 +266,8 @@ const resolverGridProps = (sheet, activeInternal) => {
           @update:internal="activeInternalTab = $event"
           @crear="crearNuevaPlanilla"
           @reorder="reordenarSheets"
+          @load-more="pager.loadNext()"
+          @load-prior="pager.loadPrior()"
         >
           <template #default="{ activeSheet: sheet, activeInternal }">
             <Transition name="sheet" mode="out-in" appear>

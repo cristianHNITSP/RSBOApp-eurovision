@@ -70,59 +70,26 @@ const props = defineProps({
   loading: { type: Boolean, default: false }
 })
 
-console.log('[Config] props iniciales:', props)
-
 const router = useRouter()
 const route = useRoute()
 
 const VALID_TABS = ['profile', 'preferences', 'security']
 
-// Tab activa (se sincroniza con ?tab= en la URL)
 const activeTab = ref('profile')
 
 const syncTabFromRoute = () => {
   const fromQuery = route.query.tab
-  console.log('[Config] syncTabFromRoute -> route.query.tab:', fromQuery)
-
-  if (typeof fromQuery === 'string' && VALID_TABS.includes(fromQuery)) {
-    activeTab.value = fromQuery
-  } else {
-    activeTab.value = 'profile'
-  }
-
-  console.log('[Config] activeTab después de sync:', activeTab.value)
+  activeTab.value = (typeof fromQuery === 'string' && VALID_TABS.includes(fromQuery)) ? fromQuery : 'profile'
 }
 
-// Inicializar
 syncTabFromRoute()
 
-// Si cambia la query (?tab=...) desde fuera, actualiza la tab
-watch(
-  () => route.query.tab,
-  (newVal, oldVal) => {
-    console.log('[Config] watch route.query.tab ->', { oldVal, newVal })
-    syncTabFromRoute()
-  }
-)
+watch(() => route.query.tab, syncTabFromRoute)
 
-// Si cambia la tab desde el UI, actualiza la query
-watch(
-  () => activeTab.value,
-  (newTab, oldTab) => {
-    console.log('[Config] watch activeTab ->', { oldTab, newTab })
-
-    if (route.query.tab === newTab) return
-
-    router.replace({
-      name: route.name || 'configuración',
-      params: route.params,
-      query: {
-        ...route.query,
-        tab: newTab
-      }
-    })
-  }
-)
+watch(() => activeTab.value, (newTab) => {
+  if (route.query.tab === newTab) return
+  router.replace({ name: route.name || 'configuración', params: route.params, query: { ...route.query, tab: newTab } })
+})
 </script>
 
 <style scoped>

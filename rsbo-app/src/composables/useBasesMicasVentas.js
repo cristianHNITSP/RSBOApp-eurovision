@@ -1,9 +1,15 @@
 // src/composables/useBasesMicasVentas.js
-import { ref, computed, watch, onMounted } from "vue";
+import { ref, computed, watch, onMounted, onBeforeUnmount } from "vue";
+import { useLocalStorage } from "@vueuse/core";
 import { labToast } from "@/composables/useLabToast.js";
 import { listSheets as invListSheets, fetchItems as invFetchItems } from "@/services/inventory";
 import { createOrder, listOrders } from "@/services/laboratorio";
 import { createGroupedNotification } from "@/services/notifications";
+import { fmtDate, fmtDateShort } from "@/utils/formatters";
+import { labStatusHuman, labStatusClass } from "@/utils/statusHelpers";
+
+// re-exportamos para que los consumidores que importen desde aquí sigan funcionando
+export { fmtDate, fmtDateShort, labStatusHuman, labStatusClass };
 
 // ============================================================================
 // HELPERS
@@ -40,38 +46,6 @@ export const buildRowParams = (row, sheet) => {
   return "—";
 };
 
-export function fmtDate(v) {
-  if (!v) return "—";
-  const d = new Date(v);
-  if (!Number.isFinite(d.getTime())) return "—";
-  return d.toLocaleString(undefined, {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit"
-  });
-}
-
-export function fmtDateShort(v) {
-  if (!v) return "DD/MM/AAAA";
-  const d = new Date(v);
-  if (!Number.isFinite(d.getTime())) return "DD/MM/AAAA";
-  return d.toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" });
-}
-
-export const labStatusHuman = (s) =>
-  ({ pendiente: "Pendiente", parcial: "En proceso", cerrado: "Surtido completo", cancelado: "Cancelado" }[s] ||
-  s ||
-  "—");
-
-export const labStatusClass = (s) =>
-  ({
-    pendiente: "is-warning",
-    parcial: "is-info",
-    cerrado: "is-success",
-    cancelado: "is-danger"
-  }[s] || "is-light");
 
 // ============================================================================
 // COMPOSABLE
@@ -122,23 +96,18 @@ export function useBasesMicasVentas(getUser) {
   const catalogPage     = ref(1);
   const catalogPageSize = ref(15);
 
-  // ── Cliente cache (localStorage) ─────────────────────────────────────────
-  const CLIENT_CACHE_KEY = "rsbo_client_cache_v1";
-  function _readCache() {
-    try { return JSON.parse(localStorage.getItem(CLIENT_CACHE_KEY) || "{}"); }
-    catch { return {}; }
-  }
+  // ── Cliente cache (useLocalStorage — reactivo, con serialización automática) ──
+  const _clientCache = useLocalStorage("rsbo_client_cache_v1", {});
   function _saveClientToCache(nombre, data) {
-    try {
-      const cache = _readCache();
-      cache[nombre.toLowerCase()] = { ...data, savedAt: Date.now() };
-      localStorage.setItem(CLIENT_CACHE_KEY, JSON.stringify(cache));
-    } catch {}
+    _clientCache.value[nombre.toLowerCase()] = { ...data, savedAt: Date.now() };
   }
   function _getClientFromCache(nombre) {
-    try { return _readCache()[nombre.toLowerCase()] || null; }
-    catch { return null; }
+    return _clientCache.value[nombre.toLowerCase()] || null;
   }
+
+  // ── AbortController — cancela requests pendientes al desmontar ────────────
+  let _ac = new AbortController();
+  onBeforeUnmount(() => { _ac.abort(); });
 
   // ── Cart ──────────────────────────────────────────────────────────────────
   const cartItems            = ref([]);
@@ -172,18 +141,17 @@ export function useBasesMicasVentas(getUser) {
     let rows = itemsDB.value;
 
     if (stockFilter.value === "withStock")
-      rows = rows.filter((r) => Number(r.existencias ?? 0) > 0);
+      rows = rows.filter((r) => r.existencias > 0);
     else if (stockFilter.value === "zero")
-      rows = rows.filter((r) => Number(r.existencias ?? 0) === 0);
+      rows = rows.filter((r) => r.existencias === 0);
 
     const q = normTxt(itemQuery.value);
     if (q) {
-      rows = rows.filter((r) => {
-        const title  = normTxt(buildRowTitle(r, selectedSheet.value));
-        const params = normTxt(buildRowParams(r, selectedSheet.value));
-        const code   = normTxt(r.codebar || "");
-        return title.includes(q) || params.includes(q) || code.includes(q);
-      });
+      rows = rows.filter((r) =>
+        (r._normTitle || "").includes(q) ||
+        (r._normParams || "").includes(q) ||
+        (r._normCode || "").includes(q)
+      );
     }
     return rows;
   });
@@ -261,7 +229,7 @@ export function useBasesMicasVentas(getUser) {
   async function loadSheets() {
     loadingSheets.value = true;
     try {
-      const { data } = await invListSheets({});
+      const { data } = await invListSheets({ signal: _ac.signal });
       const arr = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
       const mapped = arr.map((s) => ({
         ...s,
@@ -291,9 +259,17 @@ export function useBasesMicasVentas(getUser) {
     if (!sid) { itemsDB.value = []; return; }
     loadingItems.value = true;
     try {
-      const { data } = await invFetchItems(sid, { limit: 5000 });
+      const { data } = await invFetchItems(sid, { limit: 500, signal: _ac.signal });
       const arr = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
-      itemsDB.value = arr.map((r) => ({ ...r, existencias: Number(r.existencias ?? 0) }));
+      // Pre-normalizamos los campos de búsqueda para no recalcularlos en cada computed
+      const sheet = sheetsDB.value.find((s) => String(s.id) === String(sid)) || null;
+      itemsDB.value = arr.map((r) => ({
+        ...r,
+        existencias: Number(r.existencias ?? 0),
+        _normTitle:  normTxt(buildRowTitle(r, sheet)),
+        _normParams: normTxt(buildRowParams(r, sheet)),
+        _normCode:   normTxt(r.codebar || "")
+      }));
       catalogPage.value = 1;
     } catch (e) {
       console.error("[BM-VENTAS] loadItems", e?.response?.data || e);
@@ -547,6 +523,19 @@ export function useBasesMicasVentas(getUser) {
   // Load lab statuses when switching to historial tab
   watch(activeTab, (tab) => {
     if (tab === "historial") loadLabStatuses();
+  });
+
+  // Auto-rellenar datos complementarios desde caché cuando el usuario escribe
+  // un nombre que coincide exactamente con un cliente guardado anteriormente.
+  // Solo aplica si los campos todavía están vacíos para no pisar ediciones manuales.
+  watch(cartCliente, (nombre) => {
+    if (!nombre) return;
+    const cached = _getClientFromCache(nombre.trim());
+    if (!cached) return;
+    if (!cartClienteNombres.value)   cartClienteNombres.value   = cached.nombres   || "";
+    if (!cartClienteApellidos.value) cartClienteApellidos.value = cached.apellidos || "";
+    if (!cartClienteEmpresa.value)   cartClienteEmpresa.value   = cached.empresa   || "";
+    if (!cartClienteContacto.value)  cartClienteContacto.value  = cached.contacto  || "";
   });
 
   // ── Init ──────────────────────────────────────────────────────────────────

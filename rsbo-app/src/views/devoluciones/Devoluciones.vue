@@ -1,362 +1,417 @@
 <template>
   <div class="dv-root">
 
-    <!-- ░░ Orbs glassmorphism ░░ -->
-    <div class="glass-bg" aria-hidden="true">
-      <div class="orb orb-1"></div>
-      <div class="orb orb-2"></div>
-      <div class="orb orb-3"></div>
-    </div>
-
     <!-- ══ HERO ══ -->
-    <section class="dv-hero">
-      <div class="hero-left">
-        <div class="hero-icon-wrap">
-          <i class="fas fa-rotate-left hero-icon"></i>
+    <header class="dv-hero">
+      <div class="dv-hero-accent"></div>
+      <div class="dv-hero-inner">
+        <div class="dv-hero-left">
+          <span class="dv-pill"><i class="fas fa-rotate-left"></i> Devoluciones</span>
+          <h2 class="dv-hero-title">
+            <span class="dv-brand-grad">Gestión de Devoluciones</span>
+          </h2>
+          <p class="dv-hero-sub">
+            {{ canManageDevolutions ? 'Vista completa · gestión y seguimiento' : 'Vista de lectura' }}
+          </p>
         </div>
-        <div>
-          <h1 class="hero-title">Devoluciones</h1>
-          <p class="hero-sub">Gestión de devoluciones · {{ canManageDevolutions ? 'Vista completa' : 'Vista de lectura' }}</p>
+        <div class="dv-hero-right">
+          <div class="dv-badge" v-if="stats">
+            <i class="fas fa-rotate-left"></i>
+            <span>{{ (stats.pendientes ?? 0) + (stats.enRevision ?? 0) }} activas</span>
+          </div>
+          <b-button
+            v-if="canCreateDevolution"
+            type="is-primary"
+            icon-left="plus"
+            @click="openCreate"
+          >Nueva devolución</b-button>
+          <b-button
+            type="is-light"
+            icon-left="arrows-rotate"
+            :loading="loading"
+            @click="load"
+          />
         </div>
       </div>
-      <div class="hero-right">
-        <button v-if="canCreateDevolution" class="btn-create" @click="openCreate">
-          <i class="fas fa-plus"></i> Nueva devolución
-        </button>
-        <button class="btn-refresh" @click="load" :class="{ spinning: loading }">
-          <i class="fas fa-arrows-rotate"></i>
-        </button>
-      </div>
-    </section>
+    </header>
 
     <!-- ══ KPI STRIP ══ -->
-    <section class="kpi-strip" v-if="stats">
-      <div class="kpi-card">
-        <div class="kpi-icon kpi-orange"><i class="fas fa-clock"></i></div>
-        <div>
-          <div class="kpi-val">{{ stats.pendientes ?? 0 }}</div>
-          <div class="kpi-label">Pendientes</div>
+    <section class="dv-kpis" v-if="stats">
+      <div class="dv-kpi-grid">
+        <div class="dv-kpi-card">
+          <div class="dv-kpi-bar" style="background:linear-gradient(90deg,#f97316,#fb923c)"></div>
+          <div class="dv-kpi-inner">
+            <div class="dv-kpi-ico" style="background:rgba(249,115,22,.12);color:#f97316"><i class="fas fa-clock"></i></div>
+            <div>
+              <div class="dv-kpi-lbl">Pendientes</div>
+              <div class="dv-kpi-num" style="color:#f97316">{{ stats.pendientes ?? 0 }}</div>
+              <div class="dv-kpi-cap">En espera</div>
+            </div>
+          </div>
         </div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-icon kpi-blue"><i class="fas fa-magnifying-glass"></i></div>
-        <div>
-          <div class="kpi-val">{{ stats.enRevision ?? 0 }}</div>
-          <div class="kpi-label">En revisión</div>
+        <div class="dv-kpi-card">
+          <div class="dv-kpi-bar" style="background:linear-gradient(90deg,#3b82f6,#60a5fa)"></div>
+          <div class="dv-kpi-inner">
+            <div class="dv-kpi-ico" style="background:rgba(59,130,246,.12);color:#3b82f6"><i class="fas fa-magnifying-glass"></i></div>
+            <div>
+              <div class="dv-kpi-lbl">En revisión</div>
+              <div class="dv-kpi-num" style="color:#3b82f6">{{ stats.enRevision ?? 0 }}</div>
+              <div class="dv-kpi-cap">En proceso</div>
+            </div>
+          </div>
         </div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-icon kpi-green"><i class="fas fa-circle-check"></i></div>
-        <div>
-          <div class="kpi-val">{{ stats.aprobadas ?? 0 }}</div>
-          <div class="kpi-label">Aprobadas</div>
+        <div class="dv-kpi-card">
+          <div class="dv-kpi-bar" style="background:linear-gradient(90deg,#10b981,#34d399)"></div>
+          <div class="dv-kpi-inner">
+            <div class="dv-kpi-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i class="fas fa-circle-check"></i></div>
+            <div>
+              <div class="dv-kpi-lbl">Aprobadas</div>
+              <div class="dv-kpi-num" style="color:#10b981">{{ stats.aprobadas ?? 0 }}</div>
+              <div class="dv-kpi-cap">Aceptadas</div>
+            </div>
+          </div>
         </div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-icon kpi-red"><i class="fas fa-circle-xmark"></i></div>
-        <div>
-          <div class="kpi-val">{{ stats.rechazadas ?? 0 }}</div>
-          <div class="kpi-label">Rechazadas</div>
+        <div class="dv-kpi-card">
+          <div class="dv-kpi-bar" style="background:linear-gradient(90deg,#ef4444,#f87171)"></div>
+          <div class="dv-kpi-inner">
+            <div class="dv-kpi-ico" style="background:rgba(239,68,68,.12);color:#ef4444"><i class="fas fa-circle-xmark"></i></div>
+            <div>
+              <div class="dv-kpi-lbl">Rechazadas</div>
+              <div class="dv-kpi-num" style="color:#ef4444">{{ stats.rechazadas ?? 0 }}</div>
+              <div class="dv-kpi-cap">No aprobadas</div>
+            </div>
+          </div>
         </div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-icon kpi-purple"><i class="fas fa-box-archive"></i></div>
-        <div>
-          <div class="kpi-val">{{ stats.procesadas ?? 0 }}</div>
-          <div class="kpi-label">Procesadas</div>
+        <div class="dv-kpi-card">
+          <div class="dv-kpi-bar" style="background:linear-gradient(90deg,#7c3aed,#a78bfa)"></div>
+          <div class="dv-kpi-inner">
+            <div class="dv-kpi-ico" style="background:rgba(124,58,237,.12);color:#7c3aed"><i class="fas fa-box-archive"></i></div>
+            <div>
+              <div class="dv-kpi-lbl">Procesadas</div>
+              <div class="dv-kpi-num" style="color:#7c3aed">{{ stats.procesadas ?? 0 }}</div>
+              <div class="dv-kpi-cap">Completadas</div>
+            </div>
+          </div>
         </div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-icon kpi-cyan"><i class="fas fa-calendar-days"></i></div>
-        <div>
-          <div class="kpi-val">{{ stats.total7d ?? 0 }}</div>
-          <div class="kpi-label">Últimos 7 días</div>
+        <div class="dv-kpi-card">
+          <div class="dv-kpi-bar" style="background:linear-gradient(90deg,#06b6d4,#0891b2)"></div>
+          <div class="dv-kpi-inner">
+            <div class="dv-kpi-ico" style="background:rgba(6,182,212,.12);color:#06b6d4"><i class="fas fa-calendar-days"></i></div>
+            <div>
+              <div class="dv-kpi-lbl">Últimos 7 días</div>
+              <div class="dv-kpi-num" style="color:#06b6d4">{{ stats.total7d ?? 0 }}</div>
+              <div class="dv-kpi-cap">Esta semana</div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- ══ FILTROS ══ -->
-    <section class="filter-bar">
-      <div class="filter-tabs">
-        <button
-          v-for="tab in STATUS_TABS"
-          :key="tab.value"
-          class="ftab"
-          :class="{ active: activeStatus === tab.value }"
-          @click="setStatus(tab.value)"
-        >
-          <i :class="tab.icon"></i>
-          {{ tab.label }}
-          <span class="ftab-count" v-if="tab.value !== 'all'">{{ statsCount(tab.value) }}</span>
-        </button>
-      </div>
-      <div class="search-wrap">
-        <i class="fas fa-search search-ico"></i>
-        <input
-          v-model="searchQ"
-          class="search-input"
-          placeholder="Buscar folio, cliente, pedido..."
-          @keyup.enter="load"
-        />
-        <button v-if="searchQ" class="search-clear" @click="searchQ = ''; load()">
-          <i class="fas fa-xmark"></i>
-        </button>
-      </div>
-    </section>
+    <!-- ══ FILTROS + LISTADO ══ -->
+    <section class="dv-main">
+      <div class="gcard">
+        <div class="gcard-bar" style="background:linear-gradient(90deg,#7c3aed,#3b82f6,#ec4899)"></div>
 
-    <!-- ══ LISTADO POR DÍA ══ -->
-    <section class="dv-list">
-
-      <!-- Loading skeleton -->
-      <template v-if="loading">
-        <div class="day-group" v-for="n in 3" :key="'sk'+n">
-          <div class="day-label"><span class="day-text skeleton-text" style="width:120px;height:14px;display:inline-block;border-radius:4px;background:var(--bg-muted)"></span></div>
-          <div class="dv-card skeleton-card" v-for="m in 2" :key="'skc'+m"></div>
-        </div>
-      </template>
-
-      <!-- Sin resultados -->
-      <div v-else-if="!loading && grouped.length === 0" class="empty-state">
-        <i class="fas fa-box-open empty-ico"></i>
-        <p>No hay devoluciones{{ activeStatus !== 'all' ? ' con este estado' : '' }}</p>
-        <button v-if="canCreateDevolution" class="btn-create mt-2" @click="openCreate">
-          <i class="fas fa-plus"></i> Crear primera devolución
-        </button>
-      </div>
-
-      <!-- Grupos por día -->
-      <template v-else>
-        <div class="day-group" v-for="group in grouped" :key="group.label">
-          <div class="day-label">
-            <span class="day-text">{{ group.label }}</span>
-            <span class="day-count">{{ group.items.length }}</span>
+        <!-- Filtros -->
+        <div class="gc-head gc-head-filter">
+          <div class="filter-tabs">
+            <button
+              v-for="tab in STATUS_TABS"
+              :key="tab.value"
+              class="ftab"
+              :class="{ active: activeStatus === tab.value }"
+              @click="setStatus(tab.value)"
+            >
+              <i :class="tab.icon"></i>
+              {{ tab.label }}
+              <span class="ftab-count" v-if="tab.value !== 'all'">{{ statsCount(tab.value) }}</span>
+            </button>
           </div>
-
-          <div class="dv-card" v-for="dev in group.items" :key="dev._id">
-            <!-- Franja de estado -->
-            <div class="card-stripe" :class="'stripe-' + dev.status"></div>
-
-            <div class="card-body">
-              <!-- Cabecera -->
-              <div class="card-head">
-                <div class="card-id-block">
-                  <span class="card-folio">{{ dev.folio }}</span>
-                  <span v-if="dev.orderFolio" class="card-order-folio">
-                    <i class="fas fa-link"></i> {{ dev.orderFolio }}
-                  </span>
-                </div>
-                <span class="status-badge" :class="'badge-' + dev.status">
-                  <i :class="statusIcon(dev.status)"></i>
-                  {{ statusLabel(dev.status) }}
-                </span>
-              </div>
-
-              <!-- Info principal -->
-              <div class="card-info-row">
-                <div class="info-cell">
-                  <i class="fas fa-user info-ico"></i>
-                  <span>{{ dev.cliente }}</span>
-                </div>
-                <div class="info-cell" v-if="dev.clientePhone">
-                  <i class="fas fa-phone info-ico"></i>
-                  <span>{{ dev.clientePhone }}</span>
-                </div>
-                <div class="info-cell">
-                  <i class="fas fa-tag info-ico"></i>
-                  <span>{{ reasonLabel(dev.reason) }}</span>
-                </div>
-                <div class="info-cell">
-                  <i class="fas fa-calendar info-ico"></i>
-                  <span>{{ fmtTime(dev.createdAt) }}</span>
-                </div>
-                <div class="info-cell" v-if="dev.createdBy?.name">
-                  <i class="fas fa-pen info-ico"></i>
-                  <span>{{ dev.createdBy.name }}</span>
-                </div>
-              </div>
-
-              <!-- Resumen de ítems -->
-              <div class="card-items" v-if="dev.items?.length">
-                <span class="item-chip" v-for="(it, i) in dev.items.slice(0, 4)" :key="i">
-                  <span class="item-cb">{{ it.codebar || it.sku || '—' }}</span>
-                  <span class="item-qty">×{{ it.qty }}</span>
-                  <span class="item-cond" :class="'cond-' + it.condition">{{ condLabel(it.condition) }}</span>
-                  <span v-if="it.restoreStock" class="item-restore" title="Reingresa stock"><i class="fas fa-arrow-up-to-line"></i></span>
-                </span>
-                <span class="item-chip item-more" v-if="dev.items.length > 4">+{{ dev.items.length - 4 }} más</span>
-              </div>
-
-              <!-- Detalle/notas -->
-              <div class="card-notes" v-if="dev.reasonDetail || dev.notes">
-                <i class="fas fa-comment-dots notes-ico"></i>
-                <span>{{ dev.reasonDetail || dev.notes }}</span>
-              </div>
-
-              <!-- Procesado por -->
-              <div class="card-processed" v-if="dev.processedBy?.name">
-                <i class="fas fa-user-check proc-ico"></i>
-                <span>Procesado por <strong>{{ dev.processedBy.name }}</strong>
-                  {{ dev.processedAt ? '· ' + fmtDate(dev.processedAt) : '' }}</span>
-                <span v-if="dev.stockRestored" class="stock-restored-badge">
-                  <i class="fas fa-boxes-stacked"></i> Stock restaurado
-                </span>
-              </div>
-            </div>
-
-            <!-- Acciones inline (solo para gestores) -->
-            <div class="card-actions" v-if="canManageDevolutions">
-              <!-- Transiciones rápidas para supervisor/eurovision -->
-              <template v-if="dev.status === 'pendiente'">
-                <button class="act-btn act-review" @click="quickAction(dev, 'en_revision')" title="Poner en revisión">
-                  <i class="fas fa-magnifying-glass"></i> En revisión
-                </button>
-                <button class="act-btn act-reject" @click="openReject(dev)" title="Rechazar">
-                  <i class="fas fa-xmark"></i> Rechazar
-                </button>
-              </template>
-              <template v-if="dev.status === 'en_revision'">
-                <button class="act-btn act-approve" @click="quickAction(dev, 'aprobada')" title="Aprobar">
-                  <i class="fas fa-check"></i> Aprobar
-                </button>
-                <button class="act-btn act-reject" @click="openReject(dev)" title="Rechazar">
-                  <i class="fas fa-xmark"></i> Rechazar
-                </button>
-              </template>
-              <template v-if="dev.status === 'aprobada'">
-                <button class="act-btn act-process" @click="openProcess(dev)" title="Marcar como procesada">
-                  <i class="fas fa-box-archive"></i> Procesar
-                </button>
-              </template>
-
-              <!-- Ver detalle siempre -->
-              <button class="act-btn act-detail" @click="openDetail(dev)">
-                <i class="fas fa-eye"></i> Detalle
-              </button>
-            </div>
-            <div class="card-actions" v-else>
-              <button class="act-btn act-detail" @click="openDetail(dev)">
-                <i class="fas fa-eye"></i> Ver detalle
-              </button>
-            </div>
+          <div class="search-wrap">
+            <i class="fas fa-search search-ico"></i>
+            <input
+              v-model="searchQ"
+              class="search-input"
+              placeholder="Buscar folio, cliente, pedido..."
+              @keyup.enter="load"
+            />
+            <button v-if="searchQ" class="search-clear" @click="searchQ = ''; load()">
+              <i class="fas fa-xmark"></i>
+            </button>
           </div>
         </div>
 
-        <!-- Paginación -->
-        <div class="pagination-row" v-if="meta.pages > 1">
-          <button class="pg-btn" :disabled="meta.page <= 1" @click="changePage(meta.page - 1)">
-            <i class="fas fa-chevron-left"></i>
-          </button>
-          <span class="pg-info">Página {{ meta.page }} de {{ meta.pages }}</span>
-          <button class="pg-btn" :disabled="meta.page >= meta.pages" @click="changePage(meta.page + 1)">
-            <i class="fas fa-chevron-right"></i>
-          </button>
+        <!-- Listado -->
+        <div class="gc-body dv-list">
+
+          <!-- Loading skeleton -->
+          <template v-if="loading">
+            <div class="day-group" v-for="n in 3" :key="'sk'+n">
+              <div class="day-label">
+                <b-skeleton :width="120" :height="14" animated />
+              </div>
+              <div class="dv-card" v-for="m in 2" :key="'skc'+m" style="padding:0.85rem 1rem;gap:0.5rem;flex-direction:column">
+                <b-skeleton :width="'60%'" :height="16" animated />
+                <b-skeleton :width="'90%'" :height="12" animated />
+                <b-skeleton :width="'40%'" :height="12" animated />
+              </div>
+            </div>
+          </template>
+
+          <!-- Sin resultados -->
+          <div v-else-if="!loading && grouped.length === 0" class="empty-state">
+            <i class="fas fa-box-open empty-ico"></i>
+            <p>No hay devoluciones{{ activeStatus !== 'all' ? ' con este estado' : '' }}</p>
+            <button v-if="canCreateDevolution" class="btn-create mt-2" @click="openCreate">
+              <i class="fas fa-plus"></i> Crear primera devolución
+            </button>
+          </div>
+
+          <!-- Grupos por día -->
+          <template v-else>
+            <div class="day-group" v-for="group in grouped" :key="group.label">
+              <div class="day-label">
+                <span class="day-text">{{ group.label }}</span>
+                <span class="day-count">{{ group.items.length }}</span>
+              </div>
+
+              <div class="dv-card" v-for="dev in group.items" :key="dev._id">
+                <div class="card-stripe" :class="'stripe-' + dev.status"></div>
+
+                <div class="card-body">
+                  <div class="card-head">
+                    <div class="card-id-block">
+                      <span class="card-folio">{{ dev.folio }}</span>
+                      <span v-if="dev.orderFolio" class="card-order-folio">
+                        <i class="fas fa-link"></i> {{ dev.orderFolio }}
+                      </span>
+                    </div>
+                    <span class="status-badge" :class="'badge-' + dev.status">
+                      <i :class="statusIcon(dev.status)"></i>
+                      {{ statusLabel(dev.status) }}
+                    </span>
+                  </div>
+
+                  <div class="card-info-row">
+                    <div class="info-cell">
+                      <i class="fas fa-user info-ico"></i>
+                      <span>{{ dev.cliente }}</span>
+                    </div>
+                    <div class="info-cell" v-if="dev.clientePhone">
+                      <i class="fas fa-phone info-ico"></i>
+                      <span>{{ dev.clientePhone }}</span>
+                    </div>
+                    <div class="info-cell">
+                      <i class="fas fa-tag info-ico"></i>
+                      <span>{{ reasonLabel(dev.reason) }}</span>
+                    </div>
+                    <div class="info-cell">
+                      <i class="fas fa-calendar info-ico"></i>
+                      <span>{{ fmtTime(dev.createdAt) }}</span>
+                    </div>
+                    <div class="info-cell" v-if="dev.createdBy?.name">
+                      <i class="fas fa-pen info-ico"></i>
+                      <span>{{ dev.createdBy.name }}</span>
+                    </div>
+                  </div>
+
+                  <div class="card-items" v-if="dev.items?.length">
+                    <span class="item-chip" v-for="(it, i) in dev.items.slice(0, 4)" :key="i">
+                      <span class="item-cb">{{ it.codebar || it.sku || '—' }}</span>
+                      <span class="item-qty">×{{ it.qty }}</span>
+                      <span class="item-cond" :class="'cond-' + it.condition">{{ condLabel(it.condition) }}</span>
+                      <span v-if="it.restoreStock" class="item-restore" title="Reingresa stock"><i class="fas fa-arrow-up-to-line"></i></span>
+                    </span>
+                    <span class="item-chip item-more" v-if="dev.items.length > 4">+{{ dev.items.length - 4 }} más</span>
+                  </div>
+
+                  <div class="card-notes" v-if="dev.reasonDetail || dev.notes">
+                    <i class="fas fa-comment-dots notes-ico"></i>
+                    <span>{{ dev.reasonDetail || dev.notes }}</span>
+                  </div>
+
+                  <div class="card-processed" v-if="dev.processedBy?.name">
+                    <i class="fas fa-user-check proc-ico"></i>
+                    <span>Procesado por <strong>{{ dev.processedBy.name }}</strong>
+                      {{ dev.processedAt ? '· ' + fmtDate(dev.processedAt) : '' }}</span>
+                    <span v-if="dev.stockRestored" class="stock-restored-badge">
+                      <i class="fas fa-boxes-stacked"></i> Stock restaurado
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Acciones inline -->
+                <div class="card-actions" v-if="canManageDevolutions">
+                  <template v-if="dev.status === 'pendiente'">
+                    <button class="act-btn act-review" @click="quickAction(dev, 'en_revision')" title="Poner en revisión">
+                      <i class="fas fa-magnifying-glass"></i> En revisión
+                    </button>
+                    <button class="act-btn act-reject" @click="openReject(dev)" title="Rechazar">
+                      <i class="fas fa-xmark"></i> Rechazar
+                    </button>
+                  </template>
+                  <template v-if="dev.status === 'en_revision'">
+                    <button class="act-btn act-approve" @click="quickAction(dev, 'aprobada')" title="Aprobar">
+                      <i class="fas fa-check"></i> Aprobar
+                    </button>
+                    <button class="act-btn act-reject" @click="openReject(dev)" title="Rechazar">
+                      <i class="fas fa-xmark"></i> Rechazar
+                    </button>
+                  </template>
+                  <template v-if="dev.status === 'aprobada'">
+                    <button class="act-btn act-process" @click="openProcess(dev)" title="Marcar como procesada">
+                      <i class="fas fa-box-archive"></i> Procesar
+                    </button>
+                  </template>
+                  <button class="act-btn act-detail" @click="openDetail(dev)">
+                    <i class="fas fa-eye"></i> Detalle
+                  </button>
+                </div>
+                <div class="card-actions" v-else>
+                  <button class="act-btn act-detail" @click="openDetail(dev)">
+                    <i class="fas fa-eye"></i> Ver detalle
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Paginación -->
+            <div class="pagination-row" v-if="meta.pages > 1">
+              <button class="pg-btn" :disabled="meta.page <= 1" @click="changePage(meta.page - 1)">
+                <i class="fas fa-chevron-left"></i>
+              </button>
+              <span class="pg-info">Página {{ meta.page }} de {{ meta.pages }}</span>
+              <button class="pg-btn" :disabled="meta.page >= meta.pages" @click="changePage(meta.page + 1)">
+                <i class="fas fa-chevron-right"></i>
+              </button>
+            </div>
+          </template>
+
         </div>
-      </template>
+      </div>
     </section>
 
     <!-- ══ MODAL: DETALLE ══ -->
-    <div class="dv-modal-overlay" v-if="detailDev" @click.self="detailDev = null">
-      <div class="dv-modal">
-        <button class="modal-close" @click="detailDev = null"><i class="fas fa-xmark"></i></button>
-
-        <div class="modal-header">
-          <span class="modal-folio">{{ detailDev.folio }}</span>
-          <span class="status-badge" :class="'badge-' + detailDev.status">
-            <i :class="statusIcon(detailDev.status)"></i>
-            {{ statusLabel(detailDev.status) }}
-          </span>
-        </div>
-
-        <div class="modal-section">
-          <div class="modal-row"><span class="mrow-label">Cliente</span><span>{{ detailDev.cliente }}</span></div>
-          <div class="modal-row" v-if="detailDev.clientePhone"><span class="mrow-label">Teléfono</span><span>{{ detailDev.clientePhone }}</span></div>
-          <div class="modal-row" v-if="detailDev.orderFolio"><span class="mrow-label">Pedido vinculado</span><span>{{ detailDev.orderFolio }}</span></div>
-          <div class="modal-row"><span class="mrow-label">Motivo</span><span>{{ reasonLabel(detailDev.reason) }}</span></div>
-          <div class="modal-row" v-if="detailDev.reasonDetail"><span class="mrow-label">Detalle</span><span>{{ detailDev.reasonDetail }}</span></div>
-          <div class="modal-row" v-if="detailDev.notes"><span class="mrow-label">Notas internas</span><span>{{ detailDev.notes }}</span></div>
-          <div class="modal-row"><span class="mrow-label">Creado por</span><span>{{ detailDev.createdBy?.name || '—' }}</span></div>
-          <div class="modal-row"><span class="mrow-label">Fecha</span><span>{{ fmtDate(detailDev.createdAt) }}</span></div>
-          <div class="modal-row" v-if="detailDev.processedBy?.name"><span class="mrow-label">Procesado por</span><span>{{ detailDev.processedBy.name }}</span></div>
-          <div class="modal-row" v-if="detailDev.stockRestored"><span class="mrow-label">Stock</span><span class="stock-ok"><i class="fas fa-check"></i> Restaurado al inventario</span></div>
-        </div>
-
-        <div class="modal-section" v-if="detailDev.items?.length">
-          <div class="msec-title">Ítems ({{ detailDev.items.length }})</div>
-          <div class="item-row" v-for="(it, i) in detailDev.items" :key="i">
-            <div class="item-row-main">
-              <span class="item-cb-big">{{ it.codebar || it.sku || '—' }}</span>
-              <span v-if="it.description" class="item-desc">{{ it.description }}</span>
-            </div>
-            <div class="item-row-meta">
-              <span class="item-qty-big">×{{ it.qty }}</span>
-              <span class="item-cond" :class="'cond-' + it.condition">{{ condLabel(it.condition) }}</span>
-              <span v-if="it.restoreStock" class="item-restore">
-                <i class="fas fa-arrow-up-to-line"></i> Reingresa stock
+    <b-modal v-model="detailOpen" has-modal-card trap-focus :destroy-on-hide="true" animation="zoom-in">
+      <div class="modal-card" v-if="detailDev">
+        <header class="modal-card-head">
+          <div class="modal-card-head-content">
+            <div class="modal-head-icon accent-purple"><i class="fas fa-eye"></i></div>
+            <div>
+              <p class="modal-card-title">{{ detailDev.folio }}</p>
+              <span class="status-badge" :class="'badge-' + detailDev.status">
+                <i :class="statusIcon(detailDev.status)"></i>
+                {{ statusLabel(detailDev.status) }}
               </span>
             </div>
           </div>
-        </div>
+          <button class="delete" aria-label="close" @click="detailOpen = false"></button>
+        </header>
 
-        <!-- Acción desde modal si es gestor -->
-        <div class="modal-actions" v-if="canManageDevolutions && detailDev.status !== 'procesada' && detailDev.status !== 'rechazada'">
-          <div class="modal-notes-row">
-            <textarea v-model="actionNotes" class="modal-textarea" placeholder="Notas (opcional)..." rows="2"></textarea>
+        <section class="modal-card-body">
+          <div class="modal-rows">
+            <div class="modal-row"><span class="mrow-label">Cliente</span><span>{{ detailDev.cliente }}</span></div>
+            <div class="modal-row" v-if="detailDev.clientePhone"><span class="mrow-label">Teléfono</span><span>{{ detailDev.clientePhone }}</span></div>
+            <div class="modal-row" v-if="detailDev.orderFolio"><span class="mrow-label">Pedido vinculado</span><span>{{ detailDev.orderFolio }}</span></div>
+            <div class="modal-row"><span class="mrow-label">Motivo</span><span>{{ reasonLabel(detailDev.reason) }}</span></div>
+            <div class="modal-row" v-if="detailDev.reasonDetail"><span class="mrow-label">Detalle</span><span>{{ detailDev.reasonDetail }}</span></div>
+            <div class="modal-row" v-if="detailDev.notes"><span class="mrow-label">Notas internas</span><span>{{ detailDev.notes }}</span></div>
+            <div class="modal-row"><span class="mrow-label">Creado por</span><span>{{ detailDev.createdBy?.name || '—' }}</span></div>
+            <div class="modal-row"><span class="mrow-label">Fecha</span><span>{{ fmtDate(detailDev.createdAt) }}</span></div>
+            <div class="modal-row" v-if="detailDev.processedBy?.name"><span class="mrow-label">Procesado por</span><span>{{ detailDev.processedBy.name }}</span></div>
+            <div class="modal-row" v-if="detailDev.stockRestored"><span class="mrow-label">Stock</span><span class="stock-ok"><i class="fas fa-check"></i> Restaurado al inventario</span></div>
           </div>
-          <div class="modal-btn-row">
-            <button
-              v-if="detailDev.status === 'pendiente'"
-              class="act-btn act-review"
-              @click="applyAction(detailDev, 'en_revision')"
-            ><i class="fas fa-magnifying-glass"></i> En revisión</button>
-            <button
-              v-if="detailDev.status === 'en_revision' || detailDev.status === 'pendiente'"
-              class="act-btn act-approve"
-              @click="applyAction(detailDev, 'aprobada')"
-            ><i class="fas fa-check"></i> Aprobar</button>
-            <button
-              v-if="detailDev.status === 'aprobada'"
-              class="act-btn act-process"
-              @click="applyAction(detailDev, 'procesada')"
-            ><i class="fas fa-box-archive"></i> Procesar</button>
-            <button
-              v-if="['pendiente','en_revision','aprobada'].includes(detailDev.status)"
-              class="act-btn act-reject"
-              @click="applyAction(detailDev, 'rechazada')"
-            ><i class="fas fa-xmark"></i> Rechazar</button>
+
+          <div v-if="detailDev.items?.length" class="mt-4">
+            <p class="msec-title">Ítems ({{ detailDev.items.length }})</p>
+            <div class="item-row" v-for="(it, i) in detailDev.items" :key="i">
+              <div class="item-row-main">
+                <span class="item-cb-big">{{ it.codebar || it.sku || '—' }}</span>
+                <span v-if="it.description" class="item-desc">{{ it.description }}</span>
+              </div>
+              <div class="item-row-meta">
+                <span class="item-qty-big">×{{ it.qty }}</span>
+                <span class="item-cond" :class="'cond-' + it.condition">{{ condLabel(it.condition) }}</span>
+                <span v-if="it.restoreStock" class="item-restore"><i class="fas fa-arrow-up-to-line"></i> Reingresa stock</span>
+              </div>
+            </div>
           </div>
-        </div>
+
+          <div v-if="canManageDevolutions && detailDev.status !== 'procesada' && detailDev.status !== 'rechazada'" class="mt-4">
+            <b-field label="Notas (opcional)">
+              <b-input v-model="actionNotes" type="textarea" rows="2" placeholder="Notas (opcional)..." />
+            </b-field>
+          </div>
+        </section>
+
+        <footer class="modal-card-foot" style="justify-content:flex-end;gap:0.5rem;flex-wrap:wrap"
+          v-if="canManageDevolutions && detailDev.status !== 'procesada' && detailDev.status !== 'rechazada'">
+          <b-button @click="detailOpen = false">Cerrar</b-button>
+          <b-button
+            v-if="detailDev.status === 'pendiente'"
+            type="is-info"
+            icon-left="magnifying-glass"
+            @click="applyAction(detailDev, 'en_revision')"
+          >En revisión</b-button>
+          <b-button
+            v-if="detailDev.status === 'en_revision' || detailDev.status === 'pendiente'"
+            type="is-success"
+            icon-left="check"
+            @click="applyAction(detailDev, 'aprobada')"
+          >Aprobar</b-button>
+          <b-button
+            v-if="detailDev.status === 'aprobada'"
+            type="is-primary"
+            icon-left="box-archive"
+            @click="applyAction(detailDev, 'procesada')"
+          >Procesar</b-button>
+          <b-button
+            v-if="['pendiente','en_revision','aprobada'].includes(detailDev.status)"
+            type="is-danger"
+            icon-left="xmark"
+            @click="applyAction(detailDev, 'rechazada')"
+          >Rechazar</b-button>
+        </footer>
+        <footer class="modal-card-foot" style="justify-content:flex-end" v-else>
+          <b-button @click="detailOpen = false">Cerrar</b-button>
+        </footer>
       </div>
-    </div>
+    </b-modal>
 
     <!-- ══ MODAL: RECHAZAR ══ -->
-    <div class="dv-modal-overlay" v-if="rejectTarget" @click.self="rejectTarget = null">
-      <div class="dv-modal dv-modal-sm">
-        <button class="modal-close" @click="rejectTarget = null"><i class="fas fa-xmark"></i></button>
-        <div class="modal-header">
-          <span class="modal-folio">Rechazar {{ rejectTarget.folio }}</span>
-        </div>
-        <div class="modal-section">
-          <label class="modal-label">Motivo del rechazo</label>
-          <textarea v-model="rejectNotes" class="modal-textarea" rows="3" placeholder="Explica por qué se rechaza..."></textarea>
-        </div>
-        <div class="modal-btn-row">
-          <button class="act-btn act-reject" @click="confirmReject">
-            <i class="fas fa-xmark"></i> Confirmar rechazo
-          </button>
-          <button class="act-btn act-detail" @click="rejectTarget = null">Cancelar</button>
-        </div>
+    <b-modal v-model="rejectOpen" has-modal-card trap-focus :destroy-on-hide="true" animation="zoom-in">
+      <div class="modal-card" v-if="rejectTarget">
+        <header class="modal-card-head">
+          <div class="modal-card-head-content">
+            <div class="modal-head-icon accent-red"><i class="fas fa-xmark"></i></div>
+            <p class="modal-card-title">Rechazar {{ rejectTarget.folio }}</p>
+          </div>
+          <button class="delete" aria-label="close" @click="rejectOpen = false"></button>
+        </header>
+        <section class="modal-card-body">
+          <b-field label="Motivo del rechazo">
+            <b-input v-model="rejectNotes" type="textarea" rows="3" placeholder="Explica por qué se rechaza..." />
+          </b-field>
+        </section>
+        <footer class="modal-card-foot" style="justify-content:flex-end;gap:0.5rem">
+          <b-button @click="rejectOpen = false">Cancelar</b-button>
+          <b-button type="is-danger" icon-left="xmark" @click="confirmReject">Confirmar rechazo</b-button>
+        </footer>
       </div>
-    </div>
+    </b-modal>
 
-    <!-- ══ MODAL: PROCESAR (con opción de restaurar stock) ══ -->
-    <div class="dv-modal-overlay" v-if="processTarget" @click.self="processTarget = null">
-      <div class="dv-modal dv-modal-sm">
-        <button class="modal-close" @click="processTarget = null"><i class="fas fa-xmark"></i></button>
-        <div class="modal-header">
-          <span class="modal-folio">Procesar {{ processTarget.folio }}</span>
-        </div>
-        <div class="modal-section">
-          <div class="process-info">
+    <!-- ══ MODAL: PROCESAR ══ -->
+    <b-modal v-model="processOpen" has-modal-card trap-focus :destroy-on-hide="true" animation="zoom-in">
+      <div class="modal-card" v-if="processTarget">
+        <header class="modal-card-head">
+          <div class="modal-card-head-content">
+            <div class="modal-head-icon accent-purple"><i class="fas fa-box-archive"></i></div>
+            <p class="modal-card-title">Procesar {{ processTarget.folio }}</p>
+          </div>
+          <button class="delete" aria-label="close" @click="processOpen = false"></button>
+        </header>
+        <section class="modal-card-body">
+          <div class="process-info mb-4">
             <i class="fas fa-circle-info process-info-ico"></i>
             <p>Al procesar esta devolución, se marcará como completada.
               <template v-if="processTarget.restoreStock && !processTarget.stockRestored">
@@ -367,98 +422,93 @@
               </template>
             </p>
           </div>
-          <label class="modal-label">Notas de cierre (opcional)</label>
-          <textarea v-model="processNotes" class="modal-textarea" rows="2" placeholder="Observaciones..."></textarea>
-        </div>
-        <div class="modal-btn-row">
-          <button class="act-btn act-process" @click="confirmProcess">
-            <i class="fas fa-box-archive"></i> Confirmar procesado
-          </button>
-          <button class="act-btn act-detail" @click="processTarget = null">Cancelar</button>
-        </div>
+          <b-field label="Notas de cierre (opcional)">
+            <b-input v-model="processNotes" type="textarea" rows="2" placeholder="Observaciones..." />
+          </b-field>
+        </section>
+        <footer class="modal-card-foot" style="justify-content:flex-end;gap:0.5rem">
+          <b-button @click="processOpen = false">Cancelar</b-button>
+          <b-button type="is-primary" icon-left="box-archive" @click="confirmProcess">Confirmar procesado</b-button>
+        </footer>
       </div>
-    </div>
+    </b-modal>
 
     <!-- ══ MODAL: CREAR DEVOLUCIÓN ══ -->
-    <div class="dv-modal-overlay" v-if="showCreate" @click.self="showCreate = false">
-      <div class="dv-modal dv-modal-lg">
-        <button class="modal-close" @click="showCreate = false"><i class="fas fa-xmark"></i></button>
-        <div class="modal-header">
-          <span class="modal-folio">Nueva devolución</span>
-        </div>
+    <b-modal v-model="showCreate" has-modal-card trap-focus :destroy-on-hide="true" animation="zoom-in">
+      <div class="modal-card dv-create-card">
+        <header class="modal-card-head">
+          <div class="modal-card-head-content">
+            <div class="modal-head-icon accent-purple"><i class="fas fa-plus"></i></div>
+            <p class="modal-card-title">Nueva devolución</p>
+          </div>
+          <button class="delete" aria-label="close" @click="showCreate = false"></button>
+        </header>
 
-        <div class="modal-section">
+        <section class="modal-card-body">
+          <!-- Datos principales: 2 columnas fijas -->
           <div class="form-grid">
-            <div class="form-field">
-              <label class="modal-label">Cliente <span class="req">*</span></label>
-              <input v-model="form.cliente" class="form-input" placeholder="Nombre del cliente" />
-            </div>
-            <div class="form-field">
-              <label class="modal-label">Teléfono</label>
-              <input v-model="form.clientePhone" class="form-input" placeholder="Teléfono" />
-            </div>
-            <div class="form-field">
-              <label class="modal-label">Folio del pedido (opcional)</label>
-              <input v-model="form.orderFolio" class="form-input" placeholder="LAB-XXXXXXXX-XXXX" />
-            </div>
-            <div class="form-field">
-              <label class="modal-label">Motivo <span class="req">*</span></label>
-              <select v-model="form.reason" class="form-input">
+            <b-field label="Cliente *">
+              <b-input v-model="form.cliente" placeholder="Nombre del cliente" />
+            </b-field>
+            <b-field label="Teléfono">
+              <b-input v-model="form.clientePhone" placeholder="Teléfono" />
+            </b-field>
+            <b-field label="Folio del pedido (opcional)">
+              <b-input v-model="form.orderFolio" placeholder="LAB-XXXXXXXX-XXXX" />
+            </b-field>
+            <b-field label="Motivo *">
+              <b-select v-model="form.reason" expanded>
                 <option value="">— Seleccionar —</option>
                 <option v-for="r in REASONS" :key="r.value" :value="r.value">{{ r.label }}</option>
+              </b-select>
+            </b-field>
+          </div>
+
+          <b-field label="Descripción del problema" class="mt-3">
+            <b-input v-model="form.reasonDetail" type="textarea" rows="2" placeholder="Describe el problema en detalle..." />
+          </b-field>
+          <b-field label="Notas internas">
+            <b-input v-model="form.notes" type="textarea" rows="2" placeholder="Notas solo visibles para el equipo..." />
+          </b-field>
+
+          <!-- Ítems -->
+          <div class="items-section mt-4">
+            <div class="msec-title">
+              Ítems devueltos
+              <b-button size="is-small" type="is-light" icon-left="plus" @click="addItem">Agregar ítem</b-button>
+            </div>
+            <div class="form-item-row" v-for="(it, i) in form.items" :key="i">
+              <input v-model="it.codebar" class="form-input fi-code" placeholder="Código de barras" />
+              <input v-model="it.description" class="form-input fi-desc" placeholder="Descripción" />
+              <input v-model.number="it.qty" type="number" min="1" class="form-input fi-qty" placeholder="Cant." />
+              <select v-model="it.condition" class="form-input fi-cond">
+                <option value="bueno">Bueno</option>
+                <option value="danado">Dañado</option>
+                <option value="defectuoso">Defectuoso</option>
               </select>
+              <label class="fi-restore" title="Reingresa stock al inventario">
+                <input type="checkbox" v-model="it.restoreStock" />
+                <i class="fas fa-arrow-up-to-line"></i>
+              </label>
+              <button class="fi-del" @click="removeItem(i)" title="Eliminar ítem">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+            <div class="form-restore-note" v-if="form.items.some(i => i.restoreStock)">
+              <i class="fas fa-circle-info"></i>
+              Los ítems marcados con <i class="fas fa-arrow-up-to-line"></i> reingresarán stock al inventario cuando se procese la devolución.
             </div>
           </div>
-          <div class="form-field mt-2">
-            <label class="modal-label">Descripción del problema</label>
-            <textarea v-model="form.reasonDetail" class="modal-textarea" rows="2" placeholder="Describe el problema en detalle..."></textarea>
-          </div>
-          <div class="form-field mt-2">
-            <label class="modal-label">Notas internas</label>
-            <textarea v-model="form.notes" class="modal-textarea" rows="2" placeholder="Notas solo visibles para el equipo..."></textarea>
-          </div>
-        </div>
+        </section>
 
-        <!-- Ítems -->
-        <div class="modal-section">
-          <div class="msec-title">
-            Ítems devueltos
-            <button class="add-item-btn" @click="addItem">
-              <i class="fas fa-plus"></i> Agregar ítem
-            </button>
-          </div>
-          <div class="form-item-row" v-for="(it, i) in form.items" :key="i">
-            <input v-model="it.codebar" class="form-input fi-code" placeholder="Código de barras" />
-            <input v-model="it.description" class="form-input fi-desc" placeholder="Descripción" />
-            <input v-model.number="it.qty" type="number" min="1" class="form-input fi-qty" placeholder="Cant." />
-            <select v-model="it.condition" class="form-input fi-cond">
-              <option value="bueno">Bueno</option>
-              <option value="danado">Dañado</option>
-              <option value="defectuoso">Defectuoso</option>
-            </select>
-            <label class="fi-restore" :title="'Reingresa stock al inventario'">
-              <input type="checkbox" v-model="it.restoreStock" />
-              <i class="fas fa-arrow-up-to-line"></i>
-            </label>
-            <button class="fi-del" @click="removeItem(i)" title="Eliminar ítem">
-              <i class="fas fa-trash"></i>
-            </button>
-          </div>
-          <div class="form-restore-note" v-if="form.items.some(i => i.restoreStock)">
-            <i class="fas fa-circle-info"></i>
-            Los ítems marcados con <i class="fas fa-arrow-up-to-line"></i> reingresarán stock al inventario cuando se procese la devolución.
-          </div>
-        </div>
-
-        <div class="modal-btn-row">
-          <button class="act-btn act-approve" @click="submitCreate" :disabled="creating">
-            <i class="fas fa-floppy-disk"></i>
-            {{ creating ? 'Guardando…' : 'Crear devolución' }}
-          </button>
-          <button class="act-btn act-detail" @click="showCreate = false">Cancelar</button>
-        </div>
+        <footer class="modal-card-foot" style="justify-content:flex-end;gap:0.5rem">
+          <b-button @click="showCreate = false">Cancelar</b-button>
+          <b-button type="is-primary" icon-left="floppy-disk" :loading="creating" @click="submitCreate">
+            Crear devolución
+          </b-button>
+        </footer>
       </div>
-    </div>
+    </b-modal>
 
   </div>
 </template>
@@ -495,10 +545,13 @@ const searchQ      = ref("");
 const currentPage  = ref(1);
 
 const detailDev    = ref(null);
+const detailOpen   = ref(false);
 const actionNotes  = ref("");
 const rejectTarget = ref(null);
+const rejectOpen   = ref(false);
 const rejectNotes  = ref("");
 const processTarget = ref(null);
+const processOpen   = ref(false);
 const processNotes  = ref("");
 const showCreate   = ref(false);
 const creating     = ref(false);
@@ -646,7 +699,8 @@ async function applyAction(dev, newStatus) {
   try {
     await updateDevolutionStatus(dev._id, newStatus, actionNotes.value);
     labToast.success(`Devolución ${dev.folio} → ${statusLabel(newStatus)}`);
-    detailDev.value = null;
+    detailOpen.value  = false;
+    detailDev.value   = null;
     actionNotes.value = "";
     load();
   } catch (e) {
@@ -657,12 +711,14 @@ async function applyAction(dev, newStatus) {
 function openReject(dev) {
   rejectTarget.value = dev;
   rejectNotes.value  = "";
+  rejectOpen.value   = true;
 }
 async function confirmReject() {
   if (!rejectTarget.value) return;
   try {
     await updateDevolutionStatus(rejectTarget.value._id, "rechazada", rejectNotes.value);
     labToast.success(`Devolución ${rejectTarget.value.folio} rechazada`);
+    rejectOpen.value   = false;
     rejectTarget.value = null;
     load();
   } catch (e) {
@@ -673,6 +729,7 @@ async function confirmReject() {
 function openProcess(dev) {
   processTarget.value = dev;
   processNotes.value  = "";
+  processOpen.value   = true;
 }
 async function confirmProcess() {
   if (!processTarget.value) return;
@@ -684,6 +741,7 @@ async function confirmProcess() {
     } else {
       labToast.success(`Devolución ${processTarget.value.folio} procesada${processTarget.value.restoreStock ? ' · Stock restaurado' : ''}`);
     }
+    processOpen.value   = false;
     processTarget.value = null;
     load();
   } catch (e) {
@@ -693,6 +751,7 @@ async function confirmProcess() {
 
 function openDetail(dev) {
   detailDev.value   = dev;
+  detailOpen.value  = true;
   actionNotes.value = "";
 }
 
@@ -738,25 +797,14 @@ async function submitCreate() {
 onMounted(load);
 </script>
 
-<!-- ─────────────────────────────────────────────────────────────────────────
-     STYLES — Glassmorphism ajustado al sistema de tokens del proyecto
-──────────────────────────────────────────────────────────────────────────── -->
+<!-- Glass token vars (no scoped) -->
 <style>
-/* Tokens glassmorphism (mismos valores que DashboardHome + Analiticas) */
 .dv-root {
-  --g-bg:       var(--surface);
+  --g-bg:       var(--card);
   --g-border:   var(--border);
-  --g-shadow:   var(--shadow-sm);
+  --g-shadow:   var(--shadow);
+  --g-action:   var(--surface-overlay);
   --g-hover:    var(--bg-muted);
-  --g-action:   var(--bg-subtle);
-  --g-blur:     blur(8px) saturate(140%);
-}
-[data-theme="dark"] .dv-root {
-  --g-bg:       var(--surface);
-  --g-border:   var(--border);
-  --g-shadow:   var(--shadow-md);
-  --g-hover:    var(--bg-muted);
-  --g-action:   var(--bg-subtle);
 }
 </style>
 
@@ -764,102 +812,152 @@ onMounted(load);
 /* ── Root ── */
 .dv-root {
   position: relative;
-  min-height: 100vh;
+  min-height: 100%;
   background: var(--bg-base);
-  padding: 1.5rem 1.75rem 3rem;
-  overflow-x: hidden;
 }
 
-/* ── Orbs ── */
-.glass-bg { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
-.orb { position: absolute; border-radius: 50%; filter: blur(72px); }
-.orb-1 { width: 340px; height: 340px; background: rgba(124,58,237,0.07); top: -80px; right: 10%; }
-.orb-2 { width: 280px; height: 280px; background: rgba(59,130,246,0.06); top: 40%; left: -60px; }
-.orb-3 { width: 240px; height: 240px; background: rgba(16,185,129,0.05); bottom: 5%; right: 15%; }
-
-/* ── Hero ── */
+/* ══════════════════════════════════════════
+   HERO
+══════════════════════════════════════════ */
 .dv-hero {
   position: relative;
   z-index: 1;
+  margin: 1.25rem;
+  border-radius: 18px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 0 0,   rgba(124,58,237,0.12),  transparent 55%),
+    radial-gradient(circle at 100% 0, rgba(236,72,153,0.10), transparent 55%),
+    radial-gradient(circle at 60% 100%, rgba(59,130,246,0.10), transparent 55%),
+    var(--surface-solid);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+.dv-hero-accent {
+  height: 3.5px;
+  width: 100%;
+  background: linear-gradient(90deg, #7c3aed, #3b82f6, #ec4899);
+}
+.dv-hero-inner {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  background: var(--g-bg);
-  border: 1px solid var(--g-border);
-  border-radius: 16px;
-  padding: 1.25rem 1.5rem;
-  box-shadow: var(--g-shadow);
-  backdrop-filter: var(--g-blur);
-  margin-bottom: 1.25rem;
+  padding: 1.15rem 1.6rem;
   flex-wrap: wrap;
 }
-.hero-left { display: flex; align-items: center; gap: 1rem; }
-.hero-icon-wrap {
-  width: 48px; height: 48px; border-radius: 12px;
-  background: linear-gradient(135deg, #7c3aed, #3b82f6);
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-}
-.hero-icon { font-size: 1.25rem; color: #fff; }
-.hero-title { font-size: 1.4rem; font-weight: 700; color: var(--text-primary); margin: 0; line-height: 1.2; }
-.hero-sub { font-size: 0.8rem; color: var(--text-muted); margin: 0; }
-.hero-right { display: flex; gap: 0.5rem; align-items: center; }
+.dv-hero-left  { flex: 1; min-width: 0; }
+.dv-hero-right { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; flex-wrap: wrap; }
 
-.btn-create {
-  display: flex; align-items: center; gap: 0.4rem;
-  padding: 0.5rem 1rem; border-radius: 8px; border: none; cursor: pointer;
-  background: linear-gradient(135deg, #7c3aed, #3b82f6);
-  color: #fff; font-size: 0.82rem; font-weight: 600;
-  transition: opacity .15s;
+.dv-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.67rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  color: var(--c-primary);
+  background: var(--c-primary-alpha);
+  padding: 0.22rem 0.55rem;
+  border-radius: 999px;
+  margin-bottom: 0.4rem;
 }
-.btn-create:hover { opacity: .85; }
-.btn-refresh {
-  width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--g-border);
-  background: var(--g-bg); color: var(--text-muted); cursor: pointer; font-size: .9rem;
-  display: flex; align-items: center; justify-content: center;
-  transition: background .15s;
+.dv-hero-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  margin: 0 0 0.2rem;
+  line-height: 1.2;
 }
-.btn-refresh:hover { background: var(--g-hover); }
-.btn-refresh.spinning i { animation: spin .7s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
+.dv-brand-grad {
+  background: linear-gradient(90deg, #7c3aed, #3b82f6, #ec4899);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.dv-hero-sub { font-size: 0.78rem; color: var(--text-muted); margin: 0; }
 
-/* ── KPI Strip ── */
-.kpi-strip {
+.dv-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.73rem;
+  color: var(--text-muted);
+  background: var(--g-action);
+  border: 1px solid var(--g-border);
+  padding: 0.28rem 0.7rem;
+  border-radius: 999px;
+}
+.dv-badge i { color: #ec4899; font-size: 0.72rem; }
+
+
+/* ══════════════════════════════════════════
+   KPI STRIP
+══════════════════════════════════════════ */
+.dv-kpis {
   position: relative; z-index: 1;
-  display: flex; gap: 0.75rem; flex-wrap: wrap;
+  padding: 0 1.25rem;
   margin-bottom: 1.25rem;
 }
-.kpi-card {
-  flex: 1 1 140px; min-width: 130px;
-  background: var(--g-bg); border: 1px solid var(--g-border);
-  border-radius: 12px; padding: 0.9rem 1rem;
-  box-shadow: var(--g-shadow); backdrop-filter: var(--g-blur);
-  display: flex; align-items: center; gap: 0.75rem;
+.dv-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+  gap: 0.75rem;
 }
-.kpi-icon {
-  width: 36px; height: 36px; border-radius: 9px;
+.dv-kpi-card {
+  border-radius: 16px;
+  background: var(--g-bg);
+  border: 1px solid var(--g-border);
+  box-shadow: var(--g-shadow);
+  overflow: hidden;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.dv-kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+.dv-kpi-bar   { height: 2.5px; width: 100%; }
+.dv-kpi-inner { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.85rem 1rem; }
+.dv-kpi-ico   {
+  width: 34px; height: 34px; border-radius: 0.55rem;
   display: flex; align-items: center; justify-content: center;
-  font-size: .9rem; flex-shrink: 0;
+  font-size: 0.88rem; flex-shrink: 0;
 }
-.kpi-orange { background: rgba(249,115,22,.12); color: #f97316; }
-.kpi-blue   { background: rgba(59,130,246,.12);  color: #3b82f6; }
-.kpi-green  { background: rgba(16,185,129,.12);  color: #10b981; }
-.kpi-red    { background: rgba(239,68,68,.12);   color: #ef4444; }
-.kpi-purple { background: rgba(124,58,237,.12);  color: #7c3aed; }
-.kpi-cyan   { background: rgba(6,182,212,.12);   color: #06b6d4; }
-.kpi-val  { font-size: 1.3rem; font-weight: 700; color: var(--text-primary); line-height: 1; }
-.kpi-label{ font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; }
+.dv-kpi-lbl { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 600; }
+.dv-kpi-num { font-size: 1.5rem; font-weight: 800; line-height: 1.1; margin: 0.1rem 0; }
+.dv-kpi-cap { font-size: 0.65rem; color: var(--text-muted); }
 
-/* ── Filter Bar ── */
-.filter-bar {
+/* ══════════════════════════════════════════
+   MAIN SECTION + GLASS CARD
+══════════════════════════════════════════ */
+.dv-main {
   position: relative; z-index: 1;
-  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
-  background: var(--g-bg); border: 1px solid var(--g-border);
-  border-radius: 12px; padding: 0.65rem 1rem;
-  box-shadow: var(--g-shadow); backdrop-filter: var(--g-blur);
-  margin-bottom: 1.25rem;
+  padding: 0 1.25rem 2rem;
 }
+
+.gcard {
+  background: var(--g-bg);
+  border: 1px solid var(--g-border);
+  border-radius: 18px;
+  box-shadow: var(--g-shadow);
+  overflow: hidden;
+}
+.gcard-bar { height: 2.5px; width: 100%; }
+
+.gc-head {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.85rem 1.25rem;
+}
+.gc-head-filter {
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--g-border);
+  gap: 0.6rem;
+}
+.gc-body { padding: 1rem 1.25rem; }
+
+/* ── Filter tabs ── */
 .filter-tabs { display: flex; gap: 0.4rem; flex-wrap: wrap; flex: 1; }
 .ftab {
   display: flex; align-items: center; gap: 0.35rem;
@@ -868,7 +966,10 @@ onMounted(load);
   transition: background .15s, color .15s;
 }
 .ftab:hover { background: var(--g-hover); color: var(--text-primary); }
-.ftab.active { background: var(--g-action); border-color: var(--g-border); color: var(--text-primary); font-weight: 600; }
+.ftab.active {
+  background: var(--g-action); border-color: var(--g-border);
+  color: var(--text-primary); font-weight: 600;
+}
 .ftab-count {
   background: var(--bg-muted); border-radius: 9px; padding: 0 6px;
   font-size: 0.7rem; font-weight: 700; color: var(--text-muted);
@@ -888,38 +989,34 @@ onMounted(load);
   background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: .8rem;
 }
 
-/* ── List ── */
-.dv-list { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 1.5rem; }
+/* ══════════════════════════════════════════
+   LIST + CARDS
+══════════════════════════════════════════ */
+.dv-list { display: flex; flex-direction: column; gap: 1.5rem; }
 
 .day-group { display: flex; flex-direction: column; gap: 0.6rem; }
-.day-label {
-  display: flex; align-items: center; gap: 0.5rem;
-  padding: 0 0.25rem;
-}
-.day-text { font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-transform: capitalize; }
+.day-label { display: flex; align-items: center; gap: 0.5rem; padding: 0 0.25rem; }
+.day-text  { font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-transform: capitalize; }
 .day-count {
   background: var(--bg-muted); border-radius: 9px; padding: 1px 7px;
   font-size: 0.7rem; font-weight: 700; color: var(--text-muted);
 }
 
-/* ── Card ── */
 .dv-card {
-  display: flex; gap: 0;
-  background: var(--g-bg); border: 1px solid var(--g-border);
-  border-radius: 12px; box-shadow: var(--g-shadow); backdrop-filter: var(--g-blur);
-  overflow: hidden; transition: box-shadow .15s;
+  display: flex;
+  background: var(--surface-solid, var(--g-bg)); border: 1px solid var(--g-border);
+  border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,.04);
+  overflow: hidden; transition: box-shadow .15s, transform .1s;
 }
-.dv-card:hover { box-shadow: var(--shadow-md); }
+.dv-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
 
-.skeleton-card { height: 100px; animation: pulse 1.4s ease-in-out infinite; }
-@keyframes pulse { 0%,100% { opacity: .7; } 50% { opacity: .35; } }
 
 .card-stripe { width: 4px; flex-shrink: 0; }
-.stripe-pendiente  { background: #f97316; }
-.stripe-en_revision{ background: #3b82f6; }
-.stripe-aprobada   { background: #10b981; }
-.stripe-rechazada  { background: #ef4444; }
-.stripe-procesada  { background: #7c3aed; }
+.stripe-pendiente   { background: #f97316; }
+.stripe-en_revision { background: #3b82f6; }
+.stripe-aprobada    { background: #10b981; }
+.stripe-rechazada   { background: #ef4444; }
+.stripe-procesada   { background: #7c3aed; }
 
 .card-body { flex: 1; padding: 0.85rem 1rem; display: flex; flex-direction: column; gap: 0.45rem; min-width: 0; }
 .card-head { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
@@ -939,7 +1036,7 @@ onMounted(load);
 
 .card-info-row { display: flex; flex-wrap: wrap; gap: 0.75rem; }
 .info-cell { display: flex; align-items: center; gap: 0.3rem; font-size: 0.78rem; color: var(--text-muted); }
-.info-ico { font-size: 0.7rem; opacity: 0.6; }
+.info-ico  { font-size: 0.7rem; opacity: 0.6; }
 
 .card-items { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 .item-chip {
@@ -950,9 +1047,9 @@ onMounted(load);
 .item-cb  { font-weight: 600; color: var(--text-primary); }
 .item-qty { color: var(--text-muted); }
 .item-cond { border-radius: 5px; padding: 0 5px; font-size: 0.68rem; }
-.cond-bueno       { background: rgba(16,185,129,.12); color: #10b981; }
-.cond-danado      { background: rgba(249,115,22,.12); color: #f97316; }
-.cond-defectuoso  { background: rgba(239,68,68,.12);  color: #ef4444; }
+.cond-bueno      { background: rgba(16,185,129,.12); color: #10b981; }
+.cond-danado     { background: rgba(249,115,22,.12); color: #f97316; }
+.cond-defectuoso { background: rgba(239,68,68,.12);  color: #ef4444; }
 .item-restore { color: #10b981; font-size: 0.7rem; }
 .item-more { color: var(--text-muted); font-style: italic; }
 
@@ -966,7 +1063,7 @@ onMounted(load);
   border-radius: 6px; padding: 0.15rem 0.5rem; font-size: 0.7rem; font-weight: 600;
 }
 
-/* ── Card Actions ── */
+/* ── Card actions ── */
 .card-actions {
   display: flex; flex-direction: column; justify-content: center; gap: 0.4rem;
   padding: 0.75rem 0.85rem;
@@ -980,7 +1077,7 @@ onMounted(load);
   font-size: 0.76rem; font-weight: 500; cursor: pointer; white-space: nowrap;
   transition: opacity .12s, background .12s;
 }
-.act-btn:hover { opacity: .82; }
+.act-btn:hover   { opacity: .82; }
 .act-review  { background: rgba(59,130,246,.14);  color: #3b82f6; border-color: rgba(59,130,246,.2); }
 .act-approve { background: rgba(16,185,129,.14);  color: #10b981; border-color: rgba(16,185,129,.2); }
 .act-reject  { background: rgba(239,68,68,.12);   color: #ef4444; border-color: rgba(239,68,68,.18); }
@@ -988,7 +1085,7 @@ onMounted(load);
 .act-detail  { background: var(--g-hover); color: var(--text-muted); border-color: var(--g-border); }
 
 /* ── Pagination ── */
-.pagination-row { display: flex; align-items: center; justify-content: center; gap: 1rem; padding: 1rem 0; }
+.pagination-row { display: flex; align-items: center; justify-content: center; gap: 1rem; padding: 1rem 0 0; }
 .pg-btn {
   width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--g-border);
   background: var(--g-bg); color: var(--text-muted); cursor: pointer;
@@ -1007,91 +1104,80 @@ onMounted(load);
 .empty-ico { font-size: 3rem; opacity: .3; }
 .empty-state p { font-size: 0.9rem; }
 
-/* ── Modal overlay ── */
-.dv-modal-overlay {
-  position: fixed; inset: 0; z-index: 1000;
-  background: rgba(15,23,42,.45);
-  backdrop-filter: blur(4px);
-  display: flex; align-items: center; justify-content: center; padding: 1rem;
+/* ══════════════════════════════════════════
+   MODAL HEADER INTERNO (b-modal head)
+══════════════════════════════════════════ */
+.modal-card-head-content {
+  display: flex; align-items: center; gap: 0.65rem; flex: 1; min-width: 0;
 }
-.dv-modal {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  box-shadow: var(--shadow-lg);
-  max-width: 680px; width: 100%;
-  max-height: 90vh; overflow-y: auto;
-  padding: 1.5rem;
-  position: relative;
+.modal-head-icon {
+  width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 0.9rem;
 }
-.dv-modal-sm { max-width: 440px; }
-.dv-modal-lg { max-width: 780px; }
+.accent-purple { background: var(--c-primary-alpha); color: var(--c-primary); }
+.accent-blue   { background: rgba(59,130,246,.15);   color: #3b82f6; }
+.accent-green  { background: rgba(16,185,129,.15);   color: #10b981; }
+.accent-orange { background: rgba(245,158,11,.15);   color: #f59e0b; }
+.accent-red    { background: rgba(239,68,68,.15);    color: #ef4444; }
+.accent-cyan   { background: rgba(6,182,212,.15);    color: #06b6d4; }
 
-.modal-close {
-  position: absolute; top: 1rem; right: 1rem;
-  background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 8px;
-  width: 30px; height: 30px; cursor: pointer; color: var(--text-muted);
-  display: flex; align-items: center; justify-content: center;
-}
-.modal-close:hover { background: var(--bg-muted); }
+/* ── Filas de detalle ── */
+.modal-rows { display: flex; flex-direction: column; gap: 0; }
+.modal-row { display: flex; gap: 0.75rem; font-size: 0.82rem; padding: 0.3rem 0; border-bottom: 1px solid var(--border); color: var(--text-secondary); }
+.modal-row:last-child { border-bottom: none; }
+.mrow-label { font-weight: 600; color: var(--text-muted); min-width: 140px; flex-shrink: 0; }
+.stock-ok   { color: #10b981; font-weight: 600; }
 
-.modal-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
-.modal-folio { font-size: 1.05rem; font-weight: 700; color: var(--text-primary); }
-
-.modal-section { margin-bottom: 1rem; border-top: 1px solid var(--border); padding-top: 0.75rem; }
 .msec-title {
-  font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;
-  letter-spacing: .04em; margin-bottom: 0.6rem;
+  font-size: 0.78rem; font-weight: 600; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: .04em; margin-bottom: 0.6rem;
   display: flex; align-items: center; justify-content: space-between;
 }
-.modal-row { display: flex; gap: 0.75rem; font-size: 0.82rem; padding: 0.25rem 0; color: var(--text-secondary); }
-.mrow-label { font-weight: 600; color: var(--text-muted); min-width: 140px; flex-shrink: 0; }
-.stock-ok { color: #10b981; font-weight: 600; }
 
-/* Item rows in detail modal */
 .item-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; padding: 0.4rem 0; border-bottom: 1px solid var(--border); }
 .item-row:last-child { border-bottom: none; }
 .item-row-main { display: flex; flex-direction: column; gap: 0.2rem; }
-.item-cb-big { font-weight: 700; font-size: 0.85rem; color: var(--text-primary); }
-.item-desc { font-size: 0.76rem; color: var(--text-muted); }
+.item-cb-big   { font-weight: 700; font-size: 0.85rem; color: var(--text-primary); }
+.item-desc     { font-size: 0.76rem; color: var(--text-muted); }
 .item-row-meta { display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0; }
-.item-qty-big { font-size: 0.85rem; font-weight: 700; color: var(--text-primary); }
+.item-qty-big  { font-size: 0.85rem; font-weight: 700; color: var(--text-primary); }
 
-.modal-actions { border-top: 1px solid var(--border); padding-top: 0.75rem; display: flex; flex-direction: column; gap: 0.6rem; }
-.modal-notes-row textarea { width: 100%; }
-.modal-btn-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-.modal-label { font-size: 0.78rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.35rem; }
-.modal-textarea {
-  width: 100%; border-radius: 8px; border: 1px solid var(--border);
-  background: var(--bg-subtle); color: var(--text-primary); font-size: 0.82rem;
-  padding: 0.5rem 0.75rem; resize: vertical; outline: none;
-}
-.modal-textarea:focus { border-color: #7c3aed; }
-
-/* Process info box */
-.process-info { display: flex; gap: 0.5rem; background: var(--bg-subtle); border-radius: 8px; padding: 0.75rem; margin-bottom: 0.75rem; }
+.process-info { display: flex; gap: 0.5rem; background: var(--bg-subtle); border-radius: 8px; padding: 0.75rem; }
 .process-info-ico { color: #3b82f6; font-size: .9rem; flex-shrink: 0; margin-top: 2px; }
-.process-info p { font-size: 0.82rem; color: var(--text-secondary); margin: 0; line-height: 1.5; }
+.process-info p   { font-size: 0.82rem; color: var(--text-secondary); margin: 0; line-height: 1.5; }
 
-/* Reject notes */
-.req { color: #ef4444; }
+/* ══════════════════════════════════════════
+   MODAL CREAR — ancho fijo, no se adapta
+   Tablet / PC / móvil horizontal → 780px
+══════════════════════════════════════════ */
+.dv-create-card {
+  width: 780px !important;
+  max-width: min(780px, calc(100vw - 2rem)) !important;
+}
 
-/* ── Create Form ── */
-.form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem; }
-.form-field { display: flex; flex-direction: column; }
+/* ── Formulario crear: 2 columnas fijas ──
+   Tablet / PC / móvil horizontal → 2 col
+   Móvil vertical                 → 1 col  */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 1rem;
+}
+@media (orientation: portrait) and (max-width: 640px) {
+  .form-grid { grid-template-columns: 1fr; }
+}
+
+/* Items section */
+.items-section { border-top: 1px solid var(--border); padding-top: 0.75rem; }
+
 .form-input {
-  border-radius: 8px; border: 1px solid var(--border);
+  border-radius: 6px; border: 1px solid var(--border);
   background: var(--bg-subtle); color: var(--text-primary); font-size: 0.82rem;
   padding: 0.45rem 0.75rem; outline: none;
 }
 .form-input:focus { border-color: #7c3aed; }
 select.form-input { cursor: pointer; }
-.add-item-btn {
-  display: inline-flex; align-items: center; gap: 0.3rem;
-  background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 7px;
-  padding: 0.25rem 0.65rem; font-size: 0.75rem; cursor: pointer; color: var(--text-muted);
-}
-.add-item-btn:hover { background: var(--bg-muted); }
+
 .form-item-row {
   display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;
   padding: 0.4rem 0; border-bottom: 1px solid var(--border);
@@ -1110,6 +1196,7 @@ select.form-input { cursor: pointer; }
   color: #ef4444; cursor: pointer; padding: 0.35rem 0.6rem; font-size: 0.78rem;
 }
 .fi-del:hover { background: rgba(239,68,68,.2); }
+
 .form-restore-note {
   margin-top: 0.5rem; font-size: 0.75rem; color: var(--text-muted);
   background: var(--bg-subtle); border-radius: 8px; padding: 0.5rem 0.75rem;

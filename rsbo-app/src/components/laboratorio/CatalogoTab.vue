@@ -130,6 +130,7 @@
             <button
               v-for="row in lab.paginatedCatalog.value"
               :key="row._k"
+              v-memo="[row._k, row.existencias, row.codebar]"
               class="qr-card"
               type="button"
               @click="lab.copyCodebar(row.codebar)"

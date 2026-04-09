@@ -331,6 +331,12 @@ function confirmSelection() {
   background-color: var(--surface-solid);
 }
 
+/* Altura fija del body — evita que el modal cambie de tamaño al cambiar de tab */
+.avatar-modal-body {
+  height: 380px;
+  overflow-y: auto;
+}
+
 
 /* ===== Grid ===== */
 .avatar-grid {

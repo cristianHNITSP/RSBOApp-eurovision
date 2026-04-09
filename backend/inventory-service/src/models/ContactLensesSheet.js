@@ -95,7 +95,10 @@ const ContactLensesSheetSchema = new mongoose.Schema(
     fechaCompra: { type: Date, default: null },
 
     /** Precio de venta (actual) */
-    precioVenta: { type: Number, default: null, min: 0 },
+    precioVenta: { type: Number, required: true, min: 0 },
+
+    /** Precio de compra (costo) */
+    precioCompra: { type: Number, required: true, min: 0 },
 
     ranges: {
       type: RangesSchema,

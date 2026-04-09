@@ -3,7 +3,7 @@ const PHYSICAL_LIMITS = require("../constants/physicalLimits");
 const { to2, isDef, isMultipleOfStep } = require("../utils/numbers");
 const { normalizeCylConvention } = require("../utils/keys");
 
-const validateChunkRows = (tipo, rows) => {
+const validateChunkRows = (tipo, rows, ranges = {}) => {
   const errors = [];
 
   rows.forEach((row, index) => {
@@ -23,8 +23,10 @@ const validateChunkRows = (tipo, rows) => {
         errors.push({ path: `${path}.base`, msg: "base numérica requerida" });
       } else if (baseVal < PHYSICAL_LIMITS.BASE.min || baseVal > PHYSICAL_LIMITS.BASE.max) {
         errors.push({ path: `${path}.base`, msg: `base fuera de límites (${PHYSICAL_LIMITS.BASE.min}..${PHYSICAL_LIMITS.BASE.max})` });
-      } else if (!isMultipleOfStep(baseVal, 0.5)) {
-        errors.push({ path: `${path}.base`, msg: "base debe ir en pasos de 0.5 D" });
+      } else if (!isMultipleOfStep(baseVal, 0.25)) {
+        // Paso mínimo 0.25 D: acepta 0.25, 0.50, 8.50, 10, 12, 14…
+        // Rechaza valores sin sentido óptico como 0.51 o 0.26
+        errors.push({ path: `${path}.base`, msg: "base debe ser múltiplo de 0.25 D" });
       }
     }
 

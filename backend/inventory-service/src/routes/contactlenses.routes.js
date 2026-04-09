@@ -238,8 +238,12 @@ router.post(
   body("fechaCaducidad").optional({ nullable: true, checkFalsy: true }).isISO8601(),
 
   body("precioVenta")
-    .optional({ nullable: true })
-    .custom((v) => v === null || String(v).trim() === "" || (Number.isFinite(Number(v)) && Number(v) >= 0)),
+    .notEmpty().withMessage("precioVenta es requerido")
+    .custom((v) => Number.isFinite(Number(v)) && Number(v) >= 0).withMessage("precioVenta debe ser un número >= 0"),
+
+  body("precioCompra")
+    .notEmpty().withMessage("precioCompra es requerido")
+    .custom((v) => Number.isFinite(Number(v)) && Number(v) >= 0).withMessage("precioCompra debe ser un número >= 0"),
 
   body("actor").optional().isObject(),
   body("seed").optional().isBoolean(),
@@ -278,7 +282,8 @@ router.post(
       const fechaCaducidad = parseOptionalDate(req.body.fechaCaducidad);
       const numFactura = String(req.body.numFactura || "").trim();
       const loteProducto = String(req.body.loteProducto || "").trim();
-      const precioVenta = parseOptionalNumber(req.body.precioVenta);
+      const precioVenta = Number(req.body.precioVenta);
+      const precioCompra = Number(req.body.precioCompra);
 
       const sheetSku = isDef(req.body.sku) ? String(req.body.sku).trim().toUpperCase() : null;
 
@@ -309,6 +314,7 @@ router.post(
         numFactura,
         loteProducto,
         precioVenta,
+        precioCompra,
         meta: req.body.meta || {},
         owner: actor,
         createdBy: actor,
@@ -331,7 +337,8 @@ router.post(
           fechaCompra: sheet.fechaCompra,
           numFactura: sheet.numFactura,
           loteProducto: sheet.loteProducto,
-          precioVenta: sheet.precioVenta
+          precioVenta: sheet.precioVenta,
+          precioCompra: sheet.precioCompra
         },
         actor
       });
@@ -442,6 +449,10 @@ router.patch(
     .optional({ nullable: true })
     .custom((v) => v === null || String(v).trim() === "" || (Number.isFinite(Number(v)) && Number(v) >= 0)),
 
+  body("precioCompra")
+    .optional({ nullable: true })
+    .custom((v) => v === null || String(v).trim() === "" || (Number.isFinite(Number(v)) && Number(v) >= 0)),
+
   body("proveedor").optional({ nullable: true }).isObject(),
   body("proveedor.name").optional({ nullable: true, checkFalsy: true }).isString().trim(),
   body("proveedor.id").optional({ nullable: true, checkFalsy: true }).isString().trim(),
@@ -511,6 +522,8 @@ router.patch(
         sheet.loteProducto = String(req.body.loteProducto ?? "").trim();
       if (Object.prototype.hasOwnProperty.call(req.body, "precioVenta"))
         sheet.precioVenta = parseOptionalNumber(req.body.precioVenta);
+      if (Object.prototype.hasOwnProperty.call(req.body, "precioCompra"))
+        sheet.precioCompra = parseOptionalNumber(req.body.precioCompra);
       if (hasFechaCompra) sheet.fechaCompra = parseOptionalDate(req.body.fechaCompra);
       if (hasFechaCad) sheet.fechaCaducidad = parseOptionalDate(req.body.fechaCaducidad);
 
@@ -588,6 +601,7 @@ router.patch(
           numFactura: sheet.numFactura,
           loteProducto: sheet.loteProducto,
           precioVenta: sheet.precioVenta,
+          precioCompra: sheet.precioCompra,
           metaChanged: !!req.body.meta,
           skuBefore,
           skuAfter,

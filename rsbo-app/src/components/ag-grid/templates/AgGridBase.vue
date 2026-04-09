@@ -120,7 +120,14 @@ const unsavedGuard = useUnsavedGuard({
   isDirty: () => dirty.value,
   getPending: () => Object.fromEntries(pendingChanges.value),
   onRestore(saved) {
+    let discarded = 0;
     for (const [k, v] of Object.entries(saved)) {
+      const baseVal = to2(v?.base);
+      // Descartar entradas con base inválida (no múltiplo de BASE_STEP o fuera de rango)
+      if (!Number.isFinite(baseVal) || !isMultipleOfStep(baseVal, BASE_STEP)) {
+        discarded++;
+        continue;
+      }
       pendingChanges.value.set(k, v);
       // also update rowData if row exists
       const row = rowData.value.find(r => String(to2(r.base)) === k);
@@ -128,6 +135,9 @@ const unsavedGuard = useUnsavedGuard({
         row.existencias = v.existencias;
         gridApi.value?.applyTransaction({ update: [row] });
       }
+    }
+    if (discarded > 0) {
+      console.warn(`[AgGridBase] onRestore: se descartaron ${discarded} entrada(s) con base inválida del guardado temporal.`);
     }
     if (pendingChanges.value.size > 0) {
       dirty.value = true;
@@ -145,8 +155,8 @@ const raf = () =>
   });
 
 /* === AG-Grid tema reactivo al dark mode === */
-/** ✅ BASE va en 0.50 */
-const BASE_STEP = 0.50;
+/** Paso mínimo BASE: 0.25 D (acepta 0.25, 0.50, 8.50, 10, 12…) */
+const BASE_STEP = 0.25;
 
 /* ======== LÍMITES FÍSICOS DESDE BACKEND ======== */
 const phys = computed(() => {
@@ -485,11 +495,10 @@ const handleAddRow = async (nuevoValor, ack) => {
 
   if (!Number.isFinite(base)) return ackErr(ack, "Ingresa BASE numérica", 400);
 
-  // ✅ BASE es paso 0.50
   if (!isMultipleOfStep(base, BASE_STEP)) {
     return ackErr(
       ack,
-      `BASE debe ser múltiplo de ${BASE_STEP.toFixed(2)} (…00, …50). Ej: -1.00, -0.50, +0.00, +0.50, +1.00`,
+      `BASE debe ser múltiplo de 0.25 D (ej: 0.25, 0.50, 1.00, 1.25, 1.50…)`,
       400
     );
   }
@@ -543,7 +552,8 @@ async function handleSave(ack) {
   }
   saving.value = true;
   try {
-    const rows = Array.from(pendingChanges.value.values());
+    const rows = Array.from(pendingChanges.value.values())
+      .filter(r => Number.isFinite(to2(r.base)) && isMultipleOfStep(to2(r.base), BASE_STEP));
     const res = await saveChunk(props.sheetId, rows, effectiveActor.value);
     const ok = normalizeAxiosOk(res);
     if (!ok.ok) return ackErr(ack, ok.message || "No se pudo guardar", ok.status);

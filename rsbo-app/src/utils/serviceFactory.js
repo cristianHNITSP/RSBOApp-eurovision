@@ -126,13 +126,19 @@ export function createSheetService(base, tag) {
     }
 
     try {
-      const payload = { rows, actor };
-      console.log(`[${tag.toLowerCase()}.saveChunk] payload ejemplo row[0]:`, rows[0]);
+      // Spread para garantizar objetos planos (sin Proxy reactivo de Vue)
+      const plainRows = rows.map(r => ({ ...r }));
+      const payload = { rows: plainRows, actor };
+      console.log(`[${tag.toLowerCase()}.saveChunk] row[0] JSON:`, JSON.stringify(plainRows[0]));
       const res = await api.post(`${base}/sheets/${sheetId}/chunk`, payload);
       console.log(`[${tag.toLowerCase()}.saveChunk] respuesta backend status:`, res?.status, "data:", res?.data);
       return res;
     } catch (err) {
-      console.error(`[${tag.toLowerCase()}.saveChunk] ERROR`, err?.response?.status, err?.response?.data || err);
+      const errData = err?.response?.data;
+      console.error(`[${tag.toLowerCase()}.saveChunk] ERROR ${err?.response?.status}`, errData);
+      if (Array.isArray(errData?.errors)) {
+        console.error(`[${tag.toLowerCase()}.saveChunk] errores de validación:`, JSON.stringify(errData.errors));
+      }
       throw err;
     }
   }

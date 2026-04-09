@@ -131,9 +131,7 @@
             <p class="help is-danger mt-2" v-if="selectedBase && !hasAnyAllowedMaterial">
               No hay materiales compatibles con la base seleccionada.
             </p>
-            <p class="help is-light mt-1">
-              Las opciones en gris no son compatibles con la base elegida.
-            </p>
+           
           </b-field>
 
           <!-- TRATAMIENTO -->
@@ -178,16 +176,18 @@
               <div class="columns is-multiline mt-2">
 
                 <div class="column is-12-mobile is-6-tablet">
-                  <b-field label="Precio de venta (actual)">
+                  <b-field label="Precio de venta (actual) *"
+                    :type="newPrecioVenta !== '' && (!Number.isFinite(Number(newPrecioVenta)) || Number(newPrecioVenta) < 0) ? 'is-danger' : ''">
                     <b-input v-model="newPrecioVenta" type="number" min="0" step="0.01" placeholder="Ej. 1200.00" />
-                    <p class="help is-light">Opcional. Si lo dejas vacío, queda null.</p>
+                    <p class="help is-danger" v-if="!String(newPrecioVenta ?? '').trim()"></p>
                   </b-field>
                 </div>
 
                 <div class="column is-12-mobile is-6-tablet">
-                  <b-field label="Precio de compra (costo)">
+                  <b-field label="Precio de compra (costo) *"
+                    :type="newPrecioCompra !== '' && (!Number.isFinite(Number(newPrecioCompra)) || Number(newPrecioCompra) < 0) ? 'is-danger' : ''">
                     <b-input v-model="newPrecioCompra" type="number" min="0" step="0.01" placeholder="Ej. 850.00" />
-                    <p class="help is-light">Opcional. Costo del producto.</p>
+                    <p class="help is-danger" v-if="!String(newPrecioCompra ?? '').trim()"></p>
                   </b-field>
                 </div>
 
@@ -212,7 +212,7 @@
                 <div class="column is-12-mobile is-6-tablet">
                   <b-field label="Fecha de caducidad">
                     <b-input v-model="newFechaCaducidad" type="date" />
-                    <p class="help is-light">Sugerida automáticamente (compra + {{ DEFAULT_EXPIRY_MONTHS }} meses).</p>
+                    <p class="help is-light"></p>
                   </b-field>
                 </div>
               </div>
@@ -608,7 +608,7 @@ const dateForEdit = (v) => {
   return ISO_DATE_ONLY_RX.test(s) ? s : null;
 };
 
-// ✅ números opcionales (precioVenta)
+// ✅ números requeridos (precioVenta, precioCompra)
 const numForCreate = (v) => {
   const s = String(v ?? "").trim();
   if (!s) return undefined;
@@ -989,6 +989,10 @@ const canCreate = computed(() => {
   if (!newSheetName.value) return false;
   if (creatingSheet.value) return false;
   if (varianteOptions.value.length > 0 && !String(selectedVariante.value || "").trim()) return false;
+  const pv = String(newPrecioVenta.value ?? "").trim();
+  if (!pv || !Number.isFinite(Number(pv)) || Number(pv) < 0) return false;
+  const pc = String(newPrecioCompra.value ?? "").trim();
+  if (!pc || !Number.isFinite(Number(pc)) || Number(pc) < 0) return false;
   return true;
 });
 

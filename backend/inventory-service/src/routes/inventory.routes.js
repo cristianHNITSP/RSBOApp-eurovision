@@ -255,12 +255,12 @@ router.post(
   body("fechaCaducidad").optional({ nullable: true, checkFalsy: true }).isISO8601(),
 
   body("precioVenta")
-  .optional({ nullable: true })
-  .custom((v) => v === null || String(v).trim() === "" || (Number.isFinite(Number(v)) && Number(v) >= 0)),
+    .notEmpty().withMessage("precioVenta es requerido")
+    .custom((v) => Number.isFinite(Number(v)) && Number(v) >= 0).withMessage("precioVenta debe ser un número >= 0"),
 
   body("precioCompra")
-  .optional({ nullable: true })
-  .custom((v) => v === null || String(v).trim() === "" || (Number.isFinite(Number(v)) && Number(v) >= 0)),
+    .notEmpty().withMessage("precioCompra es requerido")
+    .custom((v) => Number.isFinite(Number(v)) && Number(v) >= 0).withMessage("precioCompra debe ser un número >= 0"),
 
   body("actor").optional().isObject(),
   body("seed").optional().isBoolean(),
@@ -302,8 +302,8 @@ router.post(
       const numFactura = String(req.body.numFactura || "").trim();
       const loteProducto = String(req.body.loteProducto || "").trim();
 
-      const precioVenta = parseOptionalNumber(req.body.precioVenta);
-      const precioCompra = parseOptionalNumber(req.body.precioCompra);
+      const precioVenta = Number(req.body.precioVenta);
+      const precioCompra = Number(req.body.precioCompra);
 
       if (DEBUG_INVENTORY) {
         console.log("[INV][POST /sheets] parsed purchase:", {
@@ -1197,7 +1197,7 @@ router.post(
       const rows = Array.isArray(req.body.rows) ? req.body.rows : [];
       if (!rows.length) return res.json({ ok: true, data: { upserted: 0 } });
 
-      const validationErrors = validateChunkRows(sheet.tipo_matriz, rows);
+      const validationErrors = validateChunkRows(sheet.tipo_matriz, rows, sheet.ranges);
       if (validationErrors.length) {
         return res.status(400).json({ ok: false, message: "Datos inválidos en rows", errors: validationErrors });
       }

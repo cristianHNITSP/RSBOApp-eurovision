@@ -13,6 +13,7 @@ const MatrixProgresivo = require("../models/matrix/MatrixProgresivo");
 
 // Inventory modules
 const PHYSICAL_LIMITS = require("../inventory/constants/physicalLimits");
+const { LOW_STOCK_THRESHOLD_FRONTEND } = require("../inventory/constants/stockAlerts");
 const { buildTabsForTipo } = require("../inventory/utils/tabs");
 const { actorFromBody, normalizeParty, escapeRegExp } = require("../inventory/utils/normalize");
 const { makeUniqueSheetSku, ensureSheetSku } = require("../inventory/utils/sku");
@@ -22,6 +23,7 @@ const { parseKey, denormNum, keySphCyl, normalizeCylConvention } = require("../i
 const { makeSku, makeCodebar } = require("../inventory/utils/barcode");
 
 // Services
+const { broadcast } = require("../ws");
 const { seedRootForSheet, seedFullForSheet } = require("../inventory/services/seed.service");
 const { validateChunkRows } = require("../inventory/services/chunkValidate.service");
 const {
@@ -446,10 +448,14 @@ router.get(
         console.log("[INV][GET /sheets/:id] purchase:", pickPurchase(o), { keys: Object.keys(o) });
       }
 
+      // Incluye lowStockThreshold en el objeto sheet para que el frontend
+      // no use un fallback local — refleja LOW_STOCK_THRESHOLD_FRONTEND de stockAlerts.js
+      const sheetData = { ...sheet.toObject(), lowStockThreshold: LOW_STOCK_THRESHOLD_FRONTEND };
+
       res.json({
         ok: true,
         data: {
-          sheet,
+          sheet: sheetData,
           tabs: buildTabsForTipo(sheet),
           physicalLimits: PHYSICAL_LIMITS
         }
@@ -471,7 +477,11 @@ router.get("/sheets/by-sku/:sku", async (req, res) => {
 
     res.json({
       ok: true,
-      data: { sheet, tabs: buildTabsForTipo(sheet), physicalLimits: PHYSICAL_LIMITS }
+      data: {
+        sheet: { ...sheet.toObject(), lowStockThreshold: LOW_STOCK_THRESHOLD_FRONTEND },
+        tabs: buildTabsForTipo(sheet),
+        physicalLimits: PHYSICAL_LIMITS
+      }
     });
   } catch (err) {
     console.error("GET /sheets/by-sku/:sku error:", err);
@@ -1005,6 +1015,8 @@ router.get(
 
         const addMin = Number(req.query.addMin ?? PHYSICAL_LIMITS.ADD.min);
         const addMax = Number(req.query.addMax ?? PHYSICAL_LIMITS.ADD.max);
+        const baseMin = isDef(req.query.baseMin) ? Number(req.query.baseMin) : null;
+        const baseMax = isDef(req.query.baseMax) ? Number(req.query.baseMax) : null;
 
         const eyes = String(req.query.eyes || "OD,OI")
           .split(",")
@@ -1015,8 +1027,12 @@ router.get(
         if (doc?.cells) {
           for (const [k, cell] of doc.cells.entries()) {
             const [, , add] = parseKey(k);
+            const bi = to2(cell.base_izq);
+            const bd = to2(cell.base_der);
 
             if (add < addMin || add > addMax) continue;
+            if (baseMin !== null && bi < baseMin && bd < baseMin) continue;
+            if (baseMax !== null && bi > baseMax && bd > baseMax) continue;
 
             for (const eye of eyes) {
               const eyeNode = cell[eye];
@@ -1025,8 +1041,8 @@ router.get(
               rows.push({
                 sheet: sheet._id,
                 tipo_matriz: "BASE_ADD",
-                base_izq: to2(cell.base_izq),
-                base_der: to2(cell.base_der),
+                base_izq: bi,
+                base_der: bd,
                 add: to2(add),
                 eye,
                 existencias: Number(eyeNode.existencias || 0),
@@ -1037,8 +1053,9 @@ router.get(
           }
         }
 
+        const total = rows.length;
         rows = rows.slice(0, limit);
-        return res.json({ ok: true, data: rows });
+        return res.json({ ok: true, data: rows, meta: { total, limit } });
       }
 
       return res.json({ ok: true, data: [] });
@@ -1256,6 +1273,9 @@ router.post(
       invalidatePattern(KEYS.sheetPattern(req.params.sheetId));
       cacheDel(KEYS.stats());
       cacheDel(KEYS.sheetsList("inventory"));
+
+      // Notificar a otras pestañas del mismo sheet que el inventario cambió
+      broadcast("INVENTORY_CHUNK_SAVED", { sheetIds: [req.params.sheetId] });
 
       return res.json({ ok: true, data: { upserted: result.updated, axisExtended, axisExtendError } });
     } catch (err) {

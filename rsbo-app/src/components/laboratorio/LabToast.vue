@@ -220,7 +220,7 @@ const labelFor = (type) => ({
   .lab-notif__bar-fill { animation: none !important; }
 }
 
-/* Mobile (mismo breakpoint que dirty-float) */
+/* Mobile */
 @media screen and (max-width: 768px) {
   .lab-notif-stack {
     left: 10px;
@@ -228,6 +228,14 @@ const labelFor = (type) => ({
     bottom: 10px;
     max-width: none;
   }
-  .lab-notif__subtitle { display: none; }
+
+  .lab-notif__content {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .lab-notif__texts {
+    flex: 1 1 160px;
+  }
 }
 </style>

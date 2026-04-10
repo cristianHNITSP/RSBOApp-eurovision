@@ -1,0 +1,19 @@
+/* Oculta contenido mientras no se define el tema (evita FOUC) */
+html:not([data-theme]) {
+  visibility: hidden;
+  opacity: 0;
+  background: #000 !important;
+  color: #000 !important;
+}
+
+html[data-theme] {
+  visibility: visible;
+  opacity: 1;
+  transition: opacity 0.2s ease-in;
+}
+
+/* Ocultar scrollbar y bloquear scroll */
+html,
+body {
+  overflow: hidden !important;
+}

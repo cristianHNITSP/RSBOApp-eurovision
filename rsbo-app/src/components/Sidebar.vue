@@ -14,7 +14,7 @@
         <!-- Logo + título -->
         <div class="sidebar-brand" v-if="!isCollapsed">
           <figure class="sidebar-logo">
-            <img :src="logoeuro" alt="Logo RSBO" />
+            <img src="/eurovision.svg" alt="Logo Eurovision RSBO" />
           </figure>
           <div class="sidebar-brand-text">
             <span class="sidebar-brand-title">RSBO</span>
@@ -25,7 +25,7 @@
         <!-- Logo compacto -->
         <div v-else class="sidebar-brand sidebar-brand--compact">
           <figure class="sidebar-logo sidebar-logo--compact">
-            <img :src="logoeuro" alt="Logo RSBO" />
+            <img src="/eurovision.svg" alt="Logo Eurovision RSBO" />
           </figure>
         </div>
 
@@ -540,7 +540,7 @@ $pink1: #ec4899;
   border-radius: 12px;
   overflow: hidden;
 
-  background: rgba(15, 23, 42, 0.18);
+  background: rgba(255, 255, 255, 0.18);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   box-shadow: 0 0 0 1px rgba(255,255,255,0.22), 0 10px 20px rgba(15,23,42,0.18);
@@ -551,7 +551,7 @@ $pink1: #ec4899;
 
   &--compact { border-radius: 999px; }
 
-  img { width: 100%; height: 100%; object-fit: cover; }
+  img { width: 100%; height: 100%; object-fit: contain; }
 }
 
 .sidebar-brand-text {

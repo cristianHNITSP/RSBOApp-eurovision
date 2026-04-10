@@ -421,6 +421,9 @@
                       <span class="order-line__sub">
                         {{ fmtDate(sale.fecha) }} · {{ sale.totalPiezas }} pzas
                       </span>
+                      <span v-if="sale.ventaFolio" class="order-line__sub mono muted">
+                        <i class="fas fa-receipt mr-1"></i>{{ sale.ventaFolio }}
+                      </span>
                       <span v-if="sale.labFolio" class="order-line__sub mono muted">
                         <i class="fas fa-flask mr-1"></i>{{ sale.labFolio }}
                       </span>
@@ -524,9 +527,13 @@
             <span class="bm-voucher__label">Atendido por</span>
             <span class="bm-voucher__val">{{ lastVoucher.actor }}</span>
           </div>
-          <div class="bm-voucher__row">
-            <span class="bm-voucher__label">Folio</span>
-            <span class="bm-voucher__val mono">{{ lastVoucher.id }}</span>
+          <div v-if="lastVoucher.ventaFolio" class="bm-voucher__row">
+            <span class="bm-voucher__label">Folio venta</span>
+            <span class="bm-voucher__val mono">{{ lastVoucher.ventaFolio }}</span>
+          </div>
+          <div v-if="lastVoucher.labFolio" class="bm-voucher__row">
+            <span class="bm-voucher__label">Folio lab</span>
+            <span class="bm-voucher__val mono">{{ lastVoucher.labFolio }}</span>
           </div>
         </div>
 

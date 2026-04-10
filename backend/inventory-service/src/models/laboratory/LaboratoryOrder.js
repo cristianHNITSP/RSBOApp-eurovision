@@ -28,18 +28,27 @@ const OrderLineSchema = new mongoose.Schema(
     },
 
     qty: { type: Number, required: true, min: 1 },
-    picked: { type: Number, default: 0, min: 0 }
+    picked: { type: Number, default: 0, min: 0 },
+    precio: { type: Number, default: 0 }
   },
   { _id: false }
 );
 
 const LaboratoryOrderSchema = new mongoose.Schema(
   {
-    folio: { type: String, required: true, unique: true, index: true },
+    folio:      { type: String, required: true, unique: true, index: true },
+    ventaFolio: { type: String, default: null, index: true },
 
     sheet: { type: mongoose.Schema.Types.ObjectId, ref: "InventorySheet", required: true },
     cliente: { type: String, required: true, trim: true },
+    clienteDisplay:   { type: String, default: "" },
+    clienteNombres:   { type: String, default: "" },
+    clienteApellidos: { type: String, default: "" },
+    clienteEmpresa:   { type: String, default: "" },
+    clienteContacto:  { type: String, default: "" },
     note: { type: String, default: "", trim: true },
+    pago:       { type: [String], default: [] },
+    totalMonto: { type: Number, default: 0 },
 
     status: {
       type: String,

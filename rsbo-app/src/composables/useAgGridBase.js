@@ -1,8 +1,14 @@
 /**
  * useAgGridBase.js
  * Lógica compartida por los 5 templates de AG-Grid.
- * Centraliza: tema reactivo al dark mode, localeText, rowClassRules,
- * helpers numéricos y ACK helpers.
+ *
+ * Centraliza: tema reactivo al dark mode (glassmorphism, no-line rule),
+ * localeText, helpers numéricos y ACK helpers.
+ *
+ * Las reglas de stock (LOW_STOCK_THRESHOLD, isZeroStock, isLowStock,
+ * stockRowClassRules, stockCellClassRules) se delegan a useStockRules.js.
+ * Este módulo re-exporta useStockRules para conveniencia de los templates
+ * que ya importaban todo desde aquí.
  */
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import {
@@ -11,6 +17,9 @@ import {
   colorSchemeLight,
   colorSchemeDark,
 } from "ag-grid-community";
+
+// Re-export para compatibilidad con templates existentes
+export { useStockRules } from "@/composables/useStockRules";
 
 // ── ACK helpers ──────────────────────────────────────────────────────────────
 export const ackOk = (ack, message = "Ok", status = 200) => {
@@ -65,10 +74,16 @@ export const localeText = {
 
 // ── Composable principal ─────────────────────────────────────────────────────
 /**
- * Retorna `themeCustom` (computed reactivo al dark mode) y `rowClassRules`
- * (stock cero/bajo) que necesita una función `isZeroStock` e `isLowStock`.
+ * Retorna `themeCustom` (computed reactivo al dark mode).
  *
- * @param {{ isZeroStock: (v) => boolean, isLowStock: (v) => boolean }} opts
+ * Diseño glassmorphism / no-line rule:
+ *  - columnBorder: false  → sin líneas verticales entre celdas
+ *  - rowBorder: false     → sin líneas horizontales entre filas
+ *  - El contraste y el blur separan elementos en lugar de líneas duras
+ *  - Fondo semi-transparente para que el backdrop-filter del wrapper actúe
+ *
+ * @deprecated opts.isZeroStock / opts.isLowStock — usar useStockRules() directamente.
+ *   Se mantienen por compatibilidad retroactiva y generan un rowClassRules básico.
  */
 export function useAgGridBase({ isZeroStock, isLowStock } = {}) {
   // Detectar dark mode y observar cambios en data-theme
@@ -88,6 +103,7 @@ export function useAgGridBase({ isZeroStock, isLowStock } = {}) {
   );
   onBeforeUnmount(() => _observer.disconnect());
 
+  // ── Tema glassmorphism (no-line rule) ────────────────────────────────────
   const themeCustom = computed(() => {
     const d = _darkMode.value;
     return themeQuartz
@@ -95,53 +111,70 @@ export function useAgGridBase({ isZeroStock, isLowStock } = {}) {
       .withParams(
         d
           ? {
-              accentColor: "#a788f0",
-              backgroundColor: "#161b22",
+              // ── Dark glassmorphism ──
+              accentColor: "#a78bfa",
+              backgroundColor: "rgba(15, 18, 30, 0.0)",
               foregroundColor: "#e2e8f0",
-              borderColor: "#2d3748",
-              borderRadius: 10,
-              wrapperBorder: true,
-              wrapperBorderRadius: 10,
-              columnBorder: true,
-              rowBorder: true,
-              headerBackgroundColor: "#1a1f2e",
+              // No-line rule: sin bordes nativos, contraste por fondo alternado
+              borderColor: "transparent",
+              columnBorder: false,
+              rowBorder: false,
+              wrapperBorder: false,
+              borderRadius: 0,
+              wrapperBorderRadius: 0,
+              // Editor input — No-line rule: radio 0, foco por underline
+              inputBorderRadius: 0,
+              // Header
+              headerBackgroundColor: "rgba(20, 16, 40, 0.55)",
               headerTextColor: "#c4b5fd",
               headerFontSize: 11,
-              headerFontWeight: 600,
+              headerFontWeight: 700,
+              // Tipografía editorial
               fontFamily:
-                "Satoshi, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                "'Manrope', 'Satoshi', system-ui, -apple-system, sans-serif",
               fontSize: 12,
               spacing: 3,
-              oddRowBackgroundColor: "#18202e",
+              // Fila alternada muy sutil
+              oddRowBackgroundColor: "rgba(167, 139, 250, 0.04)",
             }
           : {
+              // ── Light glassmorphism ──
               accentColor: "#7957d5",
-              backgroundColor: "#ffffff",
+              backgroundColor: "rgba(255, 255, 255, 0.0)",
               foregroundColor: "#2d2242",
-              borderColor: "#e5e5f0",
-              borderRadius: 10,
-              wrapperBorder: true,
-              wrapperBorderRadius: 10,
-              columnBorder: true,
-              rowBorder: true,
-              headerBackgroundColor: "#f5f3ff",
+              // No-line rule
+              borderColor: "transparent",
+              columnBorder: false,
+              rowBorder: false,
+              wrapperBorder: false,
+              borderRadius: 0,
+              wrapperBorderRadius: 0,
+              // Editor input — No-line rule: radio 0, foco por underline
+              inputBorderRadius: 0,
+              // Header
+              headerBackgroundColor: "rgba(245, 243, 255, 0.70)",
               headerTextColor: "#4527a0",
               headerFontSize: 11,
-              headerFontWeight: 600,
+              headerFontWeight: 700,
+              // Tipografía editorial
               fontFamily:
-                "Satoshi, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                "'Manrope', 'Satoshi', system-ui, -apple-system, sans-serif",
               fontSize: 12,
               spacing: 3,
-              oddRowBackgroundColor: "#fbfbff",
+              // Fila alternada muy sutil
+              oddRowBackgroundColor: "rgba(121, 87, 213, 0.025)",
             }
       );
   });
 
+  // ── rowClassRules (compatibilidad retroactiva) ───────────────────────────
   const rowClassRules = computed(() => {
     if (!isZeroStock || !isLowStock) return {};
     return {
-      "ag-row--stock-zero": (p) => isZeroStock(p?.data?.existencias),
-      "ag-row--stock-low": (p) => isLowStock(p?.data?.existencias),
+      "ag-row--stock-zero": (p) =>
+        !p?.data?.__loading && isZeroStock(p?.data?.existencias),
+      "ag-row--stock-low": (p) =>
+        !p?.data?.__loading && isLowStock(p?.data?.existencias),
     };
   });
 

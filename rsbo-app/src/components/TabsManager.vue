@@ -65,7 +65,7 @@
     </div>
 
     <!-- CONTENIDO -->
-    <div :key="activeId" class="plantillas-contenedor">
+    <div class="plantillas-contenedor">
       <!-- NUEVA -->
       <div class="box" v-if="activeId === 'nueva'">
         <form @submit.prevent="handleCrear">
@@ -791,6 +791,9 @@ const activeSheetObj = computed(() => sheets.value.find((s) => s.id === activeId
 
 /* ===== Tabs internas ===== */
 const activeInternalTab = ref(null);
+/** Recuerda la última pestaña interna elegida por sheetId para sobrevivir al KeepAlive */
+const internalTabHistory = new Map();
+
 const internalTabs = computed(() => {
   const t = activeSheetObj.value?.tipo_matriz;
   if (!t) return [];
@@ -815,15 +818,20 @@ const internalTabs = computed(() => {
 watch(
   internalTabs,
   (tabs) => {
-    const first = tabs[0]?.id || null;
-    activeInternalTab.value = first;
-    emit("update:internal", first);
+    const sheetId = activeId.value;
+    const saved   = internalTabHistory.get(sheetId);
+    const first   = tabs[0]?.id ?? null;
+    const valid   = saved && tabs.some(t => t.id === saved);
+    const target  = valid ? saved : first;
+    activeInternalTab.value = target;
+    emit("update:internal", target);
   },
   { immediate: true }
 );
 
 const handleInternalTabClick = (id) => {
   activeInternalTab.value = id;
+  internalTabHistory.set(activeId.value, id); // persistir elección por sheet
   emit("update:internal", id);
 };
 
@@ -871,6 +879,22 @@ const newPrecioCompra = ref("");
 const resetPurchaseCreateDefaults = () => {
   const base = newFechaCompra.value && ISO_DATE_ONLY_RX.test(newFechaCompra.value) ? newFechaCompra.value : todayISO();
   newFechaCaducidad.value = addMonthsToISODate(base, DEFAULT_EXPIRY_MONTHS);
+};
+
+const resetNewForm = () => {
+  selectedBase.value = null;
+  selectedMaterial.value = null;
+  selectedTratamientoKey.value = null;
+  selectedVariante.value = "";
+  newSheetName.value = "";
+  newProveedorName.value = "";
+  newMarcaName.value = "";
+  newNumFactura.value = "";
+  newLoteProducto.value = "";
+  newFechaCompra.value = "";
+  newPrecioVenta.value = "";
+  newPrecioCompra.value = "";
+  resetCreateStatus();
 };
 resetPurchaseCreateDefaults();
 
@@ -1075,21 +1099,7 @@ const handleCrear = async () => {
     emit("update:active", newTab.id);
     emit("crear", { result: s, tabs });
 
-    selectedBase.value = null;
-    selectedMaterial.value = null;
-    selectedTratamientoKey.value = null;
-    selectedVariante.value = "";
-    newSheetName.value = "";
-    newProveedorName.value = "";
-    newMarcaName.value = "";
-
-    newNumFactura.value = "";
-    newLoteProducto.value = "";
-    newFechaCompra.value = "";
-    resetPurchaseCreateDefaults();
-
-    newPrecioVenta.value = "";
-    newPrecioCompra.value = "";
+    resetNewForm();
 
     createStatus.value = "saved";
     createStatusMessage.value = "Planilla creada correctamente";
@@ -1704,7 +1714,8 @@ const handleTabClick = (id) => {
 
 watch(
   () => props.activeId,
-  async (id) => {
+  async (id, prev) => {
+    if (prev === "nueva") resetNewForm();
     if (!id || id === "nueva") return;
     await nextTick();
 

@@ -270,31 +270,40 @@ const resolverGridProps = (sheet, activeInternal) => {
           @load-prior="pager.loadPrior()"
         >
           <template #default="{ activeSheet: sheet, activeInternal }">
-            <Transition name="sheet" mode="out-in" appear>
-              <div
-                v-if="sheet && sheet.id !== 'nueva'"
-                :key="`${sheet.id}:${sheet.tipo_matriz}:${viewMode}`"
-                class="contenido-planilla"
-              >
-                <div class="planilla-wrapper">
-                  <!-- AG-Grid (Excel) view -->
+            <!--
+              Sin <Transition> aquí: KeepAlive debe ser un ancestro ESTABLE.
+              Si el div tuviera :key cambiaría → destruiría el KeepAlive →
+              se perdería el caché. La animación de entrada se delega a
+              CSS de los propios templates (glass-shell transition).
+
+              :max="8" → mantiene vivos hasta 8 sheets visitados.
+              El :key del <component> distingue instancias por sheet+tipo.
+            -->
+            <div
+              v-if="sheet && sheet.id !== 'nueva'"
+              class="contenido-planilla"
+            >
+              <div class="planilla-wrapper">
+                <!-- AG-Grid con KeepAlive: la instancia sobrevive al cambio de sheet -->
+                <KeepAlive :max="8">
                   <component
                     v-if="viewMode === 'excel'"
                     :is="resolverGrid(sheet.tipo_matriz)"
+                    :key="`${sheet.id}:${sheet.tipo_matriz}`"
                     v-bind="resolverGridProps(sheet, activeInternal)"
                     :actor="user"
                   />
-                  <!-- Glass Table (Buefy) view -->
-                  <GlassTable
-                    v-else
-                    :sheet-id="sheet.id"
-                    :sph-type="activeInternal || 'sph-neg'"
-                    :actor="user"
-                    api-type="contactlenses"
-                  />
-                </div>
+                </KeepAlive>
+                <!-- Glass Table (Buefy) no necesita KeepAlive -->
+                <GlassTable
+                  v-if="viewMode !== 'excel'"
+                  :sheet-id="sheet.id"
+                  :sph-type="activeInternal || 'sph-neg'"
+                  :actor="user"
+                  api-type="contactlenses"
+                />
               </div>
-            </Transition>
+            </div>
           </template>
         </TabsManager>
       </div>

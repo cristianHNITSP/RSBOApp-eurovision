@@ -35,11 +35,11 @@ function rangeArr(start, end, step) {
 
 /**
  * BASE monofocal / bifocal / Younger:
- *   0.25, luego 0.5 → 8 en paso 0.50
+ *   0, 0.25, luego 0.5 → 8 en paso 0.50
  *   8.5, 10, 12, 14 (paso irregular de 2 en 2)
  */
 function buildBifocalBaseAxis() {
-  return [0.25, ...rangeArr(0.5, 8, 0.5), 8.5, 10, 12, 14];
+  return [0, 0.25, ...rangeArr(0.5, 8, 0.5), 8.5, 10, 12, 14];
 }
 
 /**

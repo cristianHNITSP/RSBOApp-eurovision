@@ -40,7 +40,6 @@ const { motionRef, animateSidebarShift } = useMotionEffects();
    ========================= */
 const { showPanel, openPanel, closePanel } = useNotifications();
 const unreadNotifications = ref(0);
-const isPinnedPanel = ref(false);
 const bellRinging = ref(false);
 let _prevUnread = 0;
 
@@ -199,10 +198,9 @@ watch(isMobile, (nowMobile) => {
   }
 });
 
-/* Sidebar collapse: animación + cerrar notifs (no si está fijado) */
+/* Sidebar collapse: animación */
 watch(isSidebarCollapsed, (newVal) => {
   animateSidebarShift(newVal);
-  if (!newVal && !isPinnedPanel.value) closePanel();
 });
 
 /* =========================
@@ -241,20 +239,16 @@ const layoutStyleVars = computed(() => {
     ? (isMobileSidebarVisible.value ? 70 : 0)
     : (isSidebarCollapsed.value ? 70 : 240);
 
-  const notifW = showPanel.value ? 285 : 0;
-
   return {
     "--sidebar-w": `${sidebarW}px`,
-    "--notif-w": `${notifW}px`,
   };
 });
 
 function closePanelFromOverlay() {
-  if (isMobile.value && showPanel.value && !isPinnedPanel.value) closePanel();
+  if (showPanel.value) closePanel();
 }
 
 function handleClosePanel() {
-  isPinnedPanel.value = false;
   closePanel();
 }
 
@@ -344,26 +338,21 @@ onBeforeUnmount(() => {
         @toggle="setSidebarState" :collapsed="isSidebarCollapsed" :user="user" :loading="loading"
         :pending-orders="pendingOrdersCount" />
 
-      <!-- Panel de notificaciones -->
+      <!-- Panel de notificaciones (flotante) -->
       <NotificationPanel
         :visible="showPanel"
-        :pinned="isPinnedPanel"
         @close="handleClosePanel"
-        @toggle-pin="isPinnedPanel = !isPinnedPanel"
         @update-unread="unreadNotifications = $event"
       />
 
       <!-- Overlay blur sidebar móvil: solo cuando está expandida; click colapsa (no oculta) -->
       <div v-if="isMobile && isMobileSidebarVisible && !isSidebarCollapsed" class="blur-overlay sidebar-mobile-overlay" @click="collapseSidebar"></div>
 
-      <!-- Overlay blur notificaciones móvil -->
-      <div v-if="isMobile && showPanel" class="blur-overlay" @click="closePanelFromOverlay"></div>
+      <!-- Overlay transparente para cerrar panel flotante al click fuera -->
+      <div v-if="showPanel" class="notif-overlay" @click="closePanelFromOverlay"></div>
 
       <!-- Contenido principal -->
-      <main class="main-content p-0" :class="{
-        'ignore-grid-mobile': isMobile && showPanel,
-        'visible-sidebar': isMobileSidebarVisible && isMobile && showPanel
-      }">
+      <main class="main-content p-0">
         <!-- Header -->
         <section class="dashboard-header" ref="motionRef" :class="{ 'dashboard-header--mobile': isMobile }">
           <!-- DESKTOP TOOLBAR -->
@@ -635,8 +624,7 @@ onBeforeUnmount(() => {
 /* Main layout uses vars instead of inline style */
 .main-content {
   margin-left: var(--sidebar-w);
-  margin-right: var(--notif-w);
-  transition: margin-left 0.22s ease, margin-right 0.22s ease;
+  transition: margin-left 0.22s ease;
 
   flex: 1;
   min-width: 0;
@@ -941,7 +929,7 @@ onBeforeUnmount(() => {
   color: var(--text-muted);
 }
 
-/* Overlay notifs */
+/* Overlay sidebar móvil */
 .blur-overlay {
   position: fixed;
   inset: 0;
@@ -955,6 +943,23 @@ onBeforeUnmount(() => {
 /* Overlay sidebar móvil: encima del contenido pero debajo del sidebar (z-index 21) */
 .sidebar-mobile-overlay {
   z-index: 20;
+}
+
+/* Overlay transparente para cerrar panel flotante de notificaciones */
+.notif-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 199;  /* justo debajo del panel (z-index 200) */
+  background: transparent;
+  pointer-events: auto;
+}
+/* En móvil, oscurecemos un poco el fondo (bottom sheet) */
+@media (max-width: 768px) {
+  .notif-overlay {
+    background: color-mix(in srgb, var(--surface-overlay, rgba(0,0,0,0.3)) 60%, transparent);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+  }
 }
 
 /* ===== Mobile behavior fixes ===== */

@@ -1,362 +1,118 @@
-<!-- src/components/ag-grid/templates/AgGridProgresivo.vue -->
-<template>
-  <div class="is-flex is-flex-direction-column" style="height: 100%;">
-    <navtools
-      class="p-4"
-      v-model="formulaValue"
-      :dirty="dirty"
-      :saving="saving"
-      :total-rows="totalRows"
-      :sheet-name="sheetName"
-      :tipo-matriz="tipoMatriz"
-      :material="material"
-      :tratamientos="tratamientos"
-      :last-saved-at="lastSavedAt"
-      :grid-can-undo="gridHistory.canUndo.value"
-      :grid-can-redo="gridHistory.canRedo.value"
-      @add-row="handleAddRow"
-      @add-column="handleAddColumn"
-      @clear-filters="clearFilters"
-      @reset-sort="resetSort"
-      @toggle-filters="handleToggleFilters"
-      @save-request="handleSave"
-      @discard-changes="handleDiscard"
-      @refresh="handleRefresh"
-      @seed="handleSeed"
-      @export="handleExport"
-      @fx-input="onFxInput"
-      @fx-commit="onFxCommit"
-      @grid-undo="handleGridUndo"
-      @grid-redo="handleGridRedo"
-    />
+<!-- ============================================================
+  AgGridProgresivo.vue  —  Matriz (BASE_IZQ / BASE_DER) × ADD (OD/OI)
 
-    <!-- ✅ Leyenda natural (sin componentes extra) 
-    <div class="stock-legend px-4 pb-2">
-      <span class="stock-pill stock-pill--low">
-        <i class="fas fa-exclamation-triangle mr-1"></i>
-        Bajo stock (≤ {{ LOW_STOCK_THRESHOLD }})
-      </span>
-      <span class="stock-pill stock-pill--zero">
-        <i class="fas fa-times-circle mr-1"></i>
-        Sin stock (0)
-      </span>
-    </div>
-    -->
-    <div
-      class="buefy-balham-light grid-shell"
-      :class="{ 'grid-shell--switching': switchingView }"
-      style="flex: 1 1 auto; display: flex; flex-direction: column; overflow: auto;"
-    >
-      <AgGridVue
-        class="ag-grid-buefy"
-        :columnDefs="columns"
-        :rowData="rowData"
-        :defaultColDef="defaultColDef"
-        :getRowId="getRowId"
-        :animateRows="true"
-        :localeText="localeText"
-        :theme="themeCustom"
-        :rowHeight="30"
-        :headerHeight="32"
-        :suppressMovableColumns="true"
-        :rowClassRules="rowClassRules"
-        @cellClicked="onCellClicked"
-        @cellValueChanged="onCellValueChanged"
-        @grid-ready="onGridReady"
-        style="width: 100%; height: 100%;"
+  FILAS:     rowModelType="infinite" — axis de pares base_izq|base_der
+  COLUMNAS:  useAgGridIncrementalColumns — ADD values × OD/OI
+  CACHÉ:     rowCache Map<`${bi}|${bd}`, rowObj> con TODOS los ADD values
+  ============================================================ -->
+<template>
+  <div class="grid-page">
+    <header class="grid-topbar">
+      <navtools
+        class="navtools-wrap"
+        v-model="formulaValue"
+        :dirty="dirty"
+        :saving="saving"
+        :total-rows="totalRows"
+        :sheet-name="sheetName"
+        :tipo-matriz="tipoMatriz"
+        :material="material"
+        :tratamientos="tratamientos"
+        :last-saved-at="lastSavedAt"
+        :grid-can-undo="gridHistory.canUndo.value"
+        :grid-can-redo="gridHistory.canRedo.value"
+        @add-row="handleAddRow"
+        @add-column="handleAddColumn"
+        @clear-filters="clearFilters"
+        @reset-sort="resetSort"
+        @toggle-filters="handleToggleFilters"
+        @save-request="handleSave"
+        @discard-changes="handleDiscard"
+        @refresh="handleRefresh"
+        @seed="handleSeed"
+        @export="handleExport"
+        @fx-input="onFxInput"
+        @fx-commit="onFxCommit"
+        @grid-undo="handleGridUndo"
+        @grid-redo="handleGridRedo"
       />
-    </div>
+    </header>
+
+    <main class="grid-main">
+      <div class="glass-shell" :class="{ 'glass-shell--switching': switchingView }">
+        <div v-if="DEV_MODE" class="dev-col-badge">
+          cols {{ activeAddValues.length }} / {{ allAddValues.length }}
+          <span v-if="loadingCols" class="dev-col-badge__spin">⟳</span>
+        </div>
+
+        <AgGridVue
+          class="ag-grid-glass"
+          :columnDefs="columns"
+          :rowModelType="'infinite'"
+          :datasource="datasource"
+          :defaultColDef="defaultColDef"
+          :getRowId="getRowId"
+          :animateRows="false"
+          :localeText="localeText"
+          :theme="themeCustom"
+          :rowHeight="30"
+          :headerHeight="32"
+          :suppressMovableColumns="true"
+          :rowClassRules="stockRowClassRules.value"
+          :maxBlocksInCache="20"
+          :cacheBlockSize="ROW_PAGE_SIZE"
+          :infiniteInitialRowCount="rowAxis.length || 10"
+          :suppressHorizontalScroll="false"
+          @cellClicked="onCellClicked"
+          @cellValueChanged="onCellValueChanged"
+          @grid-ready="onGridReady"
+          style="width: 100%; height: 100%;"
+        />
+      </div>
+    </main>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from "vue";
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount, onActivated, onDeactivated, shallowRef } from "vue";
 import { AgGridVue } from "ag-grid-vue3";
-import {
-  AllCommunityModule,
-  ModuleRegistry,
-} from "ag-grid-community";
+import { AllCommunityModule, ModuleRegistry } from "ag-grid-community";
 import navtools from "@/components/ag-grid/navtools.vue";
 import { useSheetApi } from "@/composables/useSheetApi";
 import { useGridHistory } from "@/composables/useGridHistory";
 import { useUnsavedGuard } from "@/composables/useUnsavedGuard";
+import { labToast } from "@/composables/useLabToast";
+import { exportAgGridToXlsx } from "@/composables/useExcelExport";
 import {
   useAgGridBase, localeText,
   ackOk, ackErr, msgFromErr, statusFromErr, normalizeAxiosOk,
-  numOr, isNumeric, to2, fmtSigned, isMultipleOfStep,
+  numOr, isNumeric, to2, fmtSigned,
 } from "@/composables/useAgGridBase";
-import { labToast } from "@/composables/useLabToast";
-import { exportAgGridToXlsx } from "@/composables/useExcelExport";
+import { useStockRules } from "@/composables/useStockRules";
+import { useAgGridIncrementalColumns } from "@/composables/useAgGridIncrementalColumns";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
+const DEV_MODE       = import.meta.env.DEV;
+const DEV_DELAY_MS   = DEV_MODE ? 2000 : 0;
+const ROW_PAGE_SIZE  = DEV_MODE ? 5 : 30;
+const COL_CHUNK_SIZE = DEV_MODE ? 3 : 8;
+
+const LOG      = (...a) => DEV_MODE && console.log("[Progresivo]", ...a);
+const LOG_ROWS = (...a) => DEV_MODE && console.log("[Progresivo][Rows]", ...a);
+
 const props = defineProps({
   sheetId: { type: String, required: true },
-  sphType: { type: String, default: "base-pos" }, // base-neg/base-pos
+  sphType: { type: String, default: "base-pos" }, // base-neg | base-pos
   actor:   { type: Object, default: null },
   apiType: { type: String, default: "inventory" },
 });
 
 const { fetchItems, saveChunk, reseedSheet, getSheet } = useSheetApi(() => props.apiType);
 
-
-const gridApi = ref(null);
-const rowData = ref([]);
-const dirty = ref(false);
-const saving = ref(false);
-const lastSavedAt = ref(null);
-
-const sheetMeta = ref(null);
-const sheetTabs = ref([]);
-const physicalLimits = ref(null);
-
-/** Buffer de cambios (base_izq, base_der, add, eye) */
-const pendingChanges = ref(new Map());
-
-/* ── Grid-level undo/redo ── */
-const gridHistory = useGridHistory({ maxSize: 300 });
-
-/* ── Unsaved changes guard ── */
-const _guardViewId = computed(() => `${props.sheetId}:progresivo:${props.sphType}`);
-const unsavedGuard = useUnsavedGuard({
-  storageKey: () => _guardViewId.value,
-  isDirty: () => dirty.value,
-  getPending: () => Object.fromEntries(pendingChanges.value),
-  onRestore(saved) {
-    for (const [k, v] of Object.entries(saved)) {
-      pendingChanges.value.set(k, v);
-    }
-    if (pendingChanges.value.size > 0) {
-      dirty.value = true;
-      labToast.warning(`Se restauraron ${pendingChanges.value.size} cambios sin guardar.`);
-    }
-  },
-});
-
-/** ✅ transición suave al cambiar vista */
-const switchingView = ref(false);
-const raf = () =>
-  new Promise((resolve) => {
-    if (typeof requestAnimationFrame === "function") requestAnimationFrame(() => resolve());
-    else setTimeout(resolve, 0);
-  });
-
-const isQuarterStep = (value) => {
-  const num = Number(value);
-  if (!Number.isFinite(num)) return false;
-  const scaled = num * 4;
-  return Math.abs(scaled - Math.round(scaled)) < 1e-6;
-};
-
-const baseViewId = computed(() =>
-  String(props.sphType || "").toLowerCase().includes("neg") ? "base-neg" : "base-pos"
-);
-
-/* ======== LÍMITES FÍSICOS DESDE BACKEND ======== */
-const phys = computed(() => {
-  const pl = physicalLimits.value || {};
-  const baseMin = numOr(pl?.BASE?.min, -40);
-  const baseMax = numOr(pl?.BASE?.max, 40);
-  const addMin = numOr(pl?.ADD?.min, 0);
-  const addMax = numOr(pl?.ADD?.max, 8);
-  return { baseMin, baseMax, addMin, addMax };
-});
-
-/**
- * ✅ requisito: 0 arriba en ambas vistas
- * - display neg: incluye 0|0 (además de negatives)
- * - add row neg: sigue siendo <0 para no duplicar 0|0
- */
-const baseFilterNewRow = computed(() =>
-  baseViewId.value === "base-neg" ? (n) => Number(n) < 0 : (n) => Number(n) >= 0
-);
-const sortDirForView = computed(() => (baseViewId.value === "base-neg" ? "desc" : "asc"));
-
-const effectiveActor = computed(() => {
-  const src = props.actor || (typeof window !== "undefined" ? window.__currentUser : null) || null;
-  if (!src) return null;
-  const userId = src.userId || src.id || src._id || null;
-  const name = src.name || src.email || "Usuario";
-  return { userId, name };
-});
-
-const totalRows = computed(() => rowData.value.length);
-const sheetName = computed(() => sheetMeta.value?.nombre || sheetMeta.value?.name || "Hoja progresivo");
-const tipoMatriz = computed(() => sheetMeta.value?.tipo_matriz || "BASE_ADD");
-const material = computed(() => sheetMeta.value?.material || "");
-const tratamientos = computed(() => sheetMeta.value?.tratamientos || []);
-
-/* ===================== ✅ UMBRAL BAJO STOCK (escalable) ===================== */
-const LOW_STOCK_THRESHOLD = computed(() => {
-  const s = sheetMeta.value || {};
-  const raw =
-    s?.lowStockThreshold ??
-    s?.alerts?.lowStock ??
-    s?.config?.lowStockThreshold ??
-    2; // fallback
-  const n = Number(raw);
-  return Number.isFinite(n) ? n : 2;
-});
-
-const isZeroStock = (v) => Number(v ?? 0) <= 0;
-const isLowStock = (v) => {
-  const n = Number(v ?? 0);
-  return n > 0 && n <= LOW_STOCK_THRESHOLD.value;
-};
-
-function rowHasZeroStock(row) {
-  if (!row) return false;
-  for (const k of Object.keys(row)) {
-    if (k.startsWith("add_")) {
-      if (isZeroStock(row[k])) return true;
-    }
-  }
-  return false;
-}
-function rowHasLowStock(row) {
-  if (!row) return false;
-  for (const k of Object.keys(row)) {
-    if (k.startsWith("add_")) {
-      if (isLowStock(row[k])) return true;
-    }
-  }
-  return false;
-}
-
-const { themeCustom, rowClassRules } = useAgGridBase({ isZeroStock, isLowStock });
-
-const norm = (n) => String(n).replace(".", "_");
+// ─── Helpers ─────────────────────────────────────────────────────
+const norm   = (n) => String(to2(n)).replace(".", "_");
 const denorm = (s) => Number(String(s).replace("_", "."));
-
-const addValues = ref([]);
-const eyes = ["OD", "OI"];
-
-function markCellChangedProgresivo({ add, eye, base_izq, base_der, existencias, _oldValue }) {
-  const a = to2(add);
-  const bi = to2(base_izq ?? 0);
-  const bd = to2(base_der ?? 0);
-  const key = `${bi}|${bd}|${a}|${eye}`;
-  const field = `add_${norm(a)}_${eye}`;
-  const prev = pendingChanges.value.get(key);
-  const oldVal = _oldValue ?? prev?.existencias ?? 0;
-  const newVal = Number(existencias ?? 0);
-
-  pendingChanges.value.set(key, {
-    add: a,
-    eye,
-    base_izq: bi,
-    base_der: bd,
-    existencias: newVal
-  });
-  dirty.value = true;
-
-  // Push to grid history for undo/redo
-  if (!gridHistory.isApplying.value) {
-    gridHistory.push({
-      key, field,
-      oldValue: oldVal, newValue: newVal,
-      meta: { add: a, eye, base_izq: bi, base_der: bd },
-    });
-  }
-}
-
-const columns = computed(() => [
-  {
-    headerName: "BASE",
-    children: [
-      {
-        field: "base",
-        headerName: "Base",
-        pinned: "left",
-        width: 120,
-        minWidth: 110,
-        maxWidth: 140,
-        editable: false,
-        sortable: true,
-        comparator: (a, b) => Number(a) - Number(b),
-        filter: "agNumberColumnFilter",
-        resizable: false,
-        cellClass: ["ag-cell--compact", "ag-cell--numeric", "ag-cell--pinned"],
-        headerClass: ["ag-header-cell--compact", "ag-header-cell--pinned"],
-        valueFormatter: (p) => {
-          const bi = Number(p.data?.base_izq);
-          const bd = Number(p.data?.base_der);
-          if (!Number.isFinite(bi)) return p.value ?? "";
-          if (Number.isFinite(bd) && bd !== bi) return `${fmtSigned(bi)} / ${fmtSigned(bd)}`;
-          return fmtSigned(bi);
-        }
-      }
-    ]
-  },
-  {
-    headerName: "ADD (+)",
-    children: addValues.value.map((add) => ({
-      headerName: fmtSigned(Number(add)),
-      marryChildren: true,
-      children: eyes.map((eye) => ({
-        field: `add_${norm(add)}_${eye}`,
-        headerName: eye === "OD" ? "Der." : eye === "OI" ? "Izq." : eye,
-        editable: true,
-        minWidth: 90,
-        maxWidth: 110,
-        filter: "agNumberColumnFilter",
-        cellClass: ["ag-cell--compact", "ag-cell--numeric"],
-        headerClass: ["ag-header-cell--compact"],
-
-        /* ✅ Marca celda por stock */
-        cellClassRules: {
-          "ag-cell--stock-zero": (p) => isZeroStock(p.value),
-          "ag-cell--stock-low": (p) => isLowStock(p.value)
-        },
-
-        valueSetter: (p) => {
-          const v = String(p.newValue ?? "").trim();
-          const newVal = isNumeric(v) ? Number(v) : 0;
-          const oldVal = Number(p.oldValue ?? 0);
-          p.data[`add_${norm(add)}_${eye}`] = newVal;
-
-          markCellChangedProgresivo({
-            add,
-            eye,
-            base_izq: p.data.base_izq ?? p.data.base,
-            base_der: p.data.base_der ?? p.data.base,
-            existencias: newVal,
-            _oldValue: oldVal
-          });
-
-          return true;
-        }
-      }))
-    }))
-  }
-]);
-
-const defaultColDef = {
-  resizable: true,
-  sortable: true,
-  filter: "agNumberColumnFilter",
-  floatingFilter: true,
-  editable: true,
-  minWidth: 90,
-  maxWidth: 150,
-  cellClass: "ag-cell--compact",
-  headerClass: "ag-header-cell--compact"
-};
-
-const getRowId = (p) => `${p.data.base_izq}|${p.data.base_der}`;
-
-async function loadSheetMeta() {
-  try {
-    const { data } = await getSheet(props.sheetId);
-    const payload = data?.data || data;
-
-    sheetMeta.value = payload?.sheet || null;
-    sheetTabs.value = Array.isArray(payload?.tabs) ? payload.tabs : [];
-    physicalLimits.value = payload?.physicalLimits || payload?.physical_limits || null;
-  } catch (e) {
-    console.error("[AgGridProgresivo] Error getSheet:", e?.response?.data || e);
-  }
-}
 
 function parseAddEyeFromField(field) {
   if (!field.startsWith("add_")) return null;
@@ -369,355 +125,525 @@ function parseAddEyeFromField(field) {
   return { add, eye };
 }
 
-async function loadRows() {
-  const P = phys.value;
+const rowKey  = (bi, bd) => `${to2(bi)}|${to2(bd)}`;
+const eyes    = ["OD", "OI"];
 
-  const { data } = await fetchItems(props.sheetId, { addMin: P.addMin, addMax: P.addMax });
-  const items = data?.data || [];
+const raf   = () => new Promise(r => typeof requestAnimationFrame === "function" ? requestAnimationFrame(r) : setTimeout(r, 0));
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-  const tab =
-    sheetTabs.value.find((t) => t?.id === baseViewId.value) ||
-    sheetTabs.value.find((t) => t?.id === "base-add") ||
-    sheetTabs.value[0] ||
-    null;
+// ─── Estado ─────────────────────────────────────────────────────
+const gridApi        = shallowRef(null);
+const dirty          = ref(false);
+const saving         = ref(false);
+const lastSavedAt    = ref(null);
+const sheetMeta      = ref(null);
+const sheetTabs      = ref([]);
+const physicalLimits = ref(null);
+const switchingView  = ref(false);
+const loadingCols    = ref(false);
+const pendingChanges = ref(new Map());
 
-  // Ejes vienen del backend (tab.axis)
-  const defAddCols = Array.isArray(tab?.axis?.add) ? tab.axis.add.map(to2) : [];
+/** Axis de pares base_izq|base_der (determina rowCount) */
+const rowAxis = ref([]);          // array de strings `"bi|bd"`
+/** ADD axis completo */
+const allAddValues = ref([]);
+/** rowCaches: Map<sphType, Map<`bi|bd`, rowObj>> — un cache por vista (neg/pos) */
+const rowCaches = new Map();
+const getRowCache = () => {
+  const k = props.sphType;
+  if (!rowCaches.has(k)) rowCaches.set(k, new Map());
+  return rowCaches.get(k);
+};
 
-  const defBases = (Array.isArray(tab?.axis?.base) ? tab.axis.base : [])
-    .map(to2)
-    .filter((b) => b >= P.baseMin && b <= P.baseMax)
-    .filter((b) => (baseViewId.value === "base-neg" ? Number(b) <= 0 : Number(b) >= 0));
+// ─── Grid history & unsaved guard ────────────────────────────────
+const gridHistory = useGridHistory({ maxSize: 300 });
 
-  // Ejes 100% del backend — frontend solo reconstruye
-  const defaultBaseKeys = defBases.map((b) => `${to2(b)}|${to2(b)}`);
+const _guardViewId = computed(() => `${props.sheetId}:progresivo:${props.sphType}`);
+const unsavedGuard = useUnsavedGuard({
+  storageKey: () => _guardViewId.value,
+  isDirty: () => dirty.value,
+  getPending: () => Object.fromEntries(pendingChanges.value),
+  onRestore(saved) {
+    for (const [k, v] of Object.entries(saved)) pendingChanges.value.set(k, v);
+    if (pendingChanges.value.size > 0) {
+      dirty.value = true;
+      labToast.warning(`Se restauraron ${pendingChanges.value.size} cambios sin guardar.`);
+    }
+  },
+});
 
-  const baseRowsKeys = [...new Set(defaultBaseKeys)].sort((a, b) => {
-    if (a === "0|0") return -1;
-    if (b === "0|0") return 1;
+// ─── Composables ─────────────────────────────────────────────────
+const { themeCustom } = useAgGridBase();
+const { stockRowClassRules, stockCellClassRules } = useStockRules(sheetMeta);
 
-    const [abi, abd] = a.split("|").map(Number);
-    const [bbi, bbd] = b.split("|").map(Number);
+const colManager = useAgGridIncrementalColumns({
+  allValues: allAddValues,
+  gridApiRef: gridApi,
+  colChunkSize: COL_CHUNK_SIZE,
+  scrollThreshold: 150,
+  devMode: DEV_MODE,
+});
+const activeAddValues = colManager.activeValues;
 
-    const dir = sortDirForView.value === "desc" ? -1 : 1;
-    return abi === bbi ? dir * (abd - bbd) : dir * (abi - bbi);
-  });
+// ─── Vista / límites ─────────────────────────────────────────────
+const baseViewId = computed(() =>
+  String(props.sphType || "").toLowerCase().includes("neg") ? "base-neg" : "base-pos"
+);
 
-  const addList = [...new Set(defAddCols)]
-    .filter((a) => a >= P.addMin && a <= P.addMax)
-    .sort((a, b) => a - b);
+const phys = computed(() => {
+  const pl = physicalLimits.value || {};
+  return {
+    baseMin: numOr(pl?.BASE?.min, -40),
+    baseMax: numOr(pl?.BASE?.max,  40),
+    addMin:  numOr(pl?.ADD?.min,    0),
+    addMax:  numOr(pl?.ADD?.max,    8),
+  };
+});
 
-  addValues.value = addList;
+const sortDirForView = computed(() => baseViewId.value === "base-neg" ? "desc" : "asc");
 
-  const key = (bi, bd, add, eye) => `${to2(bi)}|${to2(bd)}|${to2(add)}|${String(eye).toUpperCase()}`;
-  const map = new Map(
-    items
-      .filter((i) => {
-        const bi = to2(i.base_izq ?? 0);
-        const bd = to2(i.base_der ?? 0);
-        const a = to2(i.add);
-        return bi >= P.baseMin && bi <= P.baseMax && bd >= P.baseMin && bd <= P.baseMax && a >= P.addMin && a <= P.addMax;
-      })
-      .map((i) => [key(i.base_izq ?? 0, i.base_der ?? 0, i.add, i.eye), Number(i.existencias ?? 0)])
-  );
+// ─── Meta computed ────────────────────────────────────────────────
+const effectiveActor = computed(() => {
+  const src = props.actor || (typeof window !== "undefined" ? window.__currentUser : null) || null;
+  if (!src) return null;
+  return { userId: src.userId || src.id || src._id || null, name: src.name || src.email || "Usuario" };
+});
 
-  rowData.value = baseRowsKeys.map((k) => {
-    const [bi, bd] = k.split("|").map(Number);
-    const row = { base_izq: bi, base_der: bd, base: bi };
-    addList.forEach((add) => {
-      row[`add_${norm(add)}_OD`] = map.get(key(bi, bd, add, "OD")) ?? 0;
-      row[`add_${norm(add)}_OI`] = map.get(key(bi, bd, add, "OI")) ?? 0;
-    });
-    return row;
-  });
+const totalRows   = computed(() => rowAxis.value.length);
+const sheetName   = computed(() => sheetMeta.value?.nombre || sheetMeta.value?.name || "Hoja progresivo");
+const tipoMatriz  = computed(() => sheetMeta.value?.tipo_matriz || "BASE_ADD");
+const material    = computed(() => sheetMeta.value?.material || "");
+const tratamientos = computed(() => sheetMeta.value?.tratamientos || []);
 
-  dirty.value = false;
-  pendingChanges.value.clear();
-  await nextTick();
-  resetSort();
+// ─── Pending changes ─────────────────────────────────────────────
+function markCellChanged({ add, eye, base_izq, base_der, existencias, _oldValue }) {
+  const a  = to2(add);
+  const bi = to2(base_izq ?? 0);
+  const bd = to2(base_der ?? 0);
+  const key   = `${bi}|${bd}|${a}|${eye}`;
+  const field = `add_${norm(a)}_${eye}`;
+  const prev  = pendingChanges.value.get(key);
+  const oldVal = _oldValue ?? prev?.existencias ?? 0;
+  const newVal = Number(existencias ?? 0);
+
+  pendingChanges.value.set(key, { add: a, eye, base_izq: bi, base_der: bd, existencias: newVal });
+  dirty.value = true;
+
+  if (!gridHistory.isApplying.value) {
+    gridHistory.push({ key, field, oldValue: oldVal, newValue: newVal, meta: { add: a, eye, base_izq: bi, base_der: bd } });
+  }
 }
 
-async function switchViewReload() {
+// ─── Column defs ─────────────────────────────────────────────────
+function makeAddLeaf(field, header, add, eye) {
+  return {
+    field, headerName: header,
+    editable: (p) => !p.data?.__loading,
+    filter: "agNumberColumnFilter",
+    minWidth: 90, maxWidth: 110,
+    resizable: true,
+    cellClass: ["ag-cell--compact", "ag-cell--numeric"],
+    headerClass: ["ag-header-cell--compact"],
+    cellClassRules: {
+      ...stockCellClassRules.value,
+      "ag-cell--loading": (p) => !!p.data?.__loading,
+    },
+    cellRenderer: (p) => {
+      if (p.data?.__loading) return '<span class="skeleton-cell skeleton-cell--add"></span>';
+      const v = p.value;
+      return v !== undefined && v !== null ? String(v) : "0";
+    },
+    valueSetter: (p) => {
+      if (p.data?.__loading) return false;
+      const raw = String(p.newValue ?? "").trim();
+      const newVal = isNumeric(raw) ? Number(raw) : 0;
+      const oldVal = Number(p.oldValue ?? 0);
+      p.data[field] = newVal;
+      const rk = rowKey(p.data.base_izq, p.data.base_der);
+      const _rc = getRowCache(); if (_rc.has(rk)) _rc.get(rk)[field] = newVal;
+      markCellChanged({ add, eye, base_izq: p.data.base_izq, base_der: p.data.base_der, existencias: newVal, _oldValue: oldVal });
+      return true;
+    },
+  };
+}
+
+const columns = computed(() => [
+  {
+    headerName: "BASE",
+    children: [{
+      field: "base",
+      headerName: "Base",
+      pinned: "left",
+      width: 120, minWidth: 110, maxWidth: 140,
+      editable: false, sortable: true,
+      comparator: (a, b) => Number(a) - Number(b),
+      resizable: false, filter: "agNumberColumnFilter",
+      cellClass: ["ag-cell--compact", "ag-cell--numeric", "ag-cell--pinned"],
+      headerClass: ["ag-header-cell--compact", "ag-header-cell--pinned"],
+      valueFormatter: (p) => {
+        if (p.data?.__loading) return "";
+        const bi = Number(p.data?.base_izq);
+        const bd = Number(p.data?.base_der);
+        if (!Number.isFinite(bi)) return p.value ?? "";
+        return Number.isFinite(bd) && bd !== bi ? `${fmtSigned(bi)} / ${fmtSigned(bd)}` : fmtSigned(bi);
+      },
+      cellRenderer: (p) => p.data?.__loading ? '<span class="skeleton-cell"></span>' : (p.valueFormatted ?? String(p.value ?? "")),
+    }],
+  },
+  {
+    headerName: "ADD (+)",
+    children: activeAddValues.value.map(add => ({
+      headerName: fmtSigned(Number(add)),
+      marryChildren: true,
+      children: eyes.map(eye => makeAddLeaf(`add_${norm(add)}_${eye}`, eye === "OD" ? "Der." : "Izq.", add, eye)),
+    })),
+  },
+]);
+
+const defaultColDef = {
+  resizable: true, sortable: true,
+  filter: "agNumberColumnFilter", floatingFilter: true,
+  editable: true, minWidth: 90, maxWidth: 150,
+  cellClass: "ag-cell--compact", headerClass: "ag-header-cell--compact",
+};
+
+const getRowId = (p) => rowKey(p.data.base_izq ?? p.data.base, p.data.base_der ?? p.data.base);
+
+// ─── Fetch helpers ────────────────────────────────────────────────
+function _buildFetchQueryForPage(pageKeys) {
+  const P = phys.value;
+  const allBi = pageKeys.map(k => Number(k.split("|")[0]));
+  return { addMin: P.addMin, addMax: P.addMax, baseMin: Math.min(...allBi), baseMax: Math.max(...allBi), limit: 5000 };
+}
+
+function _normalizeItem(i) {
+  return {
+    base_izq: to2(i.base_izq ?? 0),
+    base_der: to2(i.base_der ?? 0),
+    add: to2(i.add),
+    eye: String(i.eye || "OD").toUpperCase(),
+    existencias: Number(i.existencias ?? 0),
+  };
+}
+
+function _buildPivotPage(pageKeys, items) {
+  const addAll = allAddValues.value;
+
+  return pageKeys.map(rk => {
+    const [bi, bd] = rk.split("|").map(Number);
+    const row = { base_izq: bi, base_der: bd, base: bi };
+
+    const pageItems = items.filter(i => i.base_izq === bi && i.base_der === bd);
+
+    addAll.forEach(add => {
+      eyes.forEach(eye => {
+        const field = `add_${norm(add)}_${eye}`;
+        const match = pageItems.find(i => i.add === add && i.eye === eye);
+        row[field] = match?.existencias ?? 0;
+      });
+    });
+
+    // Aplicar cambios pendientes
+    pendingChanges.value.forEach((change, key) => {
+      const [biStr, bdStr, addStr, eye] = key.split("|");
+      if (to2(Number(biStr)) === bi && to2(Number(bdStr)) === bd) {
+        const field = `add_${norm(Number(addStr))}_${eye}`;
+        if (field in row) row[field] = change.existencias;
+      }
+    });
+
+    return row;
+  });
+}
+
+// ─── Datasource ──────────────────────────────────────────────────
+const datasource = computed(() => ({
+  getRows({ startRow, endRow, successCallback }) {
+    const axis = rowAxis.value;
+    const pageKeys = axis.slice(startRow, endRow);
+    LOG_ROWS(`getRows [${startRow}–${endRow}] ${pageKeys.length} filas BASE`);
+
+    if (!pageKeys.length) { successCallback([], axis.length); return; }
+
+    // ── Cache-first: sin skeleton si todas las filas ya están en caché ──
+    const cache = getRowCache();
+    if (pageKeys.every(k => cache.has(k))) {
+      LOG_ROWS(`getRows [${startRow}–${endRow}]: cache hit total.`);
+      successCallback(pageKeys.map(k => cache.get(k)), axis.length);
+      return;
+    }
+
+    // FASE 1: placeholders
+    const addAll = allAddValues.value;
+    const nullFields = Object.fromEntries(
+      addAll.flatMap(a => eyes.map(eye => [`add_${norm(a)}_${eye}`, null]))
+    );
+    const loadingRows = pageKeys.map(rk => {
+      const [bi, bd] = rk.split("|").map(Number);
+      return { base_izq: bi, base_der: bd, base: bi, __loading: true, ...nullFields };
+    });
+    successCallback(loadingRows, axis.length);
+    LOG_ROWS(`FASE 1: ${loadingRows.length} placeholders.`);
+
+    // FASE 2: fetch real
+    (async () => {
+      try {
+        if (DEV_DELAY_MS > 0) { LOG_ROWS(`delay ${DEV_DELAY_MS}ms...`); await sleep(DEV_DELAY_MS); }
+
+        const query = _buildFetchQueryForPage(pageKeys);
+        LOG_ROWS("FASE 2: query →", query);
+        const { data } = await fetchItems(props.sheetId, query);
+        const items = (data?.data || []).map(_normalizeItem);
+        LOG_ROWS(`FASE 2: ${items.length} items recibidos.`);
+
+        const realRows = _buildPivotPage(pageKeys, items);
+        realRows.forEach(row => getRowCache().set(rowKey(row.base_izq, row.base_der), row));
+
+        if (gridApi.value) {
+          let n = 0;
+          realRows.forEach(row => {
+            const rk = rowKey(row.base_izq, row.base_der);
+            const node = gridApi.value.getRowNode(rk);
+            if (node) { node.setData(row); gridApi.value.refreshCells({ rowNodes: [node], force: true }); n++; }
+          });
+          LOG_ROWS(`FASE 2: ${n}/${realRows.length} nodos actualizados.`);
+        }
+      } catch (e) {
+        console.error("[Progresivo][Rows] FASE 2 error:", e);
+      }
+    })();
+  },
+}));
+
+// ─── Metadata & ejes ─────────────────────────────────────────────
+async function loadSheetMeta() {
+  try {
+    const { data } = await getSheet(props.sheetId);
+    const payload = data?.data || data;
+    sheetMeta.value = payload?.sheet || null;
+    sheetTabs.value = Array.isArray(payload?.tabs) ? payload.tabs : [];
+    physicalLimits.value = payload?.physicalLimits || payload?.physical_limits || null;
+    LOG("loadSheetMeta OK");
+  } catch (e) {
+    console.error("[Progresivo] Error getSheet:", e?.response?.data || e);
+  }
+}
+
+function _getTab() {
+  return (
+    sheetTabs.value.find(t => t?.id === baseViewId.value) ||
+    sheetTabs.value.find(t => t?.id === "base-add") ||
+    sheetTabs.value[0] ||
+    null
+  );
+}
+
+function _rebuildAxes() {
+  const P = phys.value;
+  const tab = _getTab();
+
+  const defAddCols = Array.isArray(tab?.axis?.add) ? tab.axis.add.map(to2) : [];
+  const defBases   = Array.isArray(tab?.axis?.base) ? tab.axis.base.map(to2) : [];
+
+  allAddValues.value = [...new Set(defAddCols)]
+    .filter(a => Number.isFinite(a) && a >= P.addMin && a <= P.addMax)
+    .sort((a, b) => a - b);
+
+  const inView = baseViewId.value === "base-neg" ? (b) => Number(b) <= 0 : (b) => Number(b) >= 0;
+  const sortDir = sortDirForView.value;
+
+  const baseKeys = [...new Set(
+    defBases
+      .filter(b => b >= P.baseMin && b <= P.baseMax && inView(b))
+      .map(b => `${to2(b)}|${to2(b)}`)
+  )].sort((a, b) => {
+    const [abi] = a.split("|").map(Number);
+    const [bbi] = b.split("|").map(Number);
+    return sortDir === "desc" ? bbi - abi : abi - bbi;
+  });
+
+  rowAxis.value = baseKeys;
+  LOG("_rebuildAxes:", { rows: rowAxis.value.length, addCols: allAddValues.value.length });
+}
+
+async function loadAll() {
+  LOG("loadAll...");
+  await loadSheetMeta();
+  await switchViewReload();
+}
+
+async function switchViewReload({ clearCache = true } = {}) {
   switchingView.value = true;
   await raf();
   try {
-    await loadRows();
+    _rebuildAxes();
+    if (clearCache) {
+      rowCaches.clear();
+      colManager.reset();
+    }
+
+    if (gridApi.value) {
+      gridApi.value.setGridOption("datasource", datasource.value);
+      LOG("datasource reseteado.");
+    }
+
+    if (clearCache) {
+      loadingCols.value = true;
+      await colManager.init();
+      loadingCols.value = false;
+    } else {
+      colManager.reattach();
+    }
+    LOG("switchViewReload completo.");
   } catch (e) {
-    console.error("[AgGridProgresivo] Error fetchItems:", e?.response?.data || e);
+    console.error("[Progresivo] switchViewReload error:", e);
   } finally {
     await raf();
     switchingView.value = false;
   }
 }
 
-async function loadAll() {
-  await loadSheetMeta();
-  await switchViewReload();
+// ─── Cross-tab sync (BroadcastChannel) ────────────────────────────
+let _broadcastCh = null;
+let _suppressNextWsRefresh = false;
+function _initBroadcast() {
+  if (typeof BroadcastChannel === "undefined") return;
+  _broadcastCh?.close();
+  _broadcastCh = new BroadcastChannel(`rsbo:inv:${props.sheetId}`);
+  _broadcastCh.onmessage = () => { _refreshCachedRows(); };
+}
+function _closeBroadcast() { _broadcastCh?.close(); _broadcastCh = null; }
+
+// ─── Surgical row refresh (sin skeleton, sin flicker) ─────────────
+async function _refreshCachedRows() {
+  const cache = getRowCache();
+  if (!cache.size || !gridApi.value) return;
+  const pageKeys = [...cache.keys()];
+  if (!pageKeys.length) return;
+  try {
+    const { data } = await fetchItems(props.sheetId, _buildFetchQueryForPage(pageKeys));
+    const items = (data?.data || []).map(_normalizeItem);
+    const realRows = _buildPivotPage(pageKeys, items);
+    realRows.forEach(row => {
+      const rk = rowKey(row.base_izq, row.base_der);
+      cache.set(rk, row);
+      const node = gridApi.value?.getRowNode(rk);
+      if (node) { node.setData(row); gridApi.value.refreshCells({ rowNodes: [node], force: true }); }
+    });
+    LOG(`_refreshCachedRows: ${realRows.length} filas actualizadas silenciosamente.`);
+  } catch (e) { console.error("[Progresivo] _refreshCachedRows error:", e); }
 }
 
-// ── WebSocket: actualiza stock en tiempo real al surtir/cancelar/resetear ──
-const _WS_STOCK = new Set(["LAB_ORDER_SCAN", "LAB_ORDER_CANCEL", "LAB_ORDER_RESET"]);
+// ─── WebSocket ────────────────────────────────────────────────────
+const _WS_STOCK = new Set(["LAB_ORDER_SCAN", "LAB_ORDER_CANCEL", "LAB_ORDER_RESET", "INVENTORY_CHUNK_SAVED"]);
 function _onLabWs(e) {
-  if (_WS_STOCK.has(e?.detail?.type)) loadRows();
+  if (!_WS_STOCK.has(e?.detail?.type)) return;
+  const sheetIds = e.detail?.payload?.sheetIds;
+  if (sheetIds && sheetIds.length > 0 && !sheetIds.includes(props.sheetId)) return;
+  if (_suppressNextWsRefresh) { _suppressNextWsRefresh = false; return; }
+  _refreshCachedRows();
 }
+
 onMounted(async () => {
   await loadAll();
   window.addEventListener("lab:ws", _onLabWs);
-  // Restore unsaved changes from previous session/view
+  _initBroadcast();
   unsavedGuard.restore();
 });
-onBeforeUnmount(() => window.removeEventListener("lab:ws", _onLabWs));
+onActivated(() => {
+  window.addEventListener("lab:ws", _onLabWs);
+  _initBroadcast();
+  colManager.reattach();
+  LOG("onActivated: reactivado desde KeepAlive.");
+});
+onDeactivated(() => {
+  window.removeEventListener("lab:ws", _onLabWs);
+  _closeBroadcast();
+  LOG("onDeactivated: desactivado por KeepAlive.");
+});
+onBeforeUnmount(() => {
+  window.removeEventListener("lab:ws", _onLabWs);
+  _closeBroadcast();
+});
 
-watch(
-  () => props.sphType,
-  async (_, oldType) => {
-    // Persist unsaved changes for the OLD view before switching
-    if (dirty.value && pendingChanges.value.size > 0) {
-      unsavedGuard.persist();
-    }
-    pendingChanges.value.clear();
-    dirty.value = false;
-    gridHistory.clear();
-    await switchViewReload();
-    // Try to restore any saved changes for the NEW view
-    unsavedGuard.restore();
-  }
-);
+watch(() => props.sheetId, () => { _initBroadcast(); });
 
-/* Edición rápida */
+watch(() => props.sphType, async () => {
+  if (dirty.value && pendingChanges.value.size > 0) unsavedGuard.persist();
+  pendingChanges.value.clear();
+  dirty.value = false;
+  gridHistory.clear();
+  await switchViewReload({ clearCache: false });
+  unsavedGuard.restore();
+});
+
+// ─── Formula bar ─────────────────────────────────────────────────
 const formulaValue = ref("");
 let activeCell = null;
 
-const onCellClicked = (p) => {
-  activeCell = p;
-  formulaValue.value = p.value;
-};
-
+const onCellClicked = (p) => { activeCell = p; formulaValue.value = p.value; };
 const onCellValueChanged = (p) => {
-  if (activeCell && activeCell.rowIndex === p.rowIndex && activeCell.colDef.field === p.colDef.field) {
-    formulaValue.value = p.newValue;
-  }
+  if (activeCell && activeCell.rowIndex === p.rowIndex && activeCell.colDef.field === p.colDef.field) formulaValue.value = p.newValue;
   if (p.colDef.field.startsWith("add_")) {
     const meta = parseAddEyeFromField(p.colDef.field);
-    if (meta) {
-      markCellChangedProgresivo({
-        add: meta.add,
-        eye: meta.eye,
-        base_izq: p.data.base_izq ?? p.data.base,
-        base_der: p.data.base_der ?? p.data.base,
-        existencias: p.data[p.colDef.field]
-      });
-    }
+    if (meta) markCellChanged({ add: meta.add, eye: meta.eye, base_izq: p.data.base_izq ?? p.data.base, base_der: p.data.base_der ?? p.data.base, existencias: p.data[p.colDef.field] });
   }
 };
 
-/**
- * ✅ Base-style: FX input no “guarda”, FX commit sí “guarda”
- * - Progresivo: solo permite add_*
- */
 function applyFxToGrid(val, { commit = false } = {}) {
-  if (!activeCell || !gridApi.value) return;
-
+  if (!activeCell || !gridApi.value || activeCell.data?.__loading) return;
   const field = activeCell.colDef?.field;
   if (!field || !field.startsWith("add_")) return;
-
   const meta = parseAddEyeFromField(field);
   if (!meta) return;
-
   const raw = String(val ?? "").trim();
   const newVal = isNumeric(raw) ? Number(raw) : 0;
-
   if (activeCell.data) activeCell.data[field] = newVal;
-
   if (!commit) {
-    gridApi.value.refreshCells?.({
-      rowNodes: activeCell.node ? [activeCell.node] : undefined,
-      columns: [field],
-      force: true
-    });
+    gridApi.value.refreshCells?.({ rowNodes: activeCell.node ? [activeCell.node] : undefined, columns: [field], force: true });
     return;
   }
-
   const updatedRow = { ...(activeCell.data || {}), [field]: newVal };
-  gridApi.value.applyTransaction({ update: [updatedRow] });
-
-  markCellChangedProgresivo({
-    add: meta.add,
-    eye: meta.eye,
-    base_izq: updatedRow.base_izq ?? updatedRow.base,
-    base_der: updatedRow.base_der ?? updatedRow.base,
-    existencias: newVal
-  });
-
-  gridApi.value.flashCells?.({
-    rowNodes: activeCell.node ? [activeCell.node] : undefined,
-    columns: [field]
-  });
+  const rk = rowKey(updatedRow.base_izq ?? updatedRow.base, updatedRow.base_der ?? updatedRow.base);
+  const node = gridApi.value.getRowNode(rk);
+  if (node) { node.setData(updatedRow); gridApi.value.flashCells?.({ rowNodes: [node], columns: [field] }); }
+  markCellChanged({ add: meta.add, eye: meta.eye, base_izq: updatedRow.base_izq ?? updatedRow.base, base_der: updatedRow.base_der ?? updatedRow.base, existencias: newVal });
 }
 
-const onFxInput = (val) => applyFxToGrid(val, { commit: false });
+const onFxInput  = (val) => applyFxToGrid(val, { commit: false });
 const onFxCommit = (val) => applyFxToGrid(val, { commit: true });
 
-/* ── Grid-level undo / redo ── */
+// ─── Undo / Redo ─────────────────────────────────────────────────
 function applyGridHistoryOp(op) {
   if (!op) return;
   const value = op.reversed ? op.oldValue : op.newValue;
-  const row = rowData.value.find(
-    r => op.meta && to2(r.base_izq) === to2(op.meta.base_izq) && to2(r.base_der) === to2(op.meta.base_der)
-  );
-  if (!row) return;
-  row[op.field] = value;
-  gridApi.value?.applyTransaction({ update: [row] });
-  gridApi.value?.refreshCells({ force: true });
-
-  // update pendingChanges
-  if (op.meta) {
-    const updated = { ...op.meta, existencias: value };
-    pendingChanges.value.set(op.key, updated);
+  const [biStr, bdStr] = op.key.split("|");
+  const bi = to2(Number(biStr));
+  const bd = to2(Number(bdStr));
+  const rk = rowKey(bi, bd);
+  const cached = getRowCache().get(rk);
+  if (cached) {
+    cached[op.field] = value;
+    const node = gridApi.value?.getRowNode(rk);
+    if (node) { node.setData({ ...cached }); gridApi.value?.refreshCells({ rowNodes: [node], force: true }); }
   }
+  pendingChanges.value.set(op.key, { ...op.meta, existencias: value });
   dirty.value = pendingChanges.value.size > 0;
 }
 const handleGridUndo = () => applyGridHistoryOp(gridHistory.undo());
 const handleGridRedo = () => applyGridHistoryOp(gridHistory.redo());
 
-const onGridReady = (p) => {
+// ─── Grid ready ──────────────────────────────────────────────────
+const onGridReady = async (p) => {
   gridApi.value = p.api;
-};
-
-/* ===================== Navtools (con ACK) ===================== */
-const handleAddRow = async (nuevoValor, ack) => {
-  const P = phys.value;
-  const bi = to2(nuevoValor);
-
-  if (!Number.isFinite(bi)) return ackErr(ack, "Ingresa BASE numérica (Der=Izq por defecto)", 400);
-  if (!isQuarterStep(bi)) return ackErr(ack, "BASE debe ser múltiplo de 0.25 (…00, …25, …50, …75)", 400);
-  if (bi < P.baseMin || bi > P.baseMax) return ackErr(ack, `BASE fuera de límites (${P.baseMin} a ${P.baseMax})`, 400);
-
-  if (!baseFilterNewRow.value(bi)) {
-    return ackErr(
-      ack,
-      baseViewId.value === "base-neg"
-        ? "Esta vista es BASE (-): la BASE debe ser negativa (ej: -0.25)"
-        : "Esta vista es BASE (+): la BASE debe ser 0 o positiva",
-      400
-    );
-  }
-
-  const exists = rowData.value.some((r) => to2(r.base_izq) === bi && to2(r.base_der) === bi);
-  if (exists) return ackErr(ack, `Fila base ${fmtSigned(bi)} ya existe`, 409);
-
-  const row = { base_izq: bi, base_der: bi, base: bi };
-  addValues.value.forEach((add) => {
-    row[`add_${norm(add)}_OD`] = 0;
-    row[`add_${norm(add)}_OI`] = 0;
-  });
-
-  gridApi.value?.applyTransaction({ add: [row] });
+  p.api.setGridOption("datasource", datasource.value);
   await nextTick();
   resetSort();
-
-  try {
-    const rowsToPersist = [];
-    addValues.value.forEach((add) => {
-      rowsToPersist.push({ add, eye: "OD", base_izq: bi, base_der: bi, existencias: 0 });
-      rowsToPersist.push({ add, eye: "OI", base_izq: bi, base_der: bi, existencias: 0 });
-    });
-
-    if (!rowsToPersist.length) {
-      ackOk(ack, "Fila agregada (sin ADD aún).", 200);
-      return;
-    }
-
-    const res = await saveChunk(props.sheetId, rowsToPersist, effectiveActor.value);
-    const ok = normalizeAxiosOk(res);
-    if (!ok.ok) return ackErr(ack, ok.message || "No se pudo agregar la fila", ok.status);
-
-    ackOk(ack, ok.message || `Fila agregada: BASE ${fmtSigned(bi)}`, ok.status);
-
-    lastSavedAt.value = new Date();
-    await switchViewReload();
-  } catch (e) {
-    console.error("[AgGridProgresivo] Error al persistir base nueva:", e?.response?.data || e);
-    ackErr(ack, msgFromErr(e, "Error al guardar la nueva BASE"), statusFromErr(e));
-  }
+  colManager.reattach();
+  LOG("onGridReady.");
 };
 
-const handleAddColumn = async (nuevoValor, ack) => {
-  const P = phys.value;
-  const add = to2(nuevoValor);
-
-  if (!Number.isFinite(add)) return ackErr(ack, "Ingresa ADD numérico", 400);
-  if (!isQuarterStep(add)) return ackErr(ack, "ADD debe ser múltiplo de 0.25 (…00, …25, …50, …75)", 400);
-  if (add < P.addMin || add > P.addMax) return ackErr(ack, `ADD fuera de límites (${P.addMin} a ${P.addMax})`, 400);
-  if (addValues.value.includes(add)) return ackErr(ack, `ADD ${fmtSigned(add)} ya existe`, 409);
-
-  addValues.value = [...addValues.value, add].sort((a, b) => a - b);
-  rowData.value.forEach((r) => {
-    r[`add_${norm(add)}_OD`] = 0;
-    r[`add_${norm(add)}_OI`] = 0;
-  });
-
-  await nextTick();
-  gridApi.value?.refreshHeader();
-  gridApi.value?.redrawRows();
-
-  try {
-    const rowsToPersist = [];
-    rowData.value.forEach((r) => {
-      const base_izq = to2(r.base_izq ?? r.base ?? 0);
-      const base_der = to2(r.base_der ?? r.base ?? 0);
-      rowsToPersist.push({ add, eye: "OD", base_izq, base_der, existencias: 0 });
-      rowsToPersist.push({ add, eye: "OI", base_izq, base_der, existencias: 0 });
-    });
-
-    if (!rowsToPersist.length) {
-      ackOk(ack, "Columna agregada.", 200);
-      return;
-    }
-
-    const res = await saveChunk(props.sheetId, rowsToPersist, effectiveActor.value);
-    const ok = normalizeAxiosOk(res);
-    if (!ok.ok) return ackErr(ack, ok.message || "No se pudo agregar la columna", ok.status);
-
-    ackOk(ack, ok.message || `Columna ADD agregada: ${fmtSigned(add)}`, ok.status);
-
-    lastSavedAt.value = new Date();
-    await switchViewReload();
-  } catch (e) {
-    console.error("[AgGridProgresivo] Error al persistir ADD nuevo:", e?.response?.data || e);
-    ackErr(ack, msgFromErr(e, "Error al guardar el nuevo ADD"), statusFromErr(e));
-  }
-};
-
-async function handleSave(ack) {
-  if (!dirty.value || pendingChanges.value.size === 0) {
-    ackOk(ack, "No hay cambios por guardar.", 200);
-    return;
-  }
-  saving.value = true;
-  try {
-    const rows = Array.from(pendingChanges.value.values());
-    const res = await saveChunk(props.sheetId, rows, effectiveActor.value);
-    const ok = normalizeAxiosOk(res);
-    if (!ok.ok) return ackErr(ack, ok.message || "No se pudo guardar", ok.status);
-
-    dirty.value = false;
-    pendingChanges.value.clear();
-    lastSavedAt.value = new Date();
-    gridHistory.clear();
-    unsavedGuard.clearStorage();
-
-    ackOk(ack, ok.message || "Cambios guardados.", ok.status);
-
-    await switchViewReload();
-  } catch (e) {
-    console.error("[AgGridProgresivo] Error saveChunk:", e?.response?.data || e);
-    ackErr(ack, msgFromErr(e, "Error al guardar cambios"), statusFromErr(e));
-  } finally {
-    saving.value = false;
-  }
-}
-
+// ─── Sort / Filter ────────────────────────────────────────────────
 const clearFilters = () => {
   if (!gridApi.value) return;
   const api = gridApi.value;
@@ -727,23 +653,90 @@ const clearFilters = () => {
 
 const resetSort = () => {
   const api = gridApi.value;
-  if (!api) return;
-  const dir = sortDirForView.value;
-  if (typeof api.applyColumnState === "function") {
-    api.applyColumnState({ defaultState: { sort: null }, state: [{ colId: "base", sort: dir }] });
-  } else if (typeof api.setSortModel === "function") {
-    api.setSortModel([{ colId: "base", sort: dir }]);
-  }
+  if (!api || typeof api.applyColumnState !== "function") return;
+  api.applyColumnState({ defaultState: { sort: null }, state: [{ colId: "base", sort: sortDirForView.value }] });
 };
 
 const handleToggleFilters = () => clearFilters();
 
+// ─── Navtools handlers ────────────────────────────────────────────
+const handleAddRow = async (nuevoValor, ack) => {
+  const P = phys.value;
+  const base = to2(nuevoValor);
+  if (!Number.isFinite(base)) return ackErr(ack, "Ingresa BASE numérica", 400);
+  if (base < P.baseMin || base > P.baseMax) return ackErr(ack, `BASE fuera de límites (${P.baseMin} a ${P.baseMax})`, 400);
+  const rk = rowKey(base, base);
+  if (rowAxis.value.includes(rk)) return ackErr(ack, `BASE ${fmtSigned(base)} ya existe`, 409);
+
+  try {
+    const rows = allAddValues.value.flatMap(a => eyes.map(eye => ({ base_izq: base, base_der: base, add: a, eye, existencias: 0 })));
+    const res = await saveChunk(props.sheetId, rows, effectiveActor.value);
+    const ok = normalizeAxiosOk(res);
+    if (!ok.ok) throw new Error(ok.message);
+    ackOk(ack, ok.message || `Fila BASE ${fmtSigned(base)} agregada`, ok.status);
+    lastSavedAt.value = new Date();
+    await loadSheetMeta();
+    await switchViewReload();
+  } catch (e) {
+    ackErr(ack, msgFromErr(e, "Error al agregar fila"), statusFromErr(e) || 500);
+  }
+};
+
+const handleAddColumn = async (nuevoValor, ack) => {
+  const P = phys.value;
+  const add = to2(nuevoValor);
+  if (!Number.isFinite(add)) return ackErr(ack, "Ingresa ADD numérico", 400);
+  if (add < P.addMin || add > P.addMax) return ackErr(ack, `ADD fuera de límites (${P.addMin} a ${P.addMax})`, 400);
+  if (allAddValues.value.includes(add)) return ackErr(ack, `ADD ${fmtSigned(add)} ya existe`, 409);
+
+  try {
+    const rows = rowAxis.value.flatMap(rk => {
+      const [bi, bd] = rk.split("|").map(Number);
+      return eyes.map(eye => ({ base_izq: bi, base_der: bd, add, eye, existencias: 0 }));
+    });
+    const res = await saveChunk(props.sheetId, rows, effectiveActor.value);
+    const ok = normalizeAxiosOk(res);
+    if (!ok.ok) throw new Error(ok.message);
+    ackOk(ack, ok.message || `Columna ADD ${fmtSigned(add)} agregada`, ok.status);
+    lastSavedAt.value = new Date();
+    await loadSheetMeta();
+    await switchViewReload();
+  } catch (e) {
+    ackErr(ack, msgFromErr(e, "Error al agregar columna"), statusFromErr(e) || 500);
+  }
+};
+
+async function handleSave(ack) {
+  if (!dirty.value || pendingChanges.value.size === 0) { ackOk(ack, "No hay cambios por guardar.", 200); return; }
+  saving.value = true;
+  try {
+    const rows = Array.from(pendingChanges.value.values());
+    const res = await saveChunk(props.sheetId, rows, effectiveActor.value);
+    const ok = normalizeAxiosOk(res);
+    if (!ok.ok) return ackErr(ack, ok.message || "No se pudo guardar", ok.status);
+    dirty.value = false;
+    pendingChanges.value.clear();
+    lastSavedAt.value = new Date();
+    gridHistory.clear();
+    unsavedGuard.clearStorage();
+    ackOk(ack, ok.message || "Cambios guardados.", ok.status);
+    _suppressNextWsRefresh = true;
+    _broadcastCh?.postMessage({ type: "ROWS_CHANGED" });
+  } catch (e) {
+    console.error("[Progresivo] Error saveChunk:", e?.response?.data || e);
+    ackErr(ack, msgFromErr(e, "Error al guardar cambios"), statusFromErr(e));
+  } finally {
+    saving.value = false;
+  }
+}
+
 async function handleDiscard() {
-  await switchViewReload();
-  dirty.value = false;
   pendingChanges.value.clear();
+  dirty.value = false;
   gridHistory.clear();
   unsavedGuard.clearStorage();
+  rowCaches.clear();
+  if (gridApi.value) gridApi.value.setGridOption("datasource", datasource.value);
 }
 
 async function handleRefresh() {
@@ -757,15 +750,13 @@ async function handleSeed(ack) {
     saving.value = true;
     const res = await reseedSheet(props.sheetId, effectiveActor.value);
     const ok = normalizeAxiosOk(res);
-    if (!ok.ok) return ackErr(ack, ok.message || "No se pudo generar seed", ok.status);
-
+    if (!ok.ok) return ackErr(ack, ok.message || "No se pudo hacer seed", ok.status);
     await loadSheetMeta();
     await switchViewReload();
     lastSavedAt.value = new Date();
     pendingChanges.value.clear();
     ackOk(ack, ok.message || "Seed generado.", ok.status);
   } catch (e) {
-    console.error("[AgGridProgresivo] Error reseed:", e?.response?.data || e);
     ackErr(ack, msgFromErr(e, "Error al generar seed"), statusFromErr(e));
   } finally {
     saving.value = false;
@@ -785,108 +776,55 @@ async function handleExport() {
 </script>
 
 <style scoped>
-.buefy-balham-light {
-  padding: 0.5rem 0.75rem 0.75rem;
-  background-color: var(--ag-bg);
-  border-radius: 0.75rem;
-  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.03);
-}
+.grid-page { display:flex; flex-direction:column; height:100%; overflow:hidden; }
+.grid-topbar { flex:0 0 auto; position:sticky; top:0; z-index:30; }
+.navtools-wrap { padding:0.5rem 0.75rem; }
+.grid-main { flex:1 1 auto; min-height:0; padding:0 0.75rem 0.75rem; display:flex; flex-direction:column; }
 
-/* ✅ Leyenda */
-.stock-legend {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  align-items: center;
+.glass-shell {
+  flex:1 1 auto; min-height:0;
+  border-radius:var(--radius-lg,14px);
+  backdrop-filter:blur(14px) saturate(1.4); -webkit-backdrop-filter:blur(14px) saturate(1.4);
+  background:rgba(255,255,255,0.06);
+  box-shadow:0 0 0 1px rgba(255,255,255,0.12),var(--shadow-md,0 4px 24px rgba(0,0,0,.14));
+  overflow:hidden;
+  transition:opacity 160ms ease,transform 200ms cubic-bezier(.22,.61,.36,1),filter 160ms ease;
+  position:relative;
 }
-.stock-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.22rem 0.55rem;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  line-height: 1;
-  user-select: none;
-  border: 1px solid rgba(15, 23, 42, 0.10);
-  background: rgba(15, 23, 42, 0.03);
-}
-.stock-pill--low {
-  background: rgba(245, 158, 11, 0.14);
-  border-color: rgba(245, 158, 11, 0.25);
-}
-.stock-pill--zero {
-  background: rgba(239, 68, 68, 0.12);
-  border-color: rgba(239, 68, 68, 0.22);
-}
+.glass-shell--switching { opacity:0; transform:translate3d(0,8px,0) scale(.992); filter:blur(1.2px); pointer-events:none; }
+@media(prefers-reduced-motion:reduce){ .glass-shell{transition:none!important;} }
 
-/* ✅ transición suave al cambiar vista */
-.grid-shell {
-  transition: opacity 160ms ease, transform 200ms cubic-bezier(0.22, 0.61, 0.36, 1), filter 160ms ease;
-  will-change: opacity, transform, filter;
+.dev-col-badge {
+  position:absolute; top:6px; right:8px; z-index:10;
+  background:rgba(99,102,241,.85); color:#fff;
+  font-size:10px; font-family:monospace; padding:2px 7px;
+  border-radius:999px; pointer-events:none;
 }
-.grid-shell--switching {
-  opacity: 0;
-  transform: translate3d(0, 8px, 0) scale(0.992);
-  filter: blur(1.2px);
-  pointer-events: none;
-}
+.dev-col-badge__spin { margin-left:4px; display:inline-block; animation:spin .8s linear infinite; }
+@keyframes spin { to{transform:rotate(360deg);} }
 
-@media (prefers-reduced-motion: reduce) {
-  .grid-shell {
-    transition: none !important;
-  }
-}
+.ag-grid-glass :deep(.ag-root-wrapper) { border:none!important; }
+.ag-grid-glass :deep(.ag-header)       { border-bottom:none!important; }
+.ag-grid-glass :deep(.ag-row)          { border:none!important; }
 
-.ag-grid-buefy .ag-header-cell.ag-header-cell--compact {
-  padding-inline: 6px;
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
+.ag-grid-glass :deep(.ag-cell.ag-cell--pinned),
+.ag-grid-glass :deep(.ag-header-cell.ag-header-cell--pinned) { background:rgba(121,87,213,.08); font-weight:600; }
+.ag-grid-glass :deep(.ag-row-hover) { background:rgba(121,87,213,.06)!important; }
 
-.ag-grid-buefy .ag-cell.ag-cell--compact {
-  padding-inline: 6px;
-  line-height: 1.2;
-  font-size: 0.75rem;
-}
+.ag-grid-glass :deep(.ag-row.ag-row--stock-low)  { box-shadow:inset 3px 0 0 rgba(139,92,246,.55); background:rgba(139,92,246,.06); }
+.ag-grid-glass :deep(.ag-row.ag-row--stock-zero) { box-shadow:inset 3px 0 0 rgba(99,102,241,.75); background:rgba(99,102,241,.08); }
+.ag-grid-glass :deep(.ag-cell.ag-cell--stock-low)  { font-weight:700; background:rgba(139,92,246,.12); border-radius:4px; }
+.ag-grid-glass :deep(.ag-cell.ag-cell--stock-zero) { font-weight:800; background:rgba(99,102,241,.15); border-radius:4px; }
 
-.ag-grid-buefy .ag-cell.ag-cell--numeric {
-  justify-content: flex-end;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
+.ag-grid-glass :deep(.skeleton-cell) {
+  display:block; width:90%; height:10px; border-radius:4px; margin:auto;
+  background:linear-gradient(90deg,rgba(148,163,184,.12) 25%,rgba(148,163,184,.28) 50%,rgba(148,163,184,.12) 75%);
+  background-size:200% 100%; animation:shimmer 1.6s ease infinite;
 }
+.ag-grid-glass :deep(.skeleton-cell--add) { width:70%; }
+@keyframes shimmer { 0%{background-position:200% center} 100%{background-position:-200% center} }
 
-.ag-grid-buefy .ag-cell.ag-cell--pinned,
-.ag-grid-buefy .ag-header-cell.ag-header-cell--pinned {
-  background-color: #f5f3ff;
-  font-weight: 600;
-}
-
-.ag-grid-buefy .ag-row-hover {
-  background-color: #f3f0ff !important;
-}
-
-/* ===================== ✅ ALERTAS STOCK (fila + celda) ===================== */
-/* fila (suave) */
-.ag-grid-buefy :deep(.ag-row.ag-row--stock-low) {
-  box-shadow: inset 3px 0 0 rgba(245, 158, 11, 0.75);
-  background: rgba(245, 158, 11, 0.06);
-}
-.ag-grid-buefy :deep(.ag-row.ag-row--stock-zero) {
-  box-shadow: inset 3px 0 0 rgba(239, 68, 68, 0.85);
-  background: rgba(239, 68, 68, 0.06);
-}
-
-/* celda (más explícita) */
-.ag-grid-buefy :deep(.ag-cell.ag-cell--stock-low) {
-  font-weight: 700;
-  background: rgba(245, 158, 11, 0.12);
-  border-radius: 6px;
-}
-.ag-grid-buefy :deep(.ag-cell.ag-cell--stock-zero) {
-  font-weight: 800;
-  background: rgba(239, 68, 68, 0.12);
-  border-radius: 6px;
-}
+.ag-grid-glass :deep(.ag-header-cell.ag-header-cell--compact) { padding-inline:6px; font-size:.7rem; text-transform:uppercase; letter-spacing:.04em; }
+.ag-grid-glass :deep(.ag-cell.ag-cell--compact) { padding-inline:6px; line-height:1.2; font-size:.75rem; }
+.ag-grid-glass :deep(.ag-cell.ag-cell--numeric) { justify-content:flex-end; text-align:right; font-variant-numeric:tabular-nums; }
 </style>

@@ -201,10 +201,12 @@ export function useLaboratorioApi(getUser) {
   const buildRowTitle = (row, sheet) => {
     const t = sheet?.tipo_matriz;
     const name = sheet?.nombre || sheet?.name || "Producto";
-    if (t === "BASE") return `${name} · Base ${fmtVal(row.base)}`;
-    if (t === "SPH_CYL") return `${name} · Esfera ${fmtVal(row.sph)}, Cilindro ${fmtVal(row.cyl)}`;
-    if (t === "SPH_ADD") return `${name} · Ojo ${eyeLabel(row.eye)}`;
-    if (t === "BASE_ADD") return `${name} · Ojo ${eyeLabel(row.eye)}`;
+    const base = String(row.eye || "").toUpperCase() === "OD"
+      ? Number(row.base_der ?? 0) : Number(row.base_izq ?? 0);
+    if (t === "BASE")     return `${name} · Base ${fmtVal(row.base)}`;
+    if (t === "SPH_CYL")  return `${name} · Esfera ${fmtVal(row.sph)} · Cilindro ${fmtVal(row.cyl)}`;
+    if (t === "SPH_ADD")  return `${name} · Ojo ${eyeLabel(row.eye)} · Esfera ${fmtVal(row.sph)} · Adición ${fmtVal(row.add)}`;
+    if (t === "BASE_ADD") return `${name} · Ojo ${eyeLabel(row.eye)} · Base ${fmtVal(base)} · Adición ${fmtVal(row.add)}`;
     return name;
   };
 
@@ -218,13 +220,12 @@ export function useLaboratorioApi(getUser) {
       parts.push(`Cilindro: ${fmtVal(row.cyl)}`);
     } else if (t === "SPH_ADD") {
       parts.push(`Esfera: ${fmtVal(row.sph)}`);
-      parts.push(`Adicion: ${fmtVal(row.add)}`);
-      if (Number(row.base_izq ?? 0) !== 0) parts.push(`Base Izq: ${fmtVal(row.base_izq)}`);
-      if (Number(row.base_der ?? 0) !== 0) parts.push(`Base Der: ${fmtVal(row.base_der)}`);
+      parts.push(`Adición: ${fmtVal(row.add)}`);
     } else if (t === "BASE_ADD") {
-      if (Number(row.base_izq ?? 0) !== 0) parts.push(`Base Izq: ${fmtVal(row.base_izq)}`);
-      if (Number(row.base_der ?? 0) !== 0) parts.push(`Base Der: ${fmtVal(row.base_der)}`);
-      parts.push(`Adicion: ${fmtVal(row.add)}`);
+      const base = String(row.eye || "").toUpperCase() === "OD"
+        ? Number(row.base_der ?? 0) : Number(row.base_izq ?? 0);
+      parts.push(`Base: ${fmtVal(base)}`);
+      parts.push(`Adición: ${fmtVal(row.add)}`);
     }
     return parts.length ? parts.join(" · ") : "—";
   };
@@ -398,6 +399,8 @@ export function useLaboratorioApi(getUser) {
     const p = line?.params || {};
     const parts = [];
     if (line?.eye) parts.push(`Ojo ${eyeLabel(line.eye)}`);
+    const base = String(line?.eye || "").toUpperCase() === "OD"
+      ? Number(p.base_der ?? 0) : Number(p.base_izq ?? 0);
     if (t === "BASE") {
       parts.push(`Base ${fmtVal(p.base)}`);
     } else if (t === "SPH_CYL") {
@@ -405,11 +408,10 @@ export function useLaboratorioApi(getUser) {
       parts.push(`Cilindro ${fmtVal(p.cyl)}`);
     } else if (t === "SPH_ADD") {
       parts.push(`Esfera ${fmtVal(p.sph)}`);
-      parts.push(`Adicion ${fmtVal(p.add)}`);
+      parts.push(`Adición ${fmtVal(p.add)}`);
     } else if (t === "BASE_ADD") {
-      if (Number(p.base_izq ?? 0) !== 0) parts.push(`Base Izq ${fmtVal(p.base_izq)}`);
-      if (Number(p.base_der ?? 0) !== 0) parts.push(`Base Der ${fmtVal(p.base_der)}`);
-      parts.push(`Adicion ${fmtVal(p.add)}`);
+      parts.push(`Base ${fmtVal(base)}`);
+      parts.push(`Adición ${fmtVal(p.add)}`);
     }
     return parts.length ? parts.join(" · ") : String(line?.codebar || "Linea");
   };

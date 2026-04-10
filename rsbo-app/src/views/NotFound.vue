@@ -43,7 +43,7 @@
 </template>
 
 <script setup>
-import notfoundlog from "@/assets/img/huohuo.png";
+import notfoundlog from "@/assets/img/endmin.svg";
 </script>
 
 <script>
@@ -197,17 +197,10 @@ export default {
 }
 
 .notfound-figure {
-  width: min(320px, 100%);
+  width: min(600px, 100%);
   margin: 0;
   position: relative;
   z-index: 1;
-
-  border-radius: 16px;
-  overflow: hidden;
-
-  background: var(--bg-subtle);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-md);
 }
 
 .notfound-img {

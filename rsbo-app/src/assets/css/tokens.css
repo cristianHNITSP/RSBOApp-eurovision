@@ -118,6 +118,27 @@
   --ag-row-hover:      #f3f0ff;
   --ag-selected:       rgba(144, 111, 225, 0.12);
   --ag-cell-border:    rgba(100, 149, 237, 0.30);
+
+  /* === AG-Grid glassmorphism === */
+  --ag-glass-bg:        rgba(255, 255, 255, 0.55);
+  --ag-glass-bg-strong: rgba(255, 255, 255, 0.72);
+  --ag-glass-border:    rgba(121, 87, 213, 0.18);
+  --ag-glass-header-bg: rgba(245, 243, 255, 0.72);
+  --ag-glass-header-fg: #4527a0;
+  --ag-glass-row-hover: rgba(121, 87, 213, 0.08);
+  --ag-glass-shadow:    0 8px 28px -12px rgba(67, 40, 140, 0.22),
+                        0 1px 0 rgba(255, 255, 255, 0.6) inset;
+  --ag-glass-blur:      14px;
+
+  --ag-skel-base:       rgba(226, 232, 240, 0.55);
+  --ag-skel-shine:      rgba(255, 255, 255, 0.85);
+
+  --ag-stock-low-bg:    rgba(245, 158, 11, 0.14);
+  --ag-stock-low-edge:  rgba(245, 158, 11, 0.55);
+  --ag-stock-low-fg:    #92400e;
+  --ag-stock-zero-bg:   rgba(239, 68, 68, 0.13);
+  --ag-stock-zero-edge: rgba(239, 68, 68, 0.60);
+  --ag-stock-zero-fg:   #991b1b;
 }
 
 /* ----------------------------------------------------------
@@ -207,6 +228,68 @@
   --ag-row-hover:      #1e2a40;
   --ag-selected:       rgba(167, 136, 240, 0.16);
   --ag-cell-border:    rgba(167, 136, 240, 0.30);
+
+  /* === AG-Grid glassmorphism (dark: carbón + violeta perlado) === */
+  --ag-glass-bg:        rgba(22, 27, 34, 0.55);
+  --ag-glass-bg-strong: rgba(26, 31, 46, 0.78);
+  --ag-glass-border:    rgba(167, 136, 240, 0.22);
+  --ag-glass-header-bg: rgba(26, 31, 46, 0.80);
+  --ag-glass-header-fg: #c4b5fd;
+  --ag-glass-row-hover: rgba(167, 136, 240, 0.10);
+  --ag-glass-shadow:    0 10px 36px -14px rgba(0, 0, 0, 0.6),
+                        0 1px 0 rgba(255, 255, 255, 0.04) inset;
+
+  --ag-skel-base:       rgba(51, 65, 85, 0.5);
+  --ag-skel-shine:      rgba(148, 163, 184, 0.25);
+
+  --ag-stock-low-bg:    rgba(245, 158, 11, 0.12);
+  --ag-stock-low-edge:  rgba(245, 158, 11, 0.45);
+  --ag-stock-low-fg:    #fcd34d;
+  --ag-stock-zero-bg:   rgba(239, 68, 68, 0.14);
+  --ag-stock-zero-edge: rgba(239, 68, 68, 0.50);
+  --ag-stock-zero-fg:   #fca5a5;
+}
+
+/* ----------------------------------------------------------
+   AG GRID — EDITOR INPUT (No-Line Rule)
+   El input de edición de celda usa un underline accent en lugar
+   de un cuadro redondeado, manteniéndose coherente con el grid
+   plano. El radio 0 se fuerza aquí como fallback extra al param
+   inputBorderRadius: 0 del tema.
+   ---------------------------------------------------------- */
+
+/* Quitar redondeo y borde del contenedor de edición */
+.ag-theme-quartz .ag-cell-edit-wrapper,
+.ag-theme-quartz-dark .ag-cell-edit-wrapper {
+  border-radius: 0 !important;
+  overflow: visible;
+}
+
+/* El input en sí: plano, sin borde visible en reposo */
+.ag-theme-quartz .ag-cell-edit-wrapper .ag-text-field-input,
+.ag-theme-quartz-dark .ag-cell-edit-wrapper .ag-text-field-input {
+  border-radius: 0 !important;
+  border: none !important;
+  border-bottom: 2px solid var(--c-primary, #7957d5) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  padding-inline: 4px !important;
+  transition: border-color 120ms ease;
+}
+
+/* Foco: intensificar el underline + fondo de celda muy sutil */
+.ag-theme-quartz .ag-cell-edit-wrapper .ag-text-field-input:focus,
+.ag-theme-quartz-dark .ag-cell-edit-wrapper .ag-text-field-input:focus {
+  border-bottom-color: var(--c-primary-light, #9a6dff) !important;
+  background: rgba(121, 87, 213, 0.06) !important;
+}
+
+/* Dark: underline más brillante */
+[data-theme="dark"] .ag-theme-quartz-dark .ag-cell-edit-wrapper .ag-text-field-input:focus,
+[data-theme="dark"] .ag-theme-quartz .ag-cell-edit-wrapper .ag-text-field-input:focus {
+  border-bottom-color: #a78bfa !important;
+  background: rgba(167, 139, 250, 0.08) !important;
 }
 
 /* ----------------------------------------------------------

@@ -34,9 +34,8 @@ export default {
   name: 'NotificationPanel',
   props: {
     visible: Boolean,
-    pinned:  { type: Boolean, default: false },
   },
-  emits: ['close', 'update-unread', 'toggle-pin'],
+  emits: ['close', 'update-unread'],
 
   setup() {
     const activeMobileMenu = ref(null);
@@ -58,7 +57,7 @@ export default {
           notif.metadata.type === 'correction'
         ));
       },
-      _scheduleLoad(fn, ms = 800) {
+      scheduleLoad(fn, ms = 800) {
         clearTimeout(_wsDebounceTimer);
         _wsDebounceTimer = setTimeout(fn, ms);
       },
@@ -196,7 +195,7 @@ export default {
       if (e?.detail?.type !== 'NOTIFICATION_NEW') return;
       if (this.visible) {
         // Panel abierto: debounce 800 ms para no recargar en ráfaga
-        this._scheduleLoad(() => this.load());
+        this.scheduleLoad(() => this.load());
       }
       // Panel cerrado: el badge ya lo actualiza DashboardLayout vía lab:ws; no recargamos la lista
     },
@@ -215,19 +214,30 @@ export default {
 </script>
 
 <template>
-  <transition name="slide-fade">
-    <div v-show="visible" class="notification-panel">
+  <transition name="panel-pop">
+    <div v-show="visible" class="notification-panel" role="dialog" aria-label="Notificaciones">
+      <!-- Drag handle (móvil) -->
+      <div class="panel-drag-handle" aria-hidden="true"></div>
+
       <div class="aside-container">
 
         <!-- ── Header ─────────────────────────────────────────────────────── -->
         <header class="panel-heading">
-          <span class="panel-title">Notificaciones</span>
+          <div class="panel-heading-left">
+            <b-icon pack="fas" icon="bell" size="is-small" class="panel-bell-icon" />
+            <span class="panel-title">Notificaciones</span>
+            <transition name="badge-pop">
+              <b-tag v-if="unreadCount > 0" type="is-primary" size="is-small" rounded class="panel-unread-badge">
+                {{ unreadCount }}
+              </b-tag>
+            </transition>
+          </div>
 
           <div class="panel-actions">
             <!-- Toggle leídas -->
             <b-tooltip :label="showRead ? 'Ocultar leídas' : 'Mostrar leídas'"
                        position="is-left" append-to-body>
-              <b-button :type="showRead ? 'is-primary' : 'is-light'"
+              <b-button :type="showRead ? 'is-primary' : 'is-ghost'"
                         icon-pack="fas" icon-left="eye"
                         size="is-small" @click="showRead = !showRead" />
             </b-tooltip>
@@ -235,21 +245,12 @@ export default {
             <!-- Marcar todas leídas -->
             <b-tooltip v-if="unreadCount > 0" label="Marcar todas como leídas"
                        position="is-left" append-to-body>
-              <b-button type="is-light" icon-pack="fas" icon-left="check-double"
+              <b-button type="is-ghost" icon-pack="fas" icon-left="check-double"
                         size="is-small" @click="markAllRead" />
             </b-tooltip>
 
-            <!-- Pin panel (solo desktop ≥1280px) -->
-            <b-tooltip :label="pinned ? 'Desanclar panel' : 'Anclar panel'"
-                       position="is-left" append-to-body class="notif-pin-btn">
-              <b-button :type="pinned ? 'is-primary' : 'is-light'"
-                        icon-pack="fas" icon-left="thumbtack" size="is-small"
-                        :class="{ 'pin-active': pinned }"
-                        @click="$emit('toggle-pin')" aria-label="Anclar panel" />
-            </b-tooltip>
-
             <!-- Cerrar -->
-            <b-button type="is-light" icon-pack="fas" icon-left="times"
+            <b-button type="is-ghost" icon-pack="fas" icon-left="times"
                       size="is-small" @click="$emit('close')" aria-label="Cerrar" />
           </div>
         </header>
@@ -512,21 +513,71 @@ export default {
 </template>
 
 <style scoped>
-/* ── Panel ──────────────────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════
+   Panel flotante — glassmorphism
+   ══════════════════════════════════════════════════════ */
 .notification-panel {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 15;
-  width: 300px;
-  background: var(--surface-solid);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border-left: 1px solid var(--border-solid);
+  position: fixed;
+  top: 72px;           /* debajo del header sticky */
+  right: 1rem;
+  z-index: 200;
+
+  width: min(400px, calc(100vw - 2rem));
+  max-height: calc(var(--vh, 1vh) * 100 - 80px - 1.5rem);
+
+  /* Glassmorphism */
+  background: color-mix(in srgb, var(--surface-solid, #fff) 82%, transparent);
+  backdrop-filter: blur(22px) saturate(160%);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+
+  border: 1px solid color-mix(in srgb, var(--border, #e2e8f0) 70%, transparent);
+  border-radius: 18px;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.07),
+    0 12px 40px -4px rgba(0, 0, 0, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+
   display: flex;
   flex-direction: column;
-  overflow: hidden; /* Scroll is handled by the inner list */
+  overflow: hidden;
+}
+
+/* Móvil: bottom sheet */
+@media (max-width: 768px) {
+  .notification-panel {
+    top: auto;
+    bottom: 0;
+    right: 0;
+    left: 0;
+    width: 100%;
+    max-height: 82dvh;
+    border-radius: 20px 20px 0 0;
+    border-bottom: none;
+    border-left: none;
+    border-right: none;
+  }
+}
+
+/* Tablet vertical (portrait 769–1023px): panel más estrecho a la derecha */
+@media (min-width: 769px) and (max-width: 1023px) {
+  .notification-panel {
+    width: min(360px, calc(100vw - 2rem));
+    top: 68px;
+  }
+}
+
+/* Drag handle (solo móvil) */
+.panel-drag-handle {
+  display: none;
+  width: 40px;
+  height: 4px;
+  background: var(--border, #e2e8f0);
+  border-radius: 2px;
+  margin: 0.55rem auto 0;
+  flex-shrink: 0;
+}
+@media (max-width: 768px) {
+  .panel-drag-handle { display: block; }
 }
 
 .aside-container {
@@ -534,6 +585,7 @@ export default {
   flex-direction: column;
   height: 100%;
   min-height: 0;
+  flex: 1;
 }
 
 /* ── Header ─────────────────────────────────────────────────────────────────── */
@@ -541,23 +593,48 @@ export default {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--border-solid);
-  background: var(--bg-subtle);
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--border, #e2e8f0) 60%, transparent);
   user-select: none;
+  flex-shrink: 0;
+  gap: 0.5rem;
+}
+
+.panel-heading-left {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.panel-bell-icon {
+  color: var(--c-primary);
   flex-shrink: 0;
 }
 
 .panel-title {
-  font-weight: 600;
+  font-weight: 700;
   font-size: 0.875rem;
   color: var(--text-primary);
+  white-space: nowrap;
 }
+
+.panel-unread-badge {
+  font-size: 0.65rem !important;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.badge-pop-enter-active,
+.badge-pop-leave-active { transition: opacity 0.15s, transform 0.15s; }
+.badge-pop-enter-from,
+.badge-pop-leave-to     { opacity: 0; transform: scale(0.7); }
 
 .panel-actions {
   display: flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.25rem;
+  flex-shrink: 0;
 }
 
 /* ── Lista ──────────────────────────────────────────────────────────────────── */
@@ -960,13 +1037,6 @@ export default {
   box-shadow: var(--shadow-lg);
 }
 
-/* ── Pin btn (solo ≥1280px) ─────────────────────────────────────────────────── */
-.notif-pin-btn { display: none; }
-@media (min-width: 1280px) { .notif-pin-btn { display: inline-flex; } }
-
-/* ── Pin activo ──────────────────────────────────────────────────────────────── */
-.pin-active :deep(.fa-thumbtack) { transform: rotate(-45deg); }
-
 /* ── Animaciones ────────────────────────────────────────────────────────────── */
 .slide-out-right {
   animation: slideOutRight 0.3s ease forwards;
@@ -975,10 +1045,31 @@ export default {
   to { opacity: 0; transform: translateX(100%); }
 }
 
-.slide-fade-enter-active,
-.slide-fade-leave-active { transition: all 0.28s ease; }
-.slide-fade-enter-from,
-.slide-fade-leave-to     { opacity: 0; transform: translateX(16px); }
+/* Desktop / tablet: aparece desde la esquina superior derecha (scale + fade) */
+.panel-pop-enter-active,
+.panel-pop-leave-active {
+  transition: opacity 0.22s ease, transform 0.26s cubic-bezier(0.34, 1.4, 0.64, 1);
+  transform-origin: top right;
+}
+.panel-pop-enter-from,
+.panel-pop-leave-to {
+  opacity: 0;
+  transform: scale(0.9) translateY(-10px);
+}
+
+/* Móvil: bottom sheet sube desde abajo */
+@media (max-width: 768px) {
+  .panel-pop-enter-active,
+  .panel-pop-leave-active {
+    transition: opacity 0.25s ease, transform 0.3s cubic-bezier(0.34, 1.2, 0.64, 1);
+    transform-origin: bottom center;
+  }
+  .panel-pop-enter-from,
+  .panel-pop-leave-to {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+}
 
 .fade-drop-enter-active,
 .fade-drop-leave-active { transition: opacity 0.15s, transform 0.15s; }

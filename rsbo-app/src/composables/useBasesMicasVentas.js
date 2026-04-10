@@ -22,27 +22,37 @@ const normTxt = (s) =>
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
 
+const eyeLabel = (e) => {
+  if (!e) return "";
+  const s = String(e).toUpperCase();
+  if (s === "OD" || s === "R") return "Ojo Derecho";
+  if (s === "OI" || s === "OS" || s === "L") return "Ojo Izquierdo";
+  return e;
+};
+
+const fv = (v) => Number(v ?? 0).toFixed(2);
+
+// Para BASE_ADD: OD usa base_der, OI usa base_izq
+const baseForEye = (row) =>
+  String(row.eye || "").toUpperCase() === "OD"
+    ? Number(row.base_der ?? 0)
+    : Number(row.base_izq ?? 0);
+
 export const buildRowTitle = (row, sheet) => {
   const t = sheet?.tipo_matriz;
-  if (t === "BASE") return `BASE ${Number(row.base ?? 0).toFixed(2)}`;
-  if (t === "SPH_CYL")
-    return `SPH ${Number(row.sph ?? 0).toFixed(2)} · CYL ${Number(row.cyl ?? 0).toFixed(2)}`;
-  if (t === "SPH_ADD")
-    return `${row.eye || ""} · SPH ${Number(row.sph ?? 0).toFixed(2)} · ADD ${Number(row.add ?? 0).toFixed(2)}`;
-  if (t === "BASE_ADD")
-    return `${row.eye || ""} · BI ${Number(row.base_izq ?? 0).toFixed(2)} · BD ${Number(row.base_der ?? 0).toFixed(2)} · ADD ${Number(row.add ?? 0).toFixed(2)}`;
+  if (t === "BASE")    return `Base ${fv(row.base)}`;
+  if (t === "SPH_CYL") return `Esfera ${fv(row.sph)} · Cilindro ${fv(row.cyl)}`;
+  if (t === "SPH_ADD")  return `${eyeLabel(row.eye)} · Esfera ${fv(row.sph)} · Adición ${fv(row.add)}`;
+  if (t === "BASE_ADD") return `${eyeLabel(row.eye)} · Base ${fv(baseForEye(row))} · Adición ${fv(row.add)}`;
   return "Producto";
 };
 
 export const buildRowParams = (row, sheet) => {
   const t = sheet?.tipo_matriz;
-  if (t === "BASE") return `base=${Number(row.base ?? 0).toFixed(2)}`;
-  if (t === "SPH_CYL")
-    return `sph=${Number(row.sph ?? 0).toFixed(2)} · cyl=${Number(row.cyl ?? 0).toFixed(2)}`;
-  if (t === "SPH_ADD")
-    return `sph=${Number(row.sph ?? 0).toFixed(2)} · add=${Number(row.add ?? 0).toFixed(2)}`;
-  if (t === "BASE_ADD")
-    return `bi=${Number(row.base_izq ?? 0).toFixed(2)} · bd=${Number(row.base_der ?? 0).toFixed(2)} · add=${Number(row.add ?? 0).toFixed(2)}`;
+  if (t === "BASE")    return `base=${fv(row.base)}`;
+  if (t === "SPH_CYL") return `sph=${fv(row.sph)} · cyl=${fv(row.cyl)}`;
+  if (t === "SPH_ADD")  return `sph=${fv(row.sph)} · add=${fv(row.add)}`;
+  if (t === "BASE_ADD") return `base=${fv(baseForEye(row))} · add=${fv(row.add)}`;
   return "—";
 };
 
@@ -76,10 +86,12 @@ export function useBasesMicasVentas(getUser) {
   function buildLineTitleFromApi(line) {
     const t = line.tipo_matriz;
     const p = line.params || {};
-    if (t === 'BASE')     return `BASE ${Number(p.base ?? 0).toFixed(2)}`;
-    if (t === 'SPH_CYL')  return `SPH ${Number(p.sph ?? 0).toFixed(2)} · CYL ${Number(p.cyl ?? 0).toFixed(2)}`;
-    if (t === 'SPH_ADD')  return `${line.eye || ''} · SPH ${Number(p.sph ?? 0).toFixed(2)} · ADD ${Number(p.add ?? 0).toFixed(2)}`;
-    if (t === 'BASE_ADD') return `${line.eye || ''} · BI ${Number(p.base_izq ?? 0).toFixed(2)} · BD ${Number(p.base_der ?? 0).toFixed(2)} · ADD ${Number(p.add ?? 0).toFixed(2)}`;
+    const eye = line.eye || '';
+    const base = String(eye).toUpperCase() === 'OD' ? Number(p.base_der ?? 0) : Number(p.base_izq ?? 0);
+    if (t === 'BASE')     return `Base ${fv(p.base)}`;
+    if (t === 'SPH_CYL')  return `Esfera ${fv(p.sph)} · Cilindro ${fv(p.cyl)}`;
+    if (t === 'SPH_ADD')  return `${eyeLabel(eye)} · Esfera ${fv(p.sph)} · Adición ${fv(p.add)}`;
+    if (t === 'BASE_ADD') return `${eyeLabel(eye)} · Base ${fv(base)} · Adición ${fv(p.add)}`;
     return line.codebar || 'Producto';
   }
 
@@ -365,12 +377,23 @@ export function useBasesMicasVentas(getUser) {
       const lines = cartItems.value.map((ci) => ({
         codebar: ci.row.codebar,
         qty:     ci.qty,
-        sheetId: ci.sheetId
+        sheetId: ci.sheetId,
+        precio:  Number(ci.precio) || 0
       }));
 
+      const PAGO_LABELS = { trans: "TRANS", efec: "EFEC", credito: "CRÉDITO", tarjeta: "TARJETA C|D" };
+      const pagoDisplay = cartPago.value.map((p) => PAGO_LABELS[p] || p).join(" / ") || "—";
+
       const { data } = await createOrder({
-        cliente: cartCliente.value.trim(),
-        note:    cartNote.value.trim(),
+        cliente:          cartCliente.value.trim(),
+        clienteDisplay:   cartClienteDisplay.value,
+        clienteNombres:   cartClienteNombres.value.trim(),
+        clienteApellidos: cartClienteApellidos.value.trim(),
+        clienteEmpresa:   cartClienteEmpresa.value.trim(),
+        clienteContacto:  cartClienteContacto.value.trim(),
+        note:             cartNote.value.trim(),
+        pago:             [...cartPago.value],
+        totalMonto:       cartTotalMonto.value,
         lines,
         actor
       });
@@ -387,9 +410,6 @@ export function useBasesMicasVentas(getUser) {
         sheetNombre: ci.sheet.nombre || ci.sheet.name || ""
       }));
 
-      const PAGO_LABELS = { trans: "TRANS", efec: "EFEC", credito: "CRÉDITO", tarjeta: "TARJETA C|D" };
-      const pagoDisplay = cartPago.value.map((p) => PAGO_LABELS[p] || p).join(" / ") || "—";
-
       // Guardar datos del cliente en caché local para futuras ventas
       _saveClientToCache(cartCliente.value.trim(), {
         nombres:   cartClienteNombres.value.trim(),
@@ -399,7 +419,8 @@ export function useBasesMicasVentas(getUser) {
       });
 
       const voucher = {
-        id:               `VTA-${Date.now()}`,
+        id:               order?._id ? String(order._id) : `VTA-${Date.now()}`,
+        ventaFolio:       order?.ventaFolio || null,
         labOrderId:       order?._id ? String(order._id) : null,
         labFolio:         order?.folio || null,
         labStatus:        "pendiente",
@@ -464,25 +485,38 @@ export function useBasesMicasVentas(getUser) {
       const { data } = await listOrders({ limit: 200, status: 'all' });
       const orders = Array.isArray(data?.data) ? data.data : [];
 
+      const PAGO_LABELS = { trans: "TRANS", efec: "EFEC", credito: "CRÉDITO", tarjeta: "TARJETA C|D" };
       const statuses = {};
       salesHistory.value = orders.map((order) => {
         const id = String(order._id);
         statuses[id] = { status: order.status, folio: order.folio, closedAt: order.closedAt || null };
         const totalPiezas = (order.lines || []).reduce((s, l) => s + (l.qty || 0), 0);
+        const pago = Array.isArray(order.pago) ? order.pago : [];
+        const pagoDisplay = pago.map((p) => PAGO_LABELS[p] || p).join(" / ") || "—";
         return {
           id,
-          labOrderId:  id,
-          labFolio:    order.folio,
-          labStatus:   order.status,
-          fecha:       order.createdAt,
-          cliente:     order.cliente,
-          note:        order.note || '',
-          lineas:      (order.lines || []).map((l) => ({
+          labOrderId:       id,
+          ventaFolio:       order.ventaFolio || null,
+          labFolio:         order.folio,
+          labStatus:        order.status,
+          fecha:            order.createdAt,
+          cliente:          order.cliente,
+          clienteDisplay:   order.clienteDisplay   || order.cliente,
+          clienteNombres:   order.clienteNombres   || '',
+          clienteApellidos: order.clienteApellidos || '',
+          clienteEmpresa:   order.clienteEmpresa   || '',
+          clienteContacto:  order.clienteContacto  || '',
+          note:             order.note || '',
+          pago,
+          pagoDisplay,
+          totalMonto:       order.totalMonto || 0,
+          lineas: (order.lines || []).map((l) => ({
             title:       buildLineTitleFromApi(l),
             params:      '',
             codebar:     l.codebar || '',
             qty:         l.qty || 0,
-            sheetNombre: '',
+            precio:      l.precio || 0,
+            sheetNombre: l.sheetNombre || '',
           })),
           totalPiezas,
           actor: order.createdBy?.name || 'Sistema',

@@ -18,6 +18,7 @@ const { denormNum, parseKey } = require("../inventory/utils/keys");
 
 const DEBUG_LAB = String(process.env.DEBUG_LAB || "") === "1";
 const { broadcast } = require("../ws");
+const { invalidatePattern, KEYS } = require("../services/redis");
 
 // ============================================================================
 // HELPERS
@@ -29,10 +30,10 @@ const handleValidation = (req, res, next) => {
   next();
 };
 
-const genFolio = () => {
+const genFolio = (prefix = "LAB") => {
   const ymd = new Date().toISOString().slice(0, 10).replace(/-/g, "");
   const rand = Math.random().toString(16).slice(2, 6).toUpperCase();
-  return `LAB-${ymd}-${rand}`;
+  return `${prefix}-${ymd}-${rand}`;
 };
 
 const getMatrixModel = (tipo) => {
@@ -56,12 +57,23 @@ function escapeRx(s) {
   return String(s || "").replace(/[.*+?^{}()|[\]\\]/g, "\\$&");
 }
 
+function eyeLabel(e) {
+  if (!e) return "";
+  const s = String(e).toUpperCase();
+  if (s === "OD" || s === "R") return "Ojo Derecho";
+  if (s === "OI" || s === "OS" || s === "L") return "Ojo Izquierdo";
+  return e;
+}
+
 function lineTitle(tipo, params, eye, codebar) {
   const p = params || {};
-  if (tipo === "BASE") return `BASE ${Number(p.base ?? 0).toFixed(2)}`;
-  if (tipo === "SPH_CYL") return `SPH ${Number(p.sph ?? 0).toFixed(2)} · CYL ${Number(p.cyl ?? 0).toFixed(2)}`;
-  if (tipo === "SPH_ADD") return `${eye || ""} · SPH ${Number(p.sph ?? 0).toFixed(2)} · ADD ${Number(p.add ?? 0).toFixed(2)}`;
-  if (tipo === "BASE_ADD") return `${eye || ""} · BI ${Number(p.base_izq ?? 0).toFixed(2)} · BD ${Number(p.base_der ?? 0).toFixed(2)} · ADD ${Number(p.add ?? 0).toFixed(2)}`;
+  const fv = (v) => Number(v ?? 0).toFixed(2);
+  const base = String(eye || "").toUpperCase() === "OD"
+    ? Number(p.base_der ?? 0) : Number(p.base_izq ?? 0);
+  if (tipo === "BASE")     return `Base ${fv(p.base)}`;
+  if (tipo === "SPH_CYL")  return `Esfera ${fv(p.sph)} · Cilindro ${fv(p.cyl)}`;
+  if (tipo === "SPH_ADD")  return `${eyeLabel(eye)} · Esfera ${fv(p.sph)} · Adición ${fv(p.add)}`;
+  if (tipo === "BASE_ADD") return `${eyeLabel(eye)} · Base ${fv(base)} · Adición ${fv(p.add)}`;
   return String(codebar || "");
 }
 
@@ -324,11 +336,19 @@ router.post(
   "/orders",
   body("sheetId").optional({ nullable: true }).isMongoId(),
   body("cliente").isString().trim().notEmpty(),
+  body("clienteDisplay").optional({ nullable: true }).isString(),
+  body("clienteNombres").optional({ nullable: true }).isString(),
+  body("clienteApellidos").optional({ nullable: true }).isString(),
+  body("clienteEmpresa").optional({ nullable: true }).isString(),
+  body("clienteContacto").optional({ nullable: true }).isString(),
   body("note").optional({ nullable: true }).isString(),
+  body("pago").optional({ nullable: true }).isArray(),
+  body("totalMonto").optional({ nullable: true }).isNumeric(),
   body("lines").isArray({ min: 1 }),
   body("lines.*.codebar").isString().trim().notEmpty(),
   body("lines.*.qty").isInt({ min: 1, max: 9999 }),
   body("lines.*.sheetId").optional({ nullable: true }).isMongoId(),
+  body("lines.*.precio").optional({ nullable: true }).isNumeric(),
   body("actor").optional().isObject(),
   handleValidation,
   async (req, res) => {
@@ -336,9 +356,17 @@ router.post(
 
     try {
       const fallbackSheetId = req.body.sheetId || null;
-      const folio = genFolio();
-      const cliente = String(req.body.cliente).trim();
-      const note = String(req.body.note || "").trim();
+      const folio      = genFolio("LAB");
+      const ventaFolio = genFolio("VTA");
+      const cliente          = String(req.body.cliente).trim();
+      const clienteDisplay   = String(req.body.clienteDisplay   || "").trim();
+      const clienteNombres   = String(req.body.clienteNombres   || "").trim();
+      const clienteApellidos = String(req.body.clienteApellidos || "").trim();
+      const clienteEmpresa   = String(req.body.clienteEmpresa   || "").trim();
+      const clienteContacto  = String(req.body.clienteContacto  || "").trim();
+      const note             = String(req.body.note || "").trim();
+      const pago             = Array.isArray(req.body.pago) ? req.body.pago : [];
+      const totalMonto       = Number(req.body.totalMonto || 0);
 
       // Deduplicar por (sheetId + codebar)
       const merged = new Map();
@@ -346,12 +374,13 @@ router.post(
         const cb = String(l.codebar || "").trim();
         const qty = Number(l.qty || 0);
         const lineSheetId = String(l.sheetId || fallbackSheetId || "");
+        const precio = Number(l.precio || 0);
 
         if (!cb || !Number.isFinite(qty) || qty <= 0) continue;
         if (!lineSheetId) continue;
 
         const key = `${lineSheetId}__${cb}`;
-        if (!merged.has(key)) merged.set(key, { codebar: cb, qty, sheetId: lineSheetId });
+        if (!merged.has(key)) merged.set(key, { codebar: cb, qty, sheetId: lineSheetId, precio });
         else merged.get(key).qty += qty;
       }
 
@@ -368,7 +397,7 @@ router.post(
       const lines = [];
       let primarySheetDoc = null;
 
-      for (const [, { codebar, qty, sheetId }] of merged.entries()) {
+      for (const [, { codebar, qty, sheetId, precio }] of merged.entries()) {
         const sheet = sheetsById[sheetId];
         if (!sheet) {
           errors.push({ codebar, error: "SHEET_NO_ENCONTRADA", sheetId });
@@ -402,6 +431,7 @@ router.post(
           params: loc.params || {},
           qty,
           picked: 0,
+          precio,
           micaType: micaTypeName(sheet.tipo_matriz),
           sheetNombre: sheet.nombre || sheet.name || ""
         });
@@ -413,9 +443,17 @@ router.post(
 
       const order = await LaboratoryOrder.create({
         folio,
+        ventaFolio,
         sheet: primarySheetDoc?._id || null,
         cliente,
+        clienteDisplay,
+        clienteNombres,
+        clienteApellidos,
+        clienteEmpresa,
+        clienteContacto,
         note,
+        pago,
+        totalMonto,
         status: "pendiente",
         lines,
         createdBy: actor,
@@ -488,6 +526,9 @@ router.post(
       }
 
       // Rollback: devolver stock
+      const cancelSheetIds = [...new Set(
+        (order.lines || []).filter(l => Number(l.picked || 0) > 0 && l.sheet).map(l => String(l.sheet))
+      )];
       for (const line of order.lines || []) {
         const picked = Number(line.picked || 0);
         if (picked <= 0) continue;
@@ -507,7 +548,8 @@ router.post(
       order.updatedBy = actor;
       order.updatedAt = new Date();
       await order.save();
-      broadcast("LAB_ORDER_CANCEL", { orderId: String(order._id), folio: order.folio });
+      await Promise.all(cancelSheetIds.map(sid => invalidatePattern(KEYS.sheetPattern(sid))));
+      broadcast("LAB_ORDER_CANCEL", { orderId: String(order._id), folio: order.folio, sheetIds: cancelSheetIds });
       setImmediate(() => { notifyPendingOrders(); });
 
       await LaboratoryEvent.create({
@@ -581,7 +623,8 @@ router.post(
       else order.status = "parcial"; // All picked = parcial until explicit /close
 
       await order.save();
-      broadcast("LAB_ORDER_SCAN", { orderId: String(order._id), folio: order.folio, status: order.status });
+      await invalidatePattern(KEYS.sheetPattern(String(sheet._id)));
+      broadcast("LAB_ORDER_SCAN", { orderId: String(order._id), folio: order.folio, status: order.status, sheetIds: [String(sheet._id)] });
 
       const title = lineTitle(sheet.tipo_matriz, line.params, line.eye, codebar);
 
@@ -629,6 +672,9 @@ router.post(
       const order = await LaboratoryOrder.findById(req.params.orderId);
       if (!order) return res.status(404).json({ ok: false, message: "Pedido no existe" });
 
+      const resetSheetIds = [...new Set(
+        (order.lines || []).filter(l => Number(l.picked || 0) > 0 && l.sheet).map(l => String(l.sheet))
+      )];
       let totalRollback = 0;
       for (const line of order.lines || []) {
         const picked = Number(line.picked || 0);
@@ -650,7 +696,8 @@ router.post(
       order.updatedBy = actor;
       order.updatedAt = new Date();
       await order.save();
-      broadcast("LAB_ORDER_RESET", { orderId: String(order._id), folio: order.folio });
+      await Promise.all(resetSheetIds.map(sid => invalidatePattern(KEYS.sheetPattern(sid))));
+      broadcast("LAB_ORDER_RESET", { orderId: String(order._id), folio: order.folio, sheetIds: resetSheetIds });
       setImmediate(() => { notifyPendingOrders(); });
 
       await LaboratoryEvent.create({

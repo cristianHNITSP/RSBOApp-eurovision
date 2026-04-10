@@ -1,7 +1,14 @@
-<!-- src/components/ag-grid/templates/AgGridTorico.vue -->
+<!-- ============================================================
+  AgGridTorico.vue  —  Matriz SPH × CYL | Eje (grados)
+
+  FILAS:     rowModelType="infinite" — SPH axis paginado
+  COLUMNAS:  useAgGridIncrementalColumns — CYL values
+  GRADOS:    selector de eje; al cambiar resetea datasource + cols
+  CACHÉ:     itemsCache guarda TODOS los items del backend
+             (all degrees); rowCache Map<sph,rowObj> por grado activo
+  ============================================================ -->
 <template>
   <div class="grid-page">
-    <!-- TOPBAR (sticky) -->
     <header class="grid-topbar">
       <navtools
         class="navtools-wrap"
@@ -33,7 +40,7 @@
       />
     </header>
 
-    <!-- DEGREE SELECTOR -->
+    <!-- Selector de grados -->
     <div class="degree-bar">
       <span class="degree-bar__label">Eje (grados):</span>
       <div class="degree-bar__pills">
@@ -43,28 +50,35 @@
           class="degree-pill"
           :class="{ 'degree-pill--active': deg === selectedDegree }"
           @click="selectDegree(deg)"
-        >
-          {{ deg }}°
-        </button>
+        >{{ deg }}°</button>
       </div>
     </div>
 
-    <!-- GRID MAIN -->
     <main class="grid-main">
-      <div class="buefy-balham-light grid-shell" :class="{ 'grid-shell--switching': switchingView }">
+      <div class="glass-shell" :class="{ 'glass-shell--switching': switchingView }">
+        <div v-if="DEV_MODE" class="dev-col-badge">
+          cols {{ activeCylValues.length }} / {{ allCylValues.length }} | eje {{ selectedDegree }}°
+          <span v-if="loadingCols" class="dev-col-badge__spin">⟳</span>
+        </div>
+
         <AgGridVue
-          class="ag-grid-buefy"
+          class="ag-grid-glass"
           :columnDefs="columns"
-          :rowData="rowData"
+          :rowModelType="'infinite'"
+          :datasource="datasource"
           :defaultColDef="defaultColDef"
           :getRowId="getRowId"
-          :animateRows="true"
+          :animateRows="false"
           :localeText="localeText"
           :theme="themeCustom"
           :rowHeight="30"
           :headerHeight="32"
           :suppressMovableColumns="true"
-          :rowClassRules="rowClassRules"
+          :rowClassRules="stockRowClassRules.value"
+          :maxBlocksInCache="20"
+          :cacheBlockSize="ROW_PAGE_SIZE"
+          :infiniteInitialRowCount="sphAxis.length || 10"
+          :suppressHorizontalScroll="false"
           @cellClicked="onCellClicked"
           @cellValueChanged="onCellValueChanged"
           @grid-ready="onGridReady"
@@ -76,25 +90,32 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from "vue";
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount, onActivated, onDeactivated, shallowRef } from "vue";
 import { AgGridVue } from "ag-grid-vue3";
-import {
-  AllCommunityModule,
-  ModuleRegistry,
-} from "ag-grid-community";
+import { AllCommunityModule, ModuleRegistry } from "ag-grid-community";
 import navtools from "@/components/ag-grid/navtools.vue";
 import { useSheetApi } from "@/composables/useSheetApi";
 import { useGridHistory } from "@/composables/useGridHistory";
 import { useUnsavedGuard } from "@/composables/useUnsavedGuard";
+import { labToast } from "@/composables/useLabToast";
+import { exportAgGridToXlsx } from "@/composables/useExcelExport";
 import {
   useAgGridBase, localeText,
   ackOk, ackErr, msgFromErr, statusFromErr, normalizeAxiosOk,
-  numOr, isNumeric, to2, fmtSigned, isMultipleOfStep,
+  numOr, isNumeric, to2, fmtSigned,
 } from "@/composables/useAgGridBase";
-import { labToast } from "@/composables/useLabToast";
-import { exportAgGridToXlsx } from "@/composables/useExcelExport";
+import { useStockRules } from "@/composables/useStockRules";
+import { useAgGridIncrementalColumns } from "@/composables/useAgGridIncrementalColumns";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
+
+const DEV_MODE      = import.meta.env.DEV;
+const DEV_DELAY_MS  = DEV_MODE ? 2000 : 0;
+const ROW_PAGE_SIZE = DEV_MODE ? 5 : 30;
+const COL_CHUNK_SIZE = DEV_MODE ? 3 : 8;
+
+const LOG      = (...a) => DEV_MODE && console.log("[Torico]", ...a);
+const LOG_ROWS = (...a) => DEV_MODE && console.log("[Torico][Rows]", ...a);
 
 const props = defineProps({
   sheetId: { type: String, required: true },
@@ -105,76 +126,57 @@ const props = defineProps({
 
 const { fetchItems, saveChunk, reseedSheet, getSheet } = useSheetApi(() => props.apiType);
 
-const isQuarterStep = (value) => {
-  const num = Number(value);
-  if (!Number.isFinite(num)) return false;
-  const scaled = num * 4;
-  return Math.abs(scaled - Math.round(scaled)) < 1e-6;
-};
+// ─── Helpers ─────────────────────────────────────────────────────
+const norm    = (n) => String(to2(n)).replace(".", "_");
+const denorm  = (s) => Number(String(s).replace("_", "."));
 
-const fmtCylHeader = (cDisp) => {
-  const n = Number(cDisp);
-  if (!Number.isFinite(n)) return "";
-  return n === 0 ? "0.00" : `-${n.toFixed(2)}`;
-};
+const parseCylFromField = (field) => field.startsWith("cyl_") ? denorm(field.slice(4)) : null;
+const fmtCylHeader = (cDisp) => { const n = Number(cDisp); return Number.isFinite(n) ? (n === 0 ? "0.00" : `-${n.toFixed(2)}`) : ""; };
+const isQuarterStep = (v) => { const n = Number(v); if (!Number.isFinite(n)) return false; return Math.abs(n * 4 - Math.round(n * 4)) < 1e-6; };
 
-const norm = (n) => String(to2(n)).replace(".", "_");
-const denorm = (s) => Number(String(s).replace("_", "."));
-function parseCylFromField(field) {
-  if (!field.startsWith("cyl_")) return null;
-  return denorm(field.slice(4));
-}
+const raf   = () => new Promise(r => typeof requestAnimationFrame === "function" ? requestAnimationFrame(r) : setTimeout(r, 0));
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-/* ===================== UI/Anim ===================== */
-const switchingView = ref(false);
-const raf = () =>
-  new Promise((resolve) => {
-    if (typeof requestAnimationFrame === "function") requestAnimationFrame(() => resolve());
-    else setTimeout(resolve, 0);
-  });
-
-/* ===================== Estado principal ===================== */
-const gridApi = ref(null);
-const rowData = ref([]);
-const dirty = ref(false);
-const saving = ref(false);
-const lastSavedAt = ref(null);
-const sheetMeta = ref(null);
-const sheetTabs = ref([]);
+// ─── Estado ─────────────────────────────────────────────────────
+const gridApi        = shallowRef(null);
+const dirty          = ref(false);
+const saving         = ref(false);
+const lastSavedAt    = ref(null);
+const sheetMeta      = ref(null);
+const sheetTabs      = ref([]);
 const physicalLimits = ref(null);
+const switchingView  = ref(false);
+const loadingCols    = ref(false);
 const pendingChanges = ref(new Map());
-const cylValues = ref([]);
 
-/* ── Grid-level undo/redo ── */
+/** SPH axis para el grado+vista actual */
+const sphAxis      = ref([]);
+/** CYL axis completo (sin filtro de grado) */
+const allCylValues = ref([]);
+/** Todos los items del backend (todos los grados); no cambian al cambiar grado */
+const itemsCache   = ref([]);
+/** Grados disponibles */
+const degreeValues   = ref([]);
+const selectedDegree = ref(180);
+
+/** rowCaches: Map<`sphType|degree`, Map<sph, rowObj>> — un cache por combinación vista+grado */
+const rowCaches = new Map();
+const getRowCache = () => {
+  const k = `${props.sphType}|${selectedDegree.value}`;
+  if (!rowCaches.has(k)) rowCaches.set(k, new Map());
+  return rowCaches.get(k);
+};
+
+// ─── Grid history & unsaved guard ────────────────────────────────
 const gridHistory = useGridHistory({ maxSize: 300 });
 
-/* === Degree selector === */
-const degreeValues = ref([]);
-const selectedDegree = ref(180);
-const allItems = ref([]);
-
-/* ── Unsaved changes guard ── */
 const _guardViewId = computed(() => `${props.sheetId}:torico:${props.sphType}:${selectedDegree.value}`);
 const unsavedGuard = useUnsavedGuard({
   storageKey: () => _guardViewId.value,
   isDirty: () => dirty.value,
   getPending: () => Object.fromEntries(pendingChanges.value),
   onRestore(saved) {
-    for (const [k, v] of Object.entries(saved)) {
-      pendingChanges.value.set(k, v);
-      // Also update rowData if row exists
-      const parts = k.split("|");
-      if (parts.length >= 2) {
-        const sph = to2(Number(parts[0]));
-        const cDisp = to2(Number(parts[1]));
-        const row = rowData.value.find(r => to2(r.sph) === sph);
-        if (row) {
-          const field = `cyl_${norm(cDisp)}`;
-          row[field] = v.existencias;
-          gridApi.value?.applyTransaction({ update: [row] });
-        }
-      }
-    }
+    for (const [k, v] of Object.entries(saved)) pendingChanges.value.set(k, v);
     if (pendingChanges.value.size > 0) {
       dirty.value = true;
       labToast.warning(`Se restauraron ${pendingChanges.value.size} cambios sin guardar.`);
@@ -182,158 +184,229 @@ const unsavedGuard = useUnsavedGuard({
   },
 });
 
+// ─── Composables ─────────────────────────────────────────────────
+const { themeCustom } = useAgGridBase();
+const { stockRowClassRules, stockCellClassRules } = useStockRules(sheetMeta);
 
-/* ===================== Actor normalizado ===================== */
-const effectiveActor = computed(() => {
-  const src = props.actor || (typeof window !== "undefined" ? window.__currentUser : null) || null;
-  if (!src) return null;
-  const userId = src.userId || src.id || src._id || null;
-  const name = src.name || src.email || "Usuario";
-  return { userId, name };
+const colManager = useAgGridIncrementalColumns({
+  allValues: allCylValues,
+  gridApiRef: gridApi,
+  colChunkSize: COL_CHUNK_SIZE,
+  scrollThreshold: 150,
+  devMode: DEV_MODE,
 });
+const activeCylValues = colManager.activeValues;
 
-/* ===================== Meta computed ===================== */
-const totalRows = computed(() => rowData.value.length);
-const sheetName = computed(() => sheetMeta.value?.nombre || sheetMeta.value?.name || "Hoja torica (SPH/CYL/Eje)");
-const tipoMatriz = computed(() => sheetMeta.value?.tipo_matriz || "SPH_CYL_AXIS");
-const material = computed(() => sheetMeta.value?.material || "");
-const tratamientos = computed(() => sheetMeta.value?.tratamientos || []);
-
-/* ===================== UMBRAL DE BAJO STOCK ===================== */
-const LOW_STOCK_THRESHOLD = computed(() => {
-  const s = sheetMeta.value || {};
-  const raw = s?.lowStockThreshold ?? s?.alerts?.lowStock ?? s?.config?.lowStockThreshold ?? 2;
-  const n = Number(raw);
-  return Number.isFinite(n) ? n : 2;
-});
-
-const isZeroStock = (v) => Number(v ?? 0) <= 0;
-const isLowStock = (v) => {
-  const n = Number(v ?? 0);
-  return n > 0 && n <= LOW_STOCK_THRESHOLD.value;
-};
-
-function rowHasZeroStock(row) {
-  if (!row) return false;
-  for (const k of Object.keys(row)) {
-    if (k.startsWith("cyl_") && isZeroStock(row[k])) return true;
-  }
-  return false;
-}
-function rowHasLowStock(row) {
-  if (!row) return false;
-  for (const k of Object.keys(row)) {
-    if (k.startsWith("cyl_") && isLowStock(row[k])) return true;
-  }
-  return false;
-}
-
-const { themeCustom, rowClassRules } = useAgGridBase({ isZeroStock, isLowStock });
-
+// ─── Límites ─────────────────────────────────────────────────────
 const phys = computed(() => {
   const pl = physicalLimits.value || {};
   const SPH = pl.SPH || pl.sph || {};
   const CYL = pl.CYL || pl.cyl || {};
   const sphMin = numOr(SPH.min, -40);
-  const sphMax = numOr(SPH.max, 40);
+  const sphMax = numOr(SPH.max,  40);
   const cylMin = numOr(CYL.min, -15);
-  const cylMax = numOr(CYL.max, 15);
-  const cylAbsMax = Math.max(Math.abs(cylMin), Math.abs(cylMax));
-  return { sphMin, sphMax, cylMin, cylMax, cylAbsMax };
+  const cylMax = numOr(CYL.max,  15);
+  return { sphMin, sphMax, cylMin, cylMax, cylAbsMax: Math.max(Math.abs(cylMin), Math.abs(cylMax)) };
 });
 
-/* ===================== Grid defs ===================== */
+// ─── Meta computed ────────────────────────────────────────────────
+const effectiveActor = computed(() => {
+  const src = props.actor || (typeof window !== "undefined" ? window.__currentUser : null) || null;
+  if (!src) return null;
+  return { userId: src.userId || src.id || src._id || null, name: src.name || src.email || "Usuario" };
+});
+
+const totalRows   = computed(() => sphAxis.value.length);
+const sheetName   = computed(() => sheetMeta.value?.nombre || sheetMeta.value?.name || "Hoja tórica (SPH/CYL/Eje)");
+const tipoMatriz  = computed(() => sheetMeta.value?.tipo_matriz || "SPH_CYL_AXIS");
+const material    = computed(() => sheetMeta.value?.material || "");
+const tratamientos = computed(() => sheetMeta.value?.tratamientos || []);
+
+// ─── Pending changes ─────────────────────────────────────────────
 function markCellChanged(sph, cylDisplay, existencias, _oldValue) {
   const s = to2(sph);
   const cDisp = to2(Math.abs(Number(cylDisplay)));
   const cBackend = -cDisp;
   const deg = selectedDegree.value;
-
   const key = `${s}|${cDisp}|${deg}`;
+  const field = `cyl_${norm(cDisp)}`;
   const prev = pendingChanges.value.get(key);
   const oldVal = _oldValue ?? prev?.existencias ?? 0;
   const newVal = Number(existencias ?? 0);
 
-  pendingChanges.value.set(key, {
-    sph: s,
-    cyl: cBackend,
-    axis: deg,
-    existencias: newVal
-  });
+  pendingChanges.value.set(key, { sph: s, cyl: cBackend, axis: deg, existencias: newVal });
   dirty.value = true;
 
-  // Push to grid history for undo/redo
   if (!gridHistory.isApplying.value) {
-    gridHistory.push({
-      key,
-      field: `cyl_${norm(cDisp)}`,
-      oldValue: oldVal,
-      newValue: newVal,
-      meta: { sph: s, cylDisplay: cDisp, axis: deg },
-    });
+    gridHistory.push({ key, field, oldValue: oldVal, newValue: newVal, meta: { sph: s, cylDisplay: cDisp, axis: deg } });
   }
 }
 
+// ─── Column defs ─────────────────────────────────────────────────
 const columns = computed(() => [
   {
     headerName: `SPH ${props.sphType === "sph-neg" ? "(-)" : "(+)"}`,
-    children: [
-      {
-        field: "sph",
-        headerName: "SPH",
-        width: 90, minWidth: 86, maxWidth: 96,
-        pinned: "left",
-        editable: false,
-        sortable: true,
-        comparator: (a, b) => Number(a) - Number(b),
-        resizable: false,
-        filter: "agNumberColumnFilter",
-        cellClass: ["ag-cell--compact", "ag-cell--numeric", "ag-cell--pinned"],
-        headerClass: ["ag-header-cell--compact", "ag-header-cell--pinned"],
-        valueFormatter: (p) => {
-          const v = Number(p.value);
-          return Number.isFinite(v) ? fmtSigned(v) : p.value ?? "";
-        }
-      }
-    ]
+    children: [{
+      field: "sph",
+      headerName: "SPH",
+      width: 90, minWidth: 86, maxWidth: 96,
+      pinned: "left", editable: false, sortable: true,
+      comparator: (a, b) => Number(a) - Number(b),
+      resizable: false, filter: "agNumberColumnFilter",
+      cellClass: ["ag-cell--compact", "ag-cell--numeric", "ag-cell--pinned"],
+      headerClass: ["ag-header-cell--compact", "ag-header-cell--pinned"],
+      valueFormatter: (p) => { if (p.data?.__loading) return ""; const v = Number(p.value); return Number.isFinite(v) ? fmtSigned(v) : p.value ?? ""; },
+      cellRenderer: (p) => p.data?.__loading ? '<span class="skeleton-cell"></span>' : (p.valueFormatted ?? String(p.value ?? "")),
+    }],
   },
   {
-    headerName: `CYL (-) | Eje ${selectedDegree.value}\u00B0`,
-    children: cylValues.value.map((cDisp) => ({
+    headerName: `CYL (-) | Eje ${selectedDegree.value}°`,
+    children: activeCylValues.value.map(cDisp => ({
       field: `cyl_${norm(cDisp)}`,
       headerName: fmtCylHeader(cDisp),
-      editable: true,
+      editable: (p) => !p.data?.__loading,
       filter: "agNumberColumnFilter",
       minWidth: 80, maxWidth: 110,
       resizable: true,
       cellClass: ["ag-cell--compact", "ag-cell--numeric"],
       headerClass: ["ag-header-cell--compact"],
       cellClassRules: {
-        "ag-cell--stock-zero": (p) => isZeroStock(p.value),
-        "ag-cell--stock-low": (p) => isLowStock(p.value)
+        ...stockCellClassRules.value,
+        "ag-cell--loading": (p) => !!p.data?.__loading,
+      },
+      cellRenderer: (p) => {
+        if (p.data?.__loading) return '<span class="skeleton-cell skeleton-cell--cyl"></span>';
+        const v = p.value;
+        return v !== undefined && v !== null ? String(v) : "0";
       },
       valueSetter: (p) => {
+        if (p.data?.__loading) return false;
         const v = String(p.newValue ?? "").trim();
         const newVal = isNumeric(v) ? Number(v) : 0;
         const oldVal = Number(p.oldValue ?? 0);
         p.data[p.colDef.field] = newVal;
+        const _rc = getRowCache(); if (_rc.has(p.data.sph)) _rc.get(p.data.sph)[p.colDef.field] = newVal;
         markCellChanged(p.data.sph, cDisp, newVal, oldVal);
         return true;
-      }
-    }))
-  }
+      },
+    })),
+  },
 ]);
 
 const defaultColDef = {
   resizable: true, sortable: true,
   filter: "agNumberColumnFilter", floatingFilter: true,
   editable: true, minWidth: 90, maxWidth: 150,
-  cellClass: "ag-cell--compact", headerClass: "ag-header-cell--compact"
+  cellClass: "ag-cell--compact", headerClass: "ag-header-cell--compact",
 };
 
-const getRowId = (p) => p.data.sph?.toString();
+const getRowId = (p) => String(p.data.sph);
 
-/* ===================== Load meta ===================== */
+// ─── Fetch helpers ────────────────────────────────────────────────
+function _buildFetchQueryForSphRange(pageSphs) {
+  const P = phys.value;
+  return { sphMin: Math.min(...pageSphs), sphMax: Math.max(...pageSphs), cylMin: P.cylMin, cylMax: 0, limit: 5000 };
+}
+
+function _normalizeItem(i) {
+  const sph = to2(i.sph);
+  let cyl = to2(i.cyl);
+  if (Number.isFinite(cyl) && cyl > 0) cyl = -Math.abs(cyl);
+  return { sph, cyl, axis: Number(i.axis ?? 180), existencias: Number(i.existencias ?? 0) };
+}
+
+/**
+ * Construye filas pivot para un bloque de SPH en el grado actual.
+ * Usa itemsCache (ya filtrado por axis == selectedDegree) O items frescos.
+ */
+function _buildPivotPage(pageSphs, items) {
+  const deg = selectedDegree.value;
+  const cylAll = allCylValues.value;
+  const degItems = items.filter(i => i.axis === deg);
+
+  return pageSphs.map(sph => {
+    const row = { sph };
+    cylAll.forEach(cDisp => {
+      const match = degItems.find(i => i.sph === sph && to2(Math.abs(i.cyl)) === cDisp);
+      row[`cyl_${norm(cDisp)}`] = match?.existencias ?? 0;
+    });
+    // Aplicar cambios pendientes para este SPH y grado
+    pendingChanges.value.forEach((change, key) => {
+      const [sphStr, cylStr, degStr] = key.split("|");
+      if (to2(Number(sphStr)) === sph && Number(degStr) === deg) {
+        const field = `cyl_${norm(Number(cylStr))}`;
+        if (field in row) row[field] = change.existencias;
+      }
+    });
+    return row;
+  });
+}
+
+// ─── Datasource ──────────────────────────────────────────────────
+const datasource = computed(() => ({
+  getRows({ startRow, endRow, successCallback }) {
+    const axis = sphAxis.value;
+    const pageSphs = axis.slice(startRow, endRow);
+    LOG_ROWS(`getRows [${startRow}–${endRow}] ${pageSphs.length} SPH | eje ${selectedDegree.value}°`);
+
+    if (!pageSphs.length) { successCallback([], axis.length); return; }
+
+    // ── Cache-first: sin skeleton si todos los SPH ya están en caché ──
+    const cache = getRowCache();
+    if (pageSphs.every(s => cache.has(s))) {
+      LOG_ROWS(`getRows [${startRow}–${endRow}]: cache hit total.`);
+      successCallback(pageSphs.map(s => cache.get(s)), axis.length);
+      return;
+    }
+
+    // FASE 1: placeholders
+    const cylAll = allCylValues.value;
+    const nullFields = Object.fromEntries(cylAll.map(c => [`cyl_${norm(c)}`, null]));
+    const loadingRows = pageSphs.map(sph => ({ sph, __loading: true, ...nullFields }));
+    successCallback(loadingRows, axis.length);
+    LOG_ROWS(`FASE 1: ${loadingRows.length} placeholders.`);
+
+    // FASE 2: async
+    (async () => {
+      try {
+        if (DEV_DELAY_MS > 0) { LOG_ROWS(`delay ${DEV_DELAY_MS}ms...`); await sleep(DEV_DELAY_MS); }
+
+        // Intentar usar itemsCache primero (evita re-fetch al cambiar grado)
+        let items;
+        const cacheCoversPage = pageSphs.every(sph => itemsCache.value.some(i => i.sph === sph));
+        if (cacheCoversPage && itemsCache.value.length > 0) {
+          items = itemsCache.value.filter(i => pageSphs.includes(i.sph));
+          LOG_ROWS(`FASE 2: usando itemsCache (${items.length} items para ${pageSphs.length} SPH).`);
+        } else {
+          const query = _buildFetchQueryForSphRange(pageSphs);
+          LOG_ROWS("FASE 2: fetch →", query);
+          const { data } = await fetchItems(props.sheetId, query);
+          items = (data?.data || []).map(_normalizeItem);
+          // Mergear en itemsCache (evitar duplicados)
+          const existingKeys = new Set(itemsCache.value.map(i => `${i.sph}|${i.cyl}|${i.axis}`));
+          items.forEach(i => { if (!existingKeys.has(`${i.sph}|${i.cyl}|${i.axis}`)) itemsCache.value.push(i); });
+          LOG_ROWS(`FASE 2: ${items.length} items recibidos.`);
+        }
+
+        const realRows = _buildPivotPage(pageSphs, items);
+        realRows.forEach(row => getRowCache().set(row.sph, row));
+
+        if (gridApi.value) {
+          let n = 0;
+          realRows.forEach(row => {
+            const node = gridApi.value.getRowNode(String(row.sph));
+            if (node) { node.setData(row); gridApi.value.refreshCells({ rowNodes: [node], force: true }); n++; }
+          });
+          LOG_ROWS(`FASE 2: ${n}/${realRows.length} nodos actualizados.`);
+        }
+      } catch (e) {
+        console.error("[Torico][Rows] FASE 2 error:", e);
+      }
+    })();
+  },
+}));
+
+// ─── Metadata & ejes ─────────────────────────────────────────────
 async function loadSheetMeta() {
   try {
     const { data } = await getSheet(props.sheetId);
@@ -341,335 +414,294 @@ async function loadSheetMeta() {
     sheetMeta.value = payload?.sheet || null;
     sheetTabs.value = payload?.tabs || [];
     physicalLimits.value = payload?.physicalLimits || payload?.physical_limits || payload?.limits || null;
+    LOG("loadSheetMeta OK");
   } catch (e) {
-    console.error("[AgGridTorico] Error getSheet:", e?.response?.data || e);
+    console.error("[Torico] Error getSheet:", e?.response?.data || e);
   }
 }
 
-function getTabForView() {
+function _getTabForView() {
   return (
-    (sheetTabs.value || []).find((t) => t?.id === props.sphType) ||
-    (sheetTabs.value || []).find((t) => String(t?.id || "").includes("sph")) ||
+    (sheetTabs.value || []).find(t => t?.id === props.sphType) ||
+    (sheetTabs.value || []).find(t => String(t?.id || "").includes("sph")) ||
     null
   );
 }
 
-function buildFetchQueryForView() {
+function _rebuildAxes(tab) {
   const P = phys.value;
   const isNeg = props.sphType === "sph-neg";
-  return {
-    sphMin: isNeg ? P.sphMin : 0,
-    sphMax: isNeg ? 0 : P.sphMax,
-    cylMin: Math.min(P.cylMin, 0),
-    cylMax: 0,
-    limit: 2000
-  };
-}
+  const t = tab || _getTabForView();
 
-/* ===================== Load & filter by degree ===================== */
-async function loadAllItems() {
-  const tab = getTabForView();
-  const qFetch = buildFetchQueryForView();
-  const P = phys.value;
-  const isNeg = props.sphType === "sph-neg";
+  const backendSph = Array.isArray(t?.axis?.sph) ? t.axis.sph : [];
+  const backendCyl = Array.isArray(t?.axis?.cyl) ? t.axis.cyl : [];
+  const backendDeg = Array.isArray(t?.axis?.degrees) ? t.axis.degrees : [];
 
-  const { data } = await fetchItems(props.sheetId, qFetch);
-  const itemsRaw = data?.data || [];
-
-  allItems.value = itemsRaw
-    .map((i) => {
-      const sph = to2(i.sph);
-      let cyl = to2(i.cyl);
-      if (Number.isFinite(cyl) && cyl > 0) cyl = -Math.abs(cyl);
-      const axis = Number(i.axis ?? 180);
-      const existencias = Number(i.existencias ?? 0);
-      return { sph, cyl, axis, existencias };
-    })
-    .filter((i) => {
-      if (!Number.isFinite(i.sph) || !Number.isFinite(i.cyl)) return false;
-      if (i.sph < P.sphMin || i.sph > P.sphMax) return false;
-      if (i.cyl < P.cylMin || i.cyl > P.cylMax) return false;
-      if (isNeg && i.sph > 0) return false;
-      if (!isNeg && i.sph < 0) return false;
-      if (i.cyl > 0) return false;
-      return true;
-    });
-
-  // Ejes 100% del backend — frontend solo reconstruye
-  const backendDegrees = Array.isArray(tab?.axis?.degrees) ? tab.axis.degrees : [];
-  const allDeg = [...new Set(backendDegrees)]
-    .filter((d) => Number.isFinite(d) && d >= 10 && d <= 180 && d % 10 === 0)
+  // Grados
+  const allDeg = [...new Set(backendDeg)]
+    .filter(d => Number.isFinite(d) && d >= 10 && d <= 180 && d % 10 === 0)
     .sort((a, b) => b - a);
   degreeValues.value = allDeg;
-
   if (!degreeValues.value.includes(selectedDegree.value)) {
     selectedDegree.value = degreeValues.value[0] || 180;
   }
 
-  // SPH / CYL ejes 100% del backend
-  const backendSph = Array.isArray(tab?.axis?.sph) ? tab.axis.sph : [];
-  const backendCyl = Array.isArray(tab?.axis?.cyl) ? tab.axis.cyl : [];
-
-  const sphAxis = [...new Set(backendSph.map(to2))]
-    .filter((s) => Number.isFinite(s) && s >= P.sphMin && s <= P.sphMax)
-    .filter((s) => isNeg ? s <= 0 : s >= 0)
+  // SPH axis para el grado/vista actual
+  sphAxis.value = [...new Set(backendSph.map(to2))]
+    .filter(s => Number.isFinite(s) && s >= P.sphMin && s <= P.sphMax && (isNeg ? s <= 0 : s >= 0))
     .sort((a, b) => isNeg ? b - a : a - b);
 
-  cylValues.value = [...new Set(backendCyl.map(to2))]
-    .filter((n) => Number.isFinite(n) && n >= 0 && n <= P.cylAbsMax)
+  // CYL axis completo
+  allCylValues.value = [...new Set(backendCyl.map(to2))]
+    .filter(n => Number.isFinite(n) && n >= 0 && n <= P.cylAbsMax)
     .sort((a, b) => a - b);
 
-  buildRowsForDegree(sphAxis);
+  LOG("_rebuildAxes:", { sph: sphAxis.value.length, cyl: allCylValues.value.length, deg: selectedDegree.value });
 }
 
-function buildRowsForDegree(sphAxisOverride) {
-  const deg = selectedDegree.value;
-  const isNeg = props.sphType === "sph-neg";
+async function loadAll() {
+  LOG("loadAll...");
+  await loadSheetMeta();
+  // Fetch completo de items (todos los grados) para poblar itemsCache
+  await _fetchAllItems();
+  await switchViewReload();
+}
+
+async function _fetchAllItems() {
   const P = phys.value;
-
-  const items = allItems.value.filter((i) => i.axis === deg);
-
-  let sphAxis = sphAxisOverride;
-  if (!sphAxis) {
-    const tab = getTabForView();
-    const backendSph = Array.isArray(tab?.axis?.sph) ? tab.axis.sph : [];
-    sphAxis = [...new Set(backendSph.map(to2))]
-      .filter((s) => Number.isFinite(s) && s >= P.sphMin && s <= P.sphMax)
-      .filter((s) => isNeg ? s <= 0 : s >= 0)
-      .sort((a, b) => isNeg ? b - a : a - b);
-  }
-
-  const key = (s, cDisp) => `${to2(s)}|${to2(cDisp)}`;
-  const map = new Map(items.map((i) => [key(i.sph, Math.abs(i.cyl)), Number(i.existencias ?? 0)]));
-
-  rowData.value = sphAxis.map((sph) => {
-    const row = { sph: to2(sph) };
-    cylValues.value.forEach((cDisp) => {
-      row[`cyl_${norm(cDisp)}`] = map.get(key(sph, cDisp)) ?? 0;
+  const isNeg = props.sphType === "sph-neg";
+  const query = {
+    sphMin: isNeg ? P.sphMin : 0,
+    sphMax: isNeg ? 0 : P.sphMax,
+    cylMin: P.cylMin, cylMax: 0,
+    limit: 20000,
+  };
+  try {
+    const { data } = await fetchItems(props.sheetId, query);
+    itemsCache.value = (data?.data || []).map(_normalizeItem).filter(i => {
+      if (!Number.isFinite(i.sph) || !Number.isFinite(i.cyl)) return false;
+      if (i.sph < P.sphMin || i.sph > P.sphMax) return false;
+      if (i.cyl > 0) return false;
+      if (isNeg && i.sph > 0) return false;
+      if (!isNeg && i.sph < 0) return false;
+      return true;
     });
-    return row;
-  });
-
-  dirty.value = false;
-  pendingChanges.value.clear();
-}
-
-function selectDegree(deg) {
-  if (deg === selectedDegree.value) return;
-  // Persist unsaved changes for the OLD degree before switching
-  if (dirty.value && pendingChanges.value.size > 0) {
-    unsavedGuard.persist();
+    LOG(`_fetchAllItems: ${itemsCache.value.length} items en caché.`);
+  } catch (e) {
+    console.error("[Torico] Error _fetchAllItems:", e);
   }
-  pendingChanges.value.clear();
-  dirty.value = false;
-  gridHistory.clear();
-
-  selectedDegree.value = deg;
-  buildRowsForDegree(null);
-  nextTick(() => {
-    resetSort();
-    // Restore any saved changes for the NEW degree
-    unsavedGuard.restore();
-  });
 }
 
-async function switchViewReload() {
+async function switchViewReload({ clearCache = true } = {}) {
   switchingView.value = true;
   await raf();
   try {
-    await loadAllItems();
+    _rebuildAxes();
+    if (clearCache) {
+      rowCaches.clear();
+      colManager.reset();
+    }
+
+    if (gridApi.value) {
+      gridApi.value.setGridOption("datasource", datasource.value);
+      LOG("datasource reseteado.");
+    }
+
+    if (clearCache) {
+      loadingCols.value = true;
+      await colManager.init();
+      loadingCols.value = false;
+    } else {
+      colManager.reattach();
+    }
+    LOG("switchViewReload completo.");
   } catch (e) {
-    console.error("[AgGridTorico] Error fetchItems:", e?.response?.data || e);
+    console.error("[Torico] switchViewReload error:", e);
   } finally {
     await raf();
     switchingView.value = false;
   }
 }
 
-async function loadAll() {
-  await loadSheetMeta();
-  await switchViewReload();
+/** Cambiar grado: solo resetea datasource + cols, no re-fetcha backend */
+async function selectDegree(deg) {
+  if (deg === selectedDegree.value) return;
+  LOG(`selectDegree: ${selectedDegree.value}° → ${deg}°`);
+
+  if (dirty.value && pendingChanges.value.size > 0) unsavedGuard.persist();
+  pendingChanges.value.clear();
+  dirty.value = false;
+  gridHistory.clear();
+
+  selectedDegree.value = deg;
+  colManager.reset();
+
+  if (gridApi.value) {
+    gridApi.value.setGridOption("datasource", datasource.value);
+  }
+
+  loadingCols.value = true;
+  await colManager.init();
+  loadingCols.value = false;
+
+  await nextTick();
+  resetSort();
+  unsavedGuard.restore();
 }
 
-// WebSocket: actualiza stock en tiempo real
-const _WS_STOCK = new Set(["LAB_ORDER_SCAN", "LAB_ORDER_CANCEL", "LAB_ORDER_RESET"]);
-function _onLabWs(e) {
-  if (_WS_STOCK.has(e?.detail?.type)) loadAllItems();
+// ─── Cross-tab sync (BroadcastChannel) ────────────────────────────
+let _broadcastCh = null;
+let _suppressNextWsRefresh = false;
+function _initBroadcast() {
+  if (typeof BroadcastChannel === "undefined") return;
+  _broadcastCh?.close();
+  _broadcastCh = new BroadcastChannel(`rsbo:inv:${props.sheetId}`);
+  _broadcastCh.onmessage = () => { _refreshCachedRows(); };
 }
+function _closeBroadcast() { _broadcastCh?.close(); _broadcastCh = null; }
+
+// ─── Surgical row refresh (sin skeleton, sin flicker) ─────────────
+async function _refreshCachedRows() {
+  const cache = getRowCache();
+  if (!cache.size || !gridApi.value) return;
+  const pageSphs = [...cache.keys()];
+  if (!pageSphs.length) return;
+  try {
+    const { data } = await fetchItems(props.sheetId, _buildFetchQueryForSphRange(pageSphs));
+    const freshItems = (data?.data || []).map(_normalizeItem);
+    // Actualizar itemsCache: reemplazar entradas para estos SPH
+    itemsCache.value = [
+      ...itemsCache.value.filter(i => !pageSphs.includes(i.sph)),
+      ...freshItems,
+    ];
+    const realRows = _buildPivotPage(pageSphs, freshItems);
+    realRows.forEach(row => {
+      cache.set(row.sph, row);
+      const node = gridApi.value?.getRowNode(String(row.sph));
+      if (node) { node.setData(row); gridApi.value.refreshCells({ rowNodes: [node], force: true }); }
+    });
+    LOG(`_refreshCachedRows: ${realRows.length} filas actualizadas silenciosamente.`);
+  } catch (e) { console.error("[Torico] _refreshCachedRows error:", e); }
+}
+
+// ─── WebSocket ────────────────────────────────────────────────────
+const _WS_STOCK = new Set(["LAB_ORDER_SCAN", "LAB_ORDER_CANCEL", "LAB_ORDER_RESET", "INVENTORY_CHUNK_SAVED"]);
+function _onLabWs(e) {
+  if (!_WS_STOCK.has(e?.detail?.type)) return;
+  const sheetIds = e.detail?.payload?.sheetIds;
+  if (sheetIds && sheetIds.length > 0 && !sheetIds.includes(props.sheetId)) return;
+  if (_suppressNextWsRefresh) { _suppressNextWsRefresh = false; return; }
+  _refreshCachedRows();
+}
+
 onMounted(async () => {
   await loadAll();
   window.addEventListener("lab:ws", _onLabWs);
-  // Restore unsaved changes from previous session/view
+  _initBroadcast();
   unsavedGuard.restore();
 });
-onBeforeUnmount(() => window.removeEventListener("lab:ws", _onLabWs));
+onActivated(() => {
+  window.addEventListener("lab:ws", _onLabWs);
+  _initBroadcast();
+  colManager.reattach();
+  LOG("onActivated: reactivado desde KeepAlive.");
+});
+onDeactivated(() => {
+  window.removeEventListener("lab:ws", _onLabWs);
+  _closeBroadcast();
+  LOG("onDeactivated: desactivado por KeepAlive.");
+});
+onBeforeUnmount(() => {
+  window.removeEventListener("lab:ws", _onLabWs);
+  _closeBroadcast();
+});
 
-watch(
-  () => [props.sheetId, props.sphType],
-  async () => {
-    // Persist unsaved changes for the OLD view before switching
-    if (dirty.value && pendingChanges.value.size > 0) {
-      unsavedGuard.persist();
-    }
-    pendingChanges.value.clear();
-    dirty.value = false;
-    gridHistory.clear();
-    await loadAll();
-    // Try to restore any saved changes for the NEW view
-    unsavedGuard.restore();
-  }
-);
+watch(() => props.sheetId, async () => {
+  _initBroadcast();
+  if (dirty.value && pendingChanges.value.size > 0) unsavedGuard.persist();
+  pendingChanges.value.clear();
+  dirty.value = false;
+  gridHistory.clear();
+  itemsCache.value = [];
+  await loadAll();
+  unsavedGuard.restore();
+});
 
-/* ===================== Formula / quick edit ===================== */
+watch(() => props.sphType, async () => {
+  if (dirty.value && pendingChanges.value.size > 0) unsavedGuard.persist();
+  pendingChanges.value.clear();
+  dirty.value = false;
+  gridHistory.clear();
+  itemsCache.value = [];
+  await _fetchAllItems();
+  await switchViewReload({ clearCache: false });
+  unsavedGuard.restore();
+});
+
+// ─── Formula bar ─────────────────────────────────────────────────
 const formulaValue = ref("");
 let activeCell = null;
 
-const onCellClicked = (p) => {
-  activeCell = p;
-  formulaValue.value = p.value;
-};
-
+const onCellClicked = (p) => { activeCell = p; formulaValue.value = p.value; };
 const onCellValueChanged = (p) => {
-  if (activeCell && activeCell.rowIndex === p.rowIndex && activeCell.colDef.field === p.colDef.field) {
-    formulaValue.value = p.newValue;
-  }
+  if (activeCell && activeCell.rowIndex === p.rowIndex && activeCell.colDef.field === p.colDef.field) formulaValue.value = p.newValue;
   if (p.colDef.field.startsWith("cyl_")) {
     const cDisp = parseCylFromField(p.colDef.field);
     if (!Number.isNaN(cDisp)) markCellChanged(p.data.sph, cDisp, p.data[p.colDef.field]);
-  } else {
-    dirty.value = true;
   }
 };
 
 function applyFxToGrid(val, { commit = false } = {}) {
-  if (!activeCell || !gridApi.value) return;
-
+  if (!activeCell || !gridApi.value || activeCell.data?.__loading) return;
   const field = activeCell.colDef?.field;
   if (!field || !field.startsWith("cyl_")) return;
-
   const cDisp = parseCylFromField(field);
   if (cDisp === null || Number.isNaN(cDisp)) return;
-
   const raw = String(val ?? "").trim();
   const newVal = isNumeric(raw) ? Number(raw) : 0;
-
   if (activeCell.data) activeCell.data[field] = newVal;
-
   if (!commit) {
-    gridApi.value.refreshCells?.({
-      rowNodes: activeCell.node ? [activeCell.node] : undefined,
-      columns: [field],
-      force: true
-    });
+    gridApi.value.refreshCells?.({ rowNodes: activeCell.node ? [activeCell.node] : undefined, columns: [field], force: true });
     return;
   }
-
   const updatedRow = { ...(activeCell.data || {}), [field]: newVal };
-  gridApi.value.applyTransaction({ update: [updatedRow] });
+  const node = gridApi.value.getRowNode(String(updatedRow.sph));
+  if (node) { node.setData(updatedRow); gridApi.value.flashCells?.({ rowNodes: [node], columns: [field] }); }
   markCellChanged(updatedRow.sph, cDisp, newVal);
-  gridApi.value.flashCells?.({
-    rowNodes: activeCell.node ? [activeCell.node] : undefined,
-    columns: [field]
-  });
 }
 
-const onFxInput = (val) => applyFxToGrid(val, { commit: false });
+const onFxInput  = (val) => applyFxToGrid(val, { commit: false });
 const onFxCommit = (val) => applyFxToGrid(val, { commit: true });
 
-/* ── Grid-level undo / redo ── */
+// ─── Undo / Redo ─────────────────────────────────────────────────
 function applyGridHistoryOp(op) {
   if (!op) return;
   const value = op.reversed ? op.oldValue : op.newValue;
-  const { sph, cylDisplay, axis } = op.meta;
-  const row = rowData.value.find(r => to2(r.sph) === to2(sph));
-  if (!row) return;
-  const field = `cyl_${norm(cylDisplay)}`;
-  row[field] = value;
-  gridApi.value?.applyTransaction({ update: [row] });
-  gridApi.value?.refreshCells({ force: true });
-
-  // update pendingChanges
-  const cBackend = -to2(cylDisplay);
-  pendingChanges.value.set(op.key, { sph: to2(sph), cyl: cBackend, axis, existencias: value });
+  const [sphStr, cylDispStr] = op.key.split("|");
+  const sph = to2(Number(sphStr));
+  const cached = getRowCache().get(sph);
+  if (cached) {
+    cached[op.field] = value;
+    const node = gridApi.value?.getRowNode(String(sph));
+    if (node) { node.setData({ ...cached }); gridApi.value?.refreshCells({ rowNodes: [node], force: true }); }
+  }
+  pendingChanges.value.set(op.key, { sph, cyl: -Number(cylDispStr), axis: selectedDegree.value, existencias: value });
   dirty.value = pendingChanges.value.size > 0;
 }
 const handleGridUndo = () => applyGridHistoryOp(gridHistory.undo());
 const handleGridRedo = () => applyGridHistoryOp(gridHistory.redo());
 
-/* ===================== Grid hooks ===================== */
-const onGridReady = (p) => {
+// ─── Grid ready ──────────────────────────────────────────────────
+const onGridReady = async (p) => {
   gridApi.value = p.api;
-  nextTick(() => resetSort());
-};
-
-/* ===================== Add row/col ===================== */
-const handleAddRow = async (nuevoValor, ack) => {
-  const P = phys.value;
-  const v = to2(nuevoValor);
-
-  if (!Number.isFinite(v)) return ackErr(ack, "Ingresa un SPH numerico", 400);
-  if (!isQuarterStep(v)) return ackErr(ack, "SPH debe ser multiplo de 0.25", 400);
-  if (v < P.sphMin || v > P.sphMax) return ackErr(ack, `SPH fuera de limites (${P.sphMin} a ${P.sphMax})`, 400);
-
-  if (props.sphType === "sph-neg" && v >= 0) return ackErr(ack, "Vista SPH (-): SPH debe ser negativo", 400);
-  if (props.sphType === "sph-pos" && v < 0) return ackErr(ack, "Vista SPH (+): SPH debe ser 0 o positivo", 400);
-
-  if (rowData.value.some((r) => to2(r.sph) === v)) return ackErr(ack, `SPH ${fmtSigned(v)} ya existe`, 409);
-
-  const nueva = { sph: v };
-  cylValues.value.forEach((cDisp) => (nueva[`cyl_${norm(cDisp)}`] = 0));
-  gridApi.value?.applyTransaction({ add: [nueva] });
+  p.api.setGridOption("datasource", datasource.value);
   await nextTick();
   resetSort();
-
-  try {
-    const res = await saveChunk(props.sheetId, [{ sph: v, cyl: 0, axis: selectedDegree.value, existencias: 0 }], effectiveActor.value);
-    const ok = normalizeAxiosOk(res);
-    if (!ok.ok) return ackErr(ack, ok.message || "No se pudo agregar SPH", ok.status);
-    ackOk(ack, ok.message || `SPH agregado: ${fmtSigned(v)}`, ok.status);
-    lastSavedAt.value = new Date();
-    await loadSheetMeta();
-    await switchViewReload();
-  } catch (e) {
-    console.error("[AgGridTorico] Error al persistir SPH:", e?.response?.data || e);
-    ackErr(ack, msgFromErr(e, "Error al guardar el nuevo SPH"), statusFromErr(e));
-  }
+  colManager.reattach();
+  LOG("onGridReady.");
 };
 
-const handleAddColumn = async (nuevoValor, ack) => {
-  const P = phys.value;
-  const raw = to2(nuevoValor);
-
-  if (!Number.isFinite(raw)) return ackErr(ack, "Ingresa un CYL numerico", 400);
-  if (raw >= 0) return ackErr(ack, "CYL debe ingresarse en negativo. Ej: -0.75", 400);
-
-  const vDisp = to2(Math.abs(raw));
-  if (vDisp === 0) return ackErr(ack, "CYL 0.00 ya existe", 409);
-  if (vDisp > P.cylAbsMax) return ackErr(ack, `CYL fuera de limite (max ${P.cylAbsMax})`, 400);
-  if (cylValues.value.includes(vDisp)) return ackErr(ack, `CYL ${vDisp.toFixed(2)} ya existe`, 409);
-
-  cylValues.value = [...cylValues.value, vDisp].sort((a, b) => a - b);
-  rowData.value.forEach((r) => (r[`cyl_${norm(vDisp)}`] = 0));
-
-  await nextTick();
-  gridApi.value?.refreshHeader();
-  gridApi.value?.redrawRows();
-
-  try {
-    const res = await saveChunk(props.sheetId, [{ sph: 0, cyl: -vDisp, axis: selectedDegree.value, existencias: 0 }], effectiveActor.value);
-    const ok = normalizeAxiosOk(res);
-    if (!ok.ok) return ackErr(ack, ok.message || "No se pudo agregar CYL", ok.status);
-    ackOk(ack, ok.message || `CYL agregado: -${vDisp.toFixed(2)}`, ok.status);
-    lastSavedAt.value = new Date();
-    await loadSheetMeta();
-    await switchViewReload();
-  } catch (e) {
-    console.error("[AgGridTorico] Error al persistir CYL:", e?.response?.data || e);
-    ackErr(ack, msgFromErr(e, "Error al guardar el nuevo CYL"), statusFromErr(e));
-  }
-};
-
-/* ===================== filters/sort/save ===================== */
+// ─── Sort / Filter ────────────────────────────────────────────────
 const clearFilters = () => {
   if (!gridApi.value) return;
   const api = gridApi.value;
@@ -679,45 +711,82 @@ const clearFilters = () => {
 
 const resetSort = () => {
   const api = gridApi.value;
-  if (!api) return;
-  const sortDir = props.sphType === "sph-neg" ? "desc" : "asc";
-  if (typeof api.applyColumnState === "function") {
-    api.applyColumnState({
-      defaultState: { sort: null },
-      state: [{ colId: "sph", sort: sortDir }]
-    });
-  } else if (typeof api.setSortModel === "function") {
-    api.setSortModel([{ colId: "sph", sort: sortDir }]);
-  }
+  if (!api || typeof api.applyColumnState !== "function") return;
+  api.applyColumnState({ defaultState: { sort: null }, state: [{ colId: "sph", sort: props.sphType === "sph-neg" ? "desc" : "asc" }] });
 };
 
 const handleToggleFilters = () => clearFilters();
 
-async function handleSave(ack) {
-  if (!dirty.value || pendingChanges.value.size === 0) {
-    ackOk(ack, "No hay cambios por guardar.", 200);
-    return;
-  }
-  if (!gridApi.value) return ackErr(ack, "Grid no listo.", 400);
+// ─── Navtools handlers ────────────────────────────────────────────
+const handleAddRow = async (nuevoValor, ack) => {
+  const P = phys.value;
+  const sph = to2(nuevoValor);
+  if (!Number.isFinite(sph)) return ackErr(ack, "Ingresa SPH numérico", 400);
+  if (!isQuarterStep(sph)) return ackErr(ack, "SPH debe ser múltiplo de 0.25 D", 400);
+  if (sph < P.sphMin || sph > P.sphMax) return ackErr(ack, `SPH fuera de límites (${P.sphMin} a ${P.sphMax})`, 400);
+  if (sphAxis.value.includes(sph)) return ackErr(ack, `SPH ${fmtSigned(sph)} ya existe`, 409);
 
+  try {
+    const rows = allCylValues.value.flatMap(cDisp =>
+      degreeValues.value.map(deg => ({ sph, cyl: -cDisp, axis: deg, existencias: 0 }))
+    );
+    const res = await saveChunk(props.sheetId, rows, effectiveActor.value);
+    const ok = normalizeAxiosOk(res);
+    if (!ok.ok) throw new Error(ok.message);
+    ackOk(ack, ok.message || `Fila SPH ${fmtSigned(sph)} agregada`, ok.status);
+    lastSavedAt.value = new Date();
+    itemsCache.value = [];
+    await loadSheetMeta();
+    await _fetchAllItems();
+    await switchViewReload();
+  } catch (e) {
+    ackErr(ack, msgFromErr(e, "Error al agregar fila"), statusFromErr(e) || 500);
+  }
+};
+
+const handleAddColumn = async (nuevoValor, ack) => {
+  const P = phys.value;
+  const cDisp = to2(Math.abs(Number(nuevoValor)));
+  if (!Number.isFinite(cDisp)) return ackErr(ack, "Ingresa CYL numérico", 400);
+  if (cDisp > P.cylAbsMax) return ackErr(ack, `CYL fuera de límites (0 a ${P.cylAbsMax})`, 400);
+  if (allCylValues.value.includes(cDisp)) return ackErr(ack, `CYL -${cDisp.toFixed(2)} ya existe`, 409);
+
+  try {
+    const rows = sphAxis.value.flatMap(sph =>
+      degreeValues.value.map(deg => ({ sph, cyl: -cDisp, axis: deg, existencias: 0 }))
+    );
+    const res = await saveChunk(props.sheetId, rows, effectiveActor.value);
+    const ok = normalizeAxiosOk(res);
+    if (!ok.ok) throw new Error(ok.message);
+    ackOk(ack, ok.message || `Columna CYL -${cDisp.toFixed(2)} agregada`, ok.status);
+    lastSavedAt.value = new Date();
+    itemsCache.value = [];
+    await loadSheetMeta();
+    await _fetchAllItems();
+    await switchViewReload();
+  } catch (e) {
+    ackErr(ack, msgFromErr(e, "Error al agregar columna"), statusFromErr(e) || 500);
+  }
+};
+
+async function handleSave(ack) {
+  if (!dirty.value || pendingChanges.value.size === 0) { ackOk(ack, "No hay cambios por guardar.", 200); return; }
   saving.value = true;
   try {
     const rows = Array.from(pendingChanges.value.values());
     const res = await saveChunk(props.sheetId, rows, effectiveActor.value);
     const ok = normalizeAxiosOk(res);
-    if (!ok.ok) return ackErr(ack, ok.message || "No se pudieron guardar los cambios", ok.status);
-
+    if (!ok.ok) return ackErr(ack, ok.message || "No se pudo guardar", ok.status);
     dirty.value = false;
     pendingChanges.value.clear();
     lastSavedAt.value = new Date();
     gridHistory.clear();
     unsavedGuard.clearStorage();
-
     ackOk(ack, ok.message || "Cambios guardados.", ok.status);
-    await loadSheetMeta();
-    await switchViewReload();
+    _suppressNextWsRefresh = true;
+    _broadcastCh?.postMessage({ type: "ROWS_CHANGED" });
   } catch (e) {
-    console.error("[AgGridTorico] Error saveChunk:", e?.response?.data || e);
+    console.error("[Torico] Error saveChunk:", e?.response?.data || e);
     ackErr(ack, msgFromErr(e, "Error al guardar cambios"), statusFromErr(e));
   } finally {
     saving.value = false;
@@ -729,13 +798,16 @@ async function handleDiscard() {
   dirty.value = false;
   gridHistory.clear();
   unsavedGuard.clearStorage();
-  await switchViewReload();
+  rowCaches.clear();
+  if (gridApi.value) gridApi.value.setGridOption("datasource", datasource.value);
 }
 
 async function handleRefresh() {
-  pendingChanges.value.clear();
+  itemsCache.value = [];
   await loadSheetMeta();
+  await _fetchAllItems();
   await switchViewReload();
+  pendingChanges.value.clear();
 }
 
 async function handleSeed(ack) {
@@ -743,16 +815,15 @@ async function handleSeed(ack) {
     saving.value = true;
     const res = await reseedSheet(props.sheetId, effectiveActor.value);
     const ok = normalizeAxiosOk(res);
-    if (!ok.ok) return ackErr(ack, ok.message || "No se pudo generar seed", ok.status);
-
+    if (!ok.ok) return ackErr(ack, ok.message || "No se pudo hacer seed", ok.status);
+    itemsCache.value = [];
     await loadSheetMeta();
+    await _fetchAllItems();
     await switchViewReload();
-    dirty.value = false;
-    pendingChanges.value.clear();
     lastSavedAt.value = new Date();
+    pendingChanges.value.clear();
     ackOk(ack, ok.message || "Seed generado.", ok.status);
   } catch (e) {
-    console.error("[AgGridTorico] Error reseed:", e?.response?.data || e);
     ackErr(ack, msgFromErr(e, "Error al generar seed"), statusFromErr(e));
   } finally {
     saving.value = false;
@@ -762,107 +833,83 @@ async function handleSeed(ack) {
 async function handleExport() {
   if (!gridApi.value) return;
   const nameSlug = sheetName.value.replace(/\s+/g, "_");
-  const posNeg = props.sphType === "sph-pos" ? "pos" : "neg";
   const fecha = new Date().toISOString().slice(0, 10);
   await exportAgGridToXlsx(gridApi.value, {
-    filename: `reporte_inventario_${nameSlug || "torico"}_${posNeg}_${selectedDegree.value}deg_${fecha}`,
+    filename: `reporte_inventario_${nameSlug || "torico"}_${fecha}`,
     sheetName: String(sheetName.value || "Torico").slice(0, 31),
-    title: `Inventario — ${sheetName.value || "Torico"} (${posNeg}, ${selectedDegree.value}°)`,
+    title: `Inventario — ${sheetName.value || "Tórico"}`,
   });
 }
 </script>
 
 <style scoped>
-.grid-page {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  background: var(--surface, #fbfbff);
-}
+.grid-page { display:flex; flex-direction:column; height:100%; overflow:hidden; }
+.grid-topbar { flex:0 0 auto; position:sticky; top:0; z-index:30; }
+.navtools-wrap { padding:0.5rem 0.75rem; }
+.grid-main { flex:1 1 auto; min-height:0; padding:0 0.75rem 0.75rem; display:flex; flex-direction:column; }
 
-.grid-topbar {
-  position: sticky;
-  top: 0;
-  z-index: 15;
-  padding: 0.75rem 0.75rem 0.35rem;
-  background: var(--surface-glass, rgba(251, 251, 255, 0.82));
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--border, rgba(15, 23, 42, 0.06));
-}
-
-.navtools-wrap {
-  padding: 0 !important;
-}
-
-/* ── Degree selector bar ── */
+/* ── Degree bar ──────────────────────────────────────────────── */
 .degree-bar {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.4rem 0.75rem;
-  background: var(--surface-raised, #f5f3ff);
-  border-bottom: 1px solid var(--border, rgba(15, 23, 42, 0.06));
-  overflow-x: auto;
-  flex-shrink: 0;
+  flex:0 0 auto;
+  display:flex; align-items:center; gap:0.5rem;
+  padding:0.35rem 0.75rem;
+  border-bottom:1px solid rgba(121,87,213,.12);
 }
-
-.degree-bar__label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--text-secondary, #64748b);
-  white-space: nowrap;
-}
-
-.degree-bar__pills {
-  display: flex;
-  gap: 0.25rem;
-  flex-wrap: nowrap;
-}
-
+.degree-bar__label { font-size:0.72rem; font-weight:600; color:var(--c-muted,#888); text-transform:uppercase; letter-spacing:.05em; }
+.degree-bar__pills { display:flex; flex-wrap:wrap; gap:0.25rem; }
 .degree-pill {
-  padding: 0.2rem 0.55rem;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  border: 1px solid var(--border, #e5e5f0);
-  background: var(--surface, #fff);
-  color: var(--text-secondary, #64748b);
-  cursor: pointer;
-  transition: all 0.15s ease;
-  white-space: nowrap;
+  padding:0.2rem 0.55rem; border-radius:999px; border:1px solid rgba(121,87,213,.25);
+  background:transparent; font-size:0.72rem; cursor:pointer; color:inherit;
+  transition:background .15s,border-color .15s,color .15s;
 }
+.degree-pill:hover { background:rgba(121,87,213,.08); border-color:rgba(121,87,213,.4); }
+.degree-pill--active { background:rgba(121,87,213,.18); border-color:rgba(121,87,213,.6); font-weight:700; }
 
-.degree-pill:hover {
-  border-color: var(--c-primary, #7957d5);
-  color: var(--c-primary, #7957d5);
+/* ── Glass shell ─────────────────────────────────────────────── */
+.glass-shell {
+  flex:1 1 auto; min-height:0;
+  border-radius:var(--radius-lg,14px);
+  backdrop-filter:blur(14px) saturate(1.4); -webkit-backdrop-filter:blur(14px) saturate(1.4);
+  background:rgba(255,255,255,0.06);
+  box-shadow:0 0 0 1px rgba(255,255,255,0.12),var(--shadow-md,0 4px 24px rgba(0,0,0,.14));
+  overflow:hidden;
+  transition:opacity 160ms ease,transform 200ms cubic-bezier(.22,.61,.36,1),filter 160ms ease;
+  position:relative;
 }
+.glass-shell--switching { opacity:0; transform:translate3d(0,8px,0) scale(.992); filter:blur(1.2px); pointer-events:none; }
+@media(prefers-reduced-motion:reduce){ .glass-shell{transition:none!important;} }
 
-.degree-pill--active {
-  background: var(--c-primary, #7957d5);
-  border-color: var(--c-primary, #7957d5);
-  color: #fff;
+.dev-col-badge {
+  position:absolute; top:6px; right:8px; z-index:10;
+  background:rgba(99,102,241,.85); color:#fff;
+  font-size:10px; font-family:monospace; padding:2px 7px;
+  border-radius:999px; pointer-events:none;
 }
+.dev-col-badge__spin { margin-left:4px; display:inline-block; animation:spin .8s linear infinite; }
+@keyframes spin { to{transform:rotate(360deg);} }
 
-.degree-pill--active:hover {
-  color: #fff;
-}
+.ag-grid-glass :deep(.ag-root-wrapper) { border:none!important; }
+.ag-grid-glass :deep(.ag-header)       { border-bottom:none!important; }
+.ag-grid-glass :deep(.ag-row)          { border:none!important; }
 
-/* ── Grid shell ── */
-.grid-main {
-  flex: 1 1 0;
-  min-height: 0;
-  padding: 0.5rem;
-}
+.ag-grid-glass :deep(.ag-cell.ag-cell--pinned),
+.ag-grid-glass :deep(.ag-header-cell.ag-header-cell--pinned) { background:rgba(121,87,213,.08); font-weight:600; }
+.ag-grid-glass :deep(.ag-row-hover) { background:rgba(121,87,213,.06)!important; }
 
-.grid-shell {
-  width: 100%;
-  height: 100%;
-  border-radius: 10px;
-  overflow: hidden;
-  transition: opacity 0.18s;
+.ag-grid-glass :deep(.ag-row.ag-row--stock-low)  { box-shadow:inset 3px 0 0 rgba(139,92,246,.55); background:rgba(139,92,246,.06); }
+.ag-grid-glass :deep(.ag-row.ag-row--stock-zero) { box-shadow:inset 3px 0 0 rgba(99,102,241,.75); background:rgba(99,102,241,.08); }
+.ag-grid-glass :deep(.ag-cell.ag-cell--stock-low)  { font-weight:700; background:rgba(139,92,246,.12); border-radius:4px; }
+.ag-grid-glass :deep(.ag-cell.ag-cell--stock-zero) { font-weight:800; background:rgba(99,102,241,.15); border-radius:4px; }
+
+.ag-grid-glass :deep(.skeleton-cell) {
+  display:block; width:90%; height:10px; border-radius:4px; margin:auto;
+  background:linear-gradient(90deg,rgba(148,163,184,.12) 25%,rgba(148,163,184,.28) 50%,rgba(148,163,184,.12) 75%);
+  background-size:200% 100%; animation:shimmer 1.6s ease infinite;
 }
-.grid-shell--switching {
-  opacity: 0.45;
-  pointer-events: none;
-}
+.ag-grid-glass :deep(.skeleton-cell--cyl) { width:70%; }
+@keyframes shimmer { 0%{background-position:200% center} 100%{background-position:-200% center} }
+
+.ag-grid-glass :deep(.ag-header-cell.ag-header-cell--compact) { padding-inline:6px; font-size:.7rem; text-transform:uppercase; letter-spacing:.04em; }
+.ag-grid-glass :deep(.ag-cell.ag-cell--compact) { padding-inline:6px; line-height:1.2; font-size:.75rem; }
+.ag-grid-glass :deep(.ag-cell.ag-cell--numeric) { justify-content:flex-end; text-align:right; font-variant-numeric:tabular-nums; }
 </style>

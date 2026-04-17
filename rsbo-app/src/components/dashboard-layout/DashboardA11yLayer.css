@@ -1,0 +1,16 @@
+/* Background (soft gradients like banner) */
+.layout-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: var(--bg-base);
+}
+
+/* Offline bar */
+.offline-bar {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  z-index: 2000;
+}

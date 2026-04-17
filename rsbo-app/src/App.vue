@@ -6,7 +6,7 @@
 <script setup>
 import { onMounted } from "vue";
 import LabToast from "@/components/laboratorio/LabToast.vue";
-import { initLabSocket } from "@/composables/useLabSocket.js";
+import { initLabSocket } from "@/composables/shared/useLabSocket.js";
 
 onMounted(() => {
   initLabSocket();

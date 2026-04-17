@@ -319,7 +319,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { fetchSessions, revokeSession, revokeOtherSessions, changePassword } from '@/services/security';
-import { labToast } from '@/composables/useLabToast';
+import { labToast } from '@/composables/shared/useLabToast';
 
 const props = defineProps({
   user: { type: Object, default: null },

@@ -382,9 +382,9 @@
 import { watch, computed } from "vue";
 import { utils } from "../../../services/myUserCRUD";
 import AvatarPicker from "../../../components/AvatarPicker.vue";
-import { labToast } from "@/composables/useLabToast";
-import { useProfileForm } from "@/composables/useProfileForm";
-import { usePasswordForm } from "@/composables/usePasswordForm";
+import { labToast } from "@/composables/shared/useLabToast";
+import { useProfileForm } from "@/composables/auth/useProfileForm";
+import { usePasswordForm } from "@/composables/auth/usePasswordForm";
 
 const avatarUrl = "https://cdn.jsdelivr.net/gh/alohe/avatars/png/vibrent_1.png";
 

@@ -633,7 +633,7 @@ import {
   fmtDateShort,
   labStatusHuman,
   labStatusClass
-} from "@/composables/useBasesMicasVentas.js";
+} from "@/composables/api/useBasesMicasVentas.js";
 
 const props = defineProps({
   user:    { type: Object,  required: false, default: null },

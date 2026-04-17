@@ -3,17 +3,16 @@
 import { computed, ref, onMounted, watch, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import TabsManager from "@/components/TabsManager.vue";
-import { labToast } from "@/composables/useLabToast.js";
+import { labToast } from "@/composables/shared/useLabToast.js";
 
 import AgGridBifocal    from "@/components/ag-grid/templates/AgGridBifocal.vue";
 import AgGridBase       from "@/components/ag-grid/templates/AgGridBase.vue";
 import AgGridMonofocal  from "@/components/ag-grid/templates/AgGridMonofocal.vue";
 import AgGridTorico     from "@/components/ag-grid/templates/AgGridTorico.vue";
 import AgGridProgresivo from "@/components/ag-grid/templates/AgGridProgresivo.vue";
-import GlassTable       from "@/components/ag-grid/templates/GlassTable.vue";
 
 import { listContactLensSheets } from "@/services/contactlenses";
-import { useSheetPagination } from "@/composables/useSheetPagination.js";
+import { useSheetPagination } from "@/composables/api/useSheetPagination.js";
 
 const props = defineProps({
   user: { type: Object, required: false, default: null }
@@ -25,8 +24,6 @@ const router = useRouter();
 const activeSheet       = ref("nueva");
 const activeInternalTab = ref(null);
 
-/** "excel" = AG-Grid | "glass" = Buefy GlassTable */
-const viewMode = ref("excel");
 
 /* ─────────────────────────────────────────────────────────────────────────
    Normalización de planilla (raw → normalizado)
@@ -287,21 +284,12 @@ const resolverGridProps = (sheet, activeInternal) => {
                 <!-- AG-Grid con KeepAlive: la instancia sobrevive al cambio de sheet -->
                 <KeepAlive :max="8">
                   <component
-                    v-if="viewMode === 'excel'"
                     :is="resolverGrid(sheet.tipo_matriz)"
                     :key="`${sheet.id}:${sheet.tipo_matriz}`"
                     v-bind="resolverGridProps(sheet, activeInternal)"
                     :actor="user"
                   />
                 </KeepAlive>
-                <!-- Glass Table (Buefy) no necesita KeepAlive -->
-                <GlassTable
-                  v-if="viewMode !== 'excel'"
-                  :sheet-id="sheet.id"
-                  :sph-type="activeInternal || 'sph-neg'"
-                  :actor="user"
-                  api-type="contactlenses"
-                />
               </div>
             </div>
           </template>
@@ -380,24 +368,6 @@ const resolverGridProps = (sheet, activeInternal) => {
   .sheet-leave-active {
     transition: none !important;
   }
-}
-
-/* ── Top row with view toggle ── */
-.psh-top-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.view-toggle {
-  display: flex;
-  gap: 0;
-  border-radius: 0.6rem;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  flex-shrink: 0;
 }
 
 .vt-btn {

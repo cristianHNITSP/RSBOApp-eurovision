@@ -1,33 +1,131 @@
-<!-- DashboardLayout.vue -->
+<template>
+  <div class="app-layout" :style="layoutStyleVars">
+    <!-- Capa A11y y Estados -->
+    <DashboardA11yLayer :is-offline="isOffline" :show-loading="showLoading" />
+
+    <div class="content-layout">
+      <!-- Desktop Sidebar -->
+      <Sidebar
+        v-if="!isMobile"
+        @toggle="handleSidebarToggle"
+        :collapsed="isSidebarCollapsed"
+        :user="user"
+        :loading="loading"
+        :pending-orders="pendingOrdersCount"
+      />
+
+      <!-- Mobile Sidebar -->
+      <transition name="mobile-liquid">
+        <SidebarMobile
+          v-if="isMobile && isMobileSidebarVisible"
+          :user="user"
+          :loading="loading"
+          :pending-orders="pendingOrdersCount"
+          @close="collapseSidebar"
+        />
+      </transition>
+
+      <!-- Panel de notificaciones (flotante) -->
+      <NotificationPanel
+        :visible="showPanel"
+        @close="handleClosePanel"
+        @update-unread="unreadNotifications = $event"
+      />
+
+      <!-- Overlay blur sidebar móvil -->
+      <transition name="fade-glass">
+        <div v-if="isMobile && isMobileSidebarVisible" class="blur-overlay sidebar-mobile-overlay" @click="collapseSidebar"></div>
+      </transition>
+
+      <!-- Overlay transparente para cerrar panel flotante -->
+      <div v-if="showPanel" class="notif-overlay" @click="closePanelFromOverlay"></div>
+
+      <!-- Contenido principal -->
+      <main class="main-content p-0">
+        <!-- Header -->
+        <section class="dashboard-header" ref="motionRef" :class="{ 'dashboard-header--mobile': isMobile }">
+          <!-- DESKTOP TOOLBAR -->
+          <DashboardToolbar
+            v-if="!isMobile"
+            :current-route-name="currentRouteName"
+            :page-title="pageTitle"
+            :show-panel="showPanel"
+            :bell-ringing="bellRinging"
+            :unread-notifications="unreadNotifications"
+            @toggle-notifications="showPanel ? handleClosePanel() : openPanelMobile()"
+            @profile="profile"
+            @settings="settings"
+            @logout="logout"
+          >
+            <template #search>
+              <GlobalSearch />
+            </template>
+          </DashboardToolbar>
+
+          <!-- MOBILE TOPBAR -->
+          <DashboardMobileTopbar
+            v-else
+            :current-route-name="currentRouteName"
+            :page-title="pageTitle"
+            :show-panel="showPanel"
+            :bell-ringing="bellRinging"
+            :unread-notifications="unreadNotifications"
+            @toggle-sidebar="toggleMobileSidebar"
+            @toggle-search="toggleMobileSearch"
+            @toggle-notifications="showPanel ? closePanel() : openPanelMobile()"
+            @profile="profile"
+            @settings="settings"
+            @logout="logout"
+          />
+
+          <!-- Overlay buscador móvil -->
+          <DashboardSearchOverlay
+            :is-open="mobileSearchOpen"
+            v-model="mobileSearchQuery"
+            @close="closeMobileSearch"
+          />
+        </section>
+
+        <!-- Body -->
+        <section class="dashboard-body">
+          <router-view v-slot="{ Component }">
+            <component :is="Component" :user="user" :loading="loading" />
+          </router-view>
+        </section>
+
+        <!-- Footer -->
+        <DashboardFooter />
+      </main>
+    </div>
+  </div>
+</template>
+
 <script setup>
 import { ref, watch, onMounted, onBeforeUnmount, onBeforeMount, computed, nextTick, getCurrentInstance } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { useAuth } from "@/services/useAuth";
+import { useAuth } from "@/composables/auth/useAuth";
 
+// Componentes externos
 import Sidebar from "../components/Sidebar.vue";
+import SidebarMobile from "../components/SidebarMobile.vue";
+import MenuToggle from "../components/MenuToggle.vue"; // Usado en MobileTopbar
 import NotificationPanel from "../components/NotificationPanel.vue";
 import GlobalSearch from "../components/GlobalSearch.vue";
-import { useSidebarState } from "../composables/useSidebarState";
-import { useMotionEffects } from "../composables/useMotionEffects";
-import { useNotifications } from "../composables/useNotificationsState";
-import { useAccessibility } from "../composables/useAccessibility";
-import { pendingOrdersCount } from "@/composables/useOrdersBadge.js";
+
+// Componentes atómicos de Layout
+import DashboardA11yLayer from "@/components/dashboard-layout/DashboardA11yLayer.vue";
+import DashboardToolbar from "@/components/dashboard-layout/DashboardToolbar.vue";
+import DashboardMobileTopbar from "@/components/dashboard-layout/DashboardMobileTopbar.vue";
+import DashboardSearchOverlay from "@/components/dashboard-layout/DashboardSearchOverlay.vue";
+import DashboardFooter from "@/components/dashboard-layout/DashboardFooter.vue";
+
+// Composables
+import { useSidebarState } from "@/composables/ui/useSidebarState";
+import { useMotionEffects } from "@/composables/ui/useMotionEffects";
+import { useNotifications } from "@/composables/ui/useNotificationsState";
+import { useAccessibility } from "@/composables/ui/useAccessibility";
+import { pendingOrdersCount } from "@/composables/ui/useOrdersBadge.js";
 import { fetchUnreadCount } from "@/services/notifications.js";
-
-
-/* =========================
-   Helpers perf
-   ========================= */
-function rafThrottle(fn) {
-  let rafId = 0;
-  return (...args) => {
-    if (rafId) return;
-    rafId = requestAnimationFrame(() => {
-      rafId = 0;
-      fn(...args);
-    });
-  };
-}
 
 /* =========================
    Sidebar & motion
@@ -52,19 +150,11 @@ watch(unreadNotifications, (newVal) => {
 });
 
 /* =========================
-   Breadcrumb / título
+   Route & Title
    ========================= */
 const route = useRoute();
 const currentRouteName = computed(() => route.meta.breadcrumb || route.name || "Dashboard");
 const pageTitle = computed(() => "Panel de Control");
-
-/* =========================
-   Accesibilidad (dark mode, font size, efectos)
-   Delegado al composable useAccessibility que maneja
-   localStorage, eventos rsbo:ui y estado reactivo.
-   ========================= */
-const { state: a11y } = useAccessibility();
-const isDark = computed(() => a11y.resolvedTheme === "dark");
 
 /* =========================
    Online / Offline
@@ -88,143 +178,92 @@ function onMediaChange(e) {
   isMobile.value = !!e.matches;
 }
 
+const mql1020 = window.matchMedia("(max-width: 1020px)");
+const isBelow1020 = ref(mql1020.matches);
+
+function onMediaChange1020(e) {
+  isBelow1020.value = !!e.matches;
+  if (isBelow1020.value && !isMobile.value) {
+    setSidebarState(true);
+  }
+}
+
 /* =========================
-   Viewport vh + resize
+   Viewport vh
    ========================= */
 function setVhVar() {
   document.documentElement.style.setProperty("--vh", `${window.innerHeight * 0.01}px`);
 }
 
-const onResize = rafThrottle(() => {
+function onResize() {
   setVhVar();
-});
+}
 
 /* =========================
-   Sidebar móvil (persistencia)
+   Sidebar móvil
    ========================= */
-const sidebarmobile = ref(null);
-const isMobileSidebarVisible = ref(true);
-
-(function applyMobileSidebarImmediately() {
-  try {
-    const saved = localStorage.getItem("mobileSidebarVisible");
-    if (saved !== null) isMobileSidebarVisible.value = saved === "true";
-  } catch { }
-})();
+const isMobileSidebarVisible = ref(!isMobile.value);
 
 onBeforeMount(() => {
-  if (!isMobile.value) {
+  if (isMobile.value) {
+    isMobileSidebarVisible.value = false;
+  } else {
     isMobileSidebarVisible.value = true;
-    try {
-      localStorage.setItem("mobileSidebarVisible", "true");
-    } catch { }
   }
 });
-
-function showSidebarMobile() {
-  const el = sidebarmobile.value?.$el;
-  if (!el) return;
-
-  el.classList.remove("mobileSidebtraction-leave-active");
-  el.classList.add("mobileSidebtraction-enter-active");
-
-  el.addEventListener(
-    "animationend",
-    () => el.classList.remove("mobileSidebtraction-enter-active"),
-    { once: true }
-  );
-}
-
-function hideSidebarMobile() {
-  const el = sidebarmobile.value?.$el;
-  if (!el) return;
-
-  el.classList.remove("mobileSidebtraction-enter-active");
-  el.classList.add("mobileSidebtraction-leave-active");
-
-  el.addEventListener(
-    "animationend",
-    () => {
-      el.classList.remove("mobileSidebtraction-leave-active");
-      isMobileSidebarVisible.value = false;
-      try {
-        localStorage.setItem("mobileSidebarVisible", "false");
-      } catch { }
-    },
-    { once: true }
-  );
-}
 
 function toggleMobileSidebar() {
   if (!isMobile.value) return;
-
   if (isMobileSidebarVisible.value) {
-    hideSidebarMobile();
+    isMobileSidebarVisible.value = false;
   } else {
-    // Cierra notificaciones si están abiertas antes de mostrar sidebar
     if (showPanel.value) closePanel();
-
     isMobileSidebarVisible.value = true;
-    try {
-      localStorage.setItem("mobileSidebarVisible", "true");
-    } catch { }
-    nextTick(showSidebarMobile);
   }
 }
 
-// Colapsa la sidebar (70px) al hacer click fuera de ella en móvil
 function collapseSidebar() {
-  sidebarmobile.value?.collapse();
+  if (!isMobile.value || !isMobileSidebarVisible.value) return;
+  isMobileSidebarVisible.value = false;
 }
 
-// Abre notificaciones y cierra sidebar móvil si está visible
+function handleSidebarToggle(nextCollapsed) {
+  if (isMobile.value) return;
+  setSidebarState(nextCollapsed);
+}
+
 function openPanelMobile() {
   if (isMobile.value && isMobileSidebarVisible.value) {
-    hideSidebarMobile();
+    isMobileSidebarVisible.value = false;
   }
   openPanel();
 }
 
-/* Cuando cambias a desktop: fuerza visible */
-const mobileSearchOpen = ref(false);
 watch(isMobile, (nowMobile) => {
   if (!nowMobile) {
     isMobileSidebarVisible.value = true;
-    try {
-      localStorage.setItem("mobileSidebarVisible", "true");
-    } catch { }
   } else {
+    isMobileSidebarVisible.value = false;
     mobileSearchOpen.value = false;
   }
 });
 
-/* Sidebar collapse: animación */
 watch(isSidebarCollapsed, (newVal) => {
   animateSidebarShift(newVal);
 });
 
 /* =========================
-   Mobile Search overlay
+   Mobile Search
    ========================= */
+const mobileSearchOpen = ref(false);
 const mobileSearchQuery = ref("");
-const mobileSearchInputRef = ref(null);
 
-function openMobileSearch() {
-  mobileSearchOpen.value = true;
-  nextTick(() => {
-    try {
-      const el = mobileSearchInputRef.value?.$el?.querySelector?.("input");
-      el?.focus?.();
-    } catch { }
-  });
+function toggleMobileSearch() {
+  mobileSearchOpen.value = !mobileSearchOpen.value;
 }
 
 function closeMobileSearch() {
   mobileSearchOpen.value = false;
-}
-
-function toggleMobileSearch() {
-  mobileSearchOpen.value ? closeMobileSearch() : openMobileSearch();
 }
 
 watch(route, () => {
@@ -232,15 +271,15 @@ watch(route, () => {
 });
 
 /* =========================
-   Layout vars (CSS variables)
+   Layout vars
    ========================= */
 const layoutStyleVars = computed(() => {
-  const sidebarW = isMobile.value
-    ? (isMobileSidebarVisible.value ? 70 : 0)
+  const sidebarShift = isMobile.value
+    ? 0
     : (isSidebarCollapsed.value ? 70 : 240);
 
   return {
-    "--sidebar-w": `${sidebarW}px`,
+    "--sidebar-shift": `${sidebarShift}px`,
   };
 });
 
@@ -255,7 +294,7 @@ function handleClosePanel() {
 /* =========================
    Auth / User
    ========================= */
-const router  = useRouter();
+const router = useRouter();
 const { user, fetchUser, logout: _authLogout } = useAuth();
 const loading = ref(true);
 const _instance = getCurrentInstance();
@@ -265,7 +304,7 @@ function settings() { router.push('/l/config.panel'); }
 function logout()   { _authLogout(router, _instance?.proxy?.$buefy); }
 
 /* =========================
-   Mount / Unmount
+   Lifecycle / WS
    ========================= */
 async function refreshUnreadCount() {
   try {
@@ -276,7 +315,6 @@ async function refreshUnreadCount() {
 
 function _onLabWs(e) {
   const type = e?.detail?.type;
-  // pendingOrdersCount lo actualiza useLaboratorioApi.loadOrders() vía updatePendingCount
   if (type === "NOTIFICATION_NEW" || type === "STOCK_ALERT") {
     refreshUnreadCount();
   }
@@ -284,15 +322,16 @@ function _onLabWs(e) {
 
 onMounted(async () => {
   setVhVar();
-
   window.addEventListener("resize", onResize, { passive: true });
-
   window.addEventListener("online", updateOnlineStatus, { passive: true });
   window.addEventListener("offline", updateOnlineStatus, { passive: true });
   updateOnlineStatus();
 
   if (mql.addEventListener) mql.addEventListener("change", onMediaChange);
   else mql.addListener(onMediaChange);
+
+  if (mql1020.addEventListener) mql1020.addEventListener("change", onMediaChange1020);
+  else mql1020.addListener(onMediaChange1020);
 
   refreshUnreadCount();
   window.addEventListener("lab:ws", _onLabWs);
@@ -303,771 +342,17 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   window.removeEventListener("resize", onResize);
-
   window.removeEventListener("online", updateOnlineStatus);
   window.removeEventListener("offline", updateOnlineStatus);
 
   if (mql.removeEventListener) mql.removeEventListener("change", onMediaChange);
   else mql.removeListener(onMediaChange);
 
+  if (mql1020.removeEventListener) mql1020.removeEventListener("change", onMediaChange1020);
+  else mql1020.removeListener(onMediaChange1020);
+
   window.removeEventListener("lab:ws", _onLabWs);
 });
 </script>
 
-
-<template>
-  <div class="app-layout" :style="layoutStyleVars">
-    <!-- Background (soft gradients like banner) -->
-    <div class="layout-bg" aria-hidden="true"></div>
-
-    <!-- Aviso sin conexión -->
-    <b-notification v-if="isOffline" type="is-danger" aria-close-label="Cerrar notificación" has-icon
-      class="has-text-centered offline-bar">
-      No hay conexión a internet. Por favor verifica tu red.
-    </b-notification>
-
-    <!-- Aviso sin conexión (loading) -->
-    <b-loading v-model="showLoading" :is-full-page="true" :can-cancel="false" :is-fullscreen="true"
-      aria-label="Cargando...">
-      <b-icon pack="fas" icon="sync-alt" size="is-large" custom-class="fa-spin" />
-    </b-loading>
-
-    <div class="content-layout">
-      <!-- Sidebar -->
-      <Sidebar ref="sidebarmobile" class="sidebar-mobile-panel" v-if="!isMobile || isMobileSidebarVisible"
-        @toggle="setSidebarState" :collapsed="isSidebarCollapsed" :user="user" :loading="loading"
-        :pending-orders="pendingOrdersCount" />
-
-      <!-- Panel de notificaciones (flotante) -->
-      <NotificationPanel
-        :visible="showPanel"
-        @close="handleClosePanel"
-        @update-unread="unreadNotifications = $event"
-      />
-
-      <!-- Overlay blur sidebar móvil: solo cuando está expandida; click colapsa (no oculta) -->
-      <div v-if="isMobile && isMobileSidebarVisible && !isSidebarCollapsed" class="blur-overlay sidebar-mobile-overlay" @click="collapseSidebar"></div>
-
-      <!-- Overlay transparente para cerrar panel flotante al click fuera -->
-      <div v-if="showPanel" class="notif-overlay" @click="closePanelFromOverlay"></div>
-
-      <!-- Contenido principal -->
-      <main class="main-content p-0">
-        <!-- Header -->
-        <section class="dashboard-header" ref="motionRef" :class="{ 'dashboard-header--mobile': isMobile }">
-          <!-- DESKTOP TOOLBAR -->
-          <div v-if="!isMobile" class="dashboard-toolbar">
-            <!-- LEFT -->
-            <div class="dashboard-toolbar__left">
-              <div class="breadcrumb-wrapper">
-                <b-breadcrumb separator="succeeds" size="is-small" class="is-size-7-mobile">
-                  <b-breadcrumb-item href="/l/home">Dashboard</b-breadcrumb-item>
-                  <b-breadcrumb-item active>{{ currentRouteName }}</b-breadcrumb-item>
-                </b-breadcrumb>
-              </div>
-
-              <div class="page-heading">
-                <h1 class="dashboard-title">{{ pageTitle }}</h1>
-              </div>
-            </div>
-
-            <!-- CENTER -->
-            <div class="dashboard-toolbar__center">
-               <GlobalSearch />
-            </div>
-
-            <!-- RIGHT -->
-            <div class="dashboard-toolbar__right">
-              <div class="dashboard-actions">
-                <b-tooltip label="Notificaciones" position="is-bottom" append-to-body>
-                  <div class="has-badge-wrapper">
-                    <b-button class="toolbar-btn" type="is-light" :icon-right="showPanel ? 'close' : 'bell'"
-                      :class="{ 'bell-btn--ringing': bellRinging && !showPanel }"
-                      @click="showPanel ? handleClosePanel() : openPanelMobile()" />
-                    <transition name="badge-fade">
-                      <b-tag v-if="unreadNotifications > 0" type="is-primary" size="is-small" rounded class="is-badge">
-                        {{ unreadNotifications }}
-                      </b-tag>
-                    </transition>
-                  </div>
-                </b-tooltip>
-
-
-
-
-                <!-- 
-                <b-tooltip label="Modo oscuro (beta)" position="is-bottom" append-to-body>
-                  <b-button
-                    class="toolbar-btn"
-                    :type="isDark ? 'is-dark' : 'is-light'"
-                    icon-pack="fas"
-                    icon-left="adjust"
-                    @click="toggleDarkMode"
-                  />
-                </b-tooltip>
-
-                <b-tooltip
-                  :label="reducedEffects ? 'Efectos reducidos: ON' : 'Efectos reducidos: OFF'"
-                  position="is-bottom"
-                  append-to-body
-                >
-                  <b-button
-                    class="toolbar-btn"
-                    :type="reducedEffects ? 'is-primary' : 'is-light'"
-                    icon-pack="fas"
-                    :icon-left="reducedEffects ? 'eye-slash' : 'eye'"
-                    @click="toggleReducedEffects"
-                  />
-                </b-tooltip>
-
-                <b-dropdown
-                  aria-role="list"
-                  icon-left="text-height"
-                  position="is-bottom-left"
-                  :close-on-click="true"
-                  append-to-body
-                >
-                  <template #trigger>
-                    <b-button class="toolbar-btn" size="is-light" icon-left="text-height" type="is-light">
-                      Tamaño
-                    </b-button>
-                  </template>
-                <b-dropdown-item @click="setFontSize('xs')">🅰 Extra pequeña</b-dropdown-item>
-                <b-dropdown-item @click="setFontSize('sm')">🅰 Pequeña</b-dropdown-item>
-                <b-dropdown-item @click="setFontSize('md')">🅰 Mediana (recomendada)</b-dropdown-item>
-                <b-dropdown-item @click="setFontSize('lg')">🅰 Grande</b-dropdown-item>
-                </b-dropdown>
-                -->
-                <b-dropdown position="is-bottom-left" aria-role="menu" append-to-body class="user-dd">
-                  <template #trigger>
-                    <b-button class="toolbar-user" type="is-primary" icon-right="user-circle" label="Usuario" />
-                  </template>
-
-                  <b-dropdown-item aria-role="menu-item" @click="profile" class="dropmenu-is-light">
-                    <b-icon icon="user" size="is-small" />&nbsp; Perfil
-                  </b-dropdown-item>
-
-                  <b-dropdown-item aria-role="menu-item" @click="settings" class="dropmenu-is-light">
-                    <b-icon icon="cog" size="is-small" />&nbsp; Configuración
-                  </b-dropdown-item>
-
-                  <hr class="dropdown-divider" />
-
-                  <b-dropdown-item aria-role="menu-item" @click="logout" class="dropmenu-is-light">
-                    <b-icon icon="sign-out-alt" size="is-small" />&nbsp; Cerrar sesión
-                  </b-dropdown-item>
-                </b-dropdown>
-              </div>
-            </div>
-          </div>
-
-          <!-- MOBILE TOPBAR -->
-          <div v-else class="mobile-topbar">
-            <div class="mobile-topbar__left">
-              <b-button icon-left="bars" class="menu-toggle" type="is-primary" size="is-small"
-                @click="toggleMobileSidebar" />
-              <div class="mobile-title-wrap">
-                <div class="mobile-title">{{ pageTitle }}</div>
-                <div class="mobile-subtitle">{{ currentRouteName }}</div>
-              </div>
-            </div>
-
-            <div class="mobile-topbar__right">
-              <b-tooltip label="Buscar" position="is-bottom" append-to-body>
-                <b-button class="toolbar-btn" type="is-light" icon-pack="fas" icon-left="search"
-                  @click="toggleMobileSearch" />
-              </b-tooltip>
-
-              <b-tooltip label="Notificaciones" position="is-bottom" append-to-body>
-                <div class="has-badge-wrapper">
-                  <b-button class="toolbar-btn" type="is-light" :icon-right="showPanel ? 'close' : 'bell'"
-                    :class="{ 'bell-btn--ringing': bellRinging && !showPanel }"
-                    @click="showPanel ? closePanel() : openPanelMobile()" />
-                  <transition name="badge-fade">
-                    <b-tag v-if="unreadNotifications > 0" type="is-primary" size="is-small" rounded class="is-badge">
-                      {{ unreadNotifications }}
-                    </b-tag>
-                  </transition>
-                </div>
-              </b-tooltip>
-
-              <b-dropdown position="is-bottom-left" aria-role="menu" append-to-body class="mobile-more">
-                <template #trigger>
-                  <b-button class="toolbar-btn" type="is-light" icon-pack="fas" icon-left="ellipsis-v" />
-                </template>
-
-                <!-- 
-                <b-dropdown-item aria-role="menu-item" @click="toggleDarkMode">
-                  <b-icon icon="adjust" size="is-small" />&nbsp;
-                  {{ isDark ? "Modo claro" : "Modo oscuro" }}
-                </b-dropdown-item>
-
-                <b-dropdown-item aria-role="menu-item" @click="toggleReducedEffects">
-                  <b-icon :icon="reducedEffects ? 'eye-slash' : 'eye'" size="is-small" />&nbsp;
-                  {{ reducedEffects ? "Efectos reducidos: ON" : "Efectos reducidos: OFF" }}
-                </b-dropdown-item>
-
-                <hr class="dropdown-divider" />
-
-                <b-dropdown-item aria-role="menu-item" @click="setFontSize('xs')">🅰 Extra pequeña</b-dropdown-item>
-                <b-dropdown-item aria-role="menu-item" @click="setFontSize('sm')">🅰 Pequeña</b-dropdown-item>
-                <b-dropdown-item aria-role="menu-item" @click="setFontSize('md')">🅰 Mediana</b-dropdown-item>
-                <b-dropdown-item aria-role="menu-item" @click="setFontSize('lg')">🅰 Grande</b-dropdown-item>
-
-                <hr class="dropdown-divider" />
-                -->
-                <b-dropdown-item aria-role="menu-item" @click="profile">
-                  <b-icon icon="user" size="is-small" />&nbsp; Perfil
-                </b-dropdown-item>
-
-                <b-dropdown-item aria-role="menu-item" @click="settings">
-                  <b-icon icon="cog" size="is-small" />&nbsp; Configuración
-                </b-dropdown-item>
-
-                <hr class="dropdown-divider" />
-
-                <b-dropdown-item aria-role="menu-item" @click="logout">
-                  <b-icon icon="sign-out-alt" size="is-small" />&nbsp; Cerrar sesión
-                </b-dropdown-item>
-              </b-dropdown>
-            </div>
-
-            <!-- Overlay buscador -->
-            <transition name="mobile-search">
-              <div v-if="mobileSearchOpen" class="mobile-search-overlay" @click.self="closeMobileSearch">
-                <div class="mobile-search-card">
-                  <div class="mobile-search-head">
-                    <span class="mobile-search-title">Buscar</span>
-                    <b-button size="is-small" type="is-light" icon-pack="fas" icon-left="times"
-                      @click="closeMobileSearch" />
-                  </div>
-
-                  <b-field class="m-0">
-                    <b-input ref="mobileSearchInputRef" v-model="mobileSearchQuery" placeholder="Buscar en el panel..."
-                      icon-pack="fas" icon="search" expanded rounded />
-                  </b-field>
-
-                  <p class="mobile-search-hint">Tip: aquí puedes conectar tu búsqueda global si quieres.</p>
-                </div>
-              </div>
-            </transition>
-          </div>
-        </section>
-
-        <!-- Body -->
-        <section class="dashboard-body">
-          <router-view v-slot="{ Component }">
-            <component :is="Component" :user="user" :loading="loading" />
-          </router-view>
-        </section>
-
-        <!-- Footer -->
-        <footer class="dashboard-footer">
-          <div class="content has-text-centered">
-            <p>
-              <strong>RSBO</strong> · Lightweight UI components for Vue 3 based on Bulma. <br />
-              <small>
-                Código bajo licencia <a href="https://opensource.org/license/mit">MIT</a> · Contenido bajo
-                <a href="https://creativecommons.org/licenses/by-nc-sa/4.0//">CC BY NC SA 4.0</a>.
-              </small>
-            </p>
-          </div>
-        </footer>
-      </main>
-    </div>
-  </div>
-</template>
-
-<style scoped>
-/* =========
-  Layout
-========= */
-.app-layout {
-  display: flex;
-  flex-direction: column;
-  height: calc(var(--vh, 1vh) * 100);
-  width: 100%;
-  min-width: 360px;
-  position: relative;
-  overflow: hidden;
-}
-
-/* soft background — usa el token de gradiente (cambia en dark) */
-.layout-bg {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background: var(--grad-header-bg);
-}
-
-/* ensure content above bg */
-.content-layout {
-  position: relative;
-  z-index: 1;
-
-  display: flex;
-  flex: 1;
-  min-height: 0;
-  min-width: 0;
-  flex-direction: row;
-}
-
-/* Offline bar */
-.offline-bar {
-  position: fixed;
-  top: 0;
-  width: 100%;
-  z-index: 2000;
-}
-
-/* Main layout uses vars instead of inline style */
-.main-content {
-  margin-left: var(--sidebar-w);
-  transition: margin-left 0.22s ease;
-
-  flex: 1;
-  min-width: 0;
-  overflow-y: auto;
-  box-sizing: border-box;
-
-  padding-bottom: 1rem;
-}
-
-/* =========
-  Header (glass + sticky)
-========= */
-.dashboard-header {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-
-  padding: 1rem 1.25rem 0.75rem;
-  border-bottom: 1px solid var(--border);
-
-  background: var(--surface);
-  backdrop-filter: blur(var(--fx-blur));
-  -webkit-backdrop-filter: blur(var(--fx-blur));
-  box-shadow: var(--shadow-sm);
-}
-
-.dashboard-header::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.65;
-  background:
-    radial-gradient(circle at 0 0, rgba(255, 255, 255, 0.22), transparent 60%),
-    radial-gradient(circle at 100% 100%, rgba(15, 23, 42, 0.10), transparent 60%);
-}
-
-.dashboard-header>* {
-  position: relative;
-  z-index: 1;
-}
-
-/* =========================================
-   ✅ Toolbar grid (FIX de centrado real)
-   - el buscador queda en el centro REAL
-   - la derecha queda bien alineada sin empujar el centro
-   ========================================= */
-.dashboard-toolbar {
-  display: grid;
-
-  /* ✅ 3 columnas simétricas:
-     left  : ocupa sin romper
-     center: ancho controlado (el buscador)
-     right : ocupa sin romper */
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 560px) minmax(0, 1fr);
-  grid-template-areas: "left center right";
-
-  align-items: center;
-  column-gap: 1rem;
-  row-gap: 0.75rem;
-}
-
-.dashboard-toolbar__left {
-  grid-area: left;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  min-width: 0;
-  justify-self: start;
-}
-
-.dashboard-toolbar__center {
-  grid-area: center;
-  min-width: 0;
-  justify-self: center;
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.dashboard-toolbar__right {
-  grid-area: right;
-  min-width: 0;
-  justify-self: end;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-
-}
-
-/* Title */
-.dashboard-title {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 900;
-  color: var(--text);
-}
-
-/* =========================================
-   ✅ Search (quita márgenes fantasma Bulma/Buefy)
-   ========================================= */
-.dashboard-search {
-  width: 100%;
-  margin: 0 !important;
-  max-width: none !important;
-  /* ahora lo controla la columna central */
-}
-
-/* Buefy/Bulma meten margin-bottom en .field */
-.dashboard-search :deep(.field) {
-  margin: 0 !important;
-}
-
-/* Asegura que el control e input llenen el ancho */
-.dashboard-search :deep(.control) {
-  width: 100%;
-}
-
-.dashboard-search :deep(.input) {
-  width: 100%;
-}
-
-/* =========================================
-   ✅ Actions (derecha) bien distribuidas
-   - NO wrap (evita que empuje/rompa el centro)
-   - mantiene espaciado consistente
-   ========================================= */
-.dashboard-actions {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-
-  gap: 0.5rem;
-  flex-wrap: nowrap;
-  white-space: nowrap;
-}
-
-/* Botones */
-.toolbar-btn :deep(.button) {
-  border-radius: 999px;
-  box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.22);
-}
-
-.toolbar-user :deep(.button) {
-  border-radius: 999px;
-  box-shadow: 0 14px 30px rgba(88, 28, 135, 0.18);
-}
-
-/* Si dropdown/user button mete ancho raro */
-.user-dd,
-.user-dd :deep(.dropdown),
-.user-dd :deep(.dropdown-trigger) {
-  display: inline-flex;
-  align-items: center;
-}
-
-/* Badge */
-.has-badge-wrapper {
-  position: relative;
-  display: inline-block;
-}
-
-.is-badge {
-  position: absolute;
-  top: 0;
-  right: 0;
-  transform: translate(40%, -40%);
-  font-size: 0.65rem;
-  z-index: 1;
-}
-
-/* Badge anim */
-.badge-fade-enter-active,
-.badge-fade-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
-}
-
-.badge-fade-enter-from,
-.badge-fade-leave-to {
-  opacity: 0;
-  transform: translate(40%, -60%) scale(0.85);
-}
-
-/* =========
-  Mobile topbar
-========= */
-.dashboard-header--mobile {
-  padding: 0.55rem 0.75rem;
-}
-
-.mobile-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.6rem;
-  min-height: 52px;
-}
-
-.mobile-topbar__left {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  min-width: 0;
-}
-
-.menu-toggle {
-  border-radius: 999px;
-}
-
-.mobile-title-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 0.05rem;
-  min-width: 0;
-}
-
-.mobile-title {
-  font-weight: 900;
-  font-size: 0.98rem;
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.mobile-subtitle {
-  font-size: 0.78rem;
-  color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.mobile-topbar__right {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-}
-
-/* Mobile search overlay */
-.mobile-search-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 1001;
-  background: var(--surface-overlay);
-  backdrop-filter: blur(var(--fx-blur));
-  -webkit-backdrop-filter: blur(var(--fx-blur));
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 0.9rem 0.75rem;
-}
-
-.mobile-search-card {
-  width: min(720px, 100%);
-  background: var(--surface-raised);
-  border-radius: var(--radius-lg);
-  padding: 0.75rem;
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-lg);
-}
-
-.mobile-search-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.55rem;
-}
-
-.mobile-search-title {
-  font-weight: 900;
-  color: var(--text-primary);
-}
-
-.mobile-search-hint {
-  margin: 0.55rem 0 0;
-  font-size: 0.8rem;
-  color: var(--text-muted);
-}
-
-.mobile-search-enter-active,
-.mobile-search-leave-active {
-  transition: opacity 180ms ease, transform 180ms ease;
-}
-
-.mobile-search-enter-from,
-.mobile-search-leave-to {
-  opacity: 0;
-  transform: translateY(-10px);
-}
-
-/* =========
-  Body + Footer
-========= */
-.dashboard-body {
-  padding: 0;
-}
-
-.dashboard-footer {
-  padding: 0.75rem 1.25rem 1.25rem;
-  color: var(--text-muted);
-}
-
-/* Overlay sidebar móvil */
-.blur-overlay {
-  position: fixed;
-  inset: 0;
-  background: var(--surface-overlay);
-  backdrop-filter: blur(var(--fx-blur));
-  -webkit-backdrop-filter: blur(var(--fx-blur));
-  z-index: 9;
-  pointer-events: auto;
-}
-
-/* Overlay sidebar móvil: encima del contenido pero debajo del sidebar (z-index 21) */
-.sidebar-mobile-overlay {
-  z-index: 20;
-}
-
-/* Overlay transparente para cerrar panel flotante de notificaciones */
-.notif-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 199;  /* justo debajo del panel (z-index 200) */
-  background: transparent;
-  pointer-events: auto;
-}
-/* En móvil, oscurecemos un poco el fondo (bottom sheet) */
-@media (max-width: 768px) {
-  .notif-overlay {
-    background: color-mix(in srgb, var(--surface-overlay, rgba(0,0,0,0.3)) 60%, transparent);
-    backdrop-filter: blur(2px);
-    -webkit-backdrop-filter: blur(2px);
-  }
-}
-
-/* ===== Mobile behavior fixes ===== */
-@media screen and (max-width: 768px) {
-  .dashboard-body {
-    padding: 0;
-  }
-
-  .dashboard-footer {
-    padding: 0.75rem 0.9rem 1.25rem;
-  }
-
-  .ignore-grid-mobile {
-    all: unset !important;
-    display: block !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    overflow-y: auto !important;
-    position: fixed !important;
-    top: 0;
-    left: 0;
-    background-color: transparent;
-    z-index: 10;
-    box-sizing: border-box !important;
-    overscroll-behavior: contain !important;
-  }
-
-  /* En móvil ya no necesitamos el grid del desktop */
-  .dashboard-toolbar {
-    grid-template-columns: 1fr;
-    grid-template-areas:
-      "left"
-      "center"
-      "right";
-  }
-
-  .dashboard-toolbar__center {
-    justify-self: stretch;
-  }
-
-  .dashboard-toolbar__right {
-    justify-self: stretch;
-  }
-
-  .dashboard-actions {
-    justify-content: flex-start;
-    flex-wrap: wrap;
-  }
-}
-
-/* =========
-  Mobile sidebar animations (same as yours)
-========= */
-@keyframes mobileSidebtractionIn {
-  0% {
-    transform: translateX(-110%);
-    opacity: 0;
-  }
-
-  60% {
-    transform: translateX(15%);
-    opacity: 1;
-  }
-
-  80% {
-    transform: translateX(-5%);
-  }
-
-  100% {
-    transform: translateX(0);
-  }
-}
-
-@keyframes mobileSidebtractionOut {
-  0% {
-    transform: translateX(0);
-    opacity: 1;
-  }
-
-  100% {
-    transform: translateX(-110%);
-    opacity: 0;
-  }
-}
-
-.mobileSidebtraction-enter-active {
-  animation: mobileSidebtractionIn 0.4s forwards cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.mobileSidebtraction-leave-active {
-  animation: mobileSidebtractionOut 0.3s forwards cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Los efectos reducidos se manejan en tokens.css vía [data-reduced-effects="true"] */
-
-/* ── Bell ring animation ─────────────────────────────────────────────────── */
-@keyframes bell-ring {
-  0%, 100% { transform: rotate(0deg); }
-  15%       { transform: rotate(-18deg); }
-  30%       { transform: rotate(18deg); }
-  45%       { transform: rotate(-14deg); }
-  60%       { transform: rotate(14deg); }
-  75%       { transform: rotate(-8deg); }
-  90%       { transform: rotate(4deg); }
-}
-
-.bell-btn--ringing :deep(.icon) {
-  animation: bell-ring 0.75s ease forwards;
-  transform-origin: top center;
-}
-</style>
+<style src="@/components/dashboard-layout/DashboardLayoutGrid.css" />

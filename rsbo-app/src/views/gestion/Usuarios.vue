@@ -203,7 +203,7 @@ import UserEditModal   from "@/components/usuarios/UserEditModal.vue";
 import UserPasswordModal from "@/components/usuarios/UserPasswordModal.vue";
 import UserCreateModal from "@/components/usuarios/UserCreateModal.vue";
 import { usersService } from "../../services/usersService.js";
-import { labToast } from "@/composables/useLabToast";
+import { labToast } from "@/composables/shared/useLabToast";
 import { formatRoleLabel, roleTagType } from "@/utils/roleHelpers.js";
 
 const roles = ref([]);

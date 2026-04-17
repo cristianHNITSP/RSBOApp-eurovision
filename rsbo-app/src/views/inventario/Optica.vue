@@ -1,7 +1,7 @@
 <!-- src/views/inventario/Optica.vue -->
 <script setup>
 import { ref, computed, reactive, onMounted } from "vue";
-import { labToast } from "@/composables/useLabToast.js";
+import { labToast } from "@/composables/shared/useLabToast.js";
 import DynamicTabs from "@/components/DynamicTabs.vue";
 import {
   armazonesService, solucionesService,

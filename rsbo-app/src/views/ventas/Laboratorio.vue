@@ -19,7 +19,7 @@
 
 <script setup>
 import { provide } from "vue";
-import { useLaboratorioApi } from "@/composables/useLaboratorioApi";
+import { useLaboratorioApi } from "@/composables/api/useLaboratorioApi";
 import DynamicTabs from "@/components/DynamicTabs.vue";
 
 import LabHero from "@/components/laboratorio/LabHero.vue";

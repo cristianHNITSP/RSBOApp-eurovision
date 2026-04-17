@@ -68,7 +68,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
-import { useAccessibility } from "@/composables/useAccessibility";
+import { useAccessibility } from "@/composables/ui/useAccessibility";
 
 const open = ref(false);
 

@@ -378,9 +378,9 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { useIntersectionObserver } from "@/composables/useIntersectionObserver";
+import { useIntersectionObserver } from "@/composables/ui/useIntersectionObserver";
 import { useAuthService } from "@/services/authService.js";
-import { labToast } from "@/composables/useLabToast";
+import { labToast } from "@/composables/shared/useLabToast";
 import logoImg from "@/assets/img/logo-euro.png";
 
 useIntersectionObserver(".animate-fade-up");

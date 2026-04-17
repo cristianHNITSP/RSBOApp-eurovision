@@ -22,6 +22,10 @@
   --c-info:            #3b82f6;
   --c-info-alpha:      rgba(59, 130, 246, 0.14);
 
+  /* === Sidebar Colors === */
+  --c-sidebar-warm:    #f97316;
+  --c-sidebar-pink:    #ec4899;
+
   /* === Fondos === */
   --bg-base:           #ffffff;
   --bg-subtle:         #f9fafb;
@@ -31,7 +35,7 @@
   --surface:           rgba(255, 255, 255, 0.88);
   --surface-solid:     #ffffff;
   --surface-raised:    rgba(255, 255, 255, 0.92);
-  --surface-overlay:   rgba(255, 255, 255, 0.75);
+  --surface-overlay:   rgba(255, 255, 255, 0.58);
 
   /* === Texto === */
   --text-primary:      #0f172a;
@@ -160,6 +164,9 @@
   --c-info:            #60a5fa;
   --c-info-alpha:      rgba(96, 165, 250, 0.16);
 
+  --c-sidebar-warm:    #fb923c;
+  --c-sidebar-pink:    #f472b6;
+
   /* === Fondos === */
   --bg-base:           #0f1117;
   --bg-subtle:         #161b22;
@@ -169,7 +176,7 @@
   --surface:           rgba(22, 27, 34, 0.92);
   --surface-solid:     #161b22;
   --surface-raised:    rgba(30, 36, 50, 0.95);
-  --surface-overlay:   rgba(22, 27, 34, 0.80);
+  --surface-overlay:   rgba(22, 27, 34, 0.62);
 
   /* === Texto === */
   --text-primary:      #f0f4ff;

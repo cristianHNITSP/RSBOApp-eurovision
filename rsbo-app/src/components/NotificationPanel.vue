@@ -1,6 +1,6 @@
 <script>
 import { ref } from 'vue';
-import { labToast } from '@/composables/useLabToast.js';
+import { labToast } from '@/composables/shared/useLabToast.js';
 import { fetchNotifications, markNotifRead, markAllNotifRead, pinNotification, dismissNotifApi } from '@/services/notifications';
 
 const TYPE_TAG = {

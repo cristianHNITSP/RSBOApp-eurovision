@@ -1,0 +1,102 @@
+.sidebar-wrapper {
+    position: relative;
+    z-index: 21;
+}
+
+/* ===== SIDEBAR BASE ===== */
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    color: var(--text-primary);
+    display: flex;
+    flex-direction: column;
+
+    border-right: 1px solid var(--border);
+    box-shadow: var(--shadow-soft);
+    transition: width 0.4s cubic-bezier(0.32, 0.72, 0, 1), transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+    z-index: 21;
+
+    /* soft background */
+    background:
+        radial-gradient(circle at 0% 0%, rgba(121, 87, 213, 0.08), transparent 55%),
+        radial-gradient(circle at 100% 80%, rgba(236, 72, 153, 0.06), transparent 55%),
+        var(--surface-solid);
+
+    /* overlays */
+    .sidebar-decor {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        opacity: 0.65;
+        z-index: 0;
+        background:
+            radial-gradient(circle at 0 0, rgba(255, 255, 255, 0.22), transparent 55%),
+            radial-gradient(circle at 100% 100%, rgba(15, 23, 42, 0.14), transparent 60%);
+    }
+
+    .sidebar-decor--bottom {
+        opacity: 0.45;
+        background:
+            radial-gradient(circle at 30% 100%, rgba(249, 115, 22, 0.16), transparent 55%),
+            radial-gradient(circle at 90% 60%, rgba(154, 109, 255, 0.14), transparent 55%);
+    }
+
+    /* content above */
+    >* {
+        position: relative;
+        z-index: 1;
+    }
+
+    &.is-collapsed {
+        width: 70px;
+
+        .menu-item-label,
+        .menu-group-title,
+        .user-info,
+        .sidebar-brand-text {
+            display: none;
+        }
+
+        .menu-item {
+            justify-content: center;
+            padding-left: 0.35rem;
+            padding-right: 0.35rem;
+        }
+
+        .menu-item-inner {
+            justify-content: center;
+        }
+
+        .sidebar-footer-inner,
+        .user-profile {
+            justify-content: center;
+        }
+
+        .sidebar-header {
+            padding-inline: 0.5rem;
+        }
+    }
+}
+
+/* Animación gradiente header */
+@keyframes sidebar-gradient-shift {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+@media screen and (max-width: 768px) {
+    .sidebar {
+        border-right: 1px solid var(--border);
+    }
+}

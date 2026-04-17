@@ -1,0 +1,71 @@
+.mobile-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  min-height: 52px;
+}
+
+.mobile-topbar__left {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.mobile-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  min-width: 0;
+}
+
+.mobile-title {
+  font-weight: 900;
+  font-size: 0.98rem;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mobile-subtitle {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mobile-topbar__right {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+/* Reutilización parcial de Toolbar badges si es necesario, 
+   pero aquí se definen los específicos de móvil */
+.has-badge-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.is-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  transform: translate(40%, -40%);
+  font-size: 0.65rem;
+  z-index: 1;
+}
+
+.badge-fade-enter-active,
+.badge-fade-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.badge-fade-enter-from,
+.badge-fade-leave-to {
+  opacity: 0;
+  transform: translate(40%, -60%) scale(0.85);
+}

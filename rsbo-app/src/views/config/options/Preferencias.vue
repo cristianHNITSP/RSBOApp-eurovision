@@ -194,7 +194,7 @@
 
 <script setup>
 import { ref, computed, watch } from "vue";
-import { useAccessibility } from "@/composables/useAccessibility";
+import { useAccessibility } from "@/composables/ui/useAccessibility";
 
 const {
     state: a11y,

@@ -1,0 +1,321 @@
+/* ═══════════════════════════════════════════════════════════════
+   LAYOUT & CONTAINER
+   ═══════════════════════════════════════════════════════════════ */
+.grid-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.grid-topbar {
+  flex: 0 0 auto;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+.navtools-wrap {
+  padding: 0.5rem 0.75rem;
+}
+
+.grid-main {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0 0.75rem 0.75rem;
+}
+
+/* ── Degree bar (Torico specific) ────────────────────────────── */
+.degree-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  border-bottom: 1px solid rgba(121, 87, 213, 0.12);
+}
+
+.degree-bar__label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--c-muted, #888);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.degree-bar__pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.degree-pill {
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid rgba(121, 87, 213, 0.25);
+  background: transparent;
+  font-size: 0.72rem;
+  cursor: pointer;
+  color: inherit;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.degree-pill:hover {
+  background: rgba(121, 87, 213, 0.08);
+  border-color: rgba(121, 87, 213, 0.4);
+}
+
+.degree-pill--active {
+  background: rgba(121, 87, 213, 0.18);
+  border-color: rgba(121, 87, 213, 0.6);
+  font-weight: 700;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   GLASSMORPHISM SHELL
+   ═══════════════════════════════════════════════════════════════ */
+.glass-shell {
+  position: relative;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+
+  /* Fondo translúcido + blur */
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(var(--fx-blur, 14px)) saturate(1.4);
+  -webkit-backdrop-filter: blur(var(--fx-blur, 14px)) saturate(1.4);
+
+  /* Bordes suaves */
+  border-radius: var(--radius-lg, 14px);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.12),
+    var(--shadow-md, 0 10px 30px rgba(15, 23, 42, 0.08));
+
+  /* Transición suave al cambiar de vista o filtrar */
+  transition:
+    opacity 180ms ease,
+    transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    filter 180ms ease;
+  will-change: opacity, transform, filter;
+}
+
+.glass-shell--switching {
+  opacity: 0;
+  transform: translate3d(0, 10px, 0) scale(0.993);
+  filter: blur(1.5px);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass-shell {
+    transition: none !important;
+  }
+}
+
+/* Dark mode glass shell */
+[data-theme="dark"] .glass-shell {
+  background: rgba(15, 18, 40, 0.55);
+  box-shadow:
+    0 0 0 1px rgba(167, 139, 250, 0.10),
+    0 12px 40px rgba(0, 0, 0, 0.35);
+}
+
+/* ── Badges (Dev info) ───────────────────────────────────────── */
+.dev-col-badge,
+.dev-row-badge {
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  z-index: 20;
+  background: rgba(167, 139, 250, 0.18);
+  border: 1px solid rgba(167, 139, 250, 0.35);
+  color: #7c3aed;
+  font-size: 10px;
+  font-family: monospace;
+  padding: 2px 7px;
+  border-radius: 999px;
+  pointer-events: none;
+  user-select: none;
+}
+
+.dev-col-badge__spin,
+.dev-row-badge__spin {
+  display: inline-block;
+  animation: spin 0.8s linear infinite;
+  margin-left: 3px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   AG GRID — GLASS OVERRIDES
+   ═══════════════════════════════════════════════════════════════ */
+.ag-grid-glass {
+  width: 100%;
+  height: 100%;
+  --ag-background-color: transparent;
+  --ag-odd-row-background-color: transparent;
+}
+
+/* Eliminar bordes internos rígidos */
+.ag-grid-glass :deep(.ag-root-wrapper) {
+  border: none !important;
+}
+
+.ag-grid-glass :deep(.ag-cell) {
+  border-right: none !important;
+}
+
+.ag-grid-glass :deep(.ag-row) {
+  border-bottom: none !important;
+  box-shadow: 0 1px 0 rgba(148, 163, 184, 0.06);
+}
+
+/* Header styling */
+.ag-grid-glass :deep(.ag-header) {
+  background: rgba(245, 243, 255, 0.72);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(121, 87, 213, 0.10) !important;
+}
+
+[data-theme="dark"] .ag-grid-glass :deep(.ag-header) {
+  background: rgba(20, 16, 45, 0.65);
+  border-bottom: 1px solid rgba(167, 139, 250, 0.12) !important;
+}
+
+/* Pinned columns */
+.ag-grid-glass :deep(.ag-cell.ag-cell--pinned),
+.ag-grid-glass :deep(.ag-header-cell.ag-header-cell--pinned) {
+  background: rgba(245, 243, 255, 0.55) !important;
+  font-weight: 600;
+}
+
+[data-theme="dark"] .ag-grid-glass :deep(.ag-cell.ag-cell--pinned) {
+  background: rgba(30, 20, 60, 0.55) !important;
+}
+
+/* Row Hover */
+.ag-grid-glass :deep(.ag-row-hover) {
+  background: rgba(121, 87, 213, 0.07) !important;
+}
+
+[data-theme="dark"] .ag-grid-glass :deep(.ag-row-hover) {
+  background: rgba(167, 139, 250, 0.08) !important;
+}
+
+/* Cell density & variants */
+.ag-grid-glass :deep(.ag-cell.ag-cell--compact) {
+  padding-inline: 6px;
+  line-height: 1.2;
+  font-size: 0.75rem;
+}
+
+.ag-grid-glass :deep(.ag-cell.ag-cell--numeric) {
+  justify-content: flex-end;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.ag-grid-glass :deep(.ag-header-cell.ag-header-cell--compact) {
+  padding-inline: 6px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SKELETON LOADING (Shimmer effect)
+   ═══════════════════════════════════════════════════════════════ */
+.ag-grid-glass :deep(.skeleton-cell) {
+  display: block;
+  width: 90%;
+  height: 10px;
+  border-radius: 4px;
+  margin: auto;
+  background: linear-gradient(90deg,
+      rgba(148, 163, 184, 0.12) 25%,
+      rgba(148, 163, 184, 0.28) 50%,
+      rgba(148, 163, 184, 0.12) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease infinite;
+}
+
+/* Skeleton variants per component */
+.ag-grid-glass :deep(.skeleton-cell--cyl) {
+  width: 55%;
+  background: linear-gradient(90deg,
+      rgba(121, 87, 213, 0.07) 25%,
+      rgba(121, 87, 213, 0.18) 50%,
+      rgba(121, 87, 213, 0.07) 75%);
+}
+
+.ag-grid-glass :deep(.skeleton-cell--stock) {
+  width: 60%;
+}
+
+.ag-grid-glass :deep(.skeleton-cell--add) {
+  width: 70%;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% center;
+  }
+
+  100% {
+    background-position: -200% center;
+  }
+}
+
+/* Loading rows */
+.ag-grid-glass :deep(.ag-row.ag-row--loading-row) {
+  background: rgba(121, 87, 213, 0.02) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   STOCK ALERTS (Glass aesthetics)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Full row highlights */
+.ag-grid-glass :deep(.ag-row.ag-row--stock-low) {
+  background: rgba(167, 139, 250, 0.06) !important;
+  box-shadow: inset 3px 0 0 rgba(139, 92, 246, 0.55), 0 1px 0 rgba(148, 163, 184, 0.06);
+}
+
+.ag-grid-glass :deep(.ag-row.ag-row--stock-zero) {
+  background: rgba(99, 102, 241, 0.05) !important;
+  box-shadow: inset 3px 0 0 rgba(79, 70, 229, 0.60), 0 1px 0 rgba(148, 163, 184, 0.06);
+}
+
+/* Specific cell alerts */
+.ag-grid-glass :deep(.ag-cell.ag-cell--stock-low) {
+  font-weight: 700;
+  background: rgba(139, 92, 246, 0.10);
+  border-radius: 5px;
+  color: #6d28d9;
+}
+
+[data-theme="dark"] .ag-grid-glass :deep(.ag-cell.ag-cell--stock-low) {
+  color: #c4b5fd;
+  background: rgba(139, 92, 246, 0.18);
+}
+
+.ag-grid-glass :deep(.ag-cell.ag-cell--stock-zero) {
+  font-weight: 800;
+  background: rgba(99, 102, 241, 0.12);
+  border-radius: 5px;
+  color: #4338ca;
+}
+
+[data-theme="dark"] .ag-grid-glass :deep(.ag-cell.ag-cell--stock-zero) {
+  color: #a5b4fc;
+  background: rgba(99, 102, 241, 0.20);
+}

@@ -521,8 +521,8 @@ import {
   createDevolution,
   updateDevolutionStatus,
 } from "@/services/devolutions.js";
-import { useDashboardStats } from "@/composables/useDashboardStats.js";
-import { labToast } from "@/composables/useLabToast.js";
+import { useDashboardStats } from "@/composables/api/useDashboardStats.js";
+import { labToast } from "@/composables/shared/useLabToast.js";
 
 // ── Props (DashboardLayout pasa :user a todos los hijos) ─────────────────────
 const props = defineProps({ user: Object, loading: Boolean });

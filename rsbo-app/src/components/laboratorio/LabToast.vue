@@ -49,7 +49,7 @@
 </template>
 
 <script setup>
-import { useLabToast } from "@/composables/useLabToast.js";
+import { useLabToast } from "@/composables/shared/useLabToast.js";
 
 const { notifications, dismiss } = useLabToast();
 

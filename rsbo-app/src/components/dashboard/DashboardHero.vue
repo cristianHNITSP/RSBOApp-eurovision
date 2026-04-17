@@ -51,7 +51,7 @@
           <img :src="avatarUrl" class="pcta-avatar" alt="" />
           <div class="pcta-info">
             <span class="pcta-name">{{ firstName }}</span>
-            <span class="pcta-label">Administrar perfil</span>
+            <span class="pcta-label"> Administrar perfil</span>
           </div>
           <i class="fas fa-arrow-right pcta-arrow"></i>
         </button>

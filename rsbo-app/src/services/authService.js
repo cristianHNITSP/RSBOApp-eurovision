@@ -1,7 +1,7 @@
 // src/services/authService.js
 import api from "../api/axios";
 import router from "../router/index";
-import { labToast } from "@/composables/useLabToast.js";
+import { labToast } from "@/composables/shared/useLabToast.js";
 
 /* ============================ API (AUTH) ============================ */
 

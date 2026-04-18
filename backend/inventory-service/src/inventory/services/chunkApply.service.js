@@ -19,7 +19,7 @@ async function applyChunkBase(models, sheet, rows, actor) {
     { new: true, upsert: true }
   );
 
-  doc.set("cells", doc.cells || new Map());
+  const updateData = {};
   let updated = 0;
 
   for (const row of rows) {
@@ -52,11 +52,13 @@ async function applyChunkBase(models, sheet, rows, actor) {
     if (!current.createdBy) current.createdBy = actor;
 
     doc.cells.set(k, current);
+    updateData[`cells.${k}`] = current;
     updated++;
   }
 
-  doc.markModified("cells");
-  await doc.save();
+  if (updated > 0) {
+    await MatrixBase.updateOne({ sheet: sheet._id }, { $set: updateData });
+  }
   return { updated };
 }
 
@@ -69,7 +71,7 @@ async function applyChunkSphCyl(models, sheet, rows, actor) {
     { new: true, upsert: true }
   );
 
-  doc.set("cells", doc.cells || new Map());
+  const updateData = {};
   let updated = 0;
 
   for (const row of rows) {
@@ -104,11 +106,13 @@ async function applyChunkSphCyl(models, sheet, rows, actor) {
     if (!current.createdBy) current.createdBy = actor;
 
     doc.cells.set(k, current);
+    updateData[`cells.${k}`] = current;
     updated++;
   }
 
-  doc.markModified("cells");
-  await doc.save();
+  if (updated > 0) {
+    await MatrixSphCyl.updateOne({ sheet: sheet._id }, { $set: updateData });
+  }
   return { updated };
 }
 
@@ -121,7 +125,7 @@ async function applyChunkBifocal(models, sheet, rows, actor) {
     { new: true, upsert: true }
   );
 
-  doc.set("cells", doc.cells || new Map());
+  const updateData = {};
   let updated = 0;
 
   for (const row of rows) {
@@ -159,11 +163,13 @@ async function applyChunkBifocal(models, sheet, rows, actor) {
     if (!cell.createdBy) cell.createdBy = actor;
 
     doc.cells.set(k, cell);
+    updateData[`cells.${k}`] = cell;
     updated++;
   }
 
-  doc.markModified("cells");
-  await doc.save();
+  if (updated > 0) {
+    await MatrixBifocal.updateOne({ sheet: sheet._id }, { $set: updateData });
+  }
   return { updated };
 }
 
@@ -176,7 +182,7 @@ async function applyChunkProgresivo(models, sheet, rows, actor) {
     { new: true, upsert: true }
   );
 
-  doc.set("cells", doc.cells || new Map());
+  const updateData = {};
   let updated = 0;
 
   for (const row of rows) {
@@ -213,11 +219,13 @@ async function applyChunkProgresivo(models, sheet, rows, actor) {
     if (!cell.createdBy) cell.createdBy = actor;
 
     doc.cells.set(k, cell);
+    updateData[`cells.${k}`] = cell;
     updated++;
   }
 
-  doc.markModified("cells");
-  await doc.save();
+  if (updated > 0) {
+    await MatrixProgresivo.updateOne({ sheet: sheet._id }, { $set: updateData });
+  }
   return { updated };
 }
 
@@ -230,9 +238,8 @@ async function applyChunkTorico(models, sheet, rows, actor) {
     { new: true, upsert: true }
   );
 
-  doc.set("cells", doc.cells || new Map());
+  const updateData = {};
   let updated = 0;
-
   for (const row of rows) {
     const sph = to2(row.sph);
     let cyl = normalizeCylConvention(row.cyl);
@@ -266,11 +273,14 @@ async function applyChunkTorico(models, sheet, rows, actor) {
     if (!current.createdBy) current.createdBy = actor;
 
     doc.cells.set(k, current);
+    updateData[`cells.${k}`] = current;
     updated++;
   }
 
-  doc.markModified("cells");
-  await doc.save();
+  if (updated > 0) {
+    // Actualización atómica quirúrgica en lugar de doc.save()
+    await MatrixTorico.updateOne({ sheet: sheet._id }, { $set: updateData });
+  }
   return { updated };
 }
 

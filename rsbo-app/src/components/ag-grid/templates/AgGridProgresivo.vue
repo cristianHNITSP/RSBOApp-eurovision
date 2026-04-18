@@ -41,12 +41,30 @@
 
     <main class="grid-main">
       <div class="glass-shell" :class="{ 'glass-shell--switching': switchingView }">
-        <div v-if="DEV_MODE" class="dev-col-badge">
-          cols {{ activeAddValues.length }} / {{ allAddValues.length }}
-          <span v-if="loadingCols" class="dev-col-badge__spin">⟳</span>
+        <div v-if="loadingCols || loadingRowsCount > 0 || DEV_MODE" class="grid-status-overlay">
+          <!-- CARGA DE COLUMNAS - OCULTO POR REQUERIMIENTO. IMPORTANTE: NO BORRAR ESTE BLOQUE, ES ÚTIL PARA DEBUGGING FUTURO -->
+          <!--
+          <div class="status-badge status-badge--cols">
+            <span class="status-badge__icon" :class="{ 'is-spinning': loadingCols }">⟳</span>
+            <span class="status-badge__text">
+              Columnas: {{ activeAddValues.length }} / {{ allAddValues.length }}
+            </span>
+          </div>
+          -->
+          <!-- CARGA DE FILAS - OCULTO POR REQUERIMIENTO. IMPORTANTE: NO BORRAR ESTE BLOQUE, ES ÚTIL PARA DEBUGGING FUTURO -->
+          <!--
+          <div class="status-badge status-badge--rows">
+            <span class="status-badge__icon" :class="{ 'is-spinning': loadingRowsCount > 0 }">⟳</span>
+            <span class="status-badge__text">
+              Filas: {{ rowsInCacheCount }} / {{ rowAxis.length }}
+              <template v-if="loadingRowsCount > 0"> (cargando {{ loadingRowsCount }}...)</template>
+            </span>
+          </div>
+          -->
         </div>
 
         <AgGridVue
+          v-if="sheetMeta"
           class="ag-grid-glass"
           :columnDefs="columns"
           :rowModelType="'infinite'"
@@ -95,8 +113,8 @@ import { norm, denorm, parseAddEyeFromField, raf } from "@/components/ag-grid/ut
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 const DEV_MODE       = import.meta.env.DEV;
-const DEV_DELAY_MS   = DEV_MODE ? 2000 : 0;
-const ROW_PAGE_SIZE  = DEV_MODE ? 5 : 30;
+const DEV_DELAY_MS   = 0;
+const ROW_PAGE_SIZE  = DEV_MODE ? 4 : 10;
 const COL_CHUNK_SIZE = DEV_MODE ? 3 : 8;
 
 const LOG      = (...a) => DEV_MODE && console.log("[Progresivo]", ...a);
@@ -120,14 +138,12 @@ const integration = useAgGridIntegration({
   onWsRefresh: () => _refreshCachedRows(),
 });
 
-const { gridApi, dirty, saving, lastSavedAt, pendingChanges, gridHistory, unsavedGuard, suppressNextWsRefresh, postMessage } = integration;
+const { gridApi, dirty, saving, lastSavedAt, switchingView, pendingChanges, gridHistory, unsavedGuard, suppressNextWsRefresh, postMessage } = integration;
 
 // ─── State ───────────────────────────────────────────────────────
 const sheetMeta      = ref(null);
 const sheetTabs      = ref([]);
 const physicalLimits = ref(null);
-const switchingView  = ref(false);
-const loadingCols    = ref(false);
 const rowAxis        = ref([]); 
 const allAddValues   = ref([]);
 const rowCaches      = new Map();
@@ -150,7 +166,7 @@ const colManager = useAgGridIncrementalColumns({
   scrollThreshold: 150,
   devMode: DEV_MODE,
 });
-const activeAddValues = colManager.activeValues;
+const { activeValues: activeAddValues, loading: loadingCols } = colManager;
 
 // ─── Límites ─────────────────────────────────────────────────────
 const baseViewId = computed(() => String(props.sphType || "").toLowerCase().includes("neg") ? "base-neg" : "base-pos");
@@ -254,7 +270,7 @@ const columns = computed(() => [
 const defaultColDef = { resizable: true, sortable: true, filter: "agNumberColumnFilter", floatingFilter: true, editable: true, minWidth: 90, maxWidth: 150, cellClass: "ag-cell--compact", headerClass: "ag-header-cell--compact" };
 
 // ─── Pivot Loader ────────────────────────────────────────────────
-const { datasource } = useAgGridPivotLoader({
+const { datasource, loadingRowsCount, rowsInCacheCount } = useAgGridPivotLoader({
   baseAxis: rowAxis, getRowCache, fetchItems, sheetId,
   buildFetchQuery: (pageKeys) => { const allBi = pageKeys.map(k => Number(k.split("|")[0])); return { addMin: phys.value.addMin, addMax: phys.value.addMax, baseMin: Math.min(...allBi), baseMax: Math.max(...allBi), limit: 5000 }; },
   normalizeItem: (i) => ({ base_izq: to2(i.base_izq ?? 0), base_der: to2(i.base_der ?? 0), add: to2(i.add), eye: String(i.eye || "OD").toUpperCase(), existencias: Number(i.existencias ?? 0) }),
@@ -312,7 +328,7 @@ async function switchViewReload({ clearCache = true } = {}) {
     _rebuildAxes();
     if (clearCache) { rowCaches.clear(); colManager.reset(); }
     if (gridApi.value) gridApi.value.setGridOption("datasource", datasource.value);
-    if (clearCache) { loadingCols.value = true; await colManager.init(); loadingCols.value = false; } else { colManager.reattach(); }
+    if (clearCache) { await colManager.init(); } else { colManager.reattach(); }
   } finally { await raf(); switchingView.value = false; }
 }
 

@@ -124,35 +124,58 @@
     0 12px 40px rgba(0, 0, 0, 0.35);
 }
 
-/* ── Badges (Dev info) ───────────────────────────────────────── */
-.dev-col-badge,
-.dev-row-badge {
+/* ── Status Overlay & Badges ───────────────────────────────────── */
+.grid-status-overlay {
   position: absolute;
-  top: 6px;
-  right: 10px;
-  z-index: 20;
-  background: rgba(167, 139, 250, 0.18);
-  border: 1px solid rgba(167, 139, 250, 0.35);
-  color: #7c3aed;
-  font-size: 10px;
-  font-family: monospace;
-  padding: 2px 7px;
-  border-radius: 999px;
+  top: 10px;
+  right: 12px;
+  z-index: 100;
   pointer-events: none;
-  user-select: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
 }
 
-.dev-col-badge__spin,
-.dev-row-badge__spin {
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  background: rgba(121, 87, 213, 0.15);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(121, 87, 213, 0.3);
+  border-radius: 999px;
+  color: var(--c-primary, #7957d5);
+  font-size: 0.7rem;
+  font-weight: 600;
+  font-family: var(--font-mono, monospace);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="dark"] .status-badge {
+  background: rgba(167, 139, 250, 0.2);
+  border-color: rgba(167, 139, 250, 0.4);
+  color: #a78bfa;
+}
+
+.status-badge__icon {
   display: inline-block;
+  font-size: 0.85rem;
+}
+
+.status-badge__icon.is-spinning {
   animation: spin 0.8s linear infinite;
-  margin-left: 3px;
 }
 
 @keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.dev-col-badge,
+.dev-row-badge {
+  display: none; /* Reemplazados por el nuevo status-badge */
 }
 
 /* ═══════════════════════════════════════════════════════════════

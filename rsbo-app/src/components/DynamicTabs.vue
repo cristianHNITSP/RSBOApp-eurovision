@@ -20,9 +20,9 @@ const props = defineProps({
 const emit = defineEmits(["update:modelValue"]);
 
 // ── Sliding indicator ────────────────────────────────────────
-const barRef   = ref(null);
-const tabRefs  = ref([]);
-const indLeft  = ref(0);
+const barRef = ref(null);
+const tabRefs = ref([]);
+const indLeft = ref(0);
 const indWidth = ref(0);
 const indReady = ref(false);
 
@@ -32,7 +32,7 @@ function syncIndicator() {
   );
   const el = tabRefs.value[idx];
   if (!el) return;
-  indLeft.value  = el.offsetLeft;
+  indLeft.value = el.offsetLeft;
   indWidth.value = el.offsetWidth;
   indReady.value = true;
 }
@@ -72,40 +72,18 @@ function select(tab) {
     <!-- ── Tab bar ── -->
     <div class="dyn-tabs__bar" ref="barRef" role="tablist">
       <!-- Sliding pill -->
-      <span
-        v-if="indReady"
-        class="dyn-tabs__indicator"
-        aria-hidden="true"
-        :style="{ left: indLeft + 'px', width: indWidth + 'px' }"
-      />
+      <span v-if="indReady" class="dyn-tabs__indicator" aria-hidden="true"
+        :style="{ left: indLeft + 'px', width: indWidth + 'px' }" />
 
-      <button
-        v-for="(tab, idx) in tabs"
-        :key="tab.key !== undefined ? tab.key : tab.label"
-        :ref="(el) => (tabRefs[idx] = el)"
-        class="dyn-tab"
-        :class="{
+      <button v-for="(tab, idx) in tabs" :key="tab.key !== undefined ? tab.key : tab.label"
+        :ref="(el) => (tabRefs[idx] = el)" class="dyn-tab" :class="{
           'is-active':
             modelValue === (tab.key !== undefined ? tab.key : tab.label),
-        }"
-        role="tab"
-        :aria-selected="
-          modelValue === (tab.key !== undefined ? tab.key : tab.label)
-        "
-        @click="select(tab)"
-      >
-        <i
-          v-if="tab.icon"
-          :class="`fas fa-${tab.icon}`"
-          class="dyn-tab__icon"
-          aria-hidden="true"
-        />
+        }" role="tab" :aria-selected="modelValue === (tab.key !== undefined ? tab.key : tab.label)
+          " @click="select(tab)">
+        <i v-if="tab.icon" :class="`fas fa-${tab.icon}`" class="dyn-tab__icon" aria-hidden="true" />
         <span class="dyn-tab__label">{{ tab.label }}</span>
-        <span
-          v-if="tab.badge"
-          class="dyn-tab__badge"
-          :class="`dyn-tab__badge--${tab.badgeType || 'primary'}`"
-        >
+        <span v-if="tab.badge" class="dyn-tab__badge" :class="`dyn-tab__badge--${tab.badgeType || 'primary'}`">
           {{ tab.badge }}
         </span>
       </button>
@@ -146,21 +124,22 @@ function select(tab) {
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
-  margin-bottom: 1.1rem;
+  /*margin-bottom: 1.1rem;*/
   flex-shrink: 0;
 }
-.dyn-tabs__bar::-webkit-scrollbar { display: none; }
+
+.dyn-tabs__bar::-webkit-scrollbar {
+  display: none;
+}
 
 /* Sliding pill indicator */
 .dyn-tabs__indicator {
   position: absolute;
   top: 0.3rem;
   height: calc(100% - 0.6rem);
-  background: linear-gradient(
-    135deg,
-    rgba(144, 111, 225, 0.22),
-    rgba(236,  72, 153, 0.13)
-  );
+  background: linear-gradient(135deg,
+      rgba(144, 111, 225, 0.22),
+      rgba(236, 72, 153, 0.13));
   border: 1px solid rgba(144, 111, 225, 0.35);
   border-radius: calc(var(--radius-pill, 999px) - 4px);
   box-shadow:
@@ -169,7 +148,7 @@ function select(tab) {
   pointer-events: none;
   z-index: 0;
   transition:
-    left  230ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    left 230ms cubic-bezier(0.34, 1.56, 0.64, 1),
     width 230ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -196,14 +175,22 @@ function select(tab) {
   flex-shrink: 0;
   outline: none;
 }
-.dyn-tab:hover          { color: var(--c-primary); }
-.dyn-tab.is-active      { color: var(--c-primary); font-weight: 800; }
+
+.dyn-tab:hover {
+  color: var(--c-primary);
+}
+
+.dyn-tab.is-active {
+  color: var(--c-primary);
+  font-weight: 800;
+}
 
 .dyn-tab__icon {
   font-size: 0.82rem;
   opacity: 0.8;
   transition: opacity 160ms ease, transform 160ms ease;
 }
+
 .dyn-tab.is-active .dyn-tab__icon {
   opacity: 1;
   transform: scale(1.08);
@@ -222,17 +209,42 @@ function select(tab) {
   font-weight: 900;
   line-height: 1;
 }
-.dyn-tab__badge--primary { background: var(--c-primary); color: #fff; }
-.dyn-tab__badge--warning { background: var(--c-warning); color: #fff; }
-.dyn-tab__badge--success { background: var(--c-success); color: #fff; }
-.dyn-tab__badge--danger  { background: var(--c-danger);  color: #fff; }
-.dyn-tab__badge--info    { background: var(--c-info);    color: #fff; }
+
+.dyn-tab__badge--primary {
+  background: var(--c-primary);
+  color: #fff;
+}
+
+.dyn-tab__badge--warning {
+  background: var(--c-warning);
+  color: #fff;
+}
+
+.dyn-tab__badge--success {
+  background: var(--c-success);
+  color: #fff;
+}
+
+.dyn-tab__badge--danger {
+  background: var(--c-danger);
+  color: #fff;
+}
+
+.dyn-tab__badge--info {
+  background: var(--c-info);
+  color: #fff;
+}
 
 /* ════════════════════════════════════════════════════════════
    CONTENT PANEL
    ════════════════════════════════════════════════════════════ */
-.dyn-tabs__content { overflow: hidden; }
-.dyn-tab-panel     { width: 100%; }
+.dyn-tabs__content {
+  overflow: hidden;
+}
+
+.dyn-tab-panel {
+  width: 100%;
+}
 
 /* ════════════════════════════════════════════════════════════
    SLIDE TRANSITIONS
@@ -243,27 +255,55 @@ function select(tab) {
 .slide-ltr-enter-active,
 .slide-ltr-leave-active {
   transition: transform 260ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
-              opacity   200ms ease;
+    opacity 200ms ease;
 }
-.slide-ltr-enter-from { transform: translateX(28px); opacity: 0; }
-.slide-ltr-leave-to   { transform: translateX(-28px); opacity: 0; }
+
+.slide-ltr-enter-from {
+  transform: translateX(28px);
+  opacity: 0;
+}
+
+.slide-ltr-leave-to {
+  transform: translateX(-28px);
+  opacity: 0;
+}
 
 /* --- Backward: enter from left, leave to right --- */
 .slide-rtl-enter-active,
 .slide-rtl-leave-active {
   transition: transform 260ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
-              opacity   200ms ease;
+    opacity 200ms ease;
 }
-.slide-rtl-enter-from { transform: translateX(-28px); opacity: 0; }
-.slide-rtl-leave-to   { transform: translateX(28px);  opacity: 0; }
+
+.slide-rtl-enter-from {
+  transform: translateX(-28px);
+  opacity: 0;
+}
+
+.slide-rtl-leave-to {
+  transform: translateX(28px);
+  opacity: 0;
+}
 
 /* ════════════════════════════════════════════════════════════
    RESPONSIVE — hide labels on small screens
    ════════════════════════════════════════════════════════════ */
 @media (max-width: 640px) {
-  .dyn-tabs__bar { border-radius: var(--radius-md); }
-  .dyn-tab { padding: 0.4rem 0.7rem; font-size: 0.78rem; }
-  .dyn-tab__label { display: none; }
-  .dyn-tab__icon  { font-size: 0.92rem; }
+  .dyn-tabs__bar {
+    border-radius: var(--radius-md);
+  }
+
+  .dyn-tab {
+    padding: 0.4rem 0.7rem;
+    font-size: 0.78rem;
+  }
+
+  .dyn-tab__label {
+    display: none;
+  }
+
+  .dyn-tab__icon {
+    font-size: 0.92rem;
+  }
 }
 </style>

@@ -1,19 +1,9 @@
 <template>
   <section class="panel-usuarios-section">
     <!-- BANNER + ACCIONES SUPERIORES (CENTRADO EN USUARIO SELECCIONADO) -->
-    <UserBanner
-      :user="selectedUser"
-      :fallback-avatar="FALLBACK_AVATAR"
-      :permission-catalog="permissionsCatalog"
-      :loading="loading"
-      @avatar-picked="onAvatarPicked"
-      @open-create="openCreate"
-      @reload="loadUsers"
-      @edit="openEdit"
-      @change-password="openPassword"
-      @soft-delete="confirmSoftDelete"
-      @restore="confirmRestore"
-    />
+    <UserBanner :user="selectedUser" :fallback-avatar="FALLBACK_AVATAR" :permission-catalog="permissionsCatalog"
+      :loading="loading" @avatar-picked="onAvatarPicked" @open-create="openCreate" @reload="loadUsers" @edit="openEdit"
+      @change-password="openPassword" @soft-delete="confirmSoftDelete" @restore="confirmRestore" />
 
 
     <!-- HEADER PANEL -->
@@ -24,7 +14,8 @@
           Gestión de usuarios
         </span>
         <h2>Usuarios del sistema</h2>
-        <p class="psh-desc">Control de cuentas, roles y accesos del personal. Crea, edita, activa o desactiva usuarios.</p>
+        <p class="psh-desc">Control de cuentas, roles y accesos del personal. Crea, edita, activa o desactiva usuarios.
+        </p>
 
         <div class="psh-quick mt-3">
           <div class="psh-quick__card">
@@ -58,12 +49,7 @@
       <b-field grouped group-multiline>
         <b-field label="Buscar" class="panel-usuarios-filter-field">
           <!-- ✅ FontAwesome -->
-          <b-input
-            v-model="searchQuery"
-            size="is-small"
-            icon="search"
-            placeholder="Buscar por nombre o correo…"
-          />
+          <b-input v-model="searchQuery" size="is-small" icon="search" placeholder="Buscar por nombre o correo…" />
         </b-field>
 
         <b-field label="Rol" class="panel-usuarios-filter-field">
@@ -87,34 +73,15 @@
     </div>
 
     <!-- TABLA (sin detalle desplegable) -->
-    <b-table
-      :data="users"
-      sticky-header
-      :height="360"
-      hoverable
-      focusable
-      paginated
-      backend-pagination
-      backend-sorting
-      :total="total"
-      :per-page="perPage"
-      :current-page="currentPage"
-      @page-change="onPageChange"
-      @sort="onSort"
-      v-model:selected="selectedUser"
-      :row-class="rowClass"
-      :loading="loading"
-    >
+    <b-table :data="users" sticky-header :height="360" hoverable focusable paginated backend-pagination backend-sorting
+      :total="total" :per-page="perPage" :current-page="currentPage" @page-change="onPageChange" @sort="onSort"
+      v-model:selected="selectedUser" :row-class="rowClass" :loading="loading">
       <b-table-column field="name" label="Usuario" sortable v-slot="props">
         <div class="user-cell" @click="selectRow(props.row)">
           <div class="user-cell__avatar-wrap">
-            <AvatarPicker
-              :modelValue="props.row.profile?.avatar || ''"
-              :placeholder="FALLBACK_AVATAR"
-              :editMode="canEditAvatar(props.row)"
-              :size="32"
-              @update:modelValue="(val) => onAvatarPicked(props.row, val)"
-            />
+            <AvatarPicker :modelValue="props.row.profile?.avatar || ''" :placeholder="FALLBACK_AVATAR"
+              :editMode="canEditAvatar(props.row)" :size="32"
+              @update:modelValue="(val) => onAvatarPicked(props.row, val)" />
           </div>
 
           <div class="user-cell__meta">
@@ -169,37 +136,19 @@
     </b-table>
 
     <!-- MODALES -->
-    <UserEditModal
-      v-model="editOpen"
-      :user="editUser"
-      :roles="roles"
-      :saving="saving"
-      @save="saveEdit"
-    />
-    <UserPasswordModal
-      v-model="passOpen"
-      :user="passUser"
-      :saving="saving"
-      @save="savePassword"
-      @toast="toast"
-    />
-    <UserCreateModal
-      v-model="createOpen"
-      :roles="roles"
-      :saving="saving"
-      :fallback-avatar="FALLBACK_AVATAR"
-      @save="createUser"
-      @toast="toast"
-    />
+    <UserEditModal v-model="editOpen" :user="editUser" :roles="roles" :saving="saving" @save="saveEdit" />
+    <UserPasswordModal v-model="passOpen" :user="passUser" :saving="saving" @save="savePassword" @toast="toast" />
+    <UserCreateModal v-model="createOpen" :roles="roles" :saving="saving" :fallback-avatar="FALLBACK_AVATAR"
+      @save="createUser" @toast="toast" />
   </section>
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, getCurrentInstance, onMounted, ref, watch } from "vue";
 import { useDebounceFn } from "@vueuse/core";
 import AvatarPicker from "@/components/AvatarPicker.vue";
-import UserBanner      from "@/components/usuarios/UserBanner.vue";
-import UserEditModal   from "@/components/usuarios/UserEditModal.vue";
+import UserBanner from "@/components/usuarios/UserBanner.vue";
+import UserEditModal from "@/components/usuarios/UserEditModal.vue";
 import UserPasswordModal from "@/components/usuarios/UserPasswordModal.vue";
 import UserCreateModal from "@/components/usuarios/UserCreateModal.vue";
 import { usersService } from "../../services/usersService.js";
@@ -217,6 +166,9 @@ const permissionsCatalog = ref(null);
 const loading = ref(false);
 const saving = ref(false);
 
+const _instance = getCurrentInstance();
+const $buefy = _instance?.appContext?.config?.globalProperties?.$buefy;
+
 const searchQuery = ref("");
 const roleFilter = ref("all");
 const statusFilter = ref("all");
@@ -230,8 +182,8 @@ const sortDir = ref("asc");
 const selectedUser = ref(null);
 
 /* Modales */
-const editOpen   = ref(false);
-const passOpen   = ref(false);
+const editOpen = ref(false);
+const passOpen = ref(false);
 const createOpen = ref(false);
 
 const editUser = ref(null);
@@ -522,7 +474,7 @@ function confirmSoftDelete(u) {
         }
       } finally {
         selectedUser.value = null;
-        try { await loadUsers(); } catch {}
+        try { await loadUsers(); } catch { }
         loading.value = false;
         deleting.value = false;
       }
@@ -711,6 +663,7 @@ onMounted(async () => {
     opacity: 0;
     transform: translateY(6px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -722,8 +675,48 @@ onMounted(async () => {
     flex-direction: column;
     align-items: flex-start;
   }
+
   .panel-usuarios-summary {
     text-align: left;
+  }
+
+  /* 1. Base: mobile cards sin el fondo blanco horrible */
+  :deep(.b-table .table-wrapper.has-mobile-cards tr:not([class*="is-"])) {
+    display: block !important;
+    background: var(--surface-overlay) !important;
+    backdrop-filter: blur(8px) !important;
+    border: 1px solid var(--border-strong) !important;
+    border-radius: var(--radius-lg) !important;
+    margin-bottom: 1.5rem !important;
+    padding-bottom: 0.5rem !important;
+    transition: all 0.2s ease !important;
+    overflow: hidden !important;
+  }
+
+  /* 2. Fila seleccionada: granulado naranja/rosa */
+  :deep(.b-table .table-wrapper.has-mobile-cards tr.is-selected) {
+    background: rgba(249, 115, 22, 0.22) !important;
+    border-color: #f97316 !important;
+    box-shadow: 0 8px 24px -4px rgba(249, 115, 22, 0.28),
+      inset 0 0 0 2px #f97316,
+      inset 0 0 40px rgba(236, 72, 153, 0.12) !important;
+    transform: translateY(-2px) !important;
+  }
+}
+
+/* Estrategia para evitar "info achocada" entre 770px y 1140px */
+@media (min-width: 770px) and (max-width: 1140px) {
+
+  :deep(.b-table .table th:nth-child(5)),
+  /* Columna Alta */
+  :deep(.b-table .table td:nth-child(5)) {
+    display: none !important;
+  }
+
+  :deep(.b-table .table th:nth-child(3)),
+  /* Columna Último acceso */
+  :deep(.b-table .table td:nth-child(3)) {
+    display: none !important;
   }
 }
 </style>

@@ -113,11 +113,11 @@ import NotificationPanel from "../components/NotificationPanel.vue";
 import GlobalSearch from "../components/GlobalSearch.vue";
 
 // Componentes atómicos de Layout
-import DashboardA11yLayer from "@/components/dashboard-layout/DashboardA11yLayer.vue";
-import DashboardToolbar from "@/components/dashboard-layout/DashboardToolbar.vue";
-import DashboardMobileTopbar from "@/components/dashboard-layout/DashboardMobileTopbar.vue";
-import DashboardSearchOverlay from "@/components/dashboard-layout/DashboardSearchOverlay.vue";
-import DashboardFooter from "@/components/dashboard-layout/DashboardFooter.vue";
+import DashboardA11yLayer from "../components/dashboard-layout/DashboardA11yLayer.vue";
+import DashboardToolbar from "../components/dashboard-layout/DashboardToolbar.vue";
+import DashboardMobileTopbar from "../components/dashboard-layout/DashboardMobileTopbar.vue";
+import DashboardSearchOverlay from "../components/dashboard-layout/DashboardSearchOverlay.vue";
+import DashboardFooter from "../components/dashboard-layout/DashboardFooter.vue";
 
 // Composables
 import { useSidebarState } from "@/composables/ui/useSidebarState";
@@ -355,4 +355,6 @@ onBeforeUnmount(() => {
 });
 </script>
 
-<style src="@/components/dashboard-layout/DashboardLayoutGrid.css" />
+<style>
+@import "../components/dashboard-layout/DashboardLayoutGrid.css";
+</style>

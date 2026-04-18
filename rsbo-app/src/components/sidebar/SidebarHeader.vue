@@ -14,7 +14,7 @@
     <!-- Logo compacto -->
     <div v-else class="sidebar-brand sidebar-brand--compact">
       <figure class="sidebar-logo sidebar-logo--compact">
-        <img src="/eurovision.svg" alt="Logo Eurovision RSBO" />
+        <img src="/eurovision.svg" alt="Laboratorio Eurovisión" />
       </figure>
     </div>
 

@@ -4,6 +4,14 @@
    ============================================================ */
 
 /* ----------------------------------------------------------
+   ELEMENTOS BASE
+   ---------------------------------------------------------- */
+strong {
+  color: var(--text-strong);
+  font-weight: 700;
+}
+
+/* ----------------------------------------------------------
    DROPDOWNS Y MENÚS BUEFY
    ---------------------------------------------------------- */
 .dropmenu-is-light {
@@ -74,6 +82,11 @@
 
 [data-theme="dark"] .label {
   color: var(--text-secondary);
+}
+
+/* Fix: Quitar franja blanca en labels flotantes (label-position="on-border") */
+[data-theme="dark"] .field.is-floating-label .label::before {
+  content: none !important;
 }
 
 [data-theme="dark"] .help {

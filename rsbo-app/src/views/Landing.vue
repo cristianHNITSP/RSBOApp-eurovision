@@ -8,7 +8,8 @@
     <header class="landing-topbar">
       <div class="landing-topbar__inner container">
         <div class="brand" role="button" tabindex="0" @click="scrollToTop" @keyup.enter="scrollToTop">
-          <img :src="logoImg" alt="Laboratorio Eurovisión" class="brand__logo" />
+          <img src="/eurovision.svg" alt="Laboratorio Eurovisión" class="brand__logo" />
+
           <div class="brand__text">
             <p class="brand__name">Laboratorio Eurovisión</p>
             <p class="brand__tag">Sistema interno · Inventario y pedidos</p>
@@ -381,7 +382,6 @@ import { useRoute, useRouter } from "vue-router";
 import { useIntersectionObserver } from "@/composables/ui/useIntersectionObserver";
 import { useAuthService } from "@/services/authService.js";
 import { labToast } from "@/composables/shared/useLabToast";
-import logoImg from "@/assets/img/logo-euro.png";
 
 useIntersectionObserver(".animate-fade-up");
 
@@ -752,7 +752,7 @@ onBeforeUnmount(() => {
   width: 38px;
   height: 38px;
   border-radius: 10px;
-  object-fit: cover;
+  object-fit: contain;
   box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.35);
 }
 

@@ -5,9 +5,9 @@ import { useRoute, useRouter } from "vue-router";
 import TabsManager from "@/components/TabsManager.vue";
 import { labToast } from "@/composables/shared/useLabToast.js";
 
-import AgGridBifocal    from "@/components/ag-grid/templates/AgGridBifocal.vue";
-import AgGridBase       from "@/components/ag-grid/templates/AgGridBase.vue";
-import AgGridMonofocal  from "@/components/ag-grid/templates/AgGridMonofocal.vue";
+import AgGridBifocal from "@/components/ag-grid/templates/AgGridBifocal.vue";
+import AgGridBase from "@/components/ag-grid/templates/AgGridBase.vue";
+import AgGridMonofocal from "@/components/ag-grid/templates/AgGridMonofocal.vue";
 import AgGridProgresivo from "@/components/ag-grid/templates/AgGridProgresivo.vue";
 
 import { listSheets } from "@/services/inventory";
@@ -18,15 +18,15 @@ const props = defineProps({
   user: { type: Object, required: false, default: null }
 });
 
-const route  = useRoute();
+const route = useRoute();
 const router = useRouter();
 
-const activeSheet       = ref("nueva");
+const activeSheet = ref("nueva");
 const activeInternalTab = ref(null);
 
 
 // Catálogo cargado desde BD
-const catalog        = ref({ bases: [], treatments: [] });
+const catalog = ref({ bases: [], treatments: [] });
 const catalogLoading = ref(true);
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -35,8 +35,8 @@ const catalogLoading = ref(true);
 function mapSheet(s) {
   if (!s) return null;
   return {
-    id:   String(s._id ?? s.id),
-    sku:  s.sku ?? null,
+    id: String(s._id ?? s.id),
+    sku: s.sku ?? null,
     name: s.nombre ?? s.name ?? "",
 
     proveedor: s.proveedor && typeof s.proveedor === "object"
@@ -47,24 +47,24 @@ function mapSheet(s) {
       ? { id: s.marca.id ?? null, name: String(s.marca.name ?? "") }
       : { id: null, name: "" },
 
-    tipo_matriz:    s.tipo_matriz,
-    baseKey:        s.baseKey,
-    material:       s.material,
+    tipo_matriz: s.tipo_matriz,
+    baseKey: s.baseKey,
+    material: s.material,
 
-    tratamiento:    s.tratamiento   ?? null,
-    variante:       s.variante      ?? null,
+    tratamiento: s.tratamiento ?? null,
+    variante: s.variante ?? null,
 
-    fechaCreacion:  s.fechaCreacion  ?? s.createdAt ?? null,
+    fechaCreacion: s.fechaCreacion ?? s.createdAt ?? null,
     fechaCaducidad: s.fechaCaducidad ?? null,
-    fechaCompra:    s.fechaCompra    ?? null,
-    numFactura:     s.numFactura     ?? "",
-    loteProducto:   s.loteProducto   ?? "",
-    precioVenta:    s.precioVenta    ?? null,
-    precioCompra:   s.precioCompra   ?? null,
+    fechaCompra: s.fechaCompra ?? null,
+    numFactura: s.numFactura ?? "",
+    loteProducto: s.loteProducto ?? "",
+    precioVenta: s.precioVenta ?? null,
+    precioCompra: s.precioCompra ?? null,
 
     tratamientos: s.tratamientos || [],
-    tabs:         s.tabs         || [],
-    meta:         s.meta         || { observaciones: "", notas: "" }
+    tabs: s.tabs || [],
+    meta: s.meta || { observaciones: "", notas: "" }
   };
 }
 
@@ -174,11 +174,11 @@ function reordenarSheets({ oldIndex, newIndex }) {
 ───────────────────────────────────────────────────────────────────────── */
 const resolverGrid = (tipo) => {
   switch (tipo) {
-    case "SPH_CYL":  return AgGridMonofocal;
-    case "SPH_ADD":  return AgGridBifocal;
-    case "BASE":     return AgGridBase;
+    case "SPH_CYL": return AgGridMonofocal;
+    case "SPH_ADD": return AgGridBifocal;
+    case "BASE": return AgGridBase;
     case "BASE_ADD": return AgGridProgresivo;
-    default:         return AgGridMonofocal;
+    default: return AgGridMonofocal;
   }
 };
 
@@ -242,39 +242,21 @@ const resolverGridProps = (sheet, activeInternal) => {
 
     <div class="columns is-multiline">
       <div class="column is-12">
-        <TabsManager
-          :initial-sheets="dynamicSheets"
-          :active-id="activeSheet"
-          :catalog="catalog"
-          :catalog-loading="catalogLoading"
-          :actor="user"
-          :loading-tabs="pager.loadingForward.value && pager.sheets.length === 0"
-          :has-more="pager.hasMore.value"
-          :has-prior="pager.hasPrior.value"
-          :loading-more="pager.loadingForward.value"
-          :loading-prior="pager.loadingBackward.value"
-          :prior-count="pager.priorCount.value"
-          @update:active="activeSheet = $event"
-          @update:internal="activeInternalTab = $event"
-          @crear="crearNuevaPlanilla"
-          @reorder="reordenarSheets"
-          @load-more="pager.loadNext()"
-          @load-prior="pager.loadPrior()"
-        >
+        <TabsManager :initial-sheets="dynamicSheets" :active-id="activeSheet" :catalog="catalog"
+          :catalog-loading="catalogLoading" :actor="user"
+          :loading-tabs="pager.loadingForward.value && pager.sheets.length === 0" :has-more="pager.hasMore.value"
+          :has-prior="pager.hasPrior.value" :loading-more="pager.loadingForward.value"
+          :loading-prior="pager.loadingBackward.value" :prior-count="pager.priorCount.value"
+          @update:active="activeSheet = $event" @update:internal="activeInternalTab = $event"
+          @crear="crearNuevaPlanilla" @reorder="reordenarSheets" @load-more="pager.loadNext()"
+          @load-prior="pager.loadPrior()">
           <template #default="{ activeSheet: sheet, activeInternal }">
-            <div
-              v-if="sheet && sheet.id !== 'nueva'"
-              class="contenido-planilla"
-            >
+            <div v-if="sheet && sheet.id !== 'nueva'" class="contenido-planilla">
               <div class="planilla-wrapper">
                 <!-- AG-Grid con KeepAlive: la instancia sobrevive al cambio de sheet -->
                 <KeepAlive :max="8">
-                  <component
-                    :is="resolverGrid(sheet.tipo_matriz)"
-                    :key="`${sheet.id}:${sheet.tipo_matriz}`"
-                    v-bind="resolverGridProps(sheet, activeInternal)"
-                    :actor="user"
-                  />
+                  <component :is="resolverGrid(sheet.tipo_matriz)" :key="`${sheet.id}:${sheet.tipo_matriz}`"
+                    v-bind="resolverGridProps(sheet, activeInternal)" :actor="user" />
                 </KeepAlive>
               </div>
             </div>
@@ -350,10 +332,10 @@ const resolverGridProps = (sheet, activeInternal) => {
 }
 
 @media (prefers-reduced-motion: reduce) {
+
   .sheet-enter-active,
   .sheet-leave-active {
     transition: none !important;
   }
 }
-
 </style>

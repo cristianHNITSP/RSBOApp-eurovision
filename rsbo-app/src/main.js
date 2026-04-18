@@ -7,7 +7,7 @@ import Buefy from "buefy";
 import "buefy/dist/buefy.css";
 import "@fortawesome/fontawesome-free/css/all.css";
 
-import ExtendedTooltip from "./global-components/ExtendedTooltip.js";
+
 
 import "./assets/css/tokens.css";
 import "./assets/css/global.css";
@@ -39,8 +39,7 @@ document.head.appendChild(style);
 
 const app = createApp(App);
 
-// Reemplaza globalmente el componente original b-tooltip con el extendido
-app.component("b-tooltip", ExtendedTooltip);
+
 
 app.use(Buefy, {
   defaultIconPack: "fas",

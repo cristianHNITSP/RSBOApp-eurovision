@@ -124,6 +124,111 @@
     0 12px 40px rgba(0, 0, 0, 0.35);
 }
 
+/* ── Grid Loading Veil — Liquid Glass ──────────────────────────── */
+.grid-loading-veil {
+  position: absolute;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+  border-radius: inherit;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(22px) saturate(1.9) brightness(1.04);
+  -webkit-backdrop-filter: blur(22px) saturate(1.9) brightness(1.04);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10);
+}
+
+/* Liquid shimmer sweep */
+.grid-loading-veil::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    112deg,
+    transparent 10%,
+    rgba(167, 139, 250, 0.08) 40%,
+    rgba(139, 92, 246, 0.18) 50%,
+    rgba(167, 139, 250, 0.08) 60%,
+    transparent 90%
+  );
+  background-size: 250% 100%;
+  animation: liquid-sweep 2.4s ease-in-out infinite;
+}
+
+/* Soft radial glow at center */
+.grid-loading-veil::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 60% 40% at 50% 50%,
+    rgba(121, 87, 213, 0.08) 0%,
+    transparent 70%
+  );
+  animation: glow-pulse 3s ease-in-out infinite;
+}
+
+@keyframes liquid-sweep {
+  0%   { background-position: 240% center; }
+  100% { background-position: -240% center; }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.6; }
+  50%       { opacity: 1; }
+}
+
+[data-theme="dark"] .grid-loading-veil {
+  background: rgba(12, 10, 32, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(167, 139, 250, 0.08);
+}
+
+.grid-loading-veil__spinner {
+  position: relative;
+  z-index: 1;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid rgba(167, 139, 250, 0.18);
+  border-top-color: rgba(139, 92, 246, 0.95);
+  border-right-color: rgba(167, 139, 250, 0.55);
+  animation: spin 0.9s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+  box-shadow: 0 0 14px rgba(121, 87, 213, 0.35),
+              inset 0 0 8px rgba(167, 139, 250, 0.08);
+}
+
+.grid-loading-veil__label {
+  position: relative;
+  z-index: 1;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(167, 139, 250, 0.7);
+}
+
+/* Enter: instant (no flash of old data) */
+.veil-enter-active { transition: none; }
+
+/* Leave: liquid evaporate — scales up slightly and blurs out */
+.veil-leave-active {
+  transition:
+    opacity 340ms cubic-bezier(0.4, 0, 0.2, 1),
+    transform 340ms cubic-bezier(0.34, 1.2, 0.64, 1),
+    filter 340ms ease;
+}
+.veil-leave-to {
+  opacity: 0;
+  transform: scale(1.018);
+  filter: blur(3px);
+}
+
 /* ── Status Overlay & Badges ───────────────────────────────────── */
 .grid-status-overlay {
   position: absolute;

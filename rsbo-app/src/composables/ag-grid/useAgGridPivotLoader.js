@@ -11,6 +11,7 @@ export function useAgGridPivotLoader({
   getRowCache,
   fetchItems,
   sheetId,
+  viewId,
   buildFetchQuery,
   normalizeItem,
   buildPivotPage,
@@ -18,8 +19,14 @@ export function useAgGridPivotLoader({
   rowIdGetter,
   pendingChanges,
   DEV_DELAY_MS = 0,
-  LOG_ROWS = () => {},
+  LOG_ROWS = () => { },
 }) {
+  const readViewId = () => {
+    if (viewId == null) return null;
+    if (typeof viewId === "function") return viewId();
+    if (typeof viewId === "object" && "value" in viewId) return viewId.value;
+    return viewId;
+  };
   const loadingRowsCount = ref(0);
   const rowsInCacheCount = ref(0);
 
@@ -63,10 +70,15 @@ export function useAgGridPivotLoader({
           const query = buildFetchQuery(pageKeys);
           LOG_ROWS("FASE 2: query →", query);
           const requestSheetId = sheetId.value;
+          const requestViewId = readViewId();
           const { data } = await fetchItems(requestSheetId, query);
-          
+
           if (sheetId.value !== requestSheetId) {
             LOG_ROWS(`FASE 2 abortada: el sheetId cambió`);
+            return;
+          }
+          if (requestViewId !== null && readViewId() !== requestViewId) {
+            LOG_ROWS(`FASE 2 abortada: el viewId cambió (${requestViewId} → ${readViewId()})`);
             return;
           }
 

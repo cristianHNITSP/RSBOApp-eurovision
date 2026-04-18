@@ -5,7 +5,7 @@
       <!-- Tira de EDICIÓN -->
       <template #edicion>
         <div class="ribbon-actions-row">
-          <b-field grouped group-multiline>
+          <b-field grouped>
             <NavButton
               tooltip="Ctrl+Z"
               icon="undo-alt"
@@ -55,7 +55,7 @@
       <!-- Tira de ESTRUCTURA -->
       <template #estructura>
         <div class="ribbon-actions-row">
-          <b-field grouped group-multiline>
+          <b-field grouped>
             <NavButton
               icon="plus-square"
               type="is-light"
@@ -81,7 +81,7 @@
       <!-- Tira de DATOS -->
       <template #datos>
         <div class="ribbon-actions-row">
-          <b-field grouped group-multiline>
+          <b-field grouped>
             <NavButton icon="filter" @click="$emit('clear-filters')">
               Limpiar filtros
             </NavButton>

@@ -3,7 +3,7 @@
  * Factory para el datasource de AgGrid Infinite Row Model con soporte para carga en dos fases (skeletons + items reales).
  */
 
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { sleep } from "@/components/ag-grid/utils/ag-grid-utils";
 
 export function useAgGridPivotLoader({
@@ -20,6 +20,9 @@ export function useAgGridPivotLoader({
   DEV_DELAY_MS = 0,
   LOG_ROWS = () => {},
 }) {
+  const loadingRowsCount = ref(0);
+  const rowsInCacheCount = ref(0);
+
   const datasource = computed(() => ({
     getRows({ startRow, endRow, successCallback }) {
       const axis = baseAxis.value;
@@ -32,8 +35,10 @@ export function useAgGridPivotLoader({
         return;
       }
 
-      // ── Cache-first: si todas las filas de la página ya están en caché → sin skeleton ──
+      // ── Cache-first ──
       const cache = getRowCache();
+      rowsInCacheCount.value = cache.size; // Actualizar conteo
+
       if (pageKeys.every(k => cache.has(String(k)))) {
         LOG_ROWS(`getRows [${startRow}–${endRow}]: cache hit total.`);
         successCallback(pageKeys.map(k => cache.get(String(k))), axis.length);
@@ -46,6 +51,8 @@ export function useAgGridPivotLoader({
       LOG_ROWS(`FASE 1: ${loadingRows.length} placeholders enviados.`);
 
       // FASE 2: fetch real
+      loadingRowsCount.value += pageKeys.length;
+
       (async () => {
         try {
           if (DEV_DELAY_MS > 0) {
@@ -55,9 +62,16 @@ export function useAgGridPivotLoader({
 
           const query = buildFetchQuery(pageKeys);
           LOG_ROWS("FASE 2: query →", query);
-          const { data } = await fetchItems(sheetId.value, query);
+          const requestSheetId = sheetId.value;
+          const { data } = await fetchItems(requestSheetId, query);
+          
+          if (sheetId.value !== requestSheetId) {
+            LOG_ROWS(`FASE 2 abortada: el sheetId cambió`);
+            return;
+          }
+
           const items = (data?.data || []).map(normalizeItem);
-          LOG_ROWS(`FASE 2: ${items.length} items recibidos del backend.`);
+          LOG_ROWS(`FASE 2: ${items.length} items recibidos.`);
 
           const realRows = buildPivotPage(pageKeys, items, { loading: false, pendingChanges: pendingChanges.value });
 
@@ -66,23 +80,23 @@ export function useAgGridPivotLoader({
             const id = rowIdGetter(row);
             cache.set(String(id), row);
           });
+          rowsInCacheCount.value = cache.size;
 
           // Actualizar nodos en el grid
           if (gridApi.value) {
-            let n = 0;
             realRows.forEach(row => {
               const id = rowIdGetter(row);
               const node = gridApi.value.getRowNode(String(id));
               if (node) {
                 node.setData(row);
                 gridApi.value.refreshCells({ rowNodes: [node], force: true });
-                n++;
               }
             });
-            LOG_ROWS(`FASE 2: ${n}/${realRows.length} nodos actualizados.`);
           }
         } catch (e) {
           console.error("[PivotLoader] FASE 2 error:", e);
+        } finally {
+          loadingRowsCount.value = Math.max(0, loadingRowsCount.value - pageKeys.length);
         }
       })();
     },
@@ -90,5 +104,7 @@ export function useAgGridPivotLoader({
 
   return {
     datasource,
+    loadingRowsCount,
+    rowsInCacheCount,
   };
 }

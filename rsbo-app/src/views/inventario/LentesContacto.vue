@@ -323,14 +323,13 @@ const resolverGridProps = (sheet, activeInternal) => {
 
 .contenido-planilla {
   width: 100%;
-  height: 100%;
+  height: auto;
 }
 
 .planilla-wrapper {
   width: 100%;
   height: 600px;
   position: relative;
-  contain: paint;
 }
 
 .sheet-enter-active,

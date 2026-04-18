@@ -45,11 +45,21 @@
         class="glass-shell"
         :class="{ 'glass-shell--switching': switchingView }"
       >
-        <div v-if="DEV_MODE" class="dev-row-badge">
-          {{ baseAxis.length }} filas BASE
+        <div v-if="loadingRowsCount > 0 || DEV_MODE" class="grid-status-overlay">
+          <!-- CARGA DE FILAS - OCULTO POR REQUERIMIENTO. IMPORTANTE: NO BORRAR ESTE BLOQUE, ES ÚTIL PARA DEBUGGING FUTURO -->
+          <!--
+          <div class="status-badge status-badge--rows">
+            <span class="status-badge__icon" :class="{ 'is-spinning': loadingRowsCount > 0 }">⟳</span>
+            <span class="status-badge__text">
+              Filas: {{ rowsInCacheCount }} / {{ baseAxis.length }}
+              <template v-if="loadingRowsCount > 0"> (cargando {{ loadingRowsCount }}...)</template>
+            </span>
+          </div>
+          -->
         </div>
 
         <AgGridVue
+          v-if="sheetMeta"
           class="ag-grid-glass"
           :columnDefs="columns"
           :rowModelType="'infinite'"
@@ -96,8 +106,8 @@ import { raf } from "@/components/ag-grid/utils/ag-grid-utils";
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 const DEV_MODE      = import.meta.env.DEV;
-const DEV_DELAY_MS  = DEV_MODE ? 2000 : 0;
-const ROW_PAGE_SIZE = DEV_MODE ? 5 : 30;
+const DEV_DELAY_MS  = 0;
+const ROW_PAGE_SIZE  = DEV_MODE ? 4 : 10;
 
 const LOG      = (...a) => DEV_MODE && console.log("[Base]", ...a);
 const LOG_ROWS = (...a) => DEV_MODE && console.log("[Base][Rows]", ...a);
@@ -237,7 +247,7 @@ const columns = computed(() => [
 const defaultColDef = { resizable: true, sortable: true, filter: "agNumberColumnFilter", floatingFilter: true, editable: true, minWidth: 90, maxWidth: 150, cellClass: "ag-cell--compact", headerClass: "ag-header-cell--compact" };
 
 // ─── Pivot Loader ────────────────────────────────────────────────
-const { datasource } = useAgGridPivotLoader({
+const { datasource, loadingRowsCount, rowsInCacheCount } = useAgGridPivotLoader({
   baseAxis, getRowCache, fetchItems, sheetId,
   buildFetchQuery: (pageBases) => ({ baseMin: Math.min(...pageBases), baseMax: Math.max(...pageBases), limit: 5000 }),
   normalizeItem: (i) => ({ base: to2(i.base), existencias: Number(i.existencias ?? 0) }),

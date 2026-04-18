@@ -42,12 +42,30 @@
 
     <main class="grid-main">
       <div class="glass-shell" :class="{ 'glass-shell--switching': switchingView }">
-        <div v-if="DEV_MODE" class="dev-col-badge">
-          cols {{ activeCylValues.length }} / {{ allCylValues.length }}
-          <span v-if="loadingCols" class="dev-col-badge__spin">⟳</span>
+        <div v-if="loadingCols || loadingRowsCount > 0 || DEV_MODE" class="grid-status-overlay">
+          <!-- CARGA DE COLUMNAS - OCULTO POR REQUERIMIENTO. IMPORTANTE: NO BORRAR ESTE BLOQUE, ES ÚTIL PARA DEBUGGING FUTURO -->
+          <!--
+          <div class="status-badge status-badge--cols">
+            <span class="status-badge__icon" :class="{ 'is-spinning': loadingCols }">⟳</span>
+            <span class="status-badge__text">
+              Columnas: {{ activeCylValues.length }} / {{ allCylValues.length }}
+            </span>
+          </div>
+          -->
+          <!-- CARGA DE FILAS - OCULTO POR REQUERIMIENTO. IMPORTANTE: NO BORRAR ESTE BLOQUE, ES ÚTIL PARA DEBUGGING FUTURO -->
+          <!--
+          <div class="status-badge status-badge--rows">
+            <span class="status-badge__icon" :class="{ 'is-spinning': loadingRowsCount > 0 }">⟳</span>
+            <span class="status-badge__text">
+              Filas: {{ rowsInCacheCount }} / {{ sphAxis.length }}
+              <template v-if="loadingRowsCount > 0"> (cargando {{ loadingRowsCount }}...)</template>
+            </span>
+          </div>
+          -->
         </div>
 
         <AgGridVue
+          v-if="sheetMeta"
           class="ag-grid-glass"
           :columnDefs="columns"
           :rowModelType="'infinite'"
@@ -96,8 +114,8 @@ import { norm, parseCylFromField, raf } from "@/components/ag-grid/utils/ag-grid
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 const DEV_MODE      = import.meta.env.DEV;
-const DEV_DELAY_MS  = DEV_MODE ? 2000 : 0;
-const ROW_PAGE_SIZE = DEV_MODE ? 5 : 30;
+const DEV_DELAY_MS  = 0;
+const ROW_PAGE_SIZE  = DEV_MODE ? 4 : 10;
 const COL_CHUNK_SIZE = DEV_MODE ? 3 : 8;
 
 const LOG      = (...a) => DEV_MODE && console.log("[Monofocal]", ...a);
@@ -121,14 +139,12 @@ const integration = useAgGridIntegration({
   onWsRefresh: () => _refreshCachedRows(),
 });
 
-const { gridApi, dirty, saving, lastSavedAt, pendingChanges, gridHistory, unsavedGuard, suppressNextWsRefresh, postMessage } = integration;
+const { gridApi, dirty, saving, lastSavedAt, switchingView, pendingChanges, gridHistory, unsavedGuard, suppressNextWsRefresh, postMessage } = integration;
 
 // ─── State ───────────────────────────────────────────────────────
 const sheetMeta      = ref(null);
 const sheetTabs      = ref([]);
 const physicalLimits = ref(null);
-const switchingView  = ref(false);
-const loadingCols    = ref(false);
 const sphAxis        = ref([]);
 const allCylValues   = ref([]);
 const rowCaches      = new Map();
@@ -150,7 +166,7 @@ const colManager = useAgGridIncrementalColumns({
   scrollThreshold: 150,
   devMode: DEV_MODE,
 });
-const activeCylValues = colManager.activeValues;
+const { activeValues: activeCylValues, loading: loadingCols } = colManager;
 
 // ─── Límites ─────────────────────────────────────────────────────
 const phys = computed(() => {
@@ -231,7 +247,7 @@ const columns = computed(() => [
         const newVal = isNumeric(p.newValue) ? Number(p.newValue) : 0;
         const oldVal = Number(p.oldValue ?? 0);
         p.data[p.colDef.field] = newVal;
-        const _rc = getRowCache(); if (_rc.has(p.data.sph)) _rc.get(p.data.sph)[p.colDef.field] = newVal;
+        const _rc = getRowCache(); const _k = String(to2(p.data.sph)); if (_rc.has(_k)) _rc.get(_k)[p.colDef.field] = newVal;
         markChanged(p.data, p.colDef.field, newVal, oldVal);
         return true;
       },
@@ -242,7 +258,7 @@ const columns = computed(() => [
 const defaultColDef = { resizable: true, sortable: true, filter: "agNumberColumnFilter", floatingFilter: true, editable: true, minWidth: 90, maxWidth: 150, cellClass: "ag-cell--compact", headerClass: "ag-header-cell--compact" };
 
 // ─── Pivot Loader ────────────────────────────────────────────────
-const { datasource } = useAgGridPivotLoader({
+const { datasource, loadingRowsCount, rowsInCacheCount } = useAgGridPivotLoader({
   baseAxis: sphAxis, getRowCache, fetchItems, sheetId,
   buildFetchQuery: (pageSphs) => ({ sphMin: Math.min(...pageSphs), sphMax: Math.max(...pageSphs), cylMin: phys.value.cylMin, cylMax: 0, limit: 5000 }),
   normalizeItem: (i) => { let cyl = to2(i.cyl); if (Number.isFinite(cyl) && cyl > 0) cyl = -Math.abs(cyl); return { sph: to2(i.sph), cyl, existencias: Number(i.existencias ?? 0) }; },
@@ -291,7 +307,7 @@ async function switchViewReload({ clearCache = true } = {}) {
     _rebuildAxes();
     if (clearCache) { rowCaches.clear(); colManager.reset(); }
     if (gridApi.value) gridApi.value.setGridOption("datasource", datasource.value);
-    if (clearCache) { loadingCols.value = true; await colManager.init(); loadingCols.value = false; } else { colManager.reattach(); }
+    if (clearCache) { await colManager.init(); } else { colManager.reattach(); }
   } finally { await raf(); switchingView.value = false; }
 }
 
@@ -299,14 +315,15 @@ async function loadAll() { await loadSheetMeta(); await switchViewReload(); }
 
 async function _refreshCachedRows() {
   const cache = getRowCache(); if (!cache.size || !gridApi.value) return;
-  const pageSphs = [...cache.keys()];
+  const pageSphs = [...cache.keys()].map(k => to2(Number(k)));
   try {
     const { data } = await fetchItems(props.sheetId, { sphMin: Math.min(...pageSphs), sphMax: Math.max(...pageSphs), cylMin: phys.value.cylMin, cylMax: 0, limit: 5000 });
     const items = (data?.data || []).map(i => { let cyl = to2(i.cyl); if (Number.isFinite(cyl) && cyl > 0) cyl = -Math.abs(cyl); return { sph: to2(i.sph), cyl, existencias: Number(i.existencias ?? 0) }; });
     pageSphs.forEach(sph => {
-      const row = cache.get(sph); if (!row) return;
+      const key = String(sph);
+      const row = cache.get(key); if (!row) return;
       items.filter(it => it.sph === sph).forEach(it => { row[`cyl_${norm(Math.abs(it.cyl))}`] = it.existencias; });
-      const node = gridApi.value?.getRowNode(String(sph));
+      const node = gridApi.value?.getRowNode(key);
       if (node) { node.setData({ ...row }); gridApi.value.refreshCells({ rowNodes: [node], force: true }); }
     });
   } catch (e) { console.error("[Monofocal] _refreshCachedRows error:", e); }
@@ -317,7 +334,7 @@ function applyGridHistoryOp(op) {
   const value = op.reversed ? op.oldValue : op.newValue;
   const [sphStr, cylDispStr] = op.key.split("|");
   const sph = to2(Number(sphStr));
-  const cached = getRowCache().get(sph);
+  const cached = getRowCache().get(String(sph));
   if (cached) {
     cached[op.field] = value;
     const node = gridApi.value?.getRowNode(String(sph));

@@ -57,12 +57,30 @@
 
     <main class="grid-main">
       <div class="glass-shell" :class="{ 'glass-shell--switching': switchingView }">
-        <div v-if="DEV_MODE" class="dev-col-badge">
-          cols {{ activeCylValues.length }} / {{ allCylValues.length }} | eje {{ selectedDegree }}°
-          <span v-if="loadingCols" class="dev-col-badge__spin">⟳</span>
+        <div v-if="loadingCols || loadingRowsCount > 0 || DEV_MODE" class="grid-status-overlay">
+          <!-- CARGA DE COLUMNAS - OCULTO POR REQUERIMIENTO. IMPORTANTE: NO BORRAR ESTE BLOQUE, ES ÚTIL PARA DEBUGGING FUTURO -->
+          <!--
+          <div class="status-badge status-badge--cols">
+            <span class="status-badge__icon" :class="{ 'is-spinning': loadingCols }">⟳</span>
+            <span class="status-badge__text">
+              Columnas: {{ activeCylValues.length }} / {{ allCylValues.length }}
+            </span>
+          </div>
+          -->
+          <!-- CARGA DE FILAS - OCULTO POR REQUERIMIENTO. IMPORTANTE: NO BORRAR ESTE BLOQUE, ES ÚTIL PARA DEBUGGING FUTURO -->
+          <!--
+          <div class="status-badge status-badge--rows">
+            <span class="status-badge__icon" :class="{ 'is-spinning': loadingRowsCount > 0 }">⟳</span>
+            <span class="status-badge__text">
+              Filas: {{ rowsInCacheCount }} / {{ sphAxis.length }}
+              <template v-if="loadingRowsCount > 0"> (cargando {{ loadingRowsCount }}...)</template>
+            </span>
+          </div>
+          -->
         </div>
 
         <AgGridVue
+          v-if="sheetMeta"
           class="ag-grid-glass"
           :columnDefs="columns"
           :rowModelType="'infinite'"
@@ -106,13 +124,13 @@ import { useAgGridIntegration } from "@/composables/ag-grid/useAgGridIntegration
 import { useAgGridHandlers } from "@/composables/ag-grid/useAgGridHandlers";
 import { useAgGridFormulaBar } from "@/composables/ag-grid/useAgGridFormulaBar";
 import { useAgGridPivotLoader } from "@/composables/ag-grid/useAgGridPivotLoader";
-import { norm, denorm, parseCylFromField, raf } from "@/components/ag-grid/utils/ag-grid-utils";
+import { norm, parseCylFromField, raf } from "@/components/ag-grid/utils/ag-grid-utils";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 const DEV_MODE      = import.meta.env.DEV;
-const DEV_DELAY_MS  = DEV_MODE ? 2000 : 0;
-const ROW_PAGE_SIZE = DEV_MODE ? 5 : 30;
+const DEV_DELAY_MS  = 0; // Eliminado delay artificial para respuesta flash
+const ROW_PAGE_SIZE  = DEV_MODE ? 4 : 10;
 const COL_CHUNK_SIZE = DEV_MODE ? 3 : 8;
 
 const LOG      = (...a) => DEV_MODE && console.log("[Torico]", ...a);
@@ -125,7 +143,7 @@ const props = defineProps({
   apiType: { type: String, default: "contactlenses" },
 });
 
-const { getSheet, fetchItems, saveChunk, reseedSheet } = useSheetApi(() => props.apiType);
+const { getSheet, fetchItems, saveChunk } = useSheetApi(() => props.apiType);
 const { sheetId, sphType } = toRefs(props);
 
 // ─── Integration ─────────────────────────────────────────────────
@@ -136,20 +154,22 @@ const integration = useAgGridIntegration({
   onWsRefresh: () => _refreshCachedRows(),
 });
 
-const { gridApi, dirty, saving, lastSavedAt, pendingChanges, gridHistory, unsavedGuard, suppressNextWsRefresh, postMessage } = integration;
+const { gridApi, dirty, saving, lastSavedAt, switchingView, pendingChanges, gridHistory, unsavedGuard } = integration;
 
 // ─── State ───────────────────────────────────────────────────────
 const sheetMeta      = ref(null);
 const sheetTabs      = ref([]);
 const physicalLimits = ref(null);
-const switchingView  = ref(false);
-const loadingCols    = ref(false);
 const sphAxis        = ref([]);
 const allCylValues   = ref([]);
-const itemsCache     = ref([]);
+const itemsCache     = new Map(); // Key: `${sph}|${cyl}|${axis}` -> value: existencias
 const degreeValues   = ref([]);
 const selectedDegree = ref(180);
 const rowCaches      = new Map();
+
+// ─── LRU & Keep-Alive ─────────────────────────────────────────────
+const MAX_ALIVE_DEGREES = 3;
+const degreeLRU = ref([]); // Array de grados (ejes) activos [180, 170, ...]
 
 const getRowCache = () => {
   const k = `${props.sphType}|${selectedDegree.value}`;
@@ -168,7 +188,8 @@ const colManager = useAgGridIncrementalColumns({
   scrollThreshold: 150,
   devMode: DEV_MODE,
 });
-const activeCylValues = colManager.activeValues;
+const loadingCols = computed(() => colManager.loading.value);
+const activeCylValues = computed(() => colManager.activeValues.value);
 
 // ─── Límites ─────────────────────────────────────────────────────
 const phys = computed(() => {
@@ -250,7 +271,7 @@ const columns = computed(() => [
         const newVal = isNumeric(p.newValue) ? Number(p.newValue) : 0;
         const oldVal = Number(p.oldValue ?? 0);
         p.data[p.colDef.field] = newVal;
-        const _rc = getRowCache(); if (_rc.has(p.data.sph)) _rc.get(p.data.sph)[p.colDef.field] = newVal;
+        const _rc = getRowCache(); const _k = String(to2(p.data.sph)); if (_rc.has(_k)) _rc.get(_k)[p.colDef.field] = newVal;
         markChanged(p.data, p.colDef.field, newVal, oldVal);
         return true;
       },
@@ -261,34 +282,42 @@ const columns = computed(() => [
 const defaultColDef = { resizable: true, sortable: true, filter: "agNumberColumnFilter", floatingFilter: true, editable: true, minWidth: 90, maxWidth: 150, cellClass: "ag-cell--compact", headerClass: "ag-header-cell--compact" };
 
 // ─── Pivot Loader ────────────────────────────────────────────────
-const { datasource } = useAgGridPivotLoader({
+const { datasource, loadingRowsCount, rowsInCacheCount } = useAgGridPivotLoader({
   baseAxis: sphAxis, getRowCache, fetchItems, sheetId,
   buildFetchQuery: (pageSphs) => ({ sphMin: Math.min(...pageSphs), sphMax: Math.max(...pageSphs), cylMin: phys.value.cylMin, cylMax: 0, limit: 5000 }),
   normalizeItem: (i) => { let cyl = to2(i.cyl); if (Number.isFinite(cyl) && cyl > 0) cyl = -Math.abs(cyl); return { sph: to2(i.sph), cyl, axis: Number(i.axis ?? 180), existencias: Number(i.existencias ?? 0) }; },
   buildPivotPage: (pageSphs, items, { loading, pendingChanges }) => {
     const deg = selectedDegree.value; const cylAll = allCylValues.value;
     if (loading) { return pageSphs.map(sph => ({ sph, __loading: true, ...Object.fromEntries(cylAll.map(c => [`cyl_${norm(c)}`, null])) })); }
-    
-    // Si tenemos items frescos, mergear en itemsCache
+
+    // Merge fresh items into itemsCache
     if (items?.length > 0) {
-      const existingKeys = new Set(itemsCache.value.map(i => `${i.sph}|${i.cyl}|${i.axis}`));
-      items.forEach(i => { if (!existingKeys.has(`${i.sph}|${i.cyl}|${i.axis}`)) itemsCache.value.push(i); });
+      items.forEach(i => {
+        itemsCache.set(`${i.sph}|${i.cyl}|${i.axis}`, i.existencias);
+      });
     }
 
     return pageSphs.map(sph => {
       const row = { sph };
-      const degItems = itemsCache.value.filter(i => i.axis === deg);
       cylAll.forEach(cDisp => {
-        const match = degItems.find(it => it.sph === sph && to2(Math.abs(it.cyl)) === cDisp);
         const field = `cyl_${norm(cDisp)}`;
-        row[field] = match?.existencias ?? 0;
+        const cyl = -Math.abs(cDisp);
+        row[field] = itemsCache.get(`${to2(sph)}|${to2(cyl)}|${deg}`) ?? 0;
+        
         const pk = `${to2(sph)}|${cDisp}|${deg}`;
         if (pendingChanges?.has(pk)) row[field] = pendingChanges.get(pk).existencias;
       });
       return row;
     });
   },
-  gridApi, rowIdGetter: (r) => String(to2(r.sph)), pendingChanges, DEV_DELAY_MS, LOG_ROWS,
+  gridApi, 
+  rowIdGetter: (r) => {
+    const s = to2(r.sph);
+    return Number.isFinite(s) ? String(s) : `loading-${Math.random()}`;
+  }, 
+  pendingChanges, 
+  DEV_DELAY_MS, 
+  LOG_ROWS,
 });
 
 // ─── Loaders ─────────────────────────────────────────────────────
@@ -313,6 +342,12 @@ function _rebuildAxes() {
   degreeValues.value = [...new Set(backendDeg)].filter(d => Number.isFinite(d) && d >= 10 && d <= 180 && d % 10 === 0).sort((a, b) => b - a);
   if (!degreeValues.value.includes(selectedDegree.value)) selectedDegree.value = degreeValues.value[0] || 180;
 
+  if (!degreeLRU.value.length) {
+    degreeLRU.value = [selectedDegree.value];
+  }
+
+  LOG(`_rebuildAxes: Tabs found=${!!t}, SPHs=${backendSph.length}, CYLs=${backendCyl.length}`);
+
   sphAxis.value = [...new Set(backendSph.map(to2))].filter(s => Number.isFinite(s) && s >= P.sphMin && s <= P.sphMax && (isNeg ? s <= 0 : s >= 0)).sort((a, b) => isNeg ? b - a : a - b);
   allCylValues.value = [...new Set(backendCyl.map(to2))].filter(n => Number.isFinite(n) && n >= 0 && n <= P.cylAbsMax).sort((a, b) => a - b);
 }
@@ -321,8 +356,15 @@ async function _fetchAllItems() {
   const P = phys.value; const isNeg = props.sphType === "sph-neg";
   try {
     const { data } = await fetchItems(props.sheetId, { sphMin: isNeg ? P.sphMin : 0, sphMax: isNeg ? 0 : P.sphMax, cylMin: P.cylMin, cylMax: 0, limit: 20000 });
-    itemsCache.value = (data?.data || []).map(i => { let cyl = to2(i.cyl); if (Number.isFinite(cyl) && cyl > 0) cyl = -Math.abs(cyl); return { sph: to2(i.sph), cyl, axis: Number(i.axis ?? 180), existencias: Number(i.existencias ?? 0) }; });
-    LOG(`_fetchAllItems: ${itemsCache.value.length} items.`);
+    const items = (data?.data || []).map(i => {
+      let cyl = to2(i.cyl);
+      if (Number.isFinite(cyl) && cyl > 0) cyl = -Math.abs(cyl);
+      return { sph: to2(i.sph), cyl, axis: Number(i.axis ?? 180), existencias: Number(i.existencias ?? 0) };
+    });
+    items.forEach(i => {
+      itemsCache.set(`${i.sph}|${i.cyl}|${i.axis}`, i.existencias);
+    });
+    LOG(`_fetchAllItems: ${itemsCache.size} items in cache.`);
   } catch (e) { console.error("[Torico] Error _fetchAllItems:", e); }
 }
 
@@ -330,7 +372,11 @@ async function switchViewReload({ clearCache = true } = {}) {
   switchingView.value = true; await raf();
   try {
     _rebuildAxes();
-    if (clearCache) { rowCaches.clear(); colManager.reset(); }
+    if (clearCache) {
+      rowCaches.clear();
+      degreeLRU.value = [selectedDegree.value];
+      colManager.reset();
+    }
     if (gridApi.value) gridApi.value.setGridOption("datasource", datasource.value);
     if (clearCache) { loadingCols.value = true; await colManager.init(); loadingCols.value = false; } else { colManager.reattach(); }
   } finally { await raf(); switchingView.value = false; }
@@ -338,30 +384,124 @@ async function switchViewReload({ clearCache = true } = {}) {
 
 async function selectDegree(deg) {
   if (deg === selectedDegree.value) return;
+
+  // 1. Persistir cambios si es necesario
   if (dirty.value && pendingChanges.value.size > 0) unsavedGuard.persist();
-  pendingChanges.value.clear(); dirty.value = false; gridHistory.clear();
-  selectedDegree.value = deg; colManager.reset();
-  if (gridApi.value) gridApi.value.setGridOption("datasource", datasource.value);
-  loadingCols.value = true; await colManager.init(); loadingCols.value = false;
-  await nextTick(); resetSort(); unsavedGuard.restore();
+  pendingChanges.value.clear();
+  dirty.value = false;
+  gridHistory.clear();
+
+  // 2. Gestionar LRU y podar caches antiguos
+  degreeLRU.value = [deg, ...degreeLRU.value.filter(d => d !== deg)].slice(0, MAX_ALIVE_DEGREES);
+  const currentPrefix = `${props.sphType}|`;
+  const aliveKeys = new Set(degreeLRU.value.map(d => `${currentPrefix}${d}`));
+  for (const k of rowCaches.keys()) {
+    if (k.startsWith(currentPrefix) && !aliveKeys.has(k)) {
+      rowCaches.delete(k);
+    }
+  }
+
+  // 3. Cambiar eje
+  selectedDegree.value = deg;
+
+  // 4. Actualizar datasource. PivotLoader usará el caché si existe (velocidad luz).
+  if (gridApi.value) {
+    gridApi.value.setGridOption("datasource", datasource.value);
+  }
+
+  await nextTick();
+  resetSort();
+  unsavedGuard.restore();
 }
 
-async function loadAll() { await loadSheetMeta(); await _fetchAllItems(); await switchViewReload(); }
+async function loadAll() {
+  await loadSheetMeta();
+  await Promise.all([_fetchAllItems(), switchViewReload()]);
+}
 
-async function _refreshCachedRows() {
-  const cache = getRowCache(); if (!cache.size || !gridApi.value) return;
-  const pageSphs = [...cache.keys()];
+// ─── WS Refresh throttle ────────────────────────────────────────
+// First event fires immediately; subsequent events within WS_THROTTLE_MS
+// are collapsed into one follow-up. Skipped entirely while the user is
+// editing (dirty) — queued and fired automatically on save/discard.
+const WS_THROTTLE_MS = 5000;
+let _wsThrottling    = false;
+let _wsPending       = false;
+let _wsTimer         = null;
+
+async function _doWsRefreshNow() {
+  const cache = getRowCache();
+  if (!cache.size || !gridApi.value) return;
+
+  const pageSphs = [...cache.keys()].map(k => to2(Number(k)));
+  const deg = selectedDegree.value;
+
   try {
-    const { data } = await fetchItems(props.sheetId, { sphMin: Math.min(...pageSphs), sphMax: Math.max(...pageSphs), cylMin: phys.value.cylMin, cylMax: 0, limit: 5000 });
-    const fresh = (data?.data || []).map(i => { let cyl = to2(i.cyl); if (Number.isFinite(cyl) && cyl > 0) cyl = -Math.abs(cyl); return { sph: to2(i.sph), cyl, axis: Number(i.axis ?? 180), existencias: Number(i.existencias ?? 0) }; });
-    itemsCache.value = [...itemsCache.value.filter(i => !pageSphs.includes(i.sph)), ...fresh];
-    const realRows = _buildPivotPage(pageSphs, fresh, { loading: false, pendingChanges: pendingChanges.value });
-    realRows.forEach(row => {
-      cache.set(row.sph, row);
-      const node = gridApi.value?.getRowNode(String(row.sph));
-      if (node) { node.setData(row); gridApi.value.refreshCells({ rowNodes: [node], force: true }); }
+    const isNeg = props.sphType === "sph-neg";
+    const P = phys.value;
+
+    // Fetch quirúrgico de las filas en caché
+    const { data } = await fetchItems(props.sheetId, {
+      sphMin: Math.min(...pageSphs),
+      sphMax: Math.max(...pageSphs),
+      cylMin: P.cylMin,
+      cylMax: 0,
+      limit: 5000
     });
-  } catch (e) { console.error("[Torico] _refreshCachedRows error:", e); }
+
+    const items = (data?.data || []).map(i => {
+      let cyl = to2(i.cyl);
+      if (Number.isFinite(cyl) && cyl > 0) cyl = -Math.abs(cyl);
+      return { sph: to2(i.sph), cyl, axis: Number(i.axis ?? 180), existencias: Number(i.existencias ?? 0) };
+    });
+
+    // Actualizar itemsCache global
+    if (items.length > 0) {
+      items.forEach(i => {
+        itemsCache.set(`${i.sph}|${i.cyl}|${i.axis}`, i.existencias);
+      });
+    }
+
+    // Actualizar TODOS los grados vivos en el LRU que coincidan con estos SPHs
+    degreeLRU.value.forEach(lruDeg => {
+      const lruCache = rowCaches.get(`${props.sphType}|${lruDeg}`);
+      if (!lruCache) return;
+
+      pageSphs.forEach(sph => {
+        const row = lruCache.get(String(sph));
+        if (!row) return;
+
+        items.filter(i => i.sph === sph && i.axis === lruDeg).forEach(i => {
+          row[`cyl_${norm(Math.abs(i.cyl))}`] = i.existencias;
+        });
+
+        // Si es el grado visible, actualizar nodos del grid
+        if (lruDeg === deg) {
+          const node = gridApi.value.getRowNode(String(sph));
+          if (node) {
+            node.setData({ ...row });
+            gridApi.value.refreshCells({ rowNodes: [node], force: true });
+          }
+        }
+      });
+    });
+
+  } catch (e) {
+    console.error("[Torico] WS Refresh error:", e);
+  } finally {
+    _wsThrottling = true;
+    clearTimeout(_wsTimer);
+    _wsTimer = setTimeout(() => {
+      _wsThrottling = false;
+      if (_wsPending && !dirty.value) { _wsPending = false; _doWsRefreshNow(); }
+      else _wsPending = false;
+    }, WS_THROTTLE_MS);
+  }
+}
+
+function _refreshCachedRows() {
+  if (dirty.value)    { _wsPending = true; return; }
+  if (_wsThrottling)  { _wsPending = true; return; }
+  _doWsRefreshNow();
 }
 
 function applyGridHistoryOp(op) {
@@ -369,8 +509,8 @@ function applyGridHistoryOp(op) {
   const value = op.reversed ? op.oldValue : op.newValue;
   const [sphStr, cylDispStr, degStr] = op.key.split("|");
   const sph = to2(Number(sphStr));
-  if (Number(degStr) !== selectedDegree.value) return; // Opcional: switch axis or ignore
-  const cached = getRowCache().get(sph);
+  if (Number(degStr) !== selectedDegree.value) return; 
+  const cached = getRowCache().get(String(sph));
   if (cached) {
     cached[op.field] = value;
     const node = gridApi.value?.getRowNode(String(sph));
@@ -392,7 +532,7 @@ const handleAddRow = async (nuevoValor, ack) => {
     const res = await saveChunk(props.sheetId, rows, effectiveActor.value);
     const ok = normalizeAxiosOk(res); if (!ok.ok) throw new Error(ok.message);
     ackOk(ack, ok.message || `Fila agregada`, ok.status);
-    lastSavedAt.value = new Date(); itemsCache.value = []; await loadSheetMeta(); await _fetchAllItems(); await switchViewReload();
+    lastSavedAt.value = new Date(); itemsCache.clear(); await loadSheetMeta(); await _fetchAllItems(); await switchViewReload();
   } catch (e) { ackErr(ack, msgFromErr(e, "Error al agregar fila"), statusFromErr(e) || 500); }
 };
 
@@ -406,7 +546,7 @@ const handleAddColumn = async (nuevoValor, ack) => {
     const res = await saveChunk(props.sheetId, rows, effectiveActor.value);
     const ok = normalizeAxiosOk(res); if (!ok.ok) throw new Error(ok.message);
     ackOk(ack, ok.message || `Columna agregada`, ok.status);
-    lastSavedAt.value = new Date(); itemsCache.value = []; await loadSheetMeta(); await _fetchAllItems(); await switchViewReload();
+    lastSavedAt.value = new Date(); itemsCache.clear(); await loadSheetMeta(); await _fetchAllItems(); await switchViewReload();
   } catch (e) { ackErr(ack, msgFromErr(e, "Error al agregar columna"), statusFromErr(e) || 500); }
 };
 
@@ -419,11 +559,18 @@ const clearFilters = () => { if (!gridApi.value) return; gridApi.value.setGridOp
 const resetSort = () => { if (!gridApi.value) return; gridApi.value.applyColumnState({ defaultState: { sort: null }, state: [{ colId: "sph", sort: props.sphType === "sph-neg" ? "desc" : "asc" }] }); };
 const handleToggleFilters = () => clearFilters();
 
+// Fire any queued WS refresh once the user finishes editing
+watch(dirty, (isDirty) => {
+  if (!isDirty && _wsPending && !_wsThrottling) { _wsPending = false; _doWsRefreshNow(); }
+});
+
 onMounted(async () => { await loadAll(); unsavedGuard.restore(); });
 watch(() => props.sphType, async () => {
   if (dirty.value && pendingChanges.value.size > 0) unsavedGuard.persist();
   pendingChanges.value.clear(); dirty.value = false; gridHistory.clear();
-  itemsCache.value = []; await _fetchAllItems(); await switchViewReload({ clearCache: false }); unsavedGuard.restore();
+  itemsCache.clear();
+  await Promise.all([_fetchAllItems(), switchViewReload({ clearCache: false })]);
+  unsavedGuard.restore();
 });
 </script>
 

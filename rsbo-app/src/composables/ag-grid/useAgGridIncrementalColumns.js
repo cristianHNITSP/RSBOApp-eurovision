@@ -48,8 +48,8 @@ export function useAgGridIncrementalColumns({
   /** Valores del eje actualmente visibles como columnas */
   const activeValues = ref([]);
 
+  const loading = ref(false);
   let _scrollListener = null;
-  let _isAdding = false;
   let _initDone = false;
 
   // ── DOM helpers ──────────────────────────────────────────────────────────
@@ -67,7 +67,7 @@ export function useAgGridIncrementalColumns({
 
   // ── Agregar un bloque de columnas ────────────────────────────────────────
   async function addNextChunk() {
-    if (_isAdding) {
+    if (loading.value) {
       log("addNextChunk: ya hay una adición en curso, ignorando.");
       return false;
     }
@@ -79,7 +79,7 @@ export function useAgGridIncrementalColumns({
       return false; // nada que agregar
     }
 
-    _isAdding = true;
+    loading.value = true;
     const nextSlice = all.slice(current, current + colChunkSize);
     activeValues.value = all.slice(0, current + nextSlice.length);
 
@@ -89,7 +89,7 @@ export function useAgGridIncrementalColumns({
     );
 
     await nextTick();
-    _isAdding = false;
+    loading.value = false;
     return true; // hubo cambio
   }
 
@@ -210,7 +210,7 @@ export function useAgGridIncrementalColumns({
   function reset() {
     _detachScrollListener();
     activeValues.value = [];
-    _isAdding = false;
+    loading.value = false;
     _initDone = false;
     log("reset().");
   }
@@ -224,6 +224,7 @@ export function useAgGridIncrementalColumns({
 
   return {
     activeValues,
+    loading,
     init,
     reset,
     reattach,

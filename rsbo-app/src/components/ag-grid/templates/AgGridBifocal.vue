@@ -9,34 +9,14 @@
 <template>
   <div class="grid-page">
     <header class="grid-topbar">
-      <navtools
-        class="navtools-wrap"
-        v-model="formulaValue"
-        :dirty="dirty"
-        :saving="saving"
-        :total-rows="totalRows"
-        :sheet-name="sheetName"
-        :tipo-matriz="tipoMatriz"
-        :material="material"
-        :tratamientos="tratamientos"
-        :last-saved-at="lastSavedAt"
-        :grid-can-undo="gridHistory.canUndo.value"
-        :grid-can-redo="gridHistory.canRedo.value"
-        @add-row="handleAddRow"
-        @add-column="handleAddColumn"
-        @clear-filters="clearFilters"
-        @reset-sort="resetSort"
-        @toggle-filters="handleToggleFilters"
-        @save-request="handleSave"
-        @discard-changes="handleDiscard"
-        @refresh="handleRefresh"
-        @seed="handleSeed"
-        @export="handleExport"
-        @fx-input="onFxInput"
-        @fx-commit="onFxCommit"
-        @grid-undo="handleGridUndo"
-        @grid-redo="handleGridRedo"
-      />
+      <navtools class="navtools-wrap" v-model="formulaValue" :dirty="dirty" :saving="saving" :total-rows="totalRows"
+        :sheet-name="sheetName" :tipo-matriz="tipoMatriz" :material="material" :tratamientos="tratamientos"
+        :last-saved-at="lastSavedAt" :grid-can-undo="gridHistory.canUndo.value"
+        :grid-can-redo="gridHistory.canRedo.value" @add-row="handleAddRow" @add-column="handleAddColumn"
+        @clear-filters="clearFilters" @reset-sort="resetSort" @toggle-filters="handleToggleFilters"
+        @save-request="handleSave" @discard-changes="handleDiscard" @refresh="handleRefresh" @seed="handleSeed"
+        @export="handleExport" @fx-input="onFxInput" @fx-commit="onFxCommit" @grid-undo="handleGridUndo"
+        @grid-redo="handleGridRedo" />
     </header>
 
     <main class="grid-main">
@@ -58,42 +38,32 @@
             <span class="status-badge__text">
               Filas: {{ rowsInCacheCount }} / {{ sphAxis.length }}
               <template v-if="loadingRowsCount > 0"> (cargando {{ loadingRowsCount }}...)</template>
-            </span>
-          </div>
-          -->
+</span>
+</div>
+-->
         </div>
 
-        <AgGridVue
-          v-if="sheetMeta"
-          class="ag-grid-glass"
-          :columnDefs="columns"
-          :rowModelType="'infinite'"
-          :datasource="datasource"
-          :defaultColDef="defaultColDef"
-          :getRowId="getRowId"
-          :animateRows="false"
-          :localeText="localeText"
-          :theme="themeCustom"
-          :rowHeight="30"
-          :headerHeight="32"
-          :suppressMovableColumns="true"
-          :rowClassRules="stockRowClassRules.value"
-          :maxBlocksInCache="20"
-          :cacheBlockSize="ROW_PAGE_SIZE"
-          :infiniteInitialRowCount="sphAxis.length || 10"
-          :suppressHorizontalScroll="false"
-          @cellClicked="onCellClicked"
-          @cellValueChanged="onCellValueChanged"
-          @grid-ready="onGridReady"
-          style="width: 100%; height: 100%;"
-        />
+        <Transition name="veil">
+          <div v-if="showVeil" class="grid-loading-veil">
+            <div class="grid-loading-veil__spinner"></div>
+            <span class="grid-loading-veil__label">Cargando planilla…</span>
+          </div>
+        </Transition>
+
+        <AgGridVue v-if="sheetMeta" class="ag-grid-glass" :columnDefs="columns" :rowModelType="'infinite'"
+          :datasource="datasource" :defaultColDef="defaultColDef" :getRowId="getRowId" :animateRows="false"
+          :localeText="localeText" :theme="themeCustom" :rowHeight="30" :headerHeight="32"
+          :suppressMovableColumns="true" :rowClassRules="stockRowClassRules.value" :maxBlocksInCache="20"
+          :cacheBlockSize="ROW_PAGE_SIZE" :infiniteInitialRowCount="sphAxis.length || 10"
+          :suppressHorizontalScroll="false" @cellClicked="onCellClicked" @cellValueChanged="onCellValueChanged"
+          @grid-ready="onGridReady" style="width: 100%; height: 100%;" />
       </div>
     </main>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick, onMounted, toRefs } from "vue";
+import { ref, computed, watch, nextTick, onMounted, onActivated, toRefs } from "vue";
 import { AgGridVue } from "ag-grid-vue3";
 import { AllCommunityModule, ModuleRegistry } from "ag-grid-community";
 import navtools from "@/components/ag-grid/navtools.vue";
@@ -112,18 +82,18 @@ import { norm, denorm, parseAddEyeFromField, raf } from "@/components/ag-grid/ut
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-const DEV_MODE      = import.meta.env.DEV;
-const DEV_DELAY_MS  = 0;
-const ROW_PAGE_SIZE  = DEV_MODE ? 4 : 10;
+const DEV_MODE = import.meta.env.DEV;
+const DEV_DELAY_MS = 0;
+const ROW_PAGE_SIZE = DEV_MODE ? 4 : 10;
 const COL_CHUNK_SIZE = DEV_MODE ? 3 : 8;
 
-const LOG      = (...a) => DEV_MODE && console.log("[Bifocal]", ...a);
+const LOG = (...a) => DEV_MODE && console.log("[Bifocal]", ...a);
 const LOG_ROWS = (...a) => DEV_MODE && console.log("[Bifocal][Rows]", ...a);
 
 const props = defineProps({
   sheetId: { type: String, required: true },
   sphType: { type: String, default: "sph-neg" },
-  actor:   { type: Object, default: null },
+  actor: { type: Object, default: null },
   apiType: { type: String, default: "inventory" },
 });
 
@@ -141,12 +111,13 @@ const integration = useAgGridIntegration({
 const { gridApi, dirty, saving, lastSavedAt, switchingView, pendingChanges, gridHistory, unsavedGuard, suppressNextWsRefresh, postMessage } = integration;
 
 // ─── State ───────────────────────────────────────────────────────
-const sheetMeta      = ref(null);
-const sheetTabs      = ref([]);
-const physical       = ref(null);
-const sphAxis        = ref([]);
-const allAddValues   = ref([]);
-const rowCaches      = new Map();
+const sheetMeta = ref(null);
+const sheetTabs = ref([]);
+const physical = ref(null);
+const sphAxis = ref([]);
+const allAddValues = ref([]);
+const rowCaches = new Map();
+const showVeil = ref(true);
 
 const getRowCache = () => {
   const k = props.sphType;
@@ -268,7 +239,7 @@ const defaultColDef = { resizable: true, sortable: true, filter: "agNumberColumn
 
 // ─── Pivot Loader ────────────────────────────────────────────────
 const { datasource, loadingRowsCount, rowsInCacheCount } = useAgGridPivotLoader({
-  baseAxis: sphAxis, getRowCache, fetchItems, sheetId,
+  baseAxis: sphAxis, getRowCache, fetchItems, sheetId, viewId: sphType,
   buildFetchQuery: (pageSphs) => ({ sphMin: Math.min(...pageSphs), sphMax: Math.max(...pageSphs), addMin: PHYS.value.ADD.min, addMax: PHYS.value.ADD.max, eyes: "OD,OI", limit: 5000 }),
   normalizeItem: (i) => ({ sph: to2(i.sph), add: to2(i.add), eye: String(i.eye || "OD").toUpperCase(), base_izq: to2(i.base_izq ?? 0), base_der: to2(i.base_der ?? 0), existencias: Number(i.existencias ?? 0) }),
   buildPivotPage: (pageSphs, items, { loading, pendingChanges }) => {
@@ -281,13 +252,15 @@ const { datasource, loadingRowsCount, rowsInCacheCount } = useAgGridPivotLoader(
     return pageSphs.map(sph => {
       const sphItems = items.filter(i => i.sph === sph);
       const row = { sph, base_izq: to2(sphItems[0]?.base_izq ?? 0), base_der: to2(sphItems[0]?.base_der ?? 0) };
-      addAll.forEach(add => { eyes.forEach(eye => {
-        const field = `add_${norm(add)}_${eye}`;
-        const match = sphItems.find(i => i.add === add && i.eye === eye);
-        row[field] = match?.existencias ?? 0;
-        const pk = `${to2(sph)}|${to2(add)}|${eye}`;
-        if (pendingChanges?.has(pk)) row[field] = pendingChanges.get(pk).existencias;
-      }); });
+      addAll.forEach(add => {
+        eyes.forEach(eye => {
+          const field = `add_${norm(add)}_${eye}`;
+          const match = sphItems.find(i => i.add === add && i.eye === eye);
+          row[field] = match?.existencias ?? 0;
+          const pk = `${to2(sph)}|${to2(add)}|${eye}`;
+          if (pendingChanges?.has(pk)) row[field] = pendingChanges.get(pk).existencias;
+        });
+      });
       return row;
     });
   },
@@ -301,7 +274,7 @@ async function loadSheetMeta() {
     const payload = data?.data || data;
     sheetMeta.value = payload?.sheet || null;
     sheetTabs.value = Array.isArray(payload?.tabs) ? payload.tabs : [];
-    physical.value  = payload?.physicalLimits || null;
+    physical.value = payload?.physicalLimits || null;
     LOG("loadSheetMeta OK");
   } catch (e) { console.error("[Bifocal] Error getSheet:", e?.response?.data || e); }
 }
@@ -312,20 +285,21 @@ function _rebuildAxes() {
   const backendSph = Array.isArray(tab?.axis?.sph) ? tab.axis.sph : [];
   const backendAdd = Array.isArray(tab?.axis?.add) ? tab.axis.add : [];
   sphAxis.value = [...new Set(backendSph.map(to2))].filter(s => Number.isFinite(s) && s >= P.SPH.min && s <= P.SPH.max && (isNeg ? s <= 0 : s >= 0)).sort((a, b) => isNeg ? b - a : a - b);
-  allAddValues.value = [...new Set(backendAdd.map(to2))].filter(a => Number.isFinite(a) && a >= P.ADD.min && a <= P.ADD.max).sort((a,b)=>a-b);
+  allAddValues.value = [...new Set(backendAdd.map(to2))].filter(a => Number.isFinite(a) && a >= P.ADD.min && a <= P.ADD.max).sort((a, b) => a - b);
 }
 
 async function switchViewReload({ clearCache = true } = {}) {
-  switchingView.value = true; await raf();
+  switchingView.value = true;
+  _rebuildAxes();
+  if (clearCache) { rowCaches.clear(); colManager.reset(); }
+  await raf();
   try {
-    _rebuildAxes();
-    if (clearCache) { rowCaches.clear(); colManager.reset(); }
     if (gridApi.value) gridApi.value.setGridOption("datasource", datasource.value);
     if (clearCache) { await colManager.init(); } else { colManager.reattach(); }
   } finally { await raf(); switchingView.value = false; }
 }
 
-async function loadAll() { await loadSheetMeta(); await switchViewReload(); }
+async function loadAll() { try { await loadSheetMeta(); await switchViewReload(); } finally { showVeil.value = false; } }
 
 async function _refreshCachedRows() {
   const cache = getRowCache(); if (!cache.size || !gridApi.value) return;
@@ -398,10 +372,13 @@ const resetSort = () => { if (!gridApi.value) return; gridApi.value.applyColumnS
 const handleToggleFilters = () => clearFilters();
 
 onMounted(async () => { await loadAll(); unsavedGuard.restore(); });
+onActivated(async () => { showVeil.value = true; await loadAll(); unsavedGuard.restore(); });
 watch(() => props.sphType, async () => {
   if (dirty.value && pendingChanges.value.size > 0) unsavedGuard.persist();
   pendingChanges.value.clear(); dirty.value = false; gridHistory.clear();
-  await switchViewReload({ clearCache: false }); unsavedGuard.restore();
+  showVeil.value = true;
+  try { await switchViewReload({ clearCache: false }); } finally { showVeil.value = false; }
+  unsavedGuard.restore();
 });
 </script>
 

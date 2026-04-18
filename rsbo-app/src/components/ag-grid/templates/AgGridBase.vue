@@ -58,6 +58,13 @@
           -->
         </div>
 
+        <Transition name="veil">
+          <div v-if="showVeil" class="grid-loading-veil">
+            <div class="grid-loading-veil__spinner"></div>
+            <span class="grid-loading-veil__label">Cargando planilla…</span>
+          </div>
+        </Transition>
+
         <AgGridVue
           v-if="sheetMeta"
           class="ag-grid-glass"
@@ -87,7 +94,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick, onMounted, toRefs } from "vue";
+import { ref, computed, watch, nextTick, onMounted, onActivated, toRefs } from "vue";
 import { AgGridVue } from "ag-grid-vue3";
 import { AllCommunityModule, ModuleRegistry } from "ag-grid-community";
 import navtools from "@/components/ag-grid/navtools.vue";
@@ -140,6 +147,7 @@ const sheetTabs      = ref([]);
 const physicalLimits = ref(null);
 const baseAxis       = ref([]);
 const rowCaches      = new Map();
+const showVeil       = ref(true);
 
 const getRowCache = () => {
   const k = props.sphType;
@@ -248,7 +256,7 @@ const defaultColDef = { resizable: true, sortable: true, filter: "agNumberColumn
 
 // ─── Pivot Loader ────────────────────────────────────────────────
 const { datasource, loadingRowsCount, rowsInCacheCount } = useAgGridPivotLoader({
-  baseAxis, getRowCache, fetchItems, sheetId,
+  baseAxis, getRowCache, fetchItems, sheetId, viewId: sphType,
   buildFetchQuery: (pageBases) => ({ baseMin: Math.min(...pageBases), baseMax: Math.max(...pageBases), limit: 5000 }),
   normalizeItem: (i) => ({ base: to2(i.base), existencias: Number(i.existencias ?? 0) }),
   buildPivotPage: (pageBases, items, { loading, pendingChanges }) => {
@@ -285,15 +293,15 @@ function _rebuildAxis() {
 
 async function switchViewReload({ clearCache = true } = {}) {
   integration.switchingView.value = true;
+  _rebuildAxis();
+  if (clearCache) rowCaches.clear();
   await raf();
   try {
-    _rebuildAxis();
-    if (clearCache) rowCaches.clear();
     if (gridApi.value) gridApi.value.setGridOption("datasource", datasource.value);
   } finally { await raf(); integration.switchingView.value = false; }
 }
 
-async function loadAll() { await loadSheetMeta(); await switchViewReload(); }
+async function loadAll() { try { await loadSheetMeta(); await switchViewReload(); } finally { showVeil.value = false; } }
 
 async function _refreshCachedRows() {
   const cache = getRowCache();
@@ -360,10 +368,13 @@ const resetSort = () => { if (!gridApi.value) return; gridApi.value.applyColumnS
 const handleToggleFilters = () => clearFilters();
 
 onMounted(async () => { await loadAll(); unsavedGuard.restore(); });
+onActivated(async () => { showVeil.value = true; await loadAll(); unsavedGuard.restore(); });
 watch(() => props.sphType, async () => {
   if (dirty.value && pendingChanges.value.size > 0) unsavedGuard.persist();
   pendingChanges.value.clear(); dirty.value = false; gridHistory.clear();
-  await switchViewReload({ clearCache: false }); unsavedGuard.restore();
+  showVeil.value = true;
+  try { await switchViewReload({ clearCache: false }); } finally { showVeil.value = false; }
+  unsavedGuard.restore();
 });
 </script>
 

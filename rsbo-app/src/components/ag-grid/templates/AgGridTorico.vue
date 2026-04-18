@@ -79,6 +79,13 @@
           -->
         </div>
 
+        <Transition name="veil">
+          <div v-if="showVeil" class="grid-loading-veil">
+            <div class="grid-loading-veil__spinner"></div>
+            <span class="grid-loading-veil__label">Cargando planilla…</span>
+          </div>
+        </Transition>
+
         <AgGridVue
           v-if="sheetMeta"
           class="ag-grid-glass"
@@ -109,7 +116,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick, onMounted, toRefs } from "vue";
+import { ref, computed, watch, nextTick, onMounted, onActivated, toRefs } from "vue";
 import { AgGridVue } from "ag-grid-vue3";
 import { AllCommunityModule, ModuleRegistry } from "ag-grid-community";
 import navtools from "@/components/ag-grid/navtools.vue";
@@ -166,6 +173,7 @@ const itemsCache     = new Map(); // Key: `${sph}|${cyl}|${axis}` -> value: exis
 const degreeValues   = ref([]);
 const selectedDegree = ref(180);
 const rowCaches      = new Map();
+const showVeil       = ref(true);
 
 // ─── LRU & Keep-Alive ─────────────────────────────────────────────
 const MAX_ALIVE_DEGREES = 3;
@@ -284,6 +292,7 @@ const defaultColDef = { resizable: true, sortable: true, filter: "agNumberColumn
 // ─── Pivot Loader ────────────────────────────────────────────────
 const { datasource, loadingRowsCount, rowsInCacheCount } = useAgGridPivotLoader({
   baseAxis: sphAxis, getRowCache, fetchItems, sheetId,
+  viewId: () => `${props.sphType}|${selectedDegree.value}`,
   buildFetchQuery: (pageSphs) => ({ sphMin: Math.min(...pageSphs), sphMax: Math.max(...pageSphs), cylMin: phys.value.cylMin, cylMax: 0, limit: 5000 }),
   normalizeItem: (i) => { let cyl = to2(i.cyl); if (Number.isFinite(cyl) && cyl > 0) cyl = -Math.abs(cyl); return { sph: to2(i.sph), cyl, axis: Number(i.axis ?? 180), existencias: Number(i.existencias ?? 0) }; },
   buildPivotPage: (pageSphs, items, { loading, pendingChanges }) => {
@@ -369,14 +378,15 @@ async function _fetchAllItems() {
 }
 
 async function switchViewReload({ clearCache = true } = {}) {
-  switchingView.value = true; await raf();
+  switchingView.value = true;
+  _rebuildAxes();
+  if (clearCache) {
+    rowCaches.clear();
+    degreeLRU.value = [selectedDegree.value];
+    colManager.reset();
+  }
+  await raf();
   try {
-    _rebuildAxes();
-    if (clearCache) {
-      rowCaches.clear();
-      degreeLRU.value = [selectedDegree.value];
-      colManager.reset();
-    }
     if (gridApi.value) gridApi.value.setGridOption("datasource", datasource.value);
     if (clearCache) { loadingCols.value = true; await colManager.init(); loadingCols.value = false; } else { colManager.reattach(); }
   } finally { await raf(); switchingView.value = false; }
@@ -415,8 +425,10 @@ async function selectDegree(deg) {
 }
 
 async function loadAll() {
-  await loadSheetMeta();
-  await Promise.all([_fetchAllItems(), switchViewReload()]);
+  try {
+    await loadSheetMeta();
+    await Promise.all([_fetchAllItems(), switchViewReload()]);
+  } finally { showVeil.value = false; }
 }
 
 // ─── WS Refresh throttle ────────────────────────────────────────
@@ -565,11 +577,13 @@ watch(dirty, (isDirty) => {
 });
 
 onMounted(async () => { await loadAll(); unsavedGuard.restore(); });
+onActivated(async () => { showVeil.value = true; await loadAll(); unsavedGuard.restore(); });
 watch(() => props.sphType, async () => {
   if (dirty.value && pendingChanges.value.size > 0) unsavedGuard.persist();
   pendingChanges.value.clear(); dirty.value = false; gridHistory.clear();
   itemsCache.clear();
-  await Promise.all([_fetchAllItems(), switchViewReload({ clearCache: false })]);
+  showVeil.value = true;
+  try { await Promise.all([_fetchAllItems(), switchViewReload({ clearCache: false })]); } finally { showVeil.value = false; }
   unsavedGuard.restore();
 });
 </script>

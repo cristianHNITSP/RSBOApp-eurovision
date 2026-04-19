@@ -61,6 +61,12 @@
     <!-- Acciones superiores -->
     <div class="columns is-mobile is-multiline is-variable is-1">
       <div class="column is-full-mobile is-narrow-tablet">
+        <b-button size="is-normal" type="is-success" icon-left="user-plus" expanded class="action-btn"
+          @click="emit('open-create')">
+          Nuevo usuario
+        </b-button>
+      </div>
+      <div class="column is-full-mobile is-narrow-tablet">
         <b-button size="is-normal" type="is-light" icon-left="sync-alt" expanded class="action-btn" :loading="loading"
           @click="emit('reload')">
           Recargar
@@ -129,6 +135,7 @@
 <script setup>
 import { ref, watch, nextTick } from 'vue'
 import AvatarPicker from '@/components/AvatarPicker.vue'
+import { PERMISSION_LABELS } from '@/utils/permissionLabels.js'
 
 const props = defineProps({
   user: { type: Object, default: null },
@@ -151,14 +158,6 @@ const bannerEl = ref(null)
 const bannerPulse = ref(false)
 const showDetails = ref(false)
 let _pulseT = null
-
-function isElementMostlyVisible(el, ratio = 0.65) {
-  if (!el) return true
-  const rect = el.getBoundingClientRect()
-  const vh = window.innerHeight || document.documentElement.clientHeight
-  const visibleHeight = Math.max(0, Math.min(rect.bottom, vh) - Math.max(rect.top, 0))
-  return visibleHeight / Math.max(1, rect.height) >= ratio
-}
 
 async function triggerFocus() {
   await nextTick()
@@ -205,9 +204,18 @@ function formatDate(value) {
 
 function formatPermissionLabel(code) {
   if (!code) return '—'
+  
+  // 1. Intentar catálogo de props (backend)
   const cat = props.permissionsCatalog
   if (cat && typeof cat === 'object' && cat[code]) return String(cat[code])
-  const pretty = String(code).replace(/[_-]/g, ' ').toLowerCase()
+  
+  // 2. Intentar mapa local (traducciones comunes)
+  // Normalizamos quitando guiones bajos por espacios y pasando a minúsculas
+  const normalized = String(code).replace(/_/g, ' ').toLowerCase().trim()
+  if (PERMISSION_LABELS[normalized]) return PERMISSION_LABELS[normalized]
+  
+  // 3. Fallback: Formatear el código (pretty print)
+  const pretty = normalized
   return pretty.charAt(0).toUpperCase() + pretty.slice(1)
 }
 </script>
@@ -253,8 +261,7 @@ function formatPermissionLabel(code) {
 
 .selected-user-banner__info-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr) minmax(0, 1.4fr);
-  /*align-items: center;*/
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr) minmax(0, 1.4fr) minmax(0, 0.9fr) minmax(0, 0.9fr);
   gap: 1rem;
 }
 
@@ -273,6 +280,7 @@ function formatPermissionLabel(code) {
   display: flex;
   align-items: center;
   min-width: 0;
+  gap: 0.85rem;
 }
 
 .selected-user-banner__text {
@@ -463,14 +471,12 @@ function formatPermissionLabel(code) {
 
 @media (max-width: 1024px) {
   .selected-user-banner__info-grid {
-    grid-template-columns: 1.5fr 1fr;
+    grid-template-columns: minmax(0, 1.8fr) minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 0.9fr);
   }
 
   .banner-info-item:nth-child(2) {
     display: none;
   }
-
-  /* Ocultar email en tablet si no cabe */
 }
 
 @media (max-width: 768px) {

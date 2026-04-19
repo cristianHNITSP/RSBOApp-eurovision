@@ -291,19 +291,25 @@ function select(tab) {
 @media (max-width: 640px) {
   .dyn-tabs__bar {
     border-radius: var(--radius-md);
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: auto; /* Mostrar scrollbar en móvil si es necesario */
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0.4rem; /* Espacio para scrollbar si aparece */
   }
 
   .dyn-tab {
-    padding: 0.4rem 0.7rem;
-    font-size: 0.78rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+    min-width: fit-content;
   }
 
   .dyn-tab__label {
-    display: none;
+    display: inline-block; /* Mostrar texto */
   }
 
   .dyn-tab__icon {
-    font-size: 0.92rem;
+    display: none; /* Ocultar icono para "ver texto únicamente" */
   }
 }
 </style>

@@ -82,13 +82,7 @@
       <template #datos>
         <div class="ribbon-actions-row">
           <b-field grouped>
-            <NavButton icon="filter" @click="$emit('clear-filters')">
-              Limpiar filtros
-            </NavButton>
 
-            <NavButton icon="sort-amount-down-alt" @click="$emit('reset-sort')">
-              Restablecer orden
-            </NavButton>
 
             <NavButton
               extra-class="rbtn--primary"

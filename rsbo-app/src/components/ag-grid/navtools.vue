@@ -30,8 +30,6 @@
       @paste="handlePasteClick"
       @add-row="openAddRowModal"
       @add-column="openAddColumnModal"
-      @clear-filters="emit('clear-filters')"
-      @reset-sort="emit('reset-sort')"
       @save="handleSaveInternal"
       @discard="handleDiscard"
       @export="emit('export')"
@@ -87,7 +85,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits([
-  'update:modelValue', 'add-row', 'add-column', 'clear-filters', 'reset-sort',
+  'update:modelValue', 'add-row', 'add-column',
   'save-request', 'discard-changes', 'export', 'fx-input', 'fx-commit',
   'grid-undo', 'grid-redo', 'grid-copy', 'grid-cut', 'grid-paste'
 ])

@@ -13,7 +13,7 @@
         :sheet-name="sheetName" :tipo-matriz="tipoMatriz" :material="material" :tratamientos="tratamientos"
         :last-saved-at="lastSavedAt" :grid-can-undo="gridHistory.canUndo.value"
         :grid-can-redo="gridHistory.canRedo.value" @add-row="handleAddRow" @add-column="handleAddColumn"
-        @clear-filters="clearFilters" @reset-sort="resetSort" @toggle-filters="handleToggleFilters"
+        @toggle-filters="handleToggleFilters"
         @save-request="handleSave" @discard-changes="handleDiscard" @refresh="handleRefresh" @seed="handleSeed"
         @export="handleExport" @fx-input="onFxInput" @fx-commit="onFxCommit" @grid-undo="handleGridUndo"
         @grid-redo="handleGridRedo" />
@@ -193,7 +193,7 @@ const { formulaValue, onCellClicked, onCellValueChanged, onFxInput, onFxCommit }
 function makeAddLeaf(field, header, add, eye) {
   return {
     field, headerName: header, editable: (p) => !p.data?.__loading,
-    filter: "agNumberColumnFilter", minWidth: 90, maxWidth: 120,
+    filter: false, minWidth: 90, maxWidth: 120,
     cellClass: ["ag-cell--compact", "ag-cell--numeric"],
     headerClass: ["ag-header-cell--compact"],
     cellClassRules: { ...stockCellClassRules.value, "ag-cell--loading": (p) => !!p.data?.__loading },
@@ -219,7 +219,7 @@ const columns = computed(() => {
       children: [{
         field: "sph", headerName: "SPH", pinned: "left", width: 90, minWidth: 86, maxWidth: 96,
         editable: false, sortable: true, comparator: (a, b) => Number(a) - Number(b),
-        filter: "agNumberColumnFilter", cellClass: ["ag-cell--compact", "ag-cell--numeric", "ag-cell--pinned"],
+        filter: false, cellClass: ["ag-cell--compact", "ag-cell--numeric", "ag-cell--pinned"],
         headerClass: ["ag-header-cell--compact", "ag-header-cell--pinned"],
         valueFormatter: (p) => { if (p.data?.__loading) return ""; const v = Number(p.value); return Number.isFinite(v) ? v.toFixed(2) : p.value ?? ""; },
         cellRenderer: (p) => p.data?.__loading ? '<span class="skeleton-cell"></span>' : (p.valueFormatted ?? String(p.value ?? "")),
@@ -235,7 +235,7 @@ const columns = computed(() => {
   ];
 });
 
-const defaultColDef = { resizable: true, sortable: true, filter: "agNumberColumnFilter", floatingFilter: true, editable: true, minWidth: 90, maxWidth: 160, cellClass: "ag-cell--compact", headerClass: "ag-header-cell--compact" };
+const defaultColDef = { resizable: true, sortable: true, filter: false, floatingFilter: false, editable: true, minWidth: 90, maxWidth: 160, cellClass: "ag-cell--compact", headerClass: "ag-header-cell--compact" };
 
 // ─── Pivot Loader ────────────────────────────────────────────────
 const { datasource, loadingRowsCount, rowsInCacheCount } = useAgGridPivotLoader({
@@ -367,12 +367,11 @@ const onGridReady = async (p) => {
   await nextTick(); resetSort(); colManager.reattach();
 };
 
-const clearFilters = () => { if (!gridApi.value) return; gridApi.value.setGridOption("filterModel", null); };
-const resetSort = () => { if (!gridApi.value) return; gridApi.value.applyColumnState({ defaultState: { sort: null }, state: [{ colId: "sph", sort: props.sphType === "sph-neg" ? "desc" : "asc" }] }); };
-const handleToggleFilters = () => clearFilters();
+const handleToggleFilters = () => { if (!gridApi.value) return; gridApi.value.setGridOption("filterModel", null); };
 
-onMounted(async () => { await loadAll(); unsavedGuard.restore(); });
-onActivated(async () => { showVeil.value = true; await loadAll(); unsavedGuard.restore(); });
+let _hasMounted = false;
+onMounted(async () => { await loadAll(); unsavedGuard.restore(); _hasMounted = true; });
+onActivated(() => { if (_hasMounted) unsavedGuard.restore(); });
 watch(() => props.sphType, async () => {
   if (dirty.value && pendingChanges.value.size > 0) unsavedGuard.persist();
   pendingChanges.value.clear(); dirty.value = false; gridHistory.clear();

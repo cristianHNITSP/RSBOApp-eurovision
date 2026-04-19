@@ -103,3 +103,4 @@ async function copy() {
 
 function save() { emit('save', { ...form }) }
 </script>
+<style src="./UserCreateModal.css" scoped></style>

@@ -70,3 +70,4 @@ async function copy() {
 
 function save() { emit('save', password.value) }
 </script>
+<style src="./UserPasswordModal.css" scoped></style>

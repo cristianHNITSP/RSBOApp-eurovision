@@ -46,7 +46,7 @@ mongoose
   })
   .then(async () => {
     console.log("✅ Connected to MongoDB (optica)");
-    // Seed automático solo si la BD está completamente vacía
+    /* 
     try {
       const Armazon = require("./models/Armazon");
       const count   = await Armazon.countDocuments({});
@@ -61,6 +61,7 @@ mongoose
     } catch (seedErr) {
       console.warn("⚠️  Seed automático falló (no crítico):", seedErr.message);
     }
+    */
   })
   .catch((err) => {
     console.error("MongoDB connection error:", err);

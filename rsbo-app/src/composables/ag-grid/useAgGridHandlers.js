@@ -6,6 +6,7 @@
 import { useSheetApi } from "@/composables/api/useSheetApi";
 import { ackOk, ackErr, msgFromErr, statusFromErr, normalizeAxiosOk } from "@/composables/ag-grid/useAgGridBase";
 import { exportAgGridToXlsx } from "@/composables/ag-grid/useExcelExport";
+import { labToast } from "@/composables/shared/useLabToast.js";
 
 export function useAgGridHandlers({
   props,
@@ -51,6 +52,12 @@ export function useAgGridHandlers({
     dirty.value = false;
     gridHistory.clear();
     unsavedGuard.clearStorage();
+    
+    // Si la rejilla está lista, purgamos su caché interna de forma agresiva
+    if (gridApi.value) {
+      gridApi.value.purgeInfiniteCache();
+    }
+    
     await switchViewReload({ clearCache: true });
   }
 
@@ -79,13 +86,20 @@ export function useAgGridHandlers({
 
   async function handleExport(prefix = "reporte") {
     if (!gridApi.value) return;
-    const nameSlug = (sheetName.value || "grid").replace(/\s+/g, "_");
-    const fecha = new Date().toISOString().slice(0, 10);
-    await exportAgGridToXlsx(gridApi.value, {
-      filename: `${prefix}_${nameSlug}_${fecha}`,
-      sheetName: String(sheetName.value || "Hoja").slice(0, 31),
-      title: `Inventario — ${sheetName.value || "Hoja"}`,
-    });
+    labToast.info("Generando archivo Excel...", 2000);
+    try {
+      const nameSlug = (sheetName.value || "grid").replace(/\s+/g, "_");
+      const fecha = new Date().toISOString().slice(0, 10);
+      await exportAgGridToXlsx(gridApi.value, {
+        filename: `${prefix}_${nameSlug}_${fecha}`,
+        sheetName: String(sheetName.value || "Hoja").slice(0, 31),
+        title: `Inventario — ${sheetName.value || "Hoja"}`,
+      });
+      labToast.success("Excel descargado correctamente.");
+    } catch (e) {
+      console.error("[AgGridHandlers] Export error:", e);
+      labToast.danger("No se pudo generar el Excel.");
+    }
   }
 
   return {

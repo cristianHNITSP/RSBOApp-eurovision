@@ -3,6 +3,10 @@ const express = require("express");
 const router  = express.Router();
 
 const OpticaChangeLog = require("../models/OpticaChangeLog");
+const { protect }      = require("../utils/auth");
+
+// Todas las rutas de logs requieren ser Admin o Root
+router.use(protect(["admin", "root"]));
 
 /**
  * Formatea fecha como "DD/MM/YYYY" para agrupación legible.

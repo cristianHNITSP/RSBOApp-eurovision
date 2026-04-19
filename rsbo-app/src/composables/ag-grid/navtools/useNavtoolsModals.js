@@ -126,10 +126,12 @@ export function useNavtoolsModals({
     const inputAttrs = { placeholder, type: 'number', step: '0.25' }
     if (limits) { inputAttrs.min = limits.min; inputAttrs.max = limits.max }
 
+    const containerSelector = document.fullscreenElement ? '.ag-grid-fullscreen-container' : null;
     $buefy?.dialog.prompt({
       message: `Agregar nueva fila (${rowActionLabel.value})`,
       inputAttrs,
       trapFocus: true,
+      container: containerSelector,
       onConfirm: async (value) => {
         if (value === null || value === undefined || value === '') return
         const num = Number(value)
@@ -163,10 +165,12 @@ export function useNavtoolsModals({
     const inputAttrs = { placeholder, type: 'number', step: '0.25' }
     if (limits) { inputAttrs.min = limits.min; inputAttrs.max = limits.max }
 
+    const containerSelector = document.fullscreenElement ? '.ag-grid-fullscreen-container' : null;
     $buefy?.dialog.prompt({
       message: `Agregar nueva columna (${colActionLabel.value})`,
       inputAttrs,
       trapFocus: true,
+      container: containerSelector,
       onConfirm: async (value) => {
         if (value === null || value === undefined || value === '') return
         const num = Number(value)

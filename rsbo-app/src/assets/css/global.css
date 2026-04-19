@@ -1576,7 +1576,7 @@ button.dropdown-item:hover {
 .gc-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   padding: 1rem 1.25rem 0;
   gap: 0.75rem;
 }

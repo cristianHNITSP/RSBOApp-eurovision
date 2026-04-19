@@ -10,7 +10,13 @@ function toInt(v, def) {
 }
 
 function sanitizeStr(v) {
-  return DOMPurify.sanitize(String(v || "")).trim();
+  // Solo permitimos texto plano, eliminamos cualquier etiqueta HTML por completo
+  return DOMPurify.sanitize(String(v || ""), { ALLOWED_TAGS: [] }).trim();
+}
+
+function isValidEmail(email) {
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return re.test(String(email).toLowerCase());
 }
 
 function escapeRegex(s) {
@@ -100,8 +106,9 @@ async function listUsers(query) {
       .sort(sort)
       .skip(skip)
       .limit(limit)
+      .collation({ locale: 'es', strength: 1 }) // Ignora acentos y mayúsculas
       .lean(),
-    User.countDocuments(filter),
+    User.countDocuments(filter).collation({ locale: 'es', strength: 1 }),
     User.countDocuments({ deletedAt: null, ...rootExclude }),
     User.countDocuments({ deletedAt: null, isActive: true, ...rootExclude }),
     User.countDocuments({ deletedAt: { $ne: null }, ...rootExclude }),
@@ -124,7 +131,19 @@ async function listUsers(query) {
 
 async function createUser(data) {
   const name = sanitizeStr(data.name);
+  if (name.length < 2) {
+    const error = new Error("El nombre debe tener al menos 2 caracteres");
+    error.statusCode = 400;
+    throw error;
+  }
+
   const email = sanitizeStr(data.email).toLowerCase();
+  if (!isValidEmail(email)) {
+    const error = new Error("Formato de correo electrónico inválido");
+    error.statusCode = 400;
+    throw error;
+  }
+
   const phone = sanitizeStr(data.phone);
   const bio = sanitizeStr(data.bio);
   const avatar = sanitizeStr(data.avatar);
@@ -176,7 +195,18 @@ async function createUser(data) {
 
 async function updateUser(userId, data) {
   const name = data.name !== undefined ? sanitizeStr(data.name) : undefined;
+  if (name !== undefined && name.length < 2) {
+    const error = new Error("El nombre debe tener al menos 2 caracteres");
+    error.statusCode = 400;
+    throw error;
+  }
+
   const email = data.email !== undefined ? sanitizeStr(data.email).toLowerCase() : undefined;
+  if (email !== undefined && !isValidEmail(email)) {
+    const error = new Error("Formato de correo electrónico inválido");
+    error.statusCode = 400;
+    throw error;
+  }
   const phone = data.phone !== undefined ? sanitizeStr(data.phone) : undefined;
   const bio = data.bio !== undefined ? sanitizeStr(data.bio) : undefined;
   const avatar = data.avatar !== undefined ? sanitizeStr(data.avatar) : undefined;

@@ -1,8 +1,11 @@
 // src/composables/useLabToast.js
 // Singleton module-level toast store — works from Vue components AND plain JS modules
-import { reactive } from "vue";
+import { reactive, computed } from "vue";
 
-const _state = reactive({ notifications: [] });
+const _state = reactive({ 
+  notifications: [],
+  isDirtyFloatVisible: false
+});
 let _nextId = 1;
 
 function show(message, type = "is-info", duration = 3500) {
@@ -41,5 +44,12 @@ export const labToast = {
 
 // Vue composable wrapper for use inside <script setup>
 export function useLabToast() {
-  return { notifications: _state.notifications, ...labToast };
+  return { 
+    notifications: _state.notifications,
+    isDirtyFloatVisible: computed({
+      get: () => _state.isDirtyFloatVisible,
+      set: (val) => { _state.isDirtyFloatVisible = val; }
+    }),
+    ...labToast 
+  };
 }

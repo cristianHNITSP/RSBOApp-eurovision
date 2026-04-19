@@ -1,7 +1,12 @@
 <template>
-  <teleport to="body">
-    <div class="lab-notif-root" aria-live="polite" aria-atomic="false">
-      <transition-group name="lab-notif-slide" tag="div" class="lab-notif-stack">
+  <teleport :to="teleportTarget">
+    <div class="lab-notif-root" :class="{ 'is-fullscreen': isFullscreenActive }" aria-live="polite" aria-atomic="false">
+      <transition-group 
+        name="lab-notif-slide" 
+        tag="div" 
+        class="lab-notif-stack"
+        :style="{ bottom: isDirtyFloatVisible ? '64px' : '14px' }"
+      >
         <div
           v-for="n in notifications"
           :key="n.id"
@@ -49,9 +54,32 @@
 </template>
 
 <script setup>
+import { ref, onMounted, onUnmounted, computed } from "vue";
 import { useLabToast } from "@/composables/shared/useLabToast.js";
 
-const { notifications, dismiss } = useLabToast();
+const { notifications, dismiss, isDirtyFloatVisible } = useLabToast();
+
+// ── Lógica de Pantalla Completa para Teleport ──
+const isFullscreenActive = ref(!!document.fullscreenElement);
+const teleportTarget = computed(() => {
+  if (isFullscreenActive.value && document.fullscreenElement) {
+    // Intentamos usar el elemento en fullscreen como base
+    return document.fullscreenElement;
+  }
+  return "body";
+});
+
+const updateFullscreenStatus = () => {
+  isFullscreenActive.value = !!document.fullscreenElement;
+};
+
+onMounted(() => {
+  document.addEventListener("fullscreenchange", updateFullscreenStatus);
+});
+
+onUnmounted(() => {
+  document.removeEventListener("fullscreenchange", updateFullscreenStatus);
+});
 
 const iconFor = (type) => ({
   'is-success': 'check-circle',
@@ -74,7 +102,13 @@ const labelFor = (type) => ({
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 9999;
+  z-index: 100000; /* Superamos cualquier capa de AgGrid */
+}
+
+/* Cuando estamos dentro de un elemento en fullscreen, el fixed puede fallar, usamos absolute */
+.is-fullscreen {
+  position: absolute !important;
+  z-index: 100000 !important;
 }
 
 .lab-notif-stack {

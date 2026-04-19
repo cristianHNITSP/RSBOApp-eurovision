@@ -11,7 +11,12 @@ function makeError(statusCode, message) {
 }
 
 function sanitizeEmail(email) {
-  return DOMPurify.sanitize(String(email || "")).trim().toLowerCase();
+  return DOMPurify.sanitize(String(email || ""), { ALLOWED_TAGS: [] }).trim().toLowerCase();
+}
+
+function sanitizeHeader(val) {
+  // Limpieza agresiva para cabeceras de red (IP, User-Agent, etc)
+  return String(val || "").replace(/[^\w\s\.\,\-\/\(\)\;\[\]\:]/g, "").substring(0, 500);
 }
 
 /**
@@ -30,6 +35,8 @@ function parseDeviceName(ua) {
   const s = String(ua || '');
   let browser = 'Otro';
   let os      = 'Otro';
+
+  // 1. Browser Detection (Orden de prioridad específico)
   if (s.includes('Firefox/'))                               browser = 'Firefox';
   else if (s.includes('Edg/') || s.includes('Edge/'))      browser = 'Edge';
   else if (s.includes('OPR/') || s.includes('Opera/'))     browser = 'Opera';
@@ -37,11 +44,12 @@ function parseDeviceName(ua) {
   else if (s.includes('Chrome/'))                           browser = 'Chrome';
   else if (s.includes('Safari/') && !s.includes('Chrome')) browser = 'Safari';
 
-  if      (s.includes('Windows NT'))   os = 'Windows';
-  else if (s.includes('Mac OS X'))     os = 'macOS';
-  else if (s.includes('Android'))      os = 'Android';
+  // 2. OS Detection (De lo más específico a lo más general)
+  if      (s.includes('Android'))      os = 'Android';
   else if (s.includes('iPhone'))       os = 'iPhone';
   else if (s.includes('iPad'))         os = 'iPad';
+  else if (s.includes('Windows NT'))   os = 'Windows';
+  else if (s.includes('Mac OS X'))     os = 'macOS';
   else if (s.includes('Linux'))        os = 'Linux';
 
   return { browser, os, deviceName: `${browser} en ${os}` };
@@ -90,12 +98,15 @@ async function login({ email, password, ip, userAgent }) {
   );
 
   // Manejo de sesiones
-  const { browser, os, deviceName } = parseDeviceName(userAgent);
+  const cleanIp = sanitizeHeader(ip);
+  const cleanUA = sanitizeHeader(userAgent);
+  const { browser, os, deviceName } = parseDeviceName(cleanUA);
+
   user.tokens.push({
     token,
     expiresAt:  new Date(now + SESSION_TTL_MS),
     lastUsedAt: new Date(),
-    deviceInfo: { ip: ip || null, userAgent: userAgent || null, deviceName, os, browser },
+    deviceInfo: { ip: cleanIp, userAgent: cleanUA, deviceName, os, browser },
   });
 
   if (user.tokens.length > 10) {

@@ -1,12 +1,16 @@
 <!-- src/views/inventario/Optica.vue -->
 <script setup>
-import { ref, computed, reactive, onMounted } from "vue";
+import { ref, computed, reactive, onMounted, onBeforeUnmount } from "vue";
 import { labToast } from "@/composables/shared/useLabToast.js";
 import DynamicTabs from "@/components/DynamicTabs.vue";
 import {
   armazonesService, solucionesService,
   accesoriosService, estuchesService, equiposService,
 } from "@/services/optica.js";
+import {
+  ARMAZONES_CONFIG, SOLUCIONES_CONFIG,
+  ACCESORIOS_CONFIG, ESTUCHES_CONFIG, EQUIPOS_CONFIG
+} from "@/constants/optica.js";
 
 const OPTICA_TABS = [
   { key: "armazones",  label: "Armazones",          icon: "glasses" },
@@ -72,8 +76,15 @@ async function load(key) {
   }
 }
 
+const loadingAll = ref(false);
+
 async function loadAll() {
-  await Promise.all(Object.keys(sec).map(load));
+  loadingAll.value = true;
+  try {
+    await Promise.all(Object.keys(sec).map(load));
+  } finally {
+    loadingAll.value = false;
+  }
 }
 onMounted(loadAll);
 
@@ -114,11 +125,11 @@ const fm = reactive({
 });
 
 const DEFAULTS = {
-  armazones:  { sku:"", marca:"", modelo:"", color:"", material:"Acetato", tipo:"Completo", genero:"Unisex", talla:"", serie:"", precio:0, stock:0, estuche:false, notas:"" },
-  soluciones: { sku:"", nombre:"", tipo:"Solucion multiusos", marca:"", volumen:0, stock:0, precio:0, caducidad:"", notas:"" },
-  accesorios: { sku:"", nombre:"", categoria:"Otro", marca:"Genérico", compatible:"Universal", stock:0, precio:0, notas:"" },
-  estuches:   { sku:"", nombre:"", tipo:"Rigido", material:"", color:"", compatible:"Universal", stock:0, precio:0, notas:"" },
-  equipos:    { sku:"", nombre:"", tipo:"Diagnóstico", marca:"", modelo:"", serie:"", estado:"Operativo", ubicacion:"", adquisicion:"", mantenimiento:"", notas:"" },
+  armazones:  { sku:"", marca:"", modelo:"", color:"", material: ARMAZONES_CONFIG.materiales[0], tipo: ARMAZONES_CONFIG.tipos[0], genero: ARMAZONES_CONFIG.generos[2], talla:"", serie:"", precio:0, stock:0, estuche:false, notas:"" },
+  soluciones: { sku:"", nombre:"", tipo: SOLUCIONES_CONFIG.tipos[0], marca:"", volumen:0, stock:0, precio:0, caducidad:"", notas:"" },
+  accesorios: { sku:"", nombre:"", categoria: ACCESORIOS_CONFIG.categorias[7], marca:"Genérico", compatible:"Universal", stock:0, precio:0, notas:"" },
+  estuches:   { sku:"", nombre:"", tipo: ESTUCHES_CONFIG.tipos[0], material:"", color:"", compatible:"Universal", stock:0, precio:0, notas:"" },
+  equipos:    { sku:"", nombre:"", tipo: EQUIPOS_CONFIG.areas[0], marca:"", modelo:"", serie:"", estado: EQUIPOS_CONFIG.estados[0], ubicacion:"", adquisicion:"", mantenimiento:"", notas:"" },
 };
 
 function openCreate(section) {
@@ -133,20 +144,25 @@ function openEdit(section, row) {
 }
 async function saveForm() {
   fm.saving = true;
+  const isCreate = fm.mode === "create";
+  const t = labToast.info(isCreate ? "Creando elemento…" : "Guardando cambios…", 0);
   try {
     const payload = { ...fm.item, actor: actor.value };
-    if (fm.mode === "create") {
+    if (isCreate) {
       await SVC[fm.section].create(payload);
-      labToast.success("Elemento creado correctamente");
+      t.close();
+      labToast.success(`"${fm.item.sku || fm.item.nombre || "Elemento"}" creado correctamente`);
     } else {
       await SVC[fm.section].update(fm.id, payload);
-      labToast.success("Cambios guardados correctamente");
+      t.close();
+      labToast.success(`"${fm.item.sku || fm.item.nombre || "Elemento"}" actualizado correctamente`);
     }
     fm.active = false;
     sec[fm.section].selected = null;
     load(fm.section);
   } catch (err) {
-    labToast.danger(err?.response?.data?.error || "Error al guardar");
+    t.close();
+    labToast.danger(err?.response?.data?.error || "Error al guardar. Verifica los datos.");
   } finally {
     fm.saving = false;
   }
@@ -155,40 +171,67 @@ async function saveForm() {
 // ══════════════════════════════════════════════════════════════
 // ACCIONES DELETE / RESTORE
 // ══════════════════════════════════════════════════════════════
+
+// Solicita confirmación vía modal Buefy y luego ejecuta la acción.
+// El DirtyFloat se usa para acciones desde el banner (flujo inline).
 async function doSoftDelete(key, row) {
-  const ok = await openConfirm({ title:"Mover a papelera",
-    message:`¿Mover "${row.sku}" a la papelera? Podrás restaurarlo después.`,
-    type:"is-warning", btnLabel:"Mover a papelera" });
+  const ok = await openConfirm({
+    title: "Mover a papelera",
+    message: `¿Mover "${row.sku}" a la papelera? Podrás restaurarlo después.`,
+    type: "is-warning", btnLabel: "Mover a papelera",
+  });
   if (!ok) return;
+  const t = labToast.warning(`Moviendo "${row.sku}" a papelera…`, 0);
   try {
     await SVC[key].softDelete(row._id, actor.value);
+    t.close();
     labToast.warning(`"${row.sku}" movido a papelera`);
+    sec[key].selected = null;
     load(key);
-  } catch (e) { labToast.danger(e?.response?.data?.error || "Error"); }
+  } catch (e) {
+    t.close();
+    labToast.danger(e?.response?.data?.error || "Error al mover a papelera");
+  }
 }
 
 async function doHardDelete(key, row) {
-  const ok = await openConfirm({ title:"Eliminar permanentemente",
-    message:`¿Eliminar "${row.sku}" de forma PERMANENTE? Esta acción no se puede deshacer.`,
-    type:"is-danger", btnLabel:"Eliminar para siempre" });
+  const ok = await openConfirm({
+    title: "Eliminar permanentemente",
+    message: `¿Eliminar "${row.sku}" de forma PERMANENTE? Esta acción no se puede deshacer.`,
+    type: "is-danger", btnLabel: "Eliminar para siempre",
+  });
   if (!ok) return;
+  const t = labToast.danger(`Eliminando "${row.sku}"…`, 0);
   try {
     await SVC[key].hardDelete(row._id, actor.value);
+    t.close();
     labToast.danger(`"${row.sku}" eliminado permanentemente`);
+    sec[key].selected = null;
     load(key);
-  } catch (e) { labToast.danger(e?.response?.data?.error || "Error"); }
+  } catch (e) {
+    t.close();
+    labToast.danger(e?.response?.data?.error || "Error al eliminar");
+  }
 }
 
 async function doRestore(key, row) {
-  const ok = await openConfirm({ title:"Restaurar elemento",
-    message:`¿Restaurar "${row.sku}" de la papelera?`,
-    type:"is-success", btnLabel:"Restaurar" });
+  const ok = await openConfirm({
+    title: "Restaurar elemento",
+    message: `¿Restaurar "${row.sku}" de la papelera?`,
+    type: "is-success", btnLabel: "Restaurar",
+  });
   if (!ok) return;
+  const t = labToast.info(`Restaurando "${row.sku}"…`, 0);
   try {
     await SVC[key].restore(row._id, actor.value);
+    t.close();
     labToast.success(`"${row.sku}" restaurado correctamente`);
+    sec[key].selected = null;
     load(key);
-  } catch (e) { labToast.danger(e?.response?.data?.error || "Error"); }
+  } catch (e) {
+    t.close();
+    labToast.danger(e?.response?.data?.error || "Error al restaurar");
+  }
 }
 
 // (Estadísticas movidas a DashboardHome.vue)
@@ -211,10 +254,18 @@ function labelFor(s){ return{armazones:"Armazones",soluciones:"Soluciones y Gota
 
 // Clase de fila para elementos en papelera
 function rowClass(row) { return row.isDeleted ? "row--deleted" : ""; }
+
+// ── Lógica de Pantalla Completa para Modales ──
+const isFullscreenActive = ref(!!document.fullscreenElement);
+const fullscreenContainer = computed(() => isFullscreenActive.value ? '.optica-section' : null);
+
+const updateFullscreenStatus = () => { isFullscreenActive.value = !!document.fullscreenElement; };
+onMounted(() => { document.addEventListener("fullscreenchange", updateFullscreenStatus); });
+onBeforeUnmount(() => { document.removeEventListener("fullscreenchange", updateFullscreenStatus); });
 </script>
 
 <template>
-  <section class="optica-section" v-motion-fade-visible-once>
+  <section class="optica-section" :class="{ 'ag-grid-fullscreen-container': isFullscreenActive }" v-motion-fade-visible-once>
 
     <!-- ╔══════════════════════════════════════════════════╗
          ║  HEADER DE PÁGINA                               ║
@@ -253,7 +304,10 @@ function rowClass(row) { return row.isDeleted ? "row--deleted" : ""; }
       </div>
       <div class="optica-header-summary">
         <b-taglist attached>
-          <b-tag type="is-primary">{{ sec.armazones.items.length + sec.soluciones.items.length + sec.accesorios.items.length + sec.estuches.items.length + sec.equipos.items.length }} items</b-tag>
+          <b-tag type="is-primary">
+            <template v-if="loadingAll"><b-icon icon="spinner" size="is-small" class="fa-spin mr-1" />Cargando…</template>
+            <template v-else>{{ sec.armazones.items.length + sec.soluciones.items.length + sec.accesorios.items.length + sec.estuches.items.length + sec.equipos.items.length }} items</template>
+          </b-tag>
           <b-tag type="is-success">activos</b-tag>
         </b-taglist>
         <p class="is-size-7 has-text-grey mt-1">5 categorías · audit trail completo</p>
@@ -311,7 +365,7 @@ function rowClass(row) { return row.isDeleted ? "row--deleted" : ""; }
               <b-field class="toolbar-field">
                 <b-select v-model="sec.armazones.filterField" size="is-small">
                   <option value="all">Todos los materiales</option>
-                  <option v-for="m in ['Acetato','Metal','TR-90','Titanio','Combinado','Madera','Otro']" :key="m" :value="m">{{ m }}</option>
+                  <option v-for="m in ARMAZONES_CONFIG.materiales" :key="m" :value="m">{{ m }}</option>
                 </b-select>
               </b-field>
             </b-field>
@@ -332,6 +386,7 @@ function rowClass(row) { return row.isDeleted ? "row--deleted" : ""; }
           <!-- Tabla -->
           <div v-else class="table-shell glass-card">
             <b-table :data="sec.armazones.items.filter(r=>sec.armazones.filterField==='all'||r.material===sec.armazones.filterField)"
+              :mobile-cards="false"
               sticky-header :height="360" hoverable focusable :row-class="rowClass"
               v-model:selected="sec.armazones.selected" @click="(r)=>selectRow('armazones',r)"
               paginated :per-page="10" pagination-size="is-small"
@@ -396,7 +451,7 @@ function rowClass(row) { return row.isDeleted ? "row--deleted" : ""; }
               <b-field class="toolbar-field">
                 <b-select v-model="sec.soluciones.filterField" size="is-small">
                   <option value="all">Todos los tipos</option>
-                  <option v-for="t in ['Solucion multiusos','Solucion salina','Gotas lubricantes','Solucion peroxido']" :key="t" :value="t">{{ t }}</option>
+                  <option v-for="t in SOLUCIONES_CONFIG.tipos" :key="t" :value="t">{{ t }}</option>
                 </b-select>
               </b-field>
             </b-field>
@@ -412,6 +467,7 @@ function rowClass(row) { return row.isDeleted ? "row--deleted" : ""; }
           </div>
           <div v-else class="table-shell glass-card">
             <b-table :data="sec.soluciones.items.filter(r=>sec.soluciones.filterField==='all'||r.tipo===sec.soluciones.filterField)"
+              :mobile-cards="false"
               sticky-header :height="360" hoverable focusable :row-class="rowClass"
               v-model:selected="sec.soluciones.selected" @click="(r)=>selectRow('soluciones',r)"
               paginated :per-page="10" pagination-size="is-small">
@@ -467,7 +523,7 @@ function rowClass(row) { return row.isDeleted ? "row--deleted" : ""; }
               <b-field class="toolbar-field">
                 <b-select v-model="sec.accesorios.filterField" size="is-small">
                   <option value="all">Todas las categorías</option>
-                  <option v-for="c in ['Paño','Cadena','Plaquetas','Tornillos','Limpiador','Almohadillas','Herramienta','Otro']" :key="c" :value="c">{{ c }}</option>
+                  <option v-for="c in ACCESORIOS_CONFIG.categorias" :key="c" :value="c">{{ c }}</option>
                 </b-select>
               </b-field>
             </b-field>
@@ -483,6 +539,7 @@ function rowClass(row) { return row.isDeleted ? "row--deleted" : ""; }
           </div>
           <div v-else class="table-shell glass-card">
             <b-table :data="sec.accesorios.items.filter(r=>sec.accesorios.filterField==='all'||r.categoria===sec.accesorios.filterField)"
+              :mobile-cards="false"
               sticky-header :height="360" hoverable focusable :row-class="rowClass"
               v-model:selected="sec.accesorios.selected" @click="(r)=>selectRow('accesorios',r)"
               paginated :per-page="10" pagination-size="is-small">
@@ -535,7 +592,7 @@ function rowClass(row) { return row.isDeleted ? "row--deleted" : ""; }
               <b-field class="toolbar-field">
                 <b-select v-model="sec.estuches.filterField" size="is-small">
                   <option value="all">Todos los tipos</option>
-                  <option v-for="t in ['Rigido','Blando','Plegable','Deportivo','Lentes de contacto','Otro']" :key="t" :value="t">{{ t }}</option>
+                  <option v-for="t in ESTUCHES_CONFIG.tipos" :key="t" :value="t">{{ t }}</option>
                 </b-select>
               </b-field>
             </b-field>
@@ -551,6 +608,7 @@ function rowClass(row) { return row.isDeleted ? "row--deleted" : ""; }
           </div>
           <div v-else class="table-shell glass-card">
             <b-table :data="sec.estuches.items.filter(r=>sec.estuches.filterField==='all'||r.tipo===sec.estuches.filterField)"
+              :mobile-cards="false"
               sticky-header :height="360" hoverable focusable :row-class="rowClass"
               v-model:selected="sec.estuches.selected" @click="(r)=>selectRow('estuches',r)"
               paginated :per-page="10" pagination-size="is-small">
@@ -606,7 +664,7 @@ function rowClass(row) { return row.isDeleted ? "row--deleted" : ""; }
               <b-field class="toolbar-field">
                 <b-select v-model="sec.equipos.filterField" size="is-small">
                   <option value="all">Todos los estados</option>
-                  <option v-for="e in ['Operativo','Mantenimiento','Fuera de servicio','Baja']" :key="e" :value="e">{{ e }}</option>
+                  <option v-for="e in EQUIPOS_CONFIG.estados" :key="e" :value="e">{{ e }}</option>
                 </b-select>
               </b-field>
             </b-field>
@@ -622,6 +680,7 @@ function rowClass(row) { return row.isDeleted ? "row--deleted" : ""; }
           </div>
           <div v-else class="table-shell glass-card">
             <b-table :data="sec.equipos.items.filter(r=>sec.equipos.filterField==='all'||r.estado===sec.equipos.filterField)"
+              :mobile-cards="false"
               sticky-header :height="360" hoverable focusable :row-class="rowClass"
               v-model:selected="sec.equipos.selected" @click="(r)=>selectRow('equipos',r)"
               paginated :per-page="10" pagination-size="is-small">
@@ -650,7 +709,7 @@ function rowClass(row) { return row.isDeleted ? "row--deleted" : ""; }
     <!-- ════════════════════════════════════════════════════════
          MODAL CONFIRMACIÓN
     ════════════════════════════════════════════════════════ -->
-    <b-modal v-model="confirm.active" has-modal-card trap-focus :destroy-on-hide="false" :can-cancel="['escape','outside']">
+    <b-modal v-model="confirm.active" has-modal-card trap-focus :destroy-on-hide="false" :can-cancel="['escape','outside']" :container="fullscreenContainer">
       <div class="modal-card glass-modal-card">
         <header class="modal-card-head glass-modal-head">
           <b-icon :icon="confirm.type==='is-danger'?'exclamation-triangle':confirm.type==='is-warning'?'exclamation-circle':'check-circle'"
@@ -670,7 +729,7 @@ function rowClass(row) { return row.isDeleted ? "row--deleted" : ""; }
     <!-- ════════════════════════════════════════════════════════
          MODAL FORMULARIO (crear / editar)
     ════════════════════════════════════════════════════════ -->
-    <b-modal v-model="fm.active" has-modal-card trap-focus :destroy-on-hide="false" :can-cancel="['escape','outside']" scroll="keep">
+    <b-modal v-model="fm.active" has-modal-card trap-focus :destroy-on-hide="false" :can-cancel="['escape','outside']" scroll="keep" :container="fullscreenContainer">
       <div class="modal-card glass-modal-card glass-modal-card--wide">
         <header class="modal-card-head glass-modal-head">
           <b-icon :icon="fm.mode==='create'?'plus-circle':'pen'" type="is-primary" size="is-small" class="mr-2" />
@@ -690,17 +749,17 @@ function rowClass(row) { return row.isDeleted ? "row--deleted" : ""; }
               <b-field label="Color"><b-input v-model="fm.item.color" placeholder="Negro/Oro" /></b-field>
               <b-field label="Material">
                 <b-select v-model="fm.item.material" expanded>
-                  <option v-for="m in ['Acetato','Metal','TR-90','Titanio','Combinado','Madera','Otro']" :key="m">{{ m }}</option>
+                  <option v-for="m in ARMAZONES_CONFIG.materiales" :key="m">{{ m }}</option>
                 </b-select>
               </b-field>
               <b-field label="Tipo">
                 <b-select v-model="fm.item.tipo" expanded>
-                  <option v-for="t in ['Completo','Al aire','Semi-al-aire','Deportivo','Infantil','Otro']" :key="t">{{ t }}</option>
+                  <option v-for="t in ARMAZONES_CONFIG.tipos" :key="t">{{ t }}</option>
                 </b-select>
               </b-field>
               <b-field label="Género">
                 <b-select v-model="fm.item.genero" expanded>
-                  <option v-for="g in ['Hombre','Mujer','Unisex','Infantil']" :key="g">{{ g }}</option>
+                  <option v-for="g in ARMAZONES_CONFIG.generos" :key="g">{{ g }}</option>
                 </b-select>
               </b-field>
               <b-field label="Talla"><b-input v-model="fm.item.talla" placeholder="51-21-145" /></b-field>
@@ -722,7 +781,7 @@ function rowClass(row) { return row.isDeleted ? "row--deleted" : ""; }
               <b-field label="Nombre *"><b-input v-model="fm.item.nombre" placeholder="ReNu MultiPlus" /></b-field>
               <b-field label="Tipo">
                 <b-select v-model="fm.item.tipo" expanded>
-                  <option v-for="t in ['Solucion multiusos','Solucion salina','Gotas lubricantes','Solucion peroxido','Otro']" :key="t">{{ t }}</option>
+                  <option v-for="t in SOLUCIONES_CONFIG.tipos" :key="t">{{ t }}</option>
                 </b-select>
               </b-field>
               <b-field label="Marca *"><b-input v-model="fm.item.marca" placeholder="Alcon" /></b-field>
@@ -742,7 +801,7 @@ function rowClass(row) { return row.isDeleted ? "row--deleted" : ""; }
               <b-field label="Nombre *"><b-input v-model="fm.item.nombre" placeholder="Paño Microfibra" /></b-field>
               <b-field label="Categoría">
                 <b-select v-model="fm.item.categoria" expanded>
-                  <option v-for="c in ['Paño','Cadena','Plaquetas','Tornillos','Limpiador','Almohadillas','Herramienta','Otro']" :key="c">{{ c }}</option>
+                  <option v-for="c in ACCESORIOS_CONFIG.categorias" :key="c">{{ c }}</option>
                 </b-select>
               </b-field>
               <b-field label="Marca"><b-input v-model="fm.item.marca" placeholder="Zeiss" /></b-field>
@@ -761,7 +820,7 @@ function rowClass(row) { return row.isDeleted ? "row--deleted" : ""; }
               <b-field label="Nombre *"><b-input v-model="fm.item.nombre" placeholder="Estuche Rígido Clásico" /></b-field>
               <b-field label="Tipo">
                 <b-select v-model="fm.item.tipo" expanded>
-                  <option v-for="t in ['Rigido','Blando','Plegable','Deportivo','Lentes de contacto','Otro']" :key="t">{{ t }}</option>
+                  <option v-for="t in ESTUCHES_CONFIG.tipos" :key="t">{{ t }}</option>
                 </b-select>
               </b-field>
               <b-field label="Material"><b-input v-model="fm.item.material" placeholder="Cuero sintético" /></b-field>
@@ -781,7 +840,7 @@ function rowClass(row) { return row.isDeleted ? "row--deleted" : ""; }
               <b-field label="Nombre *"><b-input v-model="fm.item.nombre" placeholder="Autorefractómetro" /></b-field>
               <b-field label="Tipo">
                 <b-select v-model="fm.item.tipo" expanded>
-                  <option v-for="t in ['Diagnóstico','Medición','Taller','Laboratorio','Otro']" :key="t">{{ t }}</option>
+                  <option v-for="a in EQUIPOS_CONFIG.areas" :key="a">{{ a }}</option>
                 </b-select>
               </b-field>
               <b-field label="Marca *"><b-input v-model="fm.item.marca" placeholder="Topcon" /></b-field>
@@ -789,7 +848,7 @@ function rowClass(row) { return row.isDeleted ? "row--deleted" : ""; }
               <b-field label="Número de serie"><b-input v-model="fm.item.serie" placeholder="TOP-2022-1041" /></b-field>
               <b-field label="Estado">
                 <b-select v-model="fm.item.estado" expanded>
-                  <option v-for="e in ['Operativo','Mantenimiento','Fuera de servicio','Baja']" :key="e">{{ e }}</option>
+                  <option v-for="e in EQUIPOS_CONFIG.estados" :key="e">{{ e }}</option>
                 </b-select>
               </b-field>
               <b-field label="Ubicación"><b-input v-model="fm.item.ubicacion" placeholder="Consultorio 1" /></b-field>

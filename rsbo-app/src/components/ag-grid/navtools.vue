@@ -9,6 +9,11 @@
       :total-rows="totalRows"
       :server-badge="serverBadge"
       :last-saved-label="lastSavedLabel"
+      :is-fullscreen="isFullscreen"
+      :internal-tabs="internalTabs"
+      :active-internal-tab="activeInternalTab"
+      @toggle-fullscreen="emit('toggle-fullscreen')"
+      @update:internal="emit('update:internal', $event)"
     />
 
     <!-- 2. RIBBON ACTIONS -->
@@ -32,6 +37,8 @@
       @add-column="openAddColumnModal"
       @save="handleSaveInternal"
       @discard="handleDiscard"
+      @refresh="handleRefreshInternal"
+      @seed="handleSeedInternal"
       @export="emit('export')"
     />
 
@@ -62,7 +69,7 @@ import { normalizeAck } from "@/utils/errorSanitizer.js"
 import NavtoolsMeta from "./navtools/NavtoolsMeta.vue"
 import NavtoolsRibbon from "./navtools/NavtoolsRibbon.vue"
 import NavtoolsFxBar from "./navtools/NavtoolsFxBar.vue"
-import DirtyFloat from "@/components/ag-grid/DirtyFloat.vue"
+import DirtyFloat from "@/components/ui/DirtyFloat.vue"
 
 // Composables
 import { useNavtoolsMessaging } from "../../composables/ag-grid/navtools/useNavtoolsMessaging"
@@ -82,12 +89,15 @@ const props = defineProps({
   lastSavedAt: { type: [String, Date], default: null },
   gridCanUndo: { type: Boolean, default: false },
   gridCanRedo: { type: Boolean, default: false },
+  isFullscreen: { type: Boolean, default: false },
+  internalTabs:  { type: Array, default: () => [] },
+  activeInternalTab: { type: String, default: "" }
 })
 
 const emit = defineEmits([
   'update:modelValue', 'add-row', 'add-column',
   'save-request', 'discard-changes', 'export', 'fx-input', 'fx-commit',
-  'grid-undo', 'grid-redo', 'grid-copy', 'grid-cut', 'grid-paste'
+  'grid-undo', 'grid-redo', 'grid-copy', 'grid-cut', 'grid-paste', 'toggle-fullscreen', 'update:internal'
 ])
 
 const { modelValue, tipoMatriz, gridCanUndo, gridCanRedo } = toRefs(props)
@@ -168,8 +178,16 @@ const lastSavedLabel = computed(() => {
 })
 
 // ─── 6. Event Handlers ──────────────────────────────────────────────
-const handleUndoClick  = () => { if (props.gridCanUndo) emit('grid-undo'); else undo() }
-const handleRedoClick  = () => { if (props.gridCanRedo) emit('grid-redo'); else redo() }
+const handleUndoClick  = () => { 
+  if (props.gridCanUndo) emit('grid-undo'); 
+  else undo();
+  safeToast('Acción deshecha (historial local).', 'is-light');
+}
+const handleRedoClick  = () => { 
+  if (props.gridCanRedo) emit('grid-redo'); 
+  else redo();
+  safeToast('Acción rehecha (historial local).', 'is-light');
+}
 const handleCopyClick  = () => { emit('grid-copy'); copyCell() }
 const handleCutClick   = () => { emit('grid-cut'); cutCell() }
 const handlePasteClick = () => { emit('grid-paste'); pasteCell() }
@@ -186,23 +204,60 @@ const applyChange = () => {
 
 const handleSaveInternal = () => {
   if (!props.dirty) { safeToast('No hay cambios pendientes.', 'is-info'); return }
+  const containerSelector = props.isFullscreen ? '.ag-grid-fullscreen-container' : null;
   $buefy?.dialog.confirm({
     title: 'Guardar cambios',
     message: '¿Estás seguro de guardar el inventario actual?',
     confirmText: 'Sí, guardar',
     type: 'is-primary',
-    onConfirm: () => { emit('save-request') }
+    container: containerSelector,
+    onConfirm: async () => {
+      opPending.value = true;
+      const ack = await emitWithAck('save-request');
+      opPending.value = false;
+      toastFromAck(ack, { successFallback: 'Cambios guardados correctamente.' });
+      if (ack?.ok) markServerOk(ack.message);
+      else if (ack) markServerErr(ack.message);
+    }
   })
 }
 
 const handleDiscard = () => {
   if (!props.dirty) return
+  const containerSelector = props.isFullscreen ? '.ag-grid-fullscreen-container' : null;
   $buefy?.dialog.confirm({
     title: 'Descartar cambios',
     message: 'Se perderán todos los cambios no guardados. ¿Continuar?',
     confirmText: 'Descartar',
     type: 'is-danger',
-    onConfirm: () => { emit('discard-changes') }
+    container: containerSelector,
+    onConfirm: () => { 
+      emit('discard-changes');
+      safeToast('Cambios descartados.', 'is-warning');
+      setTimeout(() => { if (props.isFullscreen) { /* refresh hook */ } }, 100);
+    }
+  })
+}
+
+const handleRefreshInternal = () => {
+  emit('refresh');
+  safeToast('Datos actualizados.', 'is-info');
+}
+
+const handleSeedInternal = () => {
+  const containerSelector = props.isFullscreen ? '.ag-grid-fullscreen-container' : null;
+  $buefy?.dialog.confirm({
+    title: 'Generar Seed',
+    message: 'Se generarán datos de prueba para esta planilla. ¿Continuar?',
+    confirmText: 'Generar',
+    type: 'is-warning',
+    container: containerSelector,
+    onConfirm: async () => {
+      opPending.value = true;
+      const ack = await emitWithAck('seed');
+      opPending.value = false;
+      toastFromAck(ack, { successFallback: 'Seed generado correctamente.' });
+    }
   })
 }
 

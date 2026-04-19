@@ -1,0 +1,17 @@
+.create-avatar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.create-avatar__hint {
+  /* Estilos específicos si son necesarios */
+}
+
+.password-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+}

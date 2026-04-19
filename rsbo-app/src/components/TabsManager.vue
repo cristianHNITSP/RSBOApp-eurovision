@@ -566,6 +566,7 @@
 import { ref, onMounted, onBeforeUnmount, computed, watch, nextTick } from "vue";
 import Sortable from "sortablejs";
 import { useSheetApi } from "@/composables/api/useSheetApi";
+import { labToast } from "@/composables/shared/useLabToast.js";
 
 const DEBUG_PURCHASE = true;
 
@@ -638,6 +639,7 @@ const props = defineProps({
   loadingMore:      { type: Boolean, default: false },
   loadingPrior:     { type: Boolean, default: false },
   priorCount:       { type: Number,  default: 0 },
+  activeInternalId: { type: String,  default: null },
 });
 
 const { createSheet, updateSheet, moveSheetToTrash } = useSheetApi(() => props.apiType);
@@ -829,10 +831,21 @@ watch(
   { immediate: true }
 );
 
+watch(() => props.activeInternalId, (val) => {
+  if (val && val !== activeInternalTab.value) {
+    activeInternalTab.value = val;
+    internalTabHistory.set(activeId.value, val);
+  }
+});
+
 const handleInternalTabClick = (id) => {
   activeInternalTab.value = id;
   internalTabHistory.set(activeId.value, id); // persistir elección por sheet
   emit("update:internal", id);
+  
+  // Feedback sutil del cambio de vista
+  const lbl = id.toLowerCase().includes('neg') ? 'Negativos (-)' : id.toLowerCase().includes('pos') ? 'Positivos (+)' : id;
+  labToast.info(`Vista: ${lbl}`, 1500);
 };
 
 /* ===================== Helpers ===================== */
@@ -1103,6 +1116,7 @@ const handleCrear = async () => {
 
     createStatus.value = "saved";
     createStatusMessage.value = "Planilla creada correctamente";
+    labToast.success(`Planilla "${newTab.name}" creada.`);
     setTimeout(() => resetCreateStatus(), 1800);
   } catch (e) {
     console.error("[INV][UI] Error al crear planilla:", e?.response?.data || e);
@@ -1348,6 +1362,7 @@ const confirmSavePurchase = async () => {
     purchaseStatus.value = "saved";
     purchaseStatusMessage.value = "Datos guardados";
     purchaseGlow.value = true;
+    labToast.success("Datos de compra actualizados.");
     setTimeout(() => (purchaseGlow.value = false), 900);
     setTimeout(() => resetPurchaseStatus(), 1800);
   } catch (e) {
@@ -1439,6 +1454,7 @@ const confirmSaveVendor = async () => {
     vendorStatus.value = "saved";
     vendorStatusMessage.value = "Proveedor/marca actualizados";
     vendorGlow.value = true;
+    labToast.success("Proveedor y marca actualizados.");
     setTimeout(() => (vendorGlow.value = false), 900);
     setTimeout(() => resetVendorStatus(), 1800);
   } catch (e) {
@@ -1503,6 +1519,7 @@ const confirmRename = async () => {
     renameStatus.value = "saved";
     renameStatusMessage.value = "Nombre actualizado";
     renameGlow.value = true;
+    labToast.success("Planilla renombrada.");
     emit("renamed", { id, name: renameName.value });
     setTimeout(() => (renameGlow.value = false), 900);
     setTimeout(() => resetRenameStatus(), 1800);
@@ -1574,6 +1591,7 @@ const confirmSaveMeta = async () => {
     metaStatus.value = "saved";
     metaStatusMessage.value = "Notas guardadas";
     metaGlow.value = true;
+    labToast.success("Notas y observaciones guardadas.");
     setTimeout(() => (metaGlow.value = false), 900);
     setTimeout(() => resetMetaStatus(), 1800);
   } catch (e) {
@@ -1617,6 +1635,7 @@ const softDelete = async () => {
 
     trashStatus.value = "saved";
     trashStatusMessage.value = "Enviada a papelera";
+    labToast.danger(`Planilla "${selectedSheet.value?.name}" enviada a papelera.`, 4000);
     emit("deleted", { id, sheet: updated });
 
     confirmingDelete.value = false;

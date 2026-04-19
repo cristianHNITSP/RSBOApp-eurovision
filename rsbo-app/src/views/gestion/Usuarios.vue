@@ -1,13 +1,14 @@
 <template>
   <section class="panel-usuarios-section">
     <!-- BANNER + ACCIONES SUPERIORES (CENTRADO EN USUARIO SELECCIONADO) -->
-    <UserBanner :user="selectedUser" :fallback-avatar="FALLBACK_AVATAR" :permission-catalog="permissionsCatalog"
-      :loading="loading" @avatar-picked="onAvatarPicked" @open-create="openCreate" @reload="loadUsers" @edit="openEdit"
-      @change-password="openPassword" @soft-delete="confirmSoftDelete" @restore="confirmRestore" />
+    <UserBanner ref="bannerRef" :user="selectedUser" :fallback-avatar="FALLBACK_AVATAR"
+      :permission-catalog="permissionsCatalog" :loading="loading" @avatar-picked="onAvatarPicked"
+      @open-create="openCreate" @reload="loadUsers" @edit="openEdit" @change-password="openPassword"
+      @soft-delete="confirmSoftDelete" @restore="confirmRestore" />
 
 
     <!-- HEADER PANEL -->
-    <header class="panel-usuarios-header page-section-header">
+    <header class="panel-usuarios-header page-section-header m-0">
       <div>
         <span class="usuarios-pill">
           <b-icon icon="users" size="is-small" class="mr-1" />
@@ -40,20 +41,20 @@
           <b-tag type="is-primary">{{ stats.totalUsers }} usuarios</b-tag>
           <b-tag type="is-success">{{ stats.activeUsers }} activos</b-tag>
         </b-taglist>
-        <p class="is-size-7 has-text-grey mt-1">{{ roles.length }} roles configurados</p>
+        <p class="is-size-7 has-text-grey mt-1">{{ roles.length }} roles actuales</p>
       </div>
     </header>
 
     <!-- FILTROS -->
     <div class="panel-usuarios-filters">
       <b-field grouped group-multiline>
-        <b-field label="Buscar" class="panel-usuarios-filter-field">
-          <!-- ✅ FontAwesome -->
-          <b-input v-model="searchQuery" size="is-small" icon="search" placeholder="Buscar por nombre o correo…" />
+        <b-field label="Buscar usuario" class="panel-usuarios-filter-field" expanded>
+          <b-input v-model="searchQuery" :size="isMobile ? '' : 'is-small'" icon="search"
+            placeholder="Buscar por nombre o correo…" expanded />
         </b-field>
 
-        <b-field label="Rol" class="panel-usuarios-filter-field">
-          <b-select v-model="roleFilter" size="is-small">
+        <b-field label="Filtrar por rol" class="panel-usuarios-filter-field" expanded>
+          <b-select v-model="roleFilter" :size="isMobile ? '' : 'is-small'" expanded>
             <option value="all">Todos los roles</option>
             <option v-for="role in roles" :key="role._id" :value="role._id">
               {{ formatRoleLabel(role.name) }}
@@ -61,8 +62,8 @@
           </b-select>
         </b-field>
 
-        <b-field label="Estado" class="panel-usuarios-filter-field">
-          <b-select v-model="statusFilter" size="is-small">
+        <b-field label="Filtrar por estado de usuario" class="panel-usuarios-filter-field" expanded>
+          <b-select v-model="statusFilter" :size="isMobile ? '' : 'is-small'" expanded>
             <option value="all">Todos</option>
             <option value="active">Activos</option>
             <option value="inactive">Inactivos</option>
@@ -75,9 +76,9 @@
     <!-- TABLA (sin detalle desplegable) -->
     <b-table :data="users" sticky-header :height="360" hoverable focusable paginated backend-pagination backend-sorting
       :total="total" :per-page="perPage" :current-page="currentPage" @page-change="onPageChange" @sort="onSort"
-      v-model:selected="selectedUser" :row-class="rowClass" :loading="loading">
+      @click="selectRow" v-model:selected="selectedUser" :row-class="rowClass" :loading="loading">
       <b-table-column field="name" label="Usuario" sortable v-slot="props">
-        <div class="user-cell" @click="selectRow(props.row)">
+        <div class="user-cell">
           <div class="user-cell__avatar-wrap">
             <AvatarPicker :modelValue="props.row.profile?.avatar || ''" :placeholder="FALLBACK_AVATAR"
               :editMode="canEditAvatar(props.row)" :size="32"
@@ -144,7 +145,7 @@
 </template>
 
 <script setup>
-import { computed, getCurrentInstance, onMounted, ref, watch } from "vue";
+import { computed, getCurrentInstance, onMounted, onBeforeUnmount, ref, watch } from "vue";
 import { useDebounceFn } from "@vueuse/core";
 import AvatarPicker from "@/components/AvatarPicker.vue";
 import UserBanner from "@/components/usuarios/UserBanner.vue";
@@ -169,6 +170,18 @@ const saving = ref(false);
 const _instance = getCurrentInstance();
 const $buefy = _instance?.appContext?.config?.globalProperties?.$buefy;
 
+const isMobile = ref(false);
+const updateIsMobile = () => { isMobile.value = window.innerWidth <= 768; };
+
+onMounted(() => {
+  updateIsMobile();
+  window.addEventListener('resize', updateIsMobile);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', updateIsMobile);
+});
+
 const searchQuery = ref("");
 const roleFilter = ref("all");
 const statusFilter = ref("all");
@@ -180,6 +193,7 @@ const sortBy = ref("name");
 const sortDir = ref("asc");
 
 const selectedUser = ref(null);
+const bannerRef = ref(null);
 
 /* Modales */
 const editOpen = ref(false);
@@ -257,6 +271,9 @@ function rowClass(row) {
 
 function selectRow(row) {
   selectedUser.value = row;
+  if (bannerRef.value) {
+    bannerRef.value.triggerFocus(true);
+  }
 }
 
 /* API */
@@ -331,9 +348,13 @@ watch(users, (list) => {
 
 /* debounce búsqueda */
 const _debouncedLoadUsers = useDebounceFn(() => {
+  const q = searchQuery.value?.trim() || "";
+  // Solo buscamos si está vacío (reset) o si tiene 3 o más caracteres
+  if (q.length > 0 && q.length < 3) return;
+
   currentPage.value = 1;
   loadUsers();
-}, 260);
+}, 400); // Aumentamos un poco el debounce para mayor fluidez
 watch(searchQuery, _debouncedLoadUsers);
 
 watch([roleFilter, statusFilter, perPage], () => {
@@ -642,21 +663,7 @@ onMounted(async () => {
   opacity: 0.95;
 }
 
-/* Crear usuario */
-.create-avatar {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
 
-/* password tools */
-.password-tools {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  margin-top: 0.25rem;
-}
 
 @keyframes panel-fade-in {
   from {
@@ -674,6 +681,23 @@ onMounted(async () => {
   .panel-usuarios-header {
     flex-direction: column;
     align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .panel-usuarios-filters :deep(.field.is-grouped) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .panel-usuarios-filter-field {
+    width: 100% !important;
+    margin-right: 0 !important;
+  }
+
+  .panel-usuarios-filter-field :deep(label) {
+    font-size: 1rem !important;
+    font-weight: 800 !important;
+    margin-bottom: 0.5rem !important;
   }
 
   .panel-usuarios-summary {
@@ -701,6 +725,40 @@ onMounted(async () => {
       inset 0 0 0 2px #f97316,
       inset 0 0 40px rgba(236, 72, 153, 0.12) !important;
     transform: translateY(-2px) !important;
+  }
+
+  /* 3. Ocultar la franja de encabezado que se rompe en móvil */
+  :deep(.b-table .table thead) {
+    display: none !important;
+  }
+
+  /* 4. Estilizar el selector de ordenamiento móvil para que no sea tan tosco */
+  :deep(.b-table .field.is-grouped.is-grouped-multiline) {
+    margin-bottom: 1rem !important;
+  }
+
+  :deep(.b-table .field.is-grouped.is-grouped-multiline .control) {
+    flex: 1;
+  }
+
+  :deep(.b-table .field.is-grouped.is-grouped-multiline .select),
+  :deep(.b-table .field.is-grouped.is-grouped-multiline .select select) {
+    width: 100% !important;
+  }
+
+  /* 5. Separar el selector de orden del botón de dirección */
+  :deep(.b-table .field.has-addons) {
+    display: flex !important;
+    gap: 0.5rem !important;
+    margin-top: 1rem !important;
+  }
+
+  :deep(.b-table .field.has-addons .control:first-child .select select) {
+    border-radius: var(--radius-md) !important;
+  }
+
+  :deep(.b-table .field.has-addons .control:last-child .button) {
+    border-radius: var(--radius-md) !important;
   }
 }
 

@@ -250,6 +250,7 @@ const resolverGridProps = (sheet, activeInternal) => {
           :active-id="activeSheet"
           :catalog="catalog"
           :actor="user"
+          :active-internal-id="activeInternalTab"
           :loading-tabs="pager.loadingForward.value && pager.sheets.length === 0"
           :has-more="pager.hasMore.value"
           :has-prior="pager.hasPrior.value"
@@ -286,8 +287,9 @@ const resolverGridProps = (sheet, activeInternal) => {
                   <component
                     :is="resolverGrid(sheet.tipo_matriz)"
                     :key="`${sheet.id}:${sheet.tipo_matriz}`"
-                    v-bind="resolverGridProps(sheet, activeInternal)"
+                    v-bind="resolverGridProps(sheet, activeInternalTab)"
                     :actor="user"
+                    @update:internal="activeInternalTab = $event"
                   />
                 </KeepAlive>
               </div>

@@ -25,8 +25,6 @@
         :grid-can-undo="gridHistory.canUndo.value"
         :grid-can-redo="gridHistory.canRedo.value"
         @add-row="handleAddRow"
-        @clear-filters="clearFilters"
-        @reset-sort="resetSort"
         @toggle-filters="handleToggleFilters"
         @save-request="handleSave"
         @discard-changes="handleDiscard"
@@ -221,7 +219,7 @@ const columns = computed(() => [
     children: [{
       field: "base", headerName: "Base", pinned: "left", width: 140, minWidth: 130, maxWidth: 170,
       editable: false, sortable: true, comparator: (a, b) => Number(a) - Number(b),
-      filter: "agNumberColumnFilter", resizable: false,
+      filter: false, resizable: false,
       cellClass: ["ag-cell--compact", "ag-cell--numeric", "ag-cell--pinned"],
       headerClass: ["ag-header-cell--compact", "ag-header-cell--pinned"],
       valueFormatter: (p) => { if (p.data?.__loading) return ""; return fmtSigned(p.value); },
@@ -232,7 +230,7 @@ const columns = computed(() => [
     headerName: "EXISTENCIAS",
     children: [{
       field: "existencias", headerName: "Stock", editable: (p) => !p.data?.__loading,
-      minWidth: 110, maxWidth: 140, filter: "agNumberColumnFilter",
+      minWidth: 110, maxWidth: 140, filter: false,
       cellClass: ["ag-cell--compact", "ag-cell--numeric"],
       headerClass: ["ag-header-cell--compact"],
       cellClassRules: { ...stockCellClassRules.value, "ag-cell--loading": (p) => !!p.data?.__loading },
@@ -252,7 +250,7 @@ const columns = computed(() => [
   },
 ]);
 
-const defaultColDef = { resizable: true, sortable: true, filter: "agNumberColumnFilter", floatingFilter: true, editable: true, minWidth: 90, maxWidth: 150, cellClass: "ag-cell--compact", headerClass: "ag-header-cell--compact" };
+const defaultColDef = { resizable: true, sortable: true, filter: false, floatingFilter: false, editable: true, minWidth: 90, maxWidth: 150, cellClass: "ag-cell--compact", headerClass: "ag-header-cell--compact" };
 
 // ─── Pivot Loader ────────────────────────────────────────────────
 const { datasource, loadingRowsCount, rowsInCacheCount } = useAgGridPivotLoader({
@@ -363,12 +361,11 @@ const onGridReady = async (p) => {
   resetSort();
 };
 
-const clearFilters = () => { if (!gridApi.value) return; gridApi.value.setGridOption("filterModel", null); };
-const resetSort = () => { if (!gridApi.value) return; gridApi.value.applyColumnState({ defaultState: { sort: null }, state: [{ colId: "base", sort: sortDirForView.value }] }); };
-const handleToggleFilters = () => clearFilters();
+const handleToggleFilters = () => { if (!gridApi.value) return; gridApi.value.setGridOption("filterModel", null); };
 
-onMounted(async () => { await loadAll(); unsavedGuard.restore(); });
-onActivated(async () => { showVeil.value = true; await loadAll(); unsavedGuard.restore(); });
+let _hasMounted = false;
+onMounted(async () => { await loadAll(); unsavedGuard.restore(); _hasMounted = true; });
+onActivated(() => { if (_hasMounted) unsavedGuard.restore(); });
 watch(() => props.sphType, async () => {
   if (dirty.value && pendingChanges.value.size > 0) unsavedGuard.persist();
   pendingChanges.value.clear(); dirty.value = false; gridHistory.clear();

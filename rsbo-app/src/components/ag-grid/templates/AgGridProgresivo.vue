@@ -196,7 +196,7 @@ const { formulaValue, onCellClicked, onCellValueChanged, onFxInput, onFxCommit }
 function makeAddLeaf(field, header, add, eye) {
   return {
     field, headerName: header, editable: (p) => !p.data?.__loading,
-    filter: "agNumberColumnFilter", minWidth: 90, maxWidth: 110,
+    filter: false, minWidth: 90, maxWidth: 110,
     cellClass: ["ag-cell--compact", "ag-cell--numeric"],
     headerClass: ["ag-header-cell--compact"],
     cellClassRules: { ...stockCellClassRules.value, "ag-cell--loading": (p) => !!p.data?.__loading },
@@ -219,7 +219,7 @@ const columns = computed(() => [
     headerName: "BASE",
     children: [{
       field: "base", headerName: "Base", pinned: "left", width: 120, minWidth: 110, maxWidth: 140, editable: false, sortable: true,
-      comparator: (a, b) => Number(a) - Number(b), filter: "agNumberColumnFilter", cellClass: ["ag-cell--compact", "ag-cell--numeric", "ag-cell--pinned"],
+      comparator: (a, b) => Number(a) - Number(b), filter: false, cellClass: ["ag-cell--compact", "ag-cell--numeric", "ag-cell--pinned"],
       headerClass: ["ag-header-cell--compact", "ag-header-cell--pinned"],
       valueFormatter: (p) => {
         if (p.data?.__loading) return "";
@@ -238,7 +238,7 @@ const columns = computed(() => [
   },
 ]);
 
-const defaultColDef = { resizable: true, sortable: true, filter: "agNumberColumnFilter", floatingFilter: true, editable: true, minWidth: 90, maxWidth: 150, cellClass: "ag-cell--compact", headerClass: "ag-header-cell--compact" };
+const defaultColDef = { resizable: true, sortable: true, filter: false, floatingFilter: false, editable: true, minWidth: 90, maxWidth: 150, cellClass: "ag-cell--compact", headerClass: "ag-header-cell--compact" };
 
 // ─── Pivot Loader ────────────────────────────────────────────────
 const { datasource, loadingRowsCount, rowsInCacheCount } = useAgGridPivotLoader({
@@ -378,8 +378,9 @@ const clearFilters = () => { if (!gridApi.value) return; gridApi.value.setGridOp
 const resetSort = () => { if (!gridApi.value) return; gridApi.value.applyColumnState({ defaultState: { sort: null }, state: [{ colId: "base", sort: sortDirForView.value }] }); };
 const handleToggleFilters = () => clearFilters();
 
-onMounted(async () => { await loadAll(); unsavedGuard.restore(); });
-onActivated(async () => { showVeil.value = true; await loadAll(); unsavedGuard.restore(); });
+let _hasMounted = false;
+onMounted(async () => { await loadAll(); unsavedGuard.restore(); _hasMounted = true; });
+onActivated(() => { if (_hasMounted) unsavedGuard.restore(); });
 watch(() => props.sphType, async () => {
   if (dirty.value && pendingChanges.value.size > 0) unsavedGuard.persist();
   pendingChanges.value.clear(); dirty.value = false; gridHistory.clear();

@@ -236,7 +236,7 @@ const columns = computed(() => [
     headerName: `SPH ${props.sphType === "sph-neg" ? "(-)" : "(+)"}`,
     children: [{
       field: "sph", headerName: "SPH", width: 90, minWidth: 86, maxWidth: 96, pinned: "left", editable: false, sortable: true,
-      comparator: (a, b) => Number(a) - Number(b), filter: "agNumberColumnFilter", cellClass: ["ag-cell--compact", "ag-cell--numeric", "ag-cell--pinned"],
+      comparator: (a, b) => Number(a) - Number(b), filter: false, cellClass: ["ag-cell--compact", "ag-cell--numeric", "ag-cell--pinned"],
       headerClass: ["ag-header-cell--compact", "ag-header-cell--pinned"],
       valueFormatter: (p) => { if (p.data?.__loading) return ""; const v = Number(p.value); return Number.isFinite(v) ? fmtSigned(v) : (p.value ?? ""); },
       cellRenderer: (p) => p.data?.__loading ? '<span class="skeleton-cell"></span>' : (p.valueFormatted ?? String(p.value ?? "")),
@@ -246,7 +246,7 @@ const columns = computed(() => [
     headerName: "CYL (-)",
     children: activeCylValues.value.map((cDisp) => ({
       field: `cyl_${norm(cDisp)}`, headerName: fmtCylHeader(cDisp), editable: (p) => !p.data?.__loading,
-      filter: "agNumberColumnFilter", minWidth: 80, maxWidth: 110, resizable: true,
+      filter: false, minWidth: 80, maxWidth: 110, resizable: true,
       cellClass: ["ag-cell--compact", "ag-cell--numeric"], headerClass: ["ag-header-cell--compact"],
       cellClassRules: { ...stockCellClassRules.value, "ag-cell--loading": (p) => !!p.data?.__loading },
       cellRenderer: (p) => p.data?.__loading ? '<span class="skeleton-cell skeleton-cell--cyl"></span>' : (p.value !== undefined && p.value !== null ? String(p.value) : "0"),
@@ -263,7 +263,7 @@ const columns = computed(() => [
   },
 ]);
 
-const defaultColDef = { resizable: true, sortable: true, filter: "agNumberColumnFilter", floatingFilter: true, editable: true, minWidth: 90, maxWidth: 150, cellClass: "ag-cell--compact", headerClass: "ag-header-cell--compact" };
+const defaultColDef = { resizable: true, sortable: true, filter: false, floatingFilter: false, editable: true, minWidth: 90, maxWidth: 150, cellClass: "ag-cell--compact", headerClass: "ag-header-cell--compact" };
 
 // ─── Pivot Loader ────────────────────────────────────────────────
 const { datasource, loadingRowsCount, rowsInCacheCount } = useAgGridPivotLoader({
@@ -392,8 +392,9 @@ const clearFilters = () => { if (!gridApi.value) return; gridApi.value.setGridOp
 const resetSort = () => { if (!gridApi.value) return; gridApi.value.applyColumnState({ defaultState: { sort: null }, state: [{ colId: "sph", sort: props.sphType === "sph-neg" ? "desc" : "asc" }] }); };
 const handleToggleFilters = () => clearFilters();
 
-onMounted(async () => { await loadAll(); unsavedGuard.restore(); });
-onActivated(async () => { showVeil.value = true; await loadAll(); unsavedGuard.restore(); });
+let _hasMounted = false;
+onMounted(async () => { await loadAll(); unsavedGuard.restore(); _hasMounted = true; });
+onActivated(() => { if (_hasMounted) unsavedGuard.restore(); });
 watch(() => props.sphType, async () => {
   if (dirty.value && pendingChanges.value.size > 0) unsavedGuard.persist();
   pendingChanges.value.clear(); dirty.value = false; gridHistory.clear();

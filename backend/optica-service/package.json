@@ -17,7 +17,8 @@
     "uuid": "^9.0.0",
     "cookie-parser": "^1.4.6",
     "morgan": "^1.10.0",
-    "isomorphic-dompurify": "^2.15.0"
+    "isomorphic-dompurify": "^2.15.0",
+    "jsonwebtoken": "^9.0.1"
   },
   "devDependencies": {
     "nodemon": "^2.0.22"

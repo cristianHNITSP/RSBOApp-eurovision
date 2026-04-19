@@ -1,6 +1,6 @@
 {
   "name": "rsboapp-optica-service",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "main": "src/index.js",
   "scripts": {
     "start": "nodemon src/index.js",
@@ -16,7 +16,8 @@
     "mongoose": "^7.3.1",
     "uuid": "^9.0.0",
     "cookie-parser": "^1.4.6",
-    "morgan": "^1.10.0"
+    "morgan": "^1.10.0",
+    "isomorphic-dompurify": "^2.15.0"
   },
   "devDependencies": {
     "nodemon": "^2.0.22"

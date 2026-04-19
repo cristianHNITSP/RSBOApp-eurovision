@@ -1,6 +1,6 @@
 <template>
   <b-modal :model-value="modelValue" has-modal-card trap-focus :destroy-on-hide="true" animation="zoom-in"
-    @update:model-value="emit('update:modelValue', $event)">
+    :can-cancel="['escape', 'outside']" @update:model-value="emit('update:modelValue', $event)">
     <div class="modal-card">
       <header class="modal-card-head">
         <p class="modal-card-title">Nuevo usuario</p>
@@ -8,19 +8,17 @@
       </header>
 
       <section class="modal-card-body">
-        <div class="create-avatar">
-          <AvatarPicker
-            :modelValue="form.avatar || ''"
-            :placeholder="fallbackAvatar"
-            :editMode="true"
-            :size="56"
-            @update:modelValue="(val) => (form.avatar = val)"
-          />
-          <div class="create-avatar__hint">
+        <div class="create-avatar is-flex is-flex-direction-column is-align-items-center">
+          <AvatarPicker :modelValue="form.avatar || ''" :placeholder="fallbackAvatar" :editMode="true" :size="64"
+            @update:modelValue="(val) => (form.avatar = val)" />
+          <div class="create-avatar__hint has-text-centered mt-2">
             <p class="is-size-7 has-text-grey m-0">Foto de perfil</p>
             <p class="is-size-6 has-text-weight-semibold m-0">{{ form.name || "Nuevo usuario" }}</p>
             <p class="is-size-7 has-text-grey m-0">Toca el avatar para cambiarlo.</p>
           </div>
+          <b-tooltip label="El rol determina los permisos y accesos del usuario en el sistema">
+            <b-icon icon="info-circle" size="is-small" />
+          </b-tooltip>
         </div>
 
         <hr class="my-3" />
@@ -28,11 +26,12 @@
         <b-field label="Nombre"><b-input v-model="form.name" /></b-field>
         <b-field label="Correo"><b-input v-model="form.email" type="email" /></b-field>
         <b-field label="Teléfono"><b-input v-model="form.phone" /></b-field>
-        <b-field label="Bio"><b-input v-model="form.bio" type="textarea" /></b-field>
-        <b-field label="Rol">
+        <b-field label="Biografía"><b-input v-model="form.bio" type="textarea" /></b-field>
+        <b-field label="Rol del usuario">
           <b-select v-model="form.role" expanded>
             <option v-for="r in roles" :key="r._id" :value="r._id">{{ formatRoleLabel(r.name) }}</option>
           </b-select>
+
         </b-field>
         <b-field label="Estado">
           <b-switch v-model="form.isActive">Activo</b-switch>
@@ -40,10 +39,19 @@
         <b-field label="Contraseña">
           <b-input v-model="form.password" type="text" />
         </b-field>
-        <div class="password-tools">
-          <b-button size="is-small" type="is-light" icon-left="shield-alt" @click="generate">Generar segura</b-button>
-          <b-button size="is-small" type="is-light" icon-left="copy" @click="copy">Copiar</b-button>
-          <span class="is-size-7 has-text-grey">Se recomienda guardarla y dársela al usuario.</span>
+        <div class="password-tools mt-4">
+          <h6 class="subtitle is-7 is-uppercase has-text-weight-bold has-text-grey-dark mb-1">Seguridad de la cuenta
+          </h6>
+          <p class="is-size-7 has-text-grey mb-3">
+            <b-icon icon="info-circle" size="is-small" class="mr-1" />
+            Se recomienda <strong>guardar la contraseña</strong> y dársela al usuario ahora.
+          </p>
+
+          <div class="buttons">
+            <b-button size="is-small" type="is-primary is-light" icon-left="shield-alt" @click="generate">Generar
+              nueva</b-button>
+            <b-button size="is-small" type="is-info is-light" icon-left="copy" @click="copy">Copiar</b-button>
+          </div>
         </div>
       </section>
 
@@ -62,10 +70,10 @@ import { formatRoleLabel } from '@/utils/roleHelpers.js'
 import { generateSecurePassword } from '@/utils/generatePassword.js'
 
 const props = defineProps({
-  modelValue:     { type: Boolean, required: true },
-  roles:          { type: Array,   default: () => [] },
-  saving:         { type: Boolean, default: false },
-  fallbackAvatar: { type: String,  default: '' },
+  modelValue: { type: Boolean, required: true },
+  roles: { type: Array, default: () => [] },
+  saving: { type: Boolean, default: false },
+  fallbackAvatar: { type: String, default: '' },
 })
 
 const emit = defineEmits(['update:modelValue', 'save', 'toast'])

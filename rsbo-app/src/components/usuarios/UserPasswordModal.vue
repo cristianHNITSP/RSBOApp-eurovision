@@ -1,6 +1,6 @@
 <template>
   <b-modal :model-value="modelValue" has-modal-card trap-focus :destroy-on-hide="true" animation="zoom-in"
-    @update:model-value="emit('update:modelValue', $event)">
+    :can-cancel="['escape', 'outside']" @update:model-value="emit('update:modelValue', $event)">
     <div class="modal-card">
       <header class="modal-card-head">
         <p class="modal-card-title">Cambiar contraseña</p>
@@ -8,14 +8,24 @@
       </header>
 
       <section class="modal-card-body">
-        <p class="mb-2"><strong>{{ user?.name }}</strong> · {{ user?.email }}</p>
+        <p class="mb-2"><b>Nombre de usuario:</b> <strong>{{ user?.name }}</strong></p>
+        <p class="mb-2"><b>Correo:</b> <strong>{{ user?.email }}</strong></p>
         <b-field label="Nueva contraseña">
           <b-input v-model="password" type="password" password-reveal />
         </b-field>
-        <div class="password-tools">
-          <b-button size="is-small" type="is-light" icon-left="shield-alt" @click="generate">Generar segura</b-button>
-          <b-button size="is-small" type="is-light" icon-left="copy" @click="copy">Copiar</b-button>
-          <span class="is-size-7 has-text-grey">Mínimo 10 caracteres recomendado.</span>
+        <div class="password-tools mt-4">
+          <h6 class="subtitle is-7 is-uppercase has-text-weight-bold has-text-grey-dark mb-1">Seguridad de la cuenta
+          </h6>
+          <p class="is-size-7 has-text-grey mb-3">
+            <b-icon icon="info-circle" size="is-small" class="mr-1" />
+            Se recomienda <strong>guardar la nueva contraseña</strong> y dársela al usuario.
+          </p>
+
+          <div class="buttons">
+            <b-button size="is-small" type="is-primary is-light" icon-left="shield-alt" @click="generate">Generar
+              nueva</b-button>
+            <b-button size="is-small" type="is-info is-light" icon-left="copy" @click="copy">Copiar</b-button>
+          </div>
         </div>
       </section>
 
@@ -33,8 +43,8 @@ import { generateSecurePassword } from '@/utils/generatePassword.js'
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
-  user:       { type: Object,  default: null },
-  saving:     { type: Boolean, default: false },
+  user: { type: Object, default: null },
+  saving: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['update:modelValue', 'save', 'toast'])

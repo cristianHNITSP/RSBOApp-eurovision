@@ -124,7 +124,7 @@
     </div>
 
     <!-- ── Dirty float ── -->
-    <Teleport to="body">
+    <Teleport :to="teleportTarget">
       <Transition name="gt-dirty-slide">
         <div v-if="dirty && !saving" class="gt-dirty-float">
           <b-icon icon="exclamation-triangle" size="is-small" />
@@ -519,6 +519,7 @@ async function handleSave() {
 async function handleDiscard() {
   dirty.value = false;
   pendingChanges.value.clear();
+  labToast.warning("Cambios descartados.");
   await loadAll();
 }
 
@@ -539,20 +540,27 @@ async function handleExport() {
       ? (r) => fmtDate(r[c.field])
       : undefined,
   }));
-  const rows = filteredData.value;
-  const fecha = new Date().toISOString().slice(0, 10);
-  await exportToXlsx({
-    filename: `reporte_inventario_${(sheetName.value || "inventario").replace(/\s+/g, "_")}_${fecha}`,
-    sheetName: String(sheetName.value || "Inventario").slice(0, 31),
-    title: `Inventario — ${sheetName.value || "Inventario"}`,
-    subtitle: material.value ? `Material: ${material.value}` : undefined,
-    columns,
-    rows,
-    summaryCards: [
-      { label: "Productos", value: rows.length },
-      { label: "Stock Total", value: rows.reduce((s, r) => s + Number(r.existencias || 0), 0) },
-    ],
-  });
+  const rows = sortedData.value || [];
+  labToast.info("Generando reporte Excel...", 2000);
+  try {
+    const fecha = new Date().toISOString().slice(0, 10);
+    await exportToXlsx({
+      filename: `reporte_inventario_${(sheetName.value || "inventario").replace(/\s+/g, "_")}_${fecha}`,
+      sheetName: String(sheetName.value || "Inventario").slice(0, 31),
+      title: `Inventario — ${sheetName.value || "Inventario"}`,
+      subtitle: material.value ? `Material: ${material.value}` : undefined,
+      columns,
+      rows,
+      summaryCards: [
+        { label: "Productos", value: rows.length },
+        { label: "Stock Total", value: rows.reduce((s, r) => s + Number(r.existencias || 0), 0) },
+      ],
+    });
+    labToast.success("Excel descargado correctamente.");
+  } catch (e) {
+    console.error("[GlassTable] Export error:", e);
+    labToast.danger("No se pudo generar el reporte.");
+  }
 }
 
 /* ─── Lifecycle ─── */
@@ -566,6 +574,17 @@ watch(
     loadAll();
   }
 );
+
+/* ─── Fullscreen & Teleport ─── */
+const isFullscreenActive = ref(!!document.fullscreenElement);
+const updateFs = () => { isFullscreenActive.value = !!document.fullscreenElement; };
+onMounted(() => document.addEventListener("fullscreenchange", updateFs));
+onBeforeUnmount(() => document.removeEventListener("fullscreenchange", updateFs));
+
+const teleportTarget = computed(() => {
+  if (isFullscreenActive.value && document.fullscreenElement) return document.fullscreenElement;
+  return "body";
+});
 
 /* ─── Dark mode ─── */
 const _darkMode = ref(document.documentElement.getAttribute("data-theme") === "dark");
@@ -758,7 +777,7 @@ onBeforeUnmount(() => _obs.disconnect());
   bottom: 1.5rem;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 999;
+  z-index: 100000;
   display: flex;
   align-items: center;
   gap: 0.6rem;

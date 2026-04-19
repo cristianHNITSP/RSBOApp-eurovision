@@ -124,8 +124,13 @@ function select(tab) {
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
-  /*margin-bottom: 1.1rem;*/
+  margin-bottom: 1.1rem;
   flex-shrink: 0;
+}
+
+/* Anular margen cuando se usa en el Ribbon u otras vistas compactas */
+.dyn-tabs.ribbon-tabs .dyn-tabs__bar {
+  margin-bottom: 0;
 }
 
 .dyn-tabs__bar::-webkit-scrollbar {
@@ -293,9 +298,11 @@ function select(tab) {
     border-radius: var(--radius-md);
     overflow-x: auto;
     overflow-y: hidden;
-    scrollbar-width: auto; /* Mostrar scrollbar en móvil si es necesario */
+    scrollbar-width: auto;
+    /* Mostrar scrollbar en móvil si es necesario */
     -webkit-overflow-scrolling: touch;
-    padding-bottom: 0.4rem; /* Espacio para scrollbar si aparece */
+    padding-bottom: 0.4rem;
+    /* Espacio para scrollbar si aparece */
   }
 
   .dyn-tab {
@@ -305,11 +312,13 @@ function select(tab) {
   }
 
   .dyn-tab__label {
-    display: inline-block; /* Mostrar texto */
+    display: inline-block;
+    /* Mostrar texto */
   }
 
   .dyn-tab__icon {
-    display: none; /* Ocultar icono para "ver texto únicamente" */
+    display: none;
+    /* Ocultar icono para "ver texto únicamente" */
   }
 }
 </style>

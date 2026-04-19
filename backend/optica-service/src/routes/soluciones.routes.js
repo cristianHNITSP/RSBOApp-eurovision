@@ -5,8 +5,12 @@ const { body, param, validationResult } = require("express-validator");
 
 const Solucion        = require("../models/Solucion");
 const { logMovement } = require("../utils/logHelper");
+const { sanitizeMiddleware } = require("../utils/sanitizer");
+const { protect }          = require("../utils/auth");
 
 const COLLECTION = "soluciones";
+router.use(protect());
+const TEXT_FIELDS = ["sku", "nombre", "marca", "tipo", "descripcion"];
 
 const validate = (req, res, next) => {
   const errors = validationResult(req);
@@ -32,7 +36,10 @@ router.get("/", async (req, res) => {
       { nombre: { $regex: q, $options: "i" } },
       { marca:  { $regex: q, $options: "i" } },
     ];
-    const items = await Solucion.find(filter).sort({ createdAt: -1 }).lean();
+    const items = await Solucion.find(filter)
+      .collation({ locale: "es", strength: 1 })
+      .sort({ createdAt: -1 })
+      .lean();
     console.log(`[OPTICA][SOLUCIONES] GET /  → ${items.length} items`);
     return res.json({ ok: true, data: items });
   } catch (err) {
@@ -59,9 +66,10 @@ router.get("/:id", param("id").isMongoId(), validate, async (req, res) => {
   }
 });
 
-router.post("/", bodyRules, validate, async (req, res) => {
+router.post("/", bodyRules, sanitizeMiddleware(TEXT_FIELDS), validate, async (req, res) => {
   try {
-    const { actor, ...fields } = req.body;
+    const fields = req.body;
+    const actor = req.user;
     const exists = await Solucion.findOne({ sku: fields.sku });
     if (exists) return res.status(409).json({ ok: false, error: `SKU "${fields.sku}" ya existe` });
     const item = await Solucion.create(fields);
@@ -73,9 +81,10 @@ router.post("/", bodyRules, validate, async (req, res) => {
   }
 });
 
-router.put("/:id", param("id").isMongoId(), bodyRules, validate, async (req, res) => {
+router.put("/:id", param("id").isMongoId(), bodyRules, sanitizeMiddleware(TEXT_FIELDS), validate, async (req, res) => {
   try {
-    const { actor, ...fields } = req.body;
+    const fields = req.body;
+    const actor = req.user;
     const item = await Solucion.findById(req.params.id);
     if (!item) return res.status(404).json({ ok: false, error: "No encontrado" });
     if (item.isDeleted) return res.status(410).json({ ok: false, error: "Elemento en papelera" });
@@ -95,7 +104,8 @@ router.put("/:id", param("id").isMongoId(), bodyRules, validate, async (req, res
 
 router.patch("/:id/stock", param("id").isMongoId(), body("stock").isInt({ min: 0 }), validate, async (req, res) => {
   try {
-    const { stock, actor } = req.body;
+    const { stock } = req.body;
+    const actor = req.user;
     const item = await Solucion.findById(req.params.id);
     if (!item) return res.status(404).json({ ok: false, error: "No encontrado" });
     if (item.isDeleted) return res.status(410).json({ ok: false, error: "Elemento en papelera" });
@@ -111,7 +121,7 @@ router.patch("/:id/stock", param("id").isMongoId(), body("stock").isInt({ min: 0
 
 router.delete("/:id", param("id").isMongoId(), validate, async (req, res) => {
   try {
-    const actor = req.body?.actor || {};
+    const actor = req.user;
     const item  = await Solucion.findById(req.params.id);
     if (!item) return res.status(404).json({ ok: false, error: "No encontrado" });
     if (item.isDeleted) return res.status(410).json({ ok: false, error: "Ya está en papelera" });
@@ -129,7 +139,7 @@ router.delete("/:id", param("id").isMongoId(), validate, async (req, res) => {
 
 router.delete("/:id/hard", param("id").isMongoId(), validate, async (req, res) => {
   try {
-    const actor = req.body?.actor || {};
+    const actor = req.user;
     const item  = await Solucion.findById(req.params.id);
     if (!item) return res.status(404).json({ ok: false, error: "No encontrado" });
     const snapshot = { sku: item.sku, nombre: item.nombre };
@@ -144,7 +154,7 @@ router.delete("/:id/hard", param("id").isMongoId(), validate, async (req, res) =
 
 router.patch("/:id/restore", param("id").isMongoId(), validate, async (req, res) => {
   try {
-    const actor = req.body?.actor || {};
+    const actor = req.user;
     const item  = await Solucion.findById(req.params.id);
     if (!item) return res.status(404).json({ ok: false, error: "No encontrado" });
     if (!item.isDeleted) return res.status(400).json({ ok: false, error: "No está en papelera" });

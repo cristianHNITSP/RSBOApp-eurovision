@@ -5,8 +5,10 @@ const { body, param, validationResult } = require("express-validator");
 
 const Estuche         = require("../models/Estuche");
 const { logMovement } = require("../utils/logHelper");
+const { sanitizeMiddleware } = require("../utils/sanitizer");
 
 const COLLECTION = "estuches";
+const TEXT_FIELDS = ["sku", "nombre", "tipo", "material", "color", "compatible", "descripcion"];
 
 const validate = (req, res, next) => {
   const errors = validationResult(req);
@@ -30,7 +32,10 @@ router.get("/", async (req, res) => {
       { nombre: { $regex: q, $options: "i" } },
       { tipo:   { $regex: q, $options: "i" } },
     ];
-    const items = await Estuche.find(filter).sort({ createdAt: -1 }).lean();
+    const items = await Estuche.find(filter)
+      .collation({ locale: "es", strength: 1 })
+      .sort({ createdAt: -1 })
+      .lean();
     console.log(`[OPTICA][ESTUCHES] GET /  → ${items.length} items`);
     return res.json({ ok: true, data: items });
   } catch (err) {
@@ -57,7 +62,7 @@ router.get("/:id", param("id").isMongoId(), validate, async (req, res) => {
   }
 });
 
-router.post("/", bodyRules, validate, async (req, res) => {
+router.post("/", bodyRules, sanitizeMiddleware(TEXT_FIELDS), validate, async (req, res) => {
   try {
     const { actor, ...fields } = req.body;
     const exists = await Estuche.findOne({ sku: fields.sku });
@@ -71,7 +76,7 @@ router.post("/", bodyRules, validate, async (req, res) => {
   }
 });
 
-router.put("/:id", param("id").isMongoId(), bodyRules, validate, async (req, res) => {
+router.put("/:id", param("id").isMongoId(), bodyRules, sanitizeMiddleware(TEXT_FIELDS), validate, async (req, res) => {
   try {
     const { actor, ...fields } = req.body;
     const item = await Estuche.findById(req.params.id);

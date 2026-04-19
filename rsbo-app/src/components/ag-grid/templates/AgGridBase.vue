@@ -9,7 +9,7 @@
   CSS:    Glassmorphism / No-Line Rule — misma familia que el resto.
   ============================================================ -->
 <template>
-  <div class="grid-page">
+  <div class="grid-page" :class="{ 'is-fullscreen': isFullscreen, 'ag-grid-fullscreen-container': isFullscreen }" ref="gridPageRef">
     <header class="grid-topbar">
       <navtools
         class="navtools-wrap"
@@ -24,6 +24,11 @@
         :last-saved-at="lastSavedAt"
         :grid-can-undo="gridHistory.canUndo.value"
         :grid-can-redo="gridHistory.canRedo.value"
+        :is-fullscreen="isFullscreen"
+        :internal-tabs="internalTabs"
+        :active-internal-tab="sphType"
+        @toggle-fullscreen="toggleFullscreen(gridPageRef)"
+        @update:internal="$emit('update:internal', $event)"
         @add-row="handleAddRow"
         @toggle-filters="handleToggleFilters"
         @save-request="handleSave"
@@ -124,6 +129,8 @@ const props = defineProps({
   apiType: { type: String, default: "inventory" },
 });
 
+defineEmits(["update:internal"]);
+
 const { getSheet, fetchItems, saveChunk, reseedSheet } = useSheetApi(() => props.apiType);
 
 const BASE_STEP = 0.25;
@@ -138,6 +145,8 @@ const integration = useAgGridIntegration({
 });
 
 const { gridApi, dirty, saving, lastSavedAt, switchingView, pendingChanges, gridHistory, unsavedGuard, suppressNextWsRefresh, postMessage } = integration;
+
+const gridPageRef = ref(null);
 
 // ─── State ───────────────────────────────────────────────────────
 const sheetMeta      = ref(null);
@@ -154,7 +163,7 @@ const getRowCache = () => {
 };
 
 // ─── Composables ─────────────────────────────────────────────────
-const { themeCustom } = useAgGridBase();
+const { themeCustom, isFullscreen, toggleFullscreen } = useAgGridBase();
 const { stockRowClassRules, stockCellClassRules } = useStockRules(sheetMeta);
 
 // ─── Meta computed ───────────────────────────────────────────────
@@ -169,6 +178,17 @@ const sheetName = computed(() => sheetMeta.value?.nombre || sheetMeta.value?.nam
 const tipoMatriz = computed(() => sheetMeta.value?.tipo_matriz || "BASE");
 const material = computed(() => sheetMeta.value?.material || "");
 const tratamientos = computed(() => sheetMeta.value?.tratamientos || []);
+
+const internalTabs = computed(() => {
+  const t = tipoMatriz.value;
+  if (t === "BASE") {
+    return [
+      { id: "base-neg", label: "BASE (-)" },
+      { id: "base-pos", label: "BASE (+)" }
+    ];
+  }
+  return [];
+});
 
 const phys = computed(() => {
   const pl = physicalLimits.value || {};
@@ -218,7 +238,7 @@ const columns = computed(() => [
     headerName: "BASE",
     children: [{
       field: "base", headerName: "Base", pinned: "left", width: 140, minWidth: 130, maxWidth: 170,
-      editable: false, sortable: true, comparator: (a, b) => Number(a) - Number(b),
+      editable: false, sortable: false,
       filter: false, resizable: false,
       cellClass: ["ag-cell--compact", "ag-cell--numeric", "ag-cell--pinned"],
       headerClass: ["ag-header-cell--compact", "ag-header-cell--pinned"],
@@ -250,7 +270,7 @@ const columns = computed(() => [
   },
 ]);
 
-const defaultColDef = { resizable: true, sortable: true, filter: false, floatingFilter: false, editable: true, minWidth: 90, maxWidth: 150, cellClass: "ag-cell--compact", headerClass: "ag-header-cell--compact" };
+const defaultColDef = { resizable: true, sortable: false, filter: false, floatingFilter: false, editable: true, minWidth: 90, maxWidth: 150, cellClass: "ag-cell--compact", headerClass: "ag-header-cell--compact" };
 
 // ─── Pivot Loader ────────────────────────────────────────────────
 const { datasource, loadingRowsCount, rowsInCacheCount } = useAgGridPivotLoader({

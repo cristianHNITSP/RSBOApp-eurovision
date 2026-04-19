@@ -7,12 +7,17 @@
   ============================================================ -->
 
 <template>
-  <div class="grid-page">
+  <div class="grid-page" :class="{ 'is-fullscreen': isFullscreen, 'ag-grid-fullscreen-container': isFullscreen }" ref="gridPageRef">
     <header class="grid-topbar">
       <navtools class="navtools-wrap" v-model="formulaValue" :dirty="dirty" :saving="saving" :total-rows="totalRows"
         :sheet-name="sheetName" :tipo-matriz="tipoMatriz" :material="material" :tratamientos="tratamientos"
         :last-saved-at="lastSavedAt" :grid-can-undo="gridHistory.canUndo.value"
-        :grid-can-redo="gridHistory.canRedo.value" @add-row="handleAddRow" @add-column="handleAddColumn"
+        :grid-can-redo="gridHistory.canRedo.value" :is-fullscreen="isFullscreen" 
+        :internal-tabs="internalTabs"
+        :active-internal-tab="sphType"
+        @toggle-fullscreen="toggleFullscreen(gridPageRef)" 
+        @update:internal="$emit('update:internal', $event)"
+        @add-row="handleAddRow" @add-column="handleAddColumn"
         @clear-filters="clearFilters" @reset-sort="resetSort" @toggle-filters="handleToggleFilters"
         @save-request="handleSave" @discard-changes="handleDiscard" @refresh="handleRefresh" @seed="handleSeed"
         @export="handleExport" @fx-input="onFxInput" @fx-commit="onFxCommit" @grid-undo="handleGridUndo"
@@ -93,9 +98,11 @@ const LOG_ROWS = (...a) => DEV_MODE && console.log("[Progresivo][Rows]", ...a);
 const props = defineProps({
   sheetId: { type: String, required: true },
   sphType: { type: String, default: "base-pos" }, // base-neg | base-pos
-  actor: { type: Object, default: null },
+  actor:   { type: Object, default: null },
   apiType: { type: String, default: "inventory" },
 });
+
+defineEmits(["update:internal"]);
 
 const { getSheet, fetchItems, saveChunk, reseedSheet } = useSheetApi(() => props.apiType);
 const { sheetId, sphType } = toRefs(props);
@@ -109,6 +116,8 @@ const integration = useAgGridIntegration({
 });
 
 const { gridApi, dirty, saving, lastSavedAt, switchingView, pendingChanges, gridHistory, unsavedGuard, suppressNextWsRefresh, postMessage } = integration;
+
+const gridPageRef = ref(null);
 
 // ─── State ───────────────────────────────────────────────────────
 const sheetMeta = ref(null);
@@ -127,7 +136,7 @@ const getRowCache = () => {
 };
 
 // ─── Composables ─────────────────────────────────────────────────
-const { themeCustom } = useAgGridBase();
+const { themeCustom, isFullscreen, toggleFullscreen } = useAgGridBase();
 const { stockRowClassRules, stockCellClassRules } = useStockRules(sheetMeta);
 
 const colManager = useAgGridIncrementalColumns({
@@ -159,6 +168,17 @@ const sheetName = computed(() => sheetMeta.value?.nombre || sheetMeta.value?.nam
 const tipoMatriz = computed(() => sheetMeta.value?.tipo_matriz || "BASE_ADD");
 const material = computed(() => sheetMeta.value?.material || "");
 const tratamientos = computed(() => sheetMeta.value?.tratamientos || []);
+
+const internalTabs = computed(() => {
+  const t = tipoMatriz.value;
+  if (t === "BASE_ADD") {
+    return [
+      { id: "base-neg", label: "BASE (-)" },
+      { id: "base-pos", label: "BASE (+)" }
+    ];
+  }
+  return [];
+});
 
 const getRowId = (p) => rowKey(p.data.base_izq ?? p.data.base, p.data.base_der ?? p.data.base);
 
@@ -218,7 +238,7 @@ const columns = computed(() => [
   {
     headerName: "BASE",
     children: [{
-      field: "base", headerName: "Base", pinned: "left", width: 120, minWidth: 110, maxWidth: 140, editable: false, sortable: true,
+      field: "base", headerName: "Base", pinned: "left", width: 120, minWidth: 110, maxWidth: 140, editable: false, sortable: false,
       comparator: (a, b) => Number(a) - Number(b), filter: false, cellClass: ["ag-cell--compact", "ag-cell--numeric", "ag-cell--pinned"],
       headerClass: ["ag-header-cell--compact", "ag-header-cell--pinned"],
       valueFormatter: (p) => {
@@ -238,7 +258,7 @@ const columns = computed(() => [
   },
 ]);
 
-const defaultColDef = { resizable: true, sortable: true, filter: false, floatingFilter: false, editable: true, minWidth: 90, maxWidth: 150, cellClass: "ag-cell--compact", headerClass: "ag-header-cell--compact" };
+const defaultColDef = { resizable: true, sortable: false, filter: false, floatingFilter: false, editable: true, minWidth: 90, maxWidth: 150, cellClass: "ag-cell--compact", headerClass: "ag-header-cell--compact" };
 
 // ─── Pivot Loader ────────────────────────────────────────────────
 const { datasource, loadingRowsCount, rowsInCacheCount } = useAgGridPivotLoader({

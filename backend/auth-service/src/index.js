@@ -14,6 +14,30 @@ require("dotenv").config();
 
 const app = express();
 
+// -------------------------
+// SEGURIDAD Y ARQUITECTURA
+// -------------------------
+app.disable("x-powered-by"); // Ocultar que usamos Express
+
+// Cabeceras de seguridad manuales
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("X-XSS-Protection", "1; mode=block");
+  res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  next();
+});
+
+const rateLimit = require("express-rate-limit");
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 500, // Límite de 500 peticiones por ventana
+  message: { error: "Demasiadas peticiones desde esta IP, intente más tarde." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use(limiter);
+
 const PORT = process.env.PORT || 3001;
 const HOST = process.env.SERVICE_HOST || "0.0.0.0";
 

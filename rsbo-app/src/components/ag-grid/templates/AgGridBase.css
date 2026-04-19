@@ -8,6 +8,22 @@
   overflow: hidden;
 }
 
+.grid-page.is-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: var(--bg-app, #f5f3ff);
+  padding: 0;
+}
+
+[data-theme="dark"] .grid-page.is-fullscreen {
+  background: var(--bg-app, #0c0a20);
+}
+
+.grid-page.is-fullscreen .grid-main {
+  padding: 0 0.5rem 0.5rem;
+}
+
 .grid-topbar {
   flex: 0 0 auto;
   position: sticky;
@@ -427,7 +443,6 @@
 .ag-grid-glass :deep(.ag-cell.ag-cell--stock-low) {
   font-weight: 700;
   background: rgba(139, 92, 246, 0.10);
-  border-radius: 5px;
   color: #6d28d9;
 }
 
@@ -439,11 +454,56 @@
 .ag-grid-glass :deep(.ag-cell.ag-cell--stock-zero) {
   font-weight: 800;
   background: rgba(99, 102, 241, 0.12);
-  border-radius: 5px;
   color: #4338ca;
 }
 
 [data-theme="dark"] .ag-grid-glass :deep(.ag-cell.ag-cell--stock-zero) {
   color: #a5b4fc;
   background: rgba(99, 102, 241, 0.20);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   INLINE EDITING
+   ═══════════════════════════════════════════════════════════════ */
+.ag-grid-glass :deep(.ag-cell-inline-editing) {
+  padding: 0 !important;
+  box-sizing: border-box !important;
+  border: 2px solid var(--c-primary) !important;
+  background: var(--surface-raised) !important;
+  box-shadow: 0 0 10px var(--c-primary-alpha) !important;
+  z-index: 5 !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.ag-grid-glass :deep(.ag-cell-inline-editing input) {
+  width: 100% !important;
+  height: 100% !important;
+  padding: 0 6px !important;
+  background: transparent !important;
+  border: none !important;
+  color: var(--text-primary) !important;
+  font-weight: 800 !important;
+  box-sizing: border-box !important;
+  text-align: right; /* Para celdas numéricas */
+}
+
+[data-theme="dark"] .ag-grid-glass :deep(.ag-cell-inline-editing) {
+  background: var(--surface-solid) !important;
+  border-color: var(--c-primary-light) !important;
+}
+/* ═══════════════════════════════════════════════════════════════
+   CELL FOCUS (Single Click)
+   ═══════════════════════════════════════════════════════════════ */
+.ag-grid-glass :deep(.ag-cell-focus:not(.ag-cell-inline-editing)) {
+  border: none !important;
+  outline: none !important;
+  box-shadow: inset 0 0 0 2px var(--c-primary) !important;
+  background: rgba(121, 87, 213, 0.05) !important;
+  transition: box-shadow 0.1s ease;
+}
+
+[data-theme="dark"] .ag-grid-glass :deep(.ag-cell-focus:not(.ag-cell-inline-editing)) {
+  box-shadow: inset 0 0 0 2px var(--c-primary-light) !important;
+  background: rgba(167, 139, 250, 0.08) !important;
 }

@@ -33,10 +33,7 @@
   box-shadow: var(--shadow);
 }
 
-.an-hero-accent {
-  height: 3.5px;
-  width: 100%;
-}
+
 
 .an-hero-inner {
   display: flex;
@@ -204,7 +201,7 @@
 }
 
 .an-tab-single-col {
-  max-width: 960px;
+  width: 100%;
 }
 
 .an-col-main,
@@ -220,11 +217,6 @@
   border-radius: 18px;
   box-shadow: var(--g-shadow);
   overflow: hidden;
-}
-
-.gcard-bar {
-  height: 2.5px;
-  width: 100%;
 }
 
 .gc-head {

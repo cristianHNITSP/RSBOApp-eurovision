@@ -30,43 +30,43 @@ const routes = [
         path: "inventario/bases-micas",
         name: "inventario-bases-micas",
         component: () => import("../views/inventario/BasesMicas.vue"),
-        meta: { requiresAuth: true, breadcrumb: "Inventario · Bases y Micas" },
+        meta: { requiresAuth: true, breadcrumb: "Inventario / Bases y Micas" },
       },
       {
         path: "inventario/optica",
         name: "inventario-optica",
         component: () => import("../views/inventario/Optica.vue"),
-        meta: { requiresAuth: true, breadcrumb: "Inventario · Óptica" },
+        meta: { requiresAuth: true, breadcrumb: "Inventario / Óptica" },
       },
       {
         path: "inventario/lentes-contacto",
         name: "inventario-lentes-contacto",
         component: () => import("../views/inventario/LentesContacto.vue"),
-        meta: { requiresAuth: true, breadcrumb: "Inventario · Lentes de Contacto" },
+        meta: { requiresAuth: true, breadcrumb: "Inventario / Lentes de Contacto" },
       },
       {
         path: "ventas/laboratorio",
         name: "ventas-laboratorio",
         component: () => import("../views/ventas/Laboratorio.vue"),
-        meta: { requiresAuth: true, breadcrumb: "Ventas · Laboratorio" },
+        meta: { requiresAuth: true, breadcrumb: "Ventas / Laboratorio" },
       },
       {
         path: "ventas/bases-micas",
         name: "ventas-bases-micas",
         component: () => import("../views/ventas/BasesMicas.vue"),
-        meta: { requiresAuth: true, breadcrumb: "Ventas · Bases y Micas" },
+        meta: { requiresAuth: true, breadcrumb: "Ventas / Bases y Micas" },
       },
       {
         path: "ventas/optica",
         name: "ventas-optica",
         component: () => import("../views/ventas/Optica.vue"),
-        meta: { requiresAuth: true, breadcrumb: "Ventas · Óptica" },
+        meta: { requiresAuth: true, breadcrumb: "Ventas / Óptica" },
       },
       {
         path: "ventas/lentes-contacto",
         name: "ventas-lentes-contacto",
         component: () => import("../views/ventas/LentesContacto.vue"),
-        meta: { requiresAuth: true, breadcrumb: "Ventas · Lentes de Contacto" },
+        meta: { requiresAuth: true, breadcrumb: "Ventas / Lentes de Contacto" },
       },
 
       {
@@ -123,12 +123,12 @@ const router = createRouter({
 
 // Mapa de código de error → razón usada en la query
 const ERROR_REASON_MAP = {
-  NO_TOKEN:      "no-token",
+  NO_TOKEN: "no-token",
   TOKEN_EXPIRED: "token-expired",
   INVALID_TOKEN: "invalid-token",
   TOKEN_REVOKED: "token-revoked",
-  USER_NOT_FOUND:"no-token",
-  USER_DELETED:  "no-token",
+  USER_NOT_FOUND: "no-token",
+  USER_DELETED: "no-token",
   USER_INACTIVE: "no-token",
 };
 

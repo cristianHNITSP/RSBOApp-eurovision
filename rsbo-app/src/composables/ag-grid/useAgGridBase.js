@@ -178,5 +178,38 @@ export function useAgGridBase({ isZeroStock, isLowStock } = {}) {
     };
   });
 
-  return { themeCustom, rowClassRules, _darkMode };
+  // ── Fullscreen logic ─────────────────────────────────────────────────────
+  const isFullscreen = ref(false);
+
+  function toggleFullscreen(element = null) {
+    if (!document.fullscreenElement) {
+      const el = element || document.documentElement;
+      el.requestFullscreen?.().catch((err) => {
+        console.warn(`Error al activar pantalla completa: ${err.message}`);
+      });
+      isFullscreen.value = true;
+    } else {
+      document.exitFullscreen?.();
+      isFullscreen.value = false;
+    }
+  }
+
+  const _fsHandler = () => {
+    isFullscreen.value = !!document.fullscreenElement;
+  };
+
+  onMounted(() => {
+    _observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
+    document.addEventListener("fullscreenchange", _fsHandler);
+  });
+
+  onBeforeUnmount(() => {
+    _observer.disconnect();
+    document.removeEventListener("fullscreenchange", _fsHandler);
+  });
+
+  return { themeCustom, rowClassRules, _darkMode, isFullscreen, toggleFullscreen };
 }

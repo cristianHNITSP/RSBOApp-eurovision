@@ -73,13 +73,13 @@
               <div class="session-item__icon">
                 <b-icon
                   pack="fas"
-                  :icon="osIcon(session.deviceInfo?.os)"
+                  :icon="getOsIcon(session)"
                   size="is-medium"
                 />
               </div>
               <div class="session-item__info">
                 <div class="session-item__device">
-                  {{ session.deviceInfo?.deviceName || 'Dispositivo desconocido' }}
+                  {{ getDisplayDevice(session) }}
                   <b-tag v-if="session.isCurrent" type="is-success" size="is-small" rounded class="ml-2">
                     Esta sesión
                   </b-tag>
@@ -87,7 +87,9 @@
                 <div class="session-item__meta">
                   <span v-if="session.deviceInfo?.ip" class="session-meta-item">
                     <b-icon pack="fas" icon="map-marker-alt" size="is-small" />
-                    {{ session.deviceInfo.ip }}
+                    <b-tooltip :label="session.deviceInfo.ip" position="is-top" append-to-body>
+                      {{ ipCache[session.deviceInfo.ip] || session.deviceInfo.ip }}
+                    </b-tooltip>
                   </span>
                   <span class="session-meta-item">
                     <b-icon pack="fas" icon="clock" size="is-small" />
@@ -247,7 +249,7 @@
         <section class="modal-card-body">
           <p>
             Se cerrará la sesión de
-            <strong>{{ pendingRevokeSession?.deviceInfo?.deviceName || 'este dispositivo' }}</strong>.
+            <strong>{{ pendingRevokeSession ? getDisplayDevice(pendingRevokeSession) : 'este dispositivo' }}</strong>.
             El dispositivo perderá el acceso inmediatamente.
           </p>
         </section>
@@ -317,7 +319,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, reactive, watch } from 'vue';
 import { fetchSessions, revokeSession, revokeOtherSessions, changePassword } from '@/services/security';
 import { labToast } from '@/composables/shared/useLabToast';
 
@@ -330,6 +332,45 @@ const sessions        = ref([]);
 const loadingSessions = ref(false);
 const loadingRevoke   = ref(false);
 const revokingId      = ref(null);
+
+// ── Geocalización de IPs ──
+const ipCache = reactive({});
+
+async function resolveIp(ip) {
+  // Ignorar IPs ya resueltas
+  if (!ip || ipCache[ip]) return;
+
+  // Detectar IPs privadas o locales
+  const isPrivate =
+    ip === '127.0.0.1' ||
+    ip === '::1' ||
+    ip.includes('localhost') ||
+    /^10\./.test(ip) ||
+    /^192\.168\./.test(ip) ||
+    /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(ip);
+
+  if (isPrivate) {
+    ipCache[ip] = 'Red local';
+    return;
+  }
+
+  try {
+    const res = await fetch(`https://freeipapi.com/api/json/${ip}`);
+    const data = await res.json();
+    if (data.cityName && data.countryName) {
+      ipCache[ip] = `${data.cityName}, ${data.countryName}`;
+    }
+  } catch (err) {
+    console.warn(`No se pudo geolocalizar la IP: ${ip}`, err);
+  }
+}
+
+// Resolver IPs automáticamente cuando cambian las sesiones
+watch(sessions, (newSessions) => {
+  newSessions.forEach(s => {
+    if (s.deviceInfo?.ip) resolveIp(s.deviceInfo.ip);
+  });
+}, { deep: true });
 
 // Estado de los modales de confirmación
 const showRevokeOneModal   = ref(false);
@@ -463,15 +504,45 @@ async function submitChangePassword() {
   }
 }
 
+const currentDeviceInfo = computed(() => {
+  if (typeof window === 'undefined') return { browser: 'Navegador', os: 'Sistema', name: 'Navegador en Sistema' };
+  const ua = navigator.userAgent;
+  let browser = 'Navegador';
+  let os = 'Sistema';
+
+  // Prioridad a Firefox para evitar falsos positivos de Safari/Chrome
+  if (ua.indexOf('Firefox') !== -1) browser = 'Firefox';
+  else if (ua.indexOf('Edg') !== -1) browser = 'Edge';
+  else if (ua.indexOf('Chrome') !== -1) browser = 'Chrome';
+  else if (ua.indexOf('Safari') !== -1) browser = 'Safari';
+
+  if (ua.indexOf('Linux') !== -1) os = 'Linux';
+  else if (ua.indexOf('Windows') !== -1) os = 'Windows';
+  else if (ua.indexOf('Macintosh') !== -1 || ua.indexOf('Mac OS X') !== -1) os = 'macOS';
+  else if (ua.indexOf('Android') !== -1) os = 'Android';
+  else if (ua.indexOf('iPhone') !== -1 || ua.indexOf('iPad') !== -1) os = 'iOS';
+
+  return { browser, os, name: `${browser} en ${os}` };
+});
+
 // ── Helpers ─────────────────────────────────────────────────────────────────
-function osIcon(os) {
+function getDisplayDevice(session) {
+  if (!session) return 'Dispositivo desconocido';
+  if (session.isCurrent) return currentDeviceInfo.value.name;
+  return session.deviceInfo?.deviceName || 'Dispositivo desconocido';
+}
+
+function getOsIcon(session) {
+  let os = session?.deviceInfo?.os;
+  if (session?.isCurrent) os = currentDeviceInfo.value.os;
+  
   if (!os) return 'laptop';
   const s = os.toLowerCase();
-  if (s.includes('windows'))        return 'laptop';
+  if (s.includes('linux')) return 'server';
+  if (s.includes('windows')) return 'laptop';
   if (s.includes('macos') || s.includes('mac')) return 'laptop';
-  if (s.includes('android'))        return 'mobile-alt';
+  if (s.includes('android')) return 'mobile-alt';
   if (s.includes('iphone') || s.includes('ipad')) return 'mobile-alt';
-  if (s.includes('linux'))          return 'server';
   return 'laptop';
 }
 

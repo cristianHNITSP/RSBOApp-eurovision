@@ -8,7 +8,7 @@
   ============================================================ -->
 
 <template>
-  <div class="grid-page">
+  <div class="grid-page" :class="{ 'is-fullscreen': isFullscreen, 'ag-grid-fullscreen-container': isFullscreen }" ref="gridPageRef">
     <header class="grid-topbar">
       <navtools
         class="navtools-wrap"
@@ -23,6 +23,11 @@
         :last-saved-at="lastSavedAt"
         :grid-can-undo="gridHistory.canUndo.value"
         :grid-can-redo="gridHistory.canRedo.value"
+        :is-fullscreen="isFullscreen"
+        :internal-tabs="internalTabs"
+        :active-internal-tab="sphType"
+        @toggle-fullscreen="toggleFullscreen(gridPageRef)"
+        @update:internal="$emit('update:internal', $event)"
         @add-row="handleAddRow"
         @add-column="handleAddColumn"
         @clear-filters="clearFilters"
@@ -135,6 +140,8 @@ const props = defineProps({
   apiType: { type: String, default: "inventory" },
 });
 
+defineEmits(["update:internal"]);
+
 const { getSheet, fetchItems, saveChunk, reseedSheet } = useSheetApi(() => props.apiType);
 const { sheetId, sphType } = toRefs(props);
 
@@ -147,6 +154,8 @@ const integration = useAgGridIntegration({
 });
 
 const { gridApi, dirty, saving, lastSavedAt, switchingView, pendingChanges, gridHistory, unsavedGuard, suppressNextWsRefresh, postMessage } = integration;
+
+const gridPageRef = ref(null);
 
 // ─── State ───────────────────────────────────────────────────────
 const sheetMeta      = ref(null);
@@ -164,7 +173,7 @@ const getRowCache = () => {
 };
 
 // ─── Composables ─────────────────────────────────────────────────
-const { themeCustom } = useAgGridBase();
+const { themeCustom, isFullscreen, toggleFullscreen } = useAgGridBase();
 const { stockRowClassRules, stockCellClassRules } = useStockRules(sheetMeta);
 
 const colManager = useAgGridIncrementalColumns({
@@ -218,6 +227,12 @@ function markChanged(data, field, newValue, _oldValue) {
   }
 }
 
+const internalTabs = computed(() => {
+  const tipo = tipoMatriz.value;
+  if (tipo === "SPH_CYL") return [{ id: "sph-neg", label: "SPH (-)" }, { id: "sph-pos", label: "SPH (+)" }];
+  return [];
+});
+
 const { handleSave, handleDiscard, handleRefresh, handleSeed, handleExport } = useAgGridHandlers({
   props, integration, loadAll, switchViewReload, effectiveActor, sheetName,
 });
@@ -235,7 +250,7 @@ const columns = computed(() => [
   {
     headerName: `SPH ${props.sphType === "sph-neg" ? "(-)" : "(+)"}`,
     children: [{
-      field: "sph", headerName: "SPH", width: 90, minWidth: 86, maxWidth: 96, pinned: "left", editable: false, sortable: true,
+      field: "sph", headerName: "SPH", width: 90, minWidth: 86, maxWidth: 96, pinned: "left", editable: false, sortable: false,
       comparator: (a, b) => Number(a) - Number(b), filter: false, cellClass: ["ag-cell--compact", "ag-cell--numeric", "ag-cell--pinned"],
       headerClass: ["ag-header-cell--compact", "ag-header-cell--pinned"],
       valueFormatter: (p) => { if (p.data?.__loading) return ""; const v = Number(p.value); return Number.isFinite(v) ? fmtSigned(v) : (p.value ?? ""); },
@@ -263,7 +278,7 @@ const columns = computed(() => [
   },
 ]);
 
-const defaultColDef = { resizable: true, sortable: true, filter: false, floatingFilter: false, editable: true, minWidth: 90, maxWidth: 150, cellClass: "ag-cell--compact", headerClass: "ag-header-cell--compact" };
+const defaultColDef = { resizable: true, sortable: false, filter: false, floatingFilter: false, editable: true, minWidth: 90, maxWidth: 150, cellClass: "ag-cell--compact", headerClass: "ag-header-cell--compact" };
 
 // ─── Pivot Loader ────────────────────────────────────────────────
 const { datasource, loadingRowsCount, rowsInCacheCount } = useAgGridPivotLoader({

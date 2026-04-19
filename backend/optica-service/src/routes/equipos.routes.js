@@ -5,8 +5,10 @@ const { body, param, validationResult } = require("express-validator");
 
 const Equipo          = require("../models/Equipo");
 const { logMovement } = require("../utils/logHelper");
+const { sanitizeMiddleware } = require("../utils/sanitizer");
 
 const COLLECTION = "equipos";
+const TEXT_FIELDS = ["sku", "nombre", "marca", "modelo", "serie", "ubicacion", "estado", "observaciones"];
 
 const validate = (req, res, next) => {
   const errors = validationResult(req);
@@ -30,7 +32,10 @@ router.get("/", async (req, res) => {
       { marca:  { $regex: q, $options: "i" } },
       { serie:  { $regex: q, $options: "i" } },
     ];
-    const items = await Equipo.find(filter).sort({ createdAt: -1 }).lean();
+    const items = await Equipo.find(filter)
+      .collation({ locale: "es", strength: 1 })
+      .sort({ createdAt: -1 })
+      .lean();
     console.log(`[OPTICA][EQUIPOS] GET /  → ${items.length} items`);
     return res.json({ ok: true, data: items });
   } catch (err) {
@@ -57,7 +62,7 @@ router.get("/:id", param("id").isMongoId(), validate, async (req, res) => {
   }
 });
 
-router.post("/", bodyRules, validate, async (req, res) => {
+router.post("/", bodyRules, sanitizeMiddleware(TEXT_FIELDS), validate, async (req, res) => {
   try {
     const { actor, ...fields } = req.body;
     const exists = await Equipo.findOne({ sku: fields.sku });
@@ -71,7 +76,7 @@ router.post("/", bodyRules, validate, async (req, res) => {
   }
 });
 
-router.put("/:id", param("id").isMongoId(), bodyRules, validate, async (req, res) => {
+router.put("/:id", param("id").isMongoId(), bodyRules, sanitizeMiddleware(TEXT_FIELDS), validate, async (req, res) => {
   try {
     const { actor, ...fields } = req.body;
     const item = await Equipo.findById(req.params.id);

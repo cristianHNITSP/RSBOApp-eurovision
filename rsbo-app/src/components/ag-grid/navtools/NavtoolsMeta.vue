@@ -28,6 +28,19 @@
             </b-taglist>
           </div>
         </div>
+
+        <!-- ── Internal Tabs Switcher (Fullscreen ONLY) ── -->
+        <div class="level-item ml-3" v-if="isFullscreen && internalTabs && internalTabs.length > 0">
+          <div class="field has-addons tab-switcher">
+            <p class="control" v-for="tab in internalTabs" :key="tab.id">
+              <b-button size="is-small" class="tab-switcher__btn"
+                :type="activeInternalTab === tab.id ? 'is-primary' : 'is-light'"
+                @click="$emit('update:internal', tab.id)">
+                {{ tab.label }}
+              </b-button>
+            </p>
+          </div>
+        </div>
       </div>
 
       <div class="level-right">
@@ -44,6 +57,15 @@
             {{ lastSavedLabel }}
           </span>
         </div>
+
+        <!-- ── Fullscreen toggle ── -->
+        <b-tooltip :label="isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'" position="is-left"
+          type="is-dark">
+          <b-button type="is-light" size="is-small" class="meta-pill" icon-pack="fas"
+            @click="$emit('toggle-fullscreen')">
+            <b-icon :icon="isFullscreen ? 'compress-arrows-alt' : 'expand-arrows-alt'" size="is-small" />
+          </b-button>
+        </b-tooltip>
       </div>
     </nav>
   </div>
@@ -51,11 +73,15 @@
 
 <script setup>
 defineProps({
-  tipoHuman:         String,
-  material:          String,
+  tipoHuman: String,
+  material: String,
   tratamientosLabel: String,
-  totalRows:         Number,
-  serverBadge:       Object,
-  lastSavedLabel:    String
+  totalRows: Number,
+  serverBadge: Object,
+  lastSavedLabel: String,
+  isFullscreen: Boolean,
+  internalTabs: { type: Array, default: () => [] },
+  activeInternalTab: { type: String, default: '' }
 })
+defineEmits(['toggle-fullscreen', 'update:internal'])
 </script>

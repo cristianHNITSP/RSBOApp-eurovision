@@ -1,8 +1,7 @@
-<!-- src/components/ag-grid/DirtyFloat.vue -->
 <template>
-  <teleport to="body">
+  <teleport :to="teleportTarget">
     <transition name="dirty-float-slide">
-      <div v-if="showDirtyFloat" class="dirty-float-root" role="status" aria-live="polite">
+      <div v-if="showDirtyFloat" class="dirty-float-root" :class="{ 'is-fullscreen': isFullscreenActive }" role="status" aria-live="polite">
         <div class="dirty-float">
           <div class="dirty-float__content">
             <div class="dirty-float__left">
@@ -59,7 +58,29 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, onBeforeUnmount } from 'vue'
+import { useLabToast } from '@/composables/shared/useLabToast.js'
+
+// ── Lógica de Pantalla Completa para Teleport ──
+const isFullscreenActive = ref(!!document.fullscreenElement);
+const teleportTarget = computed(() => {
+  if (isFullscreenActive.value && document.fullscreenElement) {
+    return document.fullscreenElement;
+  }
+  return "body";
+});
+
+const updateFullscreenStatus = () => {
+  isFullscreenActive.value = !!document.fullscreenElement;
+};
+
+onMounted(() => {
+  document.addEventListener("fullscreenchange", updateFullscreenStatus);
+});
+
+onUnmounted(() => {
+  document.removeEventListener("fullscreenchange", updateFullscreenStatus);
+});
 
 const props = defineProps({
   dirty:     { type: Boolean, default: false },
@@ -71,8 +92,18 @@ const props = defineProps({
 
 const emit = defineEmits(['save', 'discard'])
 
+const { isDirtyFloatVisible } = useLabToast()
+
 const dismissed = ref(false)
 const showDirtyFloat = computed(() => props.dirty && !props.saving && !dismissed.value)
+
+watch(showDirtyFloat, (val) => {
+  isDirtyFloatVisible.value = val
+}, { immediate: true })
+
+onBeforeUnmount(() => {
+  isDirtyFloatVisible.value = false
+})
 
 // Re-show when a new change arrives even if user hid it
 watch(() => props.changeKey, () => {

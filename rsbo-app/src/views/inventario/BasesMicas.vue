@@ -244,6 +244,7 @@ const resolverGridProps = (sheet, activeInternal) => {
       <div class="column is-12">
         <TabsManager :initial-sheets="dynamicSheets" :active-id="activeSheet" :catalog="catalog"
           :catalog-loading="catalogLoading" :actor="user"
+          :active-internal-id="activeInternalTab"
           :loading-tabs="pager.loadingForward.value && pager.sheets.length === 0" :has-more="pager.hasMore.value"
           :has-prior="pager.hasPrior.value" :loading-more="pager.loadingForward.value"
           :loading-prior="pager.loadingBackward.value" :prior-count="pager.priorCount.value"
@@ -256,7 +257,8 @@ const resolverGridProps = (sheet, activeInternal) => {
                 <!-- AG-Grid con KeepAlive: la instancia sobrevive al cambio de sheet -->
                 <KeepAlive :max="8">
                   <component :is="resolverGrid(sheet.tipo_matriz)" :key="`${sheet.id}:${sheet.tipo_matriz}`"
-                    v-bind="resolverGridProps(sheet, activeInternal)" :actor="user" />
+                    v-bind="resolverGridProps(sheet, activeInternalTab)" :actor="user"
+                    @update:internal="activeInternalTab = $event" />
                 </KeepAlive>
               </div>
             </div>

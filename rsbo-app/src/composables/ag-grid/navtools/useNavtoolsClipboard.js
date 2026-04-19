@@ -55,6 +55,7 @@ export function useNavtoolsClipboard({ localValue, onUpdate, safeToast }) {
   const copyCell = async () => {
     if (localValue.value !== '' && localValue.value != null) {
       await copyToClipboard(String(localValue.value))
+      safeToast('Copiado al portapapeles.', 'is-success')
     }
   }
 
@@ -62,6 +63,7 @@ export function useNavtoolsClipboard({ localValue, onUpdate, safeToast }) {
     if (localValue.value !== '' && localValue.value != null) {
       await copyToClipboard(String(localValue.value))
       onUpdate(0)
+      safeToast('Cortado al portapapeles.', 'is-warning')
     }
   }
 
@@ -69,11 +71,9 @@ export function useNavtoolsClipboard({ localValue, onUpdate, safeToast }) {
     const pasted = await pasteFromClipboard()
     if (!pasted) return
     const str = collapseWs(stripHtml(pasted))
-    if (/^-?\d+(\.\d+)?$/.test(str)) {
-      onUpdate(Number(str))
-    } else {
-      onUpdate(str)
-    }
+    const final = /^-?\d+(\.\d+)?$/.test(str) ? Number(str) : str
+    onUpdate(final)
+    safeToast('Pegado desde portapapeles.', 'is-info')
   }
 
   return {

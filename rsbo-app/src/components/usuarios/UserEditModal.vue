@@ -59,3 +59,4 @@ watch(() => props.user, (u) => {
 
 function save() { emit('save', { ...form }) }
 </script>
+<style src="./UserEditModal.css" scoped></style>

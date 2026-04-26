@@ -8,6 +8,10 @@ export function listOrders(params = {}) {
   return api.get(`${BASE}/orders`, { params });
 }
 
+export function getOrderCounts() {
+  return api.get(`${BASE}/orders/counts`);
+}
+
 export function getOrder(orderId) {
   return api.get(`${BASE}/orders/${orderId}`);
 }
@@ -30,7 +34,8 @@ export function resetOrder(orderId, actor) {
 
 // EVENTS
 export function listEvents(params = {}) {
-  return api.get(`${BASE}/events`, { params });
+  const { signal, ...rest } = params;
+  return api.get(`${BASE}/events`, { params: rest, signal });
 }
 
 // CORRECTIONS

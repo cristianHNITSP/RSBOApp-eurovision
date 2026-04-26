@@ -1,0 +1,59 @@
+/* ── Optica.css ───────────────────────────────────────────────────────────────── */
+
+.optica-section {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  animation: panel-fade-in 220ms ease-out;
+}
+
+.optica-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--c-primary);
+  background: var(--c-primary-alpha);
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-pill);
+  margin-bottom: 0.4rem;
+}
+
+.optica-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.optica-header-summary { text-align: right; }
+
+/* ── GLASS WRAPPER ── */
+.glass-wrapper {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  -webkit-backdrop-filter: blur(var(--fx-blur, 12px));
+  backdrop-filter: blur(var(--fx-blur, 12px));
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  padding: 1rem;
+}
+
+/* DynamicTabs inside glass-wrapper — remove outer spacing */
+.glass-wrapper :deep(.dyn-tabs__bar) {
+  background: var(--surface);
+  border-color: var(--border-light);
+}
+
+@keyframes panel-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 768px) {
+  .optica-section { padding: 1rem; }
+}

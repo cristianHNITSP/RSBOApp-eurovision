@@ -134,9 +134,26 @@ const ERROR_REASON_MAP = {
 
 const mapErrorToAuthReason = (code) => ERROR_REASON_MAP[code] || "unknown";
 
+// Caché de sesión: evita llamar a /check-session en cada navegación
+let _sessionCache = null; // { user, expiresAt: number }
+const SESSION_TTL_MS = 30_000; // 30 segundos
+
+window.addEventListener("auth:session-expired", () => {
+  _sessionCache = null;
+});
+
 // helper con deduplicación: si ya hay una sesión en vuelo no lanza otra
-const checkSession = () =>
-  sendRequest({ method: "get", url: "/access/check-session", withCredentials: true });
+async function checkSession(force = false) {
+  if (!force && _sessionCache && Date.now() < _sessionCache.expiresAt) {
+    return { data: { user: _sessionCache.user } };
+  }
+  const result = await sendRequest({ method: "get", url: "/access/check-session", withCredentials: true });
+  _sessionCache = {
+    user: result?.data?.user,
+    expiresAt: Date.now() + SESSION_TTL_MS,
+  };
+  return result;
+}
 
 router.beforeEach(async (to, from, next) => {
   const requiresAuth = to.matched.some((record) => record.meta.requiresAuth);
@@ -175,6 +192,13 @@ router.beforeEach(async (to, from, next) => {
   } catch (err) {
     const status = err?.response?.status;
     const code = err?.response?.data?.error;
+
+    // Rate limit o error de servidor: la sesión puede seguir siendo válida.
+    // No cerrar sesión — dejar pasar con el caché o reintento implícito.
+    if (status === 429 || status >= 500 || !status) {
+      console.warn("[Router] check-session falló con", status ?? "sin respuesta", "— permitiendo navegación");
+      return next(); // continuar sin redirigir
+    }
 
     console.warn("Sesión inválida o no autorizada", { status, code });
 

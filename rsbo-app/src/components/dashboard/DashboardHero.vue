@@ -95,7 +95,7 @@ const props = defineProps({
 });
 
 const avatarLoaded = ref(false);
-const avatarUrl = ref('https://github.com/octocat.png');
+const avatarUrl = ref('/eurovision.svg');
 
 function loadAvatar(url) {
   avatarLoaded.value = false;
@@ -103,10 +103,10 @@ function loadAvatar(url) {
   const img = new Image();
   img.src = url;
   img.onload = () => { avatarLoaded.value = true; };
-  img.onerror = () => { avatarUrl.value = 'https://github.com/octocat.png'; avatarLoaded.value = true; };
+  img.onerror = () => { avatarUrl.value = '/eurovision.svg'; avatarLoaded.value = true; };
 }
 
-watch(() => props.user?.avatar, v => loadAvatar(v?.trim() ? v : 'https://github.com/octocat.png'), { immediate: true });
+watch(() => props.user?.avatar, v => loadAvatar(v?.trim() ? v : '/eurovision.svg'), { immediate: true });
 
 const greeting = computed(() => { const h = new Date().getHours(); return h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches'; });
 const firstName = computed(() => (props.user?.name || 'Usuario').split(' ')[0]);

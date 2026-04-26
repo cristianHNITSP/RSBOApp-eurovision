@@ -1,0 +1,25 @@
+.panel-usuarios-filters {
+  margin-top: 0.25rem;
+}
+
+.panel-usuarios-filter-field {
+  min-width: 210px;
+}
+
+@media (max-width: 768px) {
+  .panel-usuarios-filters :deep(.field.is-grouped) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .panel-usuarios-filter-field {
+    width: 100% !important;
+    margin-right: 0 !important;
+  }
+
+  .panel-usuarios-filter-field :deep(label) {
+    font-size: 1rem !important;
+    font-weight: 800 !important;
+    margin-bottom: 0.5rem !important;
+  }
+}

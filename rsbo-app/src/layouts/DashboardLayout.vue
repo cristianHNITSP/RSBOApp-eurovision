@@ -122,7 +122,7 @@ import DashboardFooter from "../components/dashboard-layout/DashboardFooter.vue"
 // Composables
 import { useSidebarState } from "@/composables/ui/useSidebarState";
 import { useMotionEffects } from "@/composables/ui/useMotionEffects";
-import { useNotifications } from "@/composables/ui/useNotificationsState";
+import { useNotifications } from "@/composables/notifi/useNotificationsState";
 import { useAccessibility } from "@/composables/ui/useAccessibility";
 import { pendingOrdersCount } from "@/composables/ui/useOrdersBadge.js";
 import { fetchUnreadCount } from "@/services/notifications.js";

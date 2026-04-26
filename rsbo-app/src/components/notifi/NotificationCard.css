@@ -1,0 +1,386 @@
+/* ── Tarjetas de Cristal Líquido (iOS Style) ────────────────────────────────── */
+.notif-card {
+  display: flex;
+  flex-shrink: 0;
+  border-radius: 16px;
+  
+  /* Fondo Glass-in-Glass */
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  overflow: hidden;
+  transition: 
+    transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.1),
+    box-shadow 0.4s ease,
+    background 0.3s ease,
+    border-color 0.3s ease;
+  
+  position: relative;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+[data-theme='dark'] .notif-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.notif-card:hover {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(var(--c-primary-rgb, 59, 130, 246), 0.4);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  opacity: 1 !important;
+  filter: none !important;
+  z-index: 5;
+}
+
+/* Estado No Leído: Brillo suave estilo iOS */
+.notif-card--unread {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: var(--c-primary);
+  box-shadow: 0 8px 20px rgba(var(--c-primary-rgb, 59, 130, 246), 0.12);
+}
+[data-theme='dark'] .notif-card--unread {
+  background: rgba(var(--c-primary-rgb, 59, 130, 246), 0.15);
+  border-color: rgba(var(--c-primary-rgb, 59, 130, 246), 0.4);
+}
+
+.notif-card--read {
+  opacity: 0.75;
+}
+
+/* Pin Glow: Pulso líquido orgánico */
+.notif-card--pinned {
+  border-color: rgba(var(--c-warning-rgb, 217, 119, 6), 0.5);
+  background: rgba(var(--c-warning-rgb, 217, 119, 6), 0.04);
+  animation: liquidGlow 3s ease-in-out infinite;
+}
+
+@keyframes liquidGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(var(--c-warning-rgb, 217, 119, 6), 0.2); }
+  50% { box-shadow: 0 0 20px 2px rgba(var(--c-warning-rgb, 217, 119, 6), 0.15); }
+}
+
+/* Flash al leer: Ondulación de color */
+.notif-card--reading {
+  animation: liquidFlash 0.8s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+
+@keyframes liquidFlash {
+  0% { transform: scale(1); background: var(--c-success); }
+  100% { transform: scale(1); background: rgba(255, 255, 255, 0.45); }
+}
+
+/* Indicador lateral: Línea líquida más fina */
+.notif-type-bar {
+  width: 4px;
+  margin: 0.75rem 0 0.75rem 0.5rem;
+  border-radius: 4px;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+.notif-type-bar--info    { background: linear-gradient(to bottom, #60a5fa, #3b82f6); }
+.notif-type-bar--warning { background: linear-gradient(to bottom, #fbbf24, #f59e0b); }
+.notif-type-bar--danger  { background: linear-gradient(to bottom, #f87171, #ef4444); }
+.notif-type-bar--success { background: linear-gradient(to bottom, #34d399, #10b981); }
+
+.notif-body {
+  flex: 1;
+  padding: 0.6rem 0.75rem 0.6rem 0.5rem;
+  min-width: 0;
+}
+
+/* ── Typografía y Contenido ─────────────────────────────────────────────────── */
+.notif-top {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.4rem;
+}
+
+.notif-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.notif-message {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  line-height: 1.35;
+  margin-bottom: 0.35rem;
+}
+
+.notif-message-note {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.notif-message-detail {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.3;
+}
+
+/* Badge de conteo: Estilo Apple Notification Center */
+.notif-count-badge {
+  background: var(--c-warning) !important;
+  color: #fff !important;
+  font-size: 0.65rem !important;
+  font-weight: 800;
+  height: 1.15rem !important;
+  min-width: 1.15rem !important;
+  padding: 0 0.35rem !important;
+  border: 1px solid rgba(255, 255, 255, 0.4) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* ── Acciones Flotantes ─────────────────────────────────────────────────────── */
+.action-icon {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.03);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+[data-theme='dark'] .action-icon {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.action-icon:hover {
+  transform: scale(1.2) translateY(-2px);
+  background: var(--c-primary);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(var(--c-primary-rgb, 59, 130, 246), 0.3);
+}
+
+.action-icon--dismiss:hover { background: #ef4444; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3); }
+.action-icon--pinned { color: #f59e0b !important; background: rgba(245, 158, 11, 0.1); }
+/* ── Botón Ver Detalle (Estilo Apple Link) ─────────────────────────────────── */
+.detail-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(var(--c-primary-rgb, 59, 130, 246), 0.06);
+  border: 1px solid rgba(var(--c-primary-rgb, 59, 130, 246), 0.1);
+  border-radius: 12px;
+  padding: 0.25rem 0.6rem;
+  margin: 0.25rem 0 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--c-primary);
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.detail-toggle:hover {
+  background: var(--c-primary);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(var(--c-primary-rgb, 59, 130, 246), 0.2);
+}
+
+.detail-toggle:active {
+  transform: scale(0.96);
+}
+
+/* ── Animación de expansión líquida ────────────────────────────────────────── */
+.detail-expand-enter-active,
+.detail-expand-leave-active {
+  transition: 
+    max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+    opacity 0.3s ease, 
+    transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.1);
+  max-height: 800px;
+  overflow: hidden;
+}
+
+.detail-expand-enter-from,
+.detail-expand-leave-to {
+  max-height: 0;
+  opacity: 0;
+  transform: scale(0.98) translateY(-5px);
+}
+
+/* ── Panel de Detalle (Efecto Bóveda / Vault) ──────────────────────────────── */
+.detail-panel {
+  background: rgba(0, 0, 0, 0.04);
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 14px;
+  padding: 0.65rem 0.75rem;
+  margin: 0.25rem 0 0.75rem;
+  box-shadow: 
+    inset 0 2px 8px rgba(0, 0, 0, 0.06),
+    0 1px 2px rgba(255, 255, 255, 0.5);
+  overflow: hidden;
+}
+
+[data-theme='dark'] .detail-panel {
+  background: rgba(0, 0, 0, 0.25);
+  border-color: rgba(255, 255, 255, 0.05);
+  box-shadow: 
+    inset 0 2px 12px rgba(0, 0, 0, 0.4),
+    0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.notif-author,
+.notif-time,
+.notif-author-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: capitalize;
+}
+
+.notif-author-meta {
+  margin-top: 0.3rem;
+  font-weight: 600;
+}
+
+.notif-author .icon,
+.notif-time .icon,
+.notif-author-meta .icon {
+  font-size: 0.55rem !important;
+  opacity: 0.7;
+}
+
+.notif-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.35rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.03);
+}
+
+/* ── Elementos internos del Detalle (Vault Content) ────────────────────────── */
+.detail-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.45rem;
+}
+
+.detail-header__label {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  flex: 1;
+}
+
+/* Badges de nivel: Más pequeños y limpios */
+.level-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.05rem 0.35rem;
+  border-radius: 4px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.level-badge--critico { background: var(--c-danger); color: #fff; }
+.level-badge--bajo { background: var(--c-warning); color: #fff; }
+
+.cell-list, .order-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.cell-row, .line-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-size: 0.68rem;
+  line-height: 1.2;
+}
+
+.cell-label, .line-label {
+  flex: 1;
+  color: var(--text-secondary);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.cell-stock, .line-qty {
+  font-weight: 700;
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.65rem;
+}
+
+/* Pedidos en detalle */
+.order-item {
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  padding-top: 0.4rem;
+  margin-top: 0.2rem;
+}
+.order-item:first-child { border-top: none; padding-top: 0; margin-top: 0; }
+
+.order-item__head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.25rem;
+}
+
+.order-folio {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--c-primary);
+  font-family: monospace;
+}
+
+.order-item__progress {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.25rem 0;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 4px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 2px;
+  overflow: hidden;
+}
+[data-theme='dark'] .progress-bar { background: rgba(255, 255, 255, 0.1); }
+
+.progress-bar__fill {
+  height: 100%;
+  background: var(--c-primary);
+  border-radius: 2px;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.progress-text {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+

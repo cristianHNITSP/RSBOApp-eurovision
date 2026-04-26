@@ -1,0 +1,87 @@
+/* ── Header Estilo macOS ─────────────────────────────────────────────────────── */
+.panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.85rem 0.4rem;
+  user-select: none;
+  flex-shrink: 0;
+  gap: 0.75rem;
+}
+
+.panel-heading-left {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.panel-bell-icon {
+  color: var(--c-primary);
+  filter: drop-shadow(0 2px 4px rgba(var(--c-primary-rgb, 59, 130, 246), 0.3));
+  flex-shrink: 0;
+}
+
+.panel-title {
+  font-weight: 800;
+  font-size: 0.875rem;
+  letter-spacing: -0.025em;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.panel-unread-badge {
+  color: #fff !important;
+  font-size: 0.7rem !important;
+  font-weight: 800;
+  height: 1.15rem !important;
+  min-width: 1.15rem !important;
+  padding: 0 0.35rem !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  line-height: 1 !important;
+  background: var(--c-primary) !important;
+  box-shadow: 0 4px 10px rgba(var(--c-primary-rgb, 59, 130, 246), 0.4);
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  flex-shrink: 0;
+}
+
+/* Animación de entrada para el badge */
+.badge-pop-enter-active {
+  transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.5);
+}
+.badge-pop-leave-active {
+  transition: transform 0.3s ease-in;
+}
+.badge-pop-enter-from { transform: scale(0) rotate(-20deg); opacity: 0; }
+.badge-pop-leave-to { transform: scale(0); opacity: 0; }
+
+.panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+/* Botones circulares estilo Ghost/Apple */
+.panel-actions .button {
+  border-radius: 50% !important;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  background: rgba(0, 0, 0, 0.04) !important;
+  transition: all 0.2s ease;
+}
+[data-theme='dark'] .panel-actions .button {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.panel-actions .button:hover {
+  background: rgba(0, 0, 0, 0.08) !important;
+  transform: scale(1.1);
+}
+.panel-actions .button:active {
+  transform: scale(0.95);
+}

@@ -24,3 +24,11 @@ export const EQUIPOS_CONFIG = {
   areas: ["Diagnóstico", "Taller", "Gabinete", "Venta", "Administración"],
   estados: ["Operativo", "Mantenimiento", "Fuera de servicio", "Baja"]
 };
+
+export const OPTICA_TABS = [
+  { key: "armazones",  label: "Armazones",          icon: "glasses" },
+  { key: "soluciones", label: "Soluciones y Gotas",  icon: "tint" },
+  { key: "accesorios", label: "Accesorios",          icon: "puzzle-piece" },
+  { key: "estuches",   label: "Estuches",            icon: "box-open" },
+  { key: "equipos",    label: "Equipos",             icon: "tools" },
+];

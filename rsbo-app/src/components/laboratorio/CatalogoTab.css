@@ -1,0 +1,131 @@
+/* rsbo-app/src/components/laboratorio/CatalogoTab.css */
+
+.prod__name {
+  font-weight: 950;
+  color: var(--text-primary);
+}
+
+.prod__meta {
+  display: flex;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+  margin-top: 0.15rem;
+}
+
+.meta-k {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.meta-line {
+  font-weight: 800;
+  color: var(--text-muted);
+  font-size: 0.83rem;
+}
+
+.meta-line--muted {
+  color: var(--text-muted);
+}
+
+.qr-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 1024px) {
+  .qr-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 650px) {
+  .qr-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.qr-card {
+  text-align: left;
+  width: 100%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 18px;
+  padding: 0.85rem;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.qr-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lg);
+}
+
+.qr-card__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  align-items: flex-start;
+}
+
+.qr-card__title {
+  font-weight: 1000;
+  color: var(--text-primary);
+}
+
+.qr-card__meta {
+  margin-top: 0.45rem;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.qr-card__qr {
+  margin-top: 0.65rem;
+  border-radius: 14px;
+  border: 1px dashed var(--border);
+  background: var(--surface-solid);
+  min-height: 160px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: 0.6rem;
+}
+
+.barcode-wrap {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.barcode-fallback {
+  font-weight: 900;
+  color: var(--text-muted);
+}
+
+.qr-card__foot {
+  margin-top: 0.55rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 900;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.foot-hint {
+  background: var(--c-primary-alpha);
+  border: 1px solid var(--c-primary-alpha);
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+}
+
+.barcode-wrap svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.catalog-loading {
+  position: relative;
+}

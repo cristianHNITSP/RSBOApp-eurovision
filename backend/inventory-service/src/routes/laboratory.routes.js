@@ -331,6 +331,26 @@ router.get(
   }
 );
 
+// GET /laboratory/orders/counts
+router.get(
+  "/orders/counts",
+  async (req, res) => {
+    try {
+      const agg = await LaboratoryOrder.aggregate([
+        { $group: { _id: "$status", count: { $sum: 1 } } }
+      ]);
+      const result = { pendiente: 0, parcial: 0, cerrado: 0, cancelado: 0 };
+      for (const { _id, count } of agg) {
+        if (_id in result) result[_id] = count;
+      }
+      res.json({ ok: true, data: result });
+    } catch (e) {
+      console.error("GET /laboratory/orders/counts error:", e);
+      res.status(500).json({ ok: false, message: "Error al obtener conteos" });
+    }
+  }
+);
+
 // POST /laboratory/orders — crear pedido (soporta micas de múltiples planillas)
 router.post(
   "/orders",

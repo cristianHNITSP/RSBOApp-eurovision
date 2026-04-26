@@ -22,7 +22,7 @@
     <!-- RIGHT -->
     <div class="dashboard-toolbar__right">
       <div class="dashboard-actions">
-        <b-tooltip label="Notificaciones" position="is-bottom" append-to-body>
+        <b-tooltip label="Notificaciones" position="is-bottom" append-to-body :triggers="['hover']">
           <div class="has-badge-wrapper">
             <b-button
               class="toolbar-btn"

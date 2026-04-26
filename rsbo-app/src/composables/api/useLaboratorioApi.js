@@ -19,7 +19,8 @@ import {
   requestCorrection,
   cancelOrder as cancelOrderService,
   updateOrder as updateOrderService,
-  getOrderHistory
+  getOrderHistory,
+  getOrderCounts
 } from "@/services/laboratorio";
 
 // ============================================================================
@@ -97,7 +98,7 @@ export function useLaboratorioApi(getUser) {
   const selectedSheetId = ref("");
   const _itemsLimit = ref(5000);
   const itemQuery = ref("");
-  const stockFilter = ref("all");
+  const stockFilter = ref("withStock");
 
   const catalogQuery = ref("");
   const catalogFilter = ref("withStock");
@@ -109,6 +110,12 @@ export function useLaboratorioApi(getUser) {
   const selectedOrderId = ref("");
   const scanCode = ref("");
 
+  const sheetIndex = new Map();
+  const sheetSearchResults = ref([]);
+  const sheetSearchLoading = ref(false);
+
+  const orderCounts = ref({ pendiente: 0, parcial: 0, cerrado: 0, cancelado: 0 });
+
   // modals
   const barcodeOpen = ref(false);
   const barcodeValue = ref("");
@@ -119,8 +126,18 @@ export function useLaboratorioApi(getUser) {
   const sheetsDB = ref([]);
   const itemsDB = ref([]);
   const ordersDB = ref([]);
+  const filteredOrders = computed(() => {
+    const all = ordersDB.value || [];
+    const f = orderStatusFilter.value || "open";
+    if (f === "all") return all;
+    if (f === "open") return all.filter(o => o.status === "pendiente" || o.status === "parcial");
+    return all.filter(o => o.status === f);
+  });
   const entryEvents = ref([]);
   const exitEvents = ref([]);
+  const orderEntries = ref([]);
+  const orderExits = ref([]);
+  const loadingOrderEvents = ref(false);
   const correctionEvents = ref([]);
 
   // loaders globales
@@ -167,7 +184,12 @@ export function useLaboratorioApi(getUser) {
     }
   };
 
-  const sheetById = (id) => sheetsDB.value.find((s) => String(s.id) === String(id)) || null;
+  const sheetById = (id) => {
+    if (!id) return null;
+    const key = String(id);
+    if (sheetIndex.has(key)) return sheetIndex.get(key);
+    return sheetsDB.value.find((s) => String(s.id) === key) || null;
+  };
   const sheetNameById = (id) => sheetById(id)?.nombre || sheetById(id)?.name || "—";
 
   const prettyTrat = (arr) => {
@@ -261,6 +283,11 @@ export function useLaboratorioApi(getUser) {
         const mapped = arr.map(normalizeSheet);
         mapped.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime());
         sheetsDB.value = mapped;
+        // Acumular en el índice
+        for (const s of mapped) sheetIndex.set(String(s.id), s);
+        // Popular resultados iniciales del picker
+        sheetSearchResults.value = mapped;
+
         if (!selectedSheetId.value && mapped.length) selectedSheetId.value = mapped[0].id;
         if (selectedSheetId.value && !sheetById(selectedSheetId.value) && mapped.length) selectedSheetId.value = mapped[0].id;
         lastUpdatedAt.value = Date.now();
@@ -273,6 +300,29 @@ export function useLaboratorioApi(getUser) {
       }
     })();
     return _inFlight.sheets;
+  }
+
+  let _searchSheetsTimer = null;
+  function searchSheets(q = "") {
+    clearTimeout(_searchSheetsTimer);
+    _searchSheetsTimer = setTimeout(async () => {
+      sheetSearchLoading.value = true;
+      try {
+        const { data } = await invListSheets({
+          q: String(q || "").trim() || undefined,
+          limit: 50,
+          includeDeleted: String(includeDeleted.value),
+        });
+        const arr = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+        const mapped = arr.map(normalizeSheet);
+        sheetSearchResults.value = mapped;
+        for (const s of mapped) sheetIndex.set(String(s.id), s);
+      } catch {
+        sheetSearchResults.value = [];
+      } finally {
+        sheetSearchLoading.value = false;
+      }
+    }, 300);
   }
 
   async function loadItems(forceSheetId) {
@@ -348,10 +398,8 @@ export function useLaboratorioApi(getUser) {
     loadingOrders.value = true;
     _inFlight.orders = (async () => {
       try {
-        const statusUi = String(orderStatusFilter.value || "open");
-        const statusParam = statusUi === "open" ? "all" : statusUi;
         const params = {
-          status: statusParam,
+          status: "all",
           q: String(orderQuery.value || "").trim() || undefined,
           limit: 200
         };
@@ -359,13 +407,13 @@ export function useLaboratorioApi(getUser) {
         const arr = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
         let mapped = arr.map(normalizeOrder);
         updatePendingCount(arr.filter((o) => o.status === "pendiente" || o.status === "parcial").length);
-        if (statusUi === "open") mapped = mapped.filter((o) => o.status === "pendiente" || o.status === "parcial");
         mapped.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
         ordersDB.value = mapped;
         if (!selectedOrderId.value && mapped.length) selectedOrderId.value = mapped[0].id;
         if (selectedOrderId.value && !mapped.find((x) => x.id === selectedOrderId.value) && mapped.length)
           selectedOrderId.value = mapped[0].id;
         lastUpdatedAt.value = Date.now();
+        loadOrderCounts(); // Sin await
       } catch (e) {
         console.error("[LAB] loadOrders", e?.response?.data || e);
         ordersDB.value = [];
@@ -375,6 +423,15 @@ export function useLaboratorioApi(getUser) {
       }
     })();
     return _inFlight.orders;
+  }
+
+  async function loadOrderCounts() {
+    try {
+      const { data } = await getOrderCounts();
+      if (data?.ok) Object.assign(orderCounts.value, data.data);
+    } catch {
+      // silencioso
+    }
   }
 
   const selectedOrder = computed(() => ordersDB.value.find((o) => o.id === selectedOrderId.value) || null);
@@ -483,6 +540,42 @@ export function useLaboratorioApi(getUser) {
     })();
     return _inFlight.events;
   }
+  
+  let _orderEventsAbort = null;
+  async function loadOrderEvents(orderId) {
+    if (!orderId) {
+      orderEntries.value = [];
+      orderExits.value = [];
+      return;
+    }
+  
+    if (_orderEventsAbort) _orderEventsAbort.abort();
+    _orderEventsAbort = new AbortController();
+    const signal = _orderEventsAbort.signal;
+  
+    loadingOrderEvents.value = true;
+    try {
+      const { data } = await listEvents({
+        orderId,
+        type: "ORDER_CREATE,EXIT_SCAN",
+        limit: 500,
+        signal,
+      });
+      const rows = Array.isArray(data?.data) ? data.data : [];
+      const ent = rows.filter(r => r.type === "ORDER_CREATE").map(mapEntryEvent);
+      const sal = rows.filter(r => r.type === "EXIT_SCAN").map(mapExitEvent);
+      orderEntries.value = ent;
+      orderExits.value = sal;
+    } catch (e) {
+      if (e?.name !== "CanceledError" && e?.code !== "ERR_CANCELED") {
+        console.error("[LAB] loadOrderEvents", e?.response?.data || e);
+        orderEntries.value = [];
+        orderExits.value = [];
+      }
+    } finally {
+      loadingOrderEvents.value = false;
+    }
+  }
 
   // Entradas del día
   const todayEntries = computed(() => {
@@ -577,6 +670,7 @@ export function useLaboratorioApi(getUser) {
       draftNote.value = "";
       if (order.sheetId) await loadItems(order.sheetId);
       lastUpdatedAt.value = Date.now();
+      loadOrderCounts(); // Sin await
       notify(`Pedido ${order.folio || ""} creado para ${order.cliente}`, "is-success");
     } catch (e) {
       console.error("[LAB] createOrder", e?.response?.data || e);
@@ -604,6 +698,7 @@ export function useLaboratorioApi(getUser) {
       await Promise.all([loadItems(updated.sheetId), loadEvents()]);
       scanCode.value = "";
       lastUpdatedAt.value = Date.now();
+      loadOrderCounts(); // Sin await
       if (isOrderComplete(updated)) notify(`Pedido ${updated.folio} completado. Listo para cerrar.`, "is-success", 5000);
       else notify(`Salida registrada: ${cb}`, "is-success", 2500);
     } catch (e) {
@@ -628,6 +723,7 @@ export function useLaboratorioApi(getUser) {
       if (updated.sheetId) selectedSheetId.value = updated.sheetId;
       await Promise.all([loadItems(updated.sheetId), loadEvents()]);
       lastUpdatedAt.value = Date.now();
+      loadOrderCounts(); // Sin await
       notify(`Surtido reiniciado para pedido ${updated.folio}`, "is-warning");
     } catch (e) {
       console.error("[LAB] resetOrder", e?.response?.data || e);
@@ -648,6 +744,7 @@ export function useLaboratorioApi(getUser) {
       const updated = normalizeOrder(data?.data);
       await Promise.all([loadOrders(), loadEvents()]);
       lastUpdatedAt.value = Date.now();
+      loadOrderCounts(); // Sin await
       notify(`Pedido ${updated.folio} cerrado correctamente.`, "is-success");
     } catch (e) {
       console.error("[LAB] closeOrder", e?.response?.data || e);
@@ -666,6 +763,7 @@ export function useLaboratorioApi(getUser) {
       await cancelOrderService(orderId, actorRef(), motivo || null);
       await Promise.all([loadOrders(), loadEvents()]);
       lastUpdatedAt.value = Date.now();
+      loadOrderCounts(); // Sin await
       notify("Pedido cancelado y stock devuelto.", "is-warning");
     } catch (e) {
       console.error("[LAB] cancelOrder", e?.response?.data || e);
@@ -704,6 +802,7 @@ export function useLaboratorioApi(getUser) {
       const idx = ordersDB.value.findIndex((o) => o.id === updated.id);
       if (idx >= 0) ordersDB.value[idx] = updated;
       lastUpdatedAt.value = Date.now();
+      loadOrderCounts(); // Sin await
       notify("Pedido actualizado correctamente.", "is-success");
       return updated;
     } catch (e) {
@@ -757,7 +856,6 @@ export function useLaboratorioApi(getUser) {
   }
 
   // ======= Computed: filtros UI =======
-  const filteredSheets = computed(() => sheetsDB.value);
 
   const filteredItems = computed(() => {
     const rows = Array.isArray(itemsDB.value) ? itemsDB.value : [];
@@ -1288,7 +1386,7 @@ export function useLaboratorioApi(getUser) {
 
   // ======= Watchers =======
   let tOrders = null;
-  watch([orderStatusFilter, orderQuery], () => {
+  watch([orderQuery], () => {
     if (tOrders) clearTimeout(tOrders);
     tOrders = setTimeout(() => loadOrders(), 250);
   });
@@ -1304,6 +1402,10 @@ export function useLaboratorioApi(getUser) {
   // (loadSheets setea selectedSheetId y causaría una carga duplicada)
   let _isMounting = false;
   watch([selectedSheetId], () => { if (!_isMounting) loadItems(); });
+
+  watch(selectedOrderId, (newId) => {
+    loadOrderEvents(newId);
+  }, { immediate: false });
 
   async function refreshAll() {
     loadingRefreshAll.value = true;
@@ -1325,10 +1427,13 @@ export function useLaboratorioApi(getUser) {
   const LAB_WS_EVENTS = new Set(["LAB_ORDER_CREATE", "LAB_ORDER_CANCEL", "LAB_ORDER_CLOSE", "LAB_ORDER_SCAN", "LAB_ORDER_RESET"]);
 
   function _onWsEvent(e) {
-    const type = e?.detail?.type;
+    const { type, payload } = e?.detail || {};
     if (LAB_WS_EVENTS.has(type)) {
       loadOrders();
       loadEvents();
+      if (selectedOrderId.value && payload?.orderId === selectedOrderId.value) {
+        loadOrderEvents(selectedOrderId.value);
+      }
     }
   }
 
@@ -1340,6 +1445,9 @@ export function useLaboratorioApi(getUser) {
     // sheets/orders/events en paralelo; items depende de selectedSheetId que setea loadSheets
     await Promise.all([loadSheets(), loadOrders(), loadEvents()]);
     await loadItems(); // una sola vez, ya con el sheetId correcto
+    if (selectedOrderId.value) {
+      await loadOrderEvents(selectedOrderId.value);
+    }
     _isMounting = false;
     window.addEventListener("lab:ws", _onWsEvent);
   });
@@ -1367,7 +1475,14 @@ export function useLaboratorioApi(getUser) {
     orderStatusFilter,
     orderQuery,
     selectedOrderId,
+    orderEntries,
+    orderExits,
+    loadingOrderEvents,
+    loadOrderEvents,
     scanCode,
+    sheetSearchResults,
+    sheetSearchLoading,
+    orderCounts,
 
     // modals
     barcodeOpen,
@@ -1404,7 +1519,6 @@ export function useLaboratorioApi(getUser) {
 
     // computed
     lastUpdatedHuman,
-    filteredSheets,
     selectedSheet,
     selectedSheetLabel,
     filteredItems,
@@ -1413,6 +1527,7 @@ export function useLaboratorioApi(getUser) {
     recentSheets,
     totalCodes,
     canCreateOrder,
+    filteredOrders,
     todayEntries,
 
     // helpers
@@ -1455,6 +1570,8 @@ export function useLaboratorioApi(getUser) {
     orderHistory,
     loadingOrderHistory,
     loadOrderHistory,
+    searchSheets,
+    loadOrderCounts,
 
     // export/print
     exportInventoryCsv,

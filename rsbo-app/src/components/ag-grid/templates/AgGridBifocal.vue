@@ -15,8 +15,9 @@
         :grid-can-redo="gridHistory.canRedo.value" :is-fullscreen="isFullscreen" :internal-tabs="internalTabs"
         :active-internal-tab="sphType" @toggle-fullscreen="toggleFullscreen(gridPageRef)"
         @update:internal="$emit('update:internal', $event)" @add-row="handleAddRow" @add-column="handleAddColumn"
-        @toggle-filters="handleToggleFilters" @save-request="handleSave" @discard-changes="handleDiscard"
-        @refresh="handleRefresh" @seed="handleSeed" @export="handleExport" @fx-input="onFxInput" @fx-commit="onFxCommit"
+        @toggle-filters="handleToggleFilters" @clear-filters="clearFilters" @reset-sort="resetSort"
+        @save-request="handleSave" @discard-changes="handleDiscard" @refresh="handleRefresh" @seed="handleSeed"
+        @export="handleExport" @fx-input="onFxInput" @fx-commit="onFxCommit"
         @grid-undo="handleGridUndo" @grid-redo="handleGridRedo" />
     </header>
 
@@ -383,7 +384,9 @@ const onGridReady = async (p) => {
   await nextTick(); resetSort(); colManager.reattach();
 };
 
-const handleToggleFilters = () => { if (!gridApi.value) return; gridApi.value.setGridOption("filterModel", null); };
+const clearFilters = () => { if (!gridApi.value) return; gridApi.value.setGridOption("filterModel", null); };
+const resetSort = () => { if (!gridApi.value) return; gridApi.value.applyColumnState({ defaultState: { sort: null }, state: [{ colId: "sph", sort: props.sphType === "sph-neg" ? "desc" : "asc" }] }); };
+const handleToggleFilters = () => clearFilters();
 
 let _hasMounted = false;
 onMounted(async () => { await loadAll(); unsavedGuard.restore(); _hasMounted = true; });

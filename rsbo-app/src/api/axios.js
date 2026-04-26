@@ -141,6 +141,9 @@ api.interceptors.response.use(
       window.location.pathname !== "/"
     ) {
       _redirecting401 = true;
+      // Notificar al router para invalidar el caché
+      window.dispatchEvent(new CustomEvent("auth:session-expired"));
+
       try { await api.post("/access/logout", {}); } catch { /* best-effort */ }
       window.location.href = "/";
     }

@@ -27,7 +27,7 @@ const PREFERENCES = {
         : val;
       document.documentElement.dataset.theme = resolved;
       document.documentElement.style.colorScheme = resolved;
-      return { resolved };
+      return { resolvedTheme: resolved };
     }
   },
   fontSize: {
@@ -60,6 +60,7 @@ const PREFERENCES = {
   contrast: {
     key: "ui-contrast",
     default: "normal",
+    valid: ["normal", "high"],
     apply: (val) => {
       document.documentElement.dataset.contrast = val;
     }

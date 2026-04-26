@@ -11,11 +11,13 @@
 
         <div class="panel__body">
           <b-field label="Planilla" class="mb-2">
-            <b-select v-model="lab.selectedSheetId.value" expanded>
-              <option v-for="s in lab.filteredSheets.value" :key="s.id" :value="s.id">
-                {{ lab.sheetTitle(s) }}
-              </option>
-            </b-select>
+            <SheetPickerInput
+              v-model="lab.selectedSheetId.value"
+              :sheet-title="lab.sheetTitle"
+              :search-fn="lab.searchSheets"
+              :results="lab.sheetSearchResults.value"
+              :loading="lab.sheetSearchLoading.value"
+            />
           </b-field>
 
           <div v-if="lab.selectedSheet.value" class="sheet-card">
@@ -117,7 +119,7 @@
           <!-- Loading state -->
           <div v-if="lab.loadingItems.value" class="catalog-loading">
             <b-loading :is-full-page="false" :active="true" />
-            <div style="height: 220px;"></div>
+            <div class="spacer-xl"></div>
           </div>
 
           <div v-else-if="!lab.filteredCatalogRows.value.length" class="empty">
@@ -200,13 +202,10 @@
 <script setup>
 import { inject } from "vue";
 import BarcodeEAN13 from "./barcode/BarcodeEAN13.vue";
+import SheetPickerInput from "./SheetPickerInput.vue";
+import "./laboratorio-shared.css";
+import "./CatalogoTab.css";
 
 const lab = inject("lab");
 if (!lab) throw new Error("CatalogoTab necesita provide('lab', ...)");
 </script>
-
-<style scoped>
-.catalog-loading {
-  position: relative;
-}
-</style>

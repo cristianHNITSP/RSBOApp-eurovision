@@ -31,6 +31,8 @@
         @update:internal="$emit('update:internal', $event)"
         @add-row="handleAddRow"
         @toggle-filters="handleToggleFilters"
+        @clear-filters="clearFilters"
+        @reset-sort="resetSort"
         @save-request="handleSave"
         @discard-changes="handleDiscard"
         @refresh="handleRefresh"
@@ -381,7 +383,9 @@ const onGridReady = async (p) => {
   resetSort();
 };
 
-const handleToggleFilters = () => { if (!gridApi.value) return; gridApi.value.setGridOption("filterModel", null); };
+const clearFilters = () => { if (!gridApi.value) return; gridApi.value.setGridOption("filterModel", null); };
+const resetSort = () => { if (!gridApi.value) return; gridApi.value.applyColumnState({ defaultState: { sort: null }, state: [{ colId: "base", sort: sortDirForView.value }] }); };
+const handleToggleFilters = () => clearFilters();
 
 let _hasMounted = false;
 onMounted(async () => { await loadAll(); unsavedGuard.restore(); _hasMounted = true; });

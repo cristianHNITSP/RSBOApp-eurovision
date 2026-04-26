@@ -100,6 +100,7 @@
 <script setup>
 import { inject, ref } from "vue";
 import BarcodeEAN13 from "../barcode/BarcodeEAN13.vue";
+import "./BarcodeModal.css";
 
 const lab = inject("lab");
 if (!lab) throw new Error("BarcodeModal necesita provide('lab', ...)");
@@ -113,35 +114,3 @@ async function handleCopy() {
   setTimeout(() => (copied.value = false), 2500);
 }
 </script>
-
-<style scoped>
-.barcode-modal__validity {
-  display: flex;
-  justify-content: center;
-}
-
-.copy-feedback {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.5rem 0.75rem;
-  background: var(--c-success-alpha);
-  border: 1px solid rgba(34, 197, 94, 0.3);
-  border-radius: 12px;
-  font-size: 0.85rem;
-  font-weight: 900;
-  color: var(--c-success);
-  margin-top: 0.6rem;
-}
-
-.fade-slide-enter-active,
-.fade-slide-leave-active {
-  transition: all 250ms ease;
-}
-
-.fade-slide-enter-from,
-.fade-slide-leave-to {
-  opacity: 0;
-  transform: translateY(-6px);
-}
-</style>

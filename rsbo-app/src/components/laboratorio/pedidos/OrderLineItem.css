@@ -1,0 +1,57 @@
+/* rsbo-app/src/components/laboratorio/pedidos/OrderLineItem.css */
+
+.order-line {
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  padding: 0.65rem 0.75rem;
+  background: var(--surface);
+  transition: border-color 120ms ease, box-shadow 300ms ease;
+}
+
+.order-line--done {
+  border-color: rgba(34, 197, 94, 0.4);
+  background: rgba(34, 197, 94, 0.04);
+}
+
+.order-line__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.order-line__title { font-weight: 950; color: var(--text-primary); font-size: 0.88rem; }
+
+.order-line__sub {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  margin-top: 0.1rem;
+}
+
+.qty-tag { font-size: 0.72rem !important; white-space: nowrap; }
+
+.mica-type-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: var(--c-primary-alpha);
+  border: 1px solid rgba(144, 111, 225, 0.25);
+  font-size: 0.72rem;
+  font-weight: 900;
+  color: var(--c-primary);
+}
+
+.mica-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+/* WebSocket pulse effect */
+.order-line.line--just-picked {
+  box-shadow: 0 0 0 2px var(--c-primary-alpha), inset 0 0 0 1px var(--c-primary);
+}

@@ -77,76 +77,84 @@
         <div v-else-if="!lab.ordersDB.value.length" class="empty empty--mini">
           <i class="fas fa-inbox empty__icon"></i>
           <p class="empty__title">Sin pedidos</p>
-          <p class="empty__text">Crea uno en "Pedidos" o cambia el filtro.</p>
+          <p class="empty__text">Crea uno en "Pedidos" para empezar.</p>
+        </div>
+
+        <div v-else-if="!lab.filteredOrders.value.length" class="empty empty--mini empty--filter">
+          <i class="fas fa-filter empty__icon"></i>
+          <p class="empty__title">Sin coincidencias</p>
+          <p class="empty__text">No hay pedidos en "{{ activeFilterLabel }}". Cambia de filtro arriba.</p>
         </div>
 
         <!-- Order cards grid -->
-        <div v-else class="order-cards-grid">
-          <button
-            v-for="o in lab.ordersDB.value"
-            :key="o.id"
-            type="button"
-            class="oci"
-            :class="[
-              `oci--${o.status}`,
-              { 'oci--active': o.id === lab.selectedOrderId.value }
-            ]"
-            @click="lab.selectedOrderId.value = o.id"
-          >
-            <!-- Row 1: folio + status badge -->
-            <div class="oci__row oci__row--top">
-              <div class="oci__folio">
-                <i class="fas fa-receipt oci__icon mr-1"></i>
-                {{ o.folio || "Sin folio" }}
+        <div v-else class="orders-list-wrap">
+          <transition-group name="order-list" tag="div" class="order-cards-grid">
+            <button
+              v-for="o in lab.filteredOrders.value"
+              :key="o.id"
+              type="button"
+              class="oci"
+              :class="[
+                `oci--${o.status}`,
+                { 'oci--active': o.id === lab.selectedOrderId.value }
+              ]"
+              @click="lab.selectedOrderId.value = o.id"
+            >
+              <!-- Row 1: folio + status badge -->
+              <div class="oci__row oci__row--top">
+                <div class="oci__folio">
+                  <i class="fas fa-receipt oci__icon mr-1"></i>
+                  {{ o.folio || "Sin folio" }}
+                </div>
+                <span class="tag is-light oci__badge" :class="lab.statusTagClass(o.status)">
+                  <span class="oci__badge-dot"></span>
+                  {{ lab.statusHuman(o.status) }}
+                </span>
               </div>
-              <span class="tag is-light oci__badge" :class="lab.statusTagClass(o.status)">
-                <span class="oci__badge-dot"></span>
-                {{ lab.statusHuman(o.status) }}
-              </span>
-            </div>
 
-            <!-- Row 2: Client -->
-            <div class="oci__client">
-              <i class="fas fa-building mr-1 oci__meta-icon"></i>
-              <b>{{ o.cliente || "Sin cliente" }}</b>
-            </div>
-
-            <!-- Row 3: Sheet -->
-            <div class="oci__sheet">
-              <i class="fas fa-layer-group mr-1 oci__meta-icon"></i>
-              {{ lab.sheetNameById(o.sheetId) }}
-            </div>
-
-            <!-- Row 4: Progress -->
-            <div class="oci__progress mt-2">
-              <div class="oci__progress-track">
-                <div
-                  class="oci__progress-fill"
-                  :class="{ 'oci__progress-fill--done': lab.isOrderComplete(o) }"
-                  :style="{ width: lab.orderProgressPct(o) + '%' }"
-                />
+              <!-- Row 2: Client -->
+              <div class="oci__client">
+                <i class="fas fa-building mr-1 oci__meta-icon"></i>
+                <b>{{ o.cliente || "Sin cliente" }}</b>
               </div>
-              <div class="oci__progress-label">
-                <span>{{ lab.orderPickedCount(o) }}/{{ lab.orderTotalCount(o) }} surtidas</span>
-                <span class="oci__pct">{{ lab.orderProgressPct(o) }}%</span>
+
+              <!-- Row 3: Sheet -->
+              <div class="oci__sheet">
+                <i class="fas fa-layer-group mr-1 oci__meta-icon"></i>
+                {{ lab.sheetNameById(o.sheetId) }}
               </div>
-            </div>
 
-            <!-- Row 5: Date + lines count -->
-            <div class="oci__footer mt-2">
-              <span class="oci__date">
-                <i class="fas fa-clock mr-1"></i>{{ o.createdAtShort }}
-              </span>
-              <span class="oci__lines-count">
-                {{ o.lines?.length || 0 }} línea{{ (o.lines?.length || 0) !== 1 ? "s" : "" }}
-              </span>
-            </div>
+              <!-- Row 4: Progress -->
+              <div class="oci__progress mt-2">
+                <div class="oci__progress-track">
+                  <div
+                    class="oci__progress-fill"
+                    :class="{ 'oci__progress-fill--done': lab.isOrderComplete(o) }"
+                    :style="{ width: lab.orderProgressPct(o) + '%' }"
+                  />
+                </div>
+                <div class="oci__progress-label">
+                  <span>{{ lab.orderPickedCount(o) }}/{{ lab.orderTotalCount(o) }} surtidas</span>
+                  <span class="oci__pct">{{ lab.orderProgressPct(o) }}%</span>
+                </div>
+              </div>
 
-            <!-- Selected indicator -->
-            <div v-if="o.id === lab.selectedOrderId.value" class="oci__selected-mark">
-              <i class="fas fa-check-circle"></i>
-            </div>
-          </button>
+              <!-- Row 5: Date + lines count -->
+              <div class="oci__footer mt-2">
+                <span class="oci__date">
+                  <i class="fas fa-clock mr-1"></i>{{ o.createdAtShort }}
+                </span>
+                <span class="oci__lines-count">
+                  {{ o.lines?.length || 0 }} línea{{ (o.lines?.length || 0) !== 1 ? "s" : "" }}
+                </span>
+              </div>
+
+              <!-- Selected indicator -->
+              <div v-if="o.id === lab.selectedOrderId.value" class="oci__selected-mark">
+                <i class="fas fa-check-circle"></i>
+              </div>
+            </button>
+          </transition-group>
         </div>
 
         <hr class="soft-hr" />
@@ -250,11 +258,16 @@ const statusTabs = [
   { value: "all",       label: "Todos",      dotClass: "dot--muted" },
 ];
 
+const activeFilterLabel = computed(() => {
+  const tab = statusTabs.find(t => t.value === lab.orderStatusFilter.value);
+  return tab?.label || "Todos";
+});
+
 function countByStatus(tabValue) {
-  const all = lab.ordersDB.value || [];
-  if (tabValue === "all") return all.length;
-  if (tabValue === "open") return all.filter((o) => o.status === "pendiente" || o.status === "parcial").length;
-  return all.filter((o) => o.status === tabValue).length;
+  const c = lab.orderCounts.value;
+  if (tabValue === "all") return Object.values(c).reduce((s, n) => s + n, 0);
+  if (tabValue === "open") return (c.pendiente || 0) + (c.parcial || 0);
+  return c[tabValue] || 0;
 }
 </script>
 
@@ -282,8 +295,9 @@ function countByStatus(tabValue) {
 }
 
 .status-tab:hover {
-  border-color: rgba(144, 111, 225, 0.4);
+  border-color: var(--c-primary);
   background: var(--c-primary-alpha);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
 }
 
 .status-tab--active {
@@ -321,6 +335,10 @@ function countByStatus(tabValue) {
   background: var(--c-primary-alpha);
 }
 
+.empty--filter .empty__icon { color: var(--c-warning); opacity: 0.55; }
+.empty--filter .empty__title { color: var(--text-primary); }
+.empty--filter .empty__text  { color: var(--text-muted); }
+
 /* ===== Skeleton loading ===== */
 .orders-skeleton {
   display: grid;
@@ -351,13 +369,16 @@ function countByStatus(tabValue) {
   padding: 0.85rem;
   background: var(--surface);
   cursor: pointer;
-  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+  transition: box-shadow 220ms ease, border-color 220ms ease, background 220ms ease, backdrop-filter 220ms ease;
   overflow: hidden;
 }
 
 .oci:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  border-color: var(--c-primary);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  background: linear-gradient(135deg, var(--surface-raised), var(--c-primary-alpha));
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 
 .oci--active {
@@ -497,4 +518,12 @@ function countByStatus(tabValue) {
 /* .logs-*, .log-card* → global.css */
 /* PendingOrdersPanel usa max-height menor por su contexto lateral */
 .logs-feed { --logs-feed-max-h: 320px; }
+
+/* Transitions */
+.order-list-move,
+.order-list-enter-active,
+.order-list-leave-active { transition: all 220ms ease; }
+.order-list-enter-from,
+.order-list-leave-to    { opacity: 0; transform: translateY(8px); }
+.order-list-leave-active { position: absolute; }
 </style>

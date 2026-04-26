@@ -385,6 +385,8 @@ import { labToast } from "@/composables/shared/useLabToast";
 
 useIntersectionObserver(".animate-fade-up");
 
+const logoImg = "/eurovision.svg";
+
 const route = useRoute();
 const router = useRouter();
 

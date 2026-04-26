@@ -170,13 +170,17 @@ async function renewTokenIfNeeded(userId, currentToken) {
   const user = await User.findById(userId).select("+tokens");
   if (!user) return { renewed: false };
 
-  // Reemplazar el token viejo por el nuevo
-  const idx = user.tokens.findIndex((t) => t.token === currentToken);
-  if (idx === -1) return { renewed: false };
-
-  user.tokens[idx].token = newToken;
-  user.tokens[idx].expiresAt = new Date(Date.now() + SESSION_TTL_MS);
-  user.tokens[idx].lastUsedAt = new Date();
+  // Agregar el nuevo token a la lista
+  // IMPORTANTE: NO reemplazamos ni borramos el viejo inmediatamente para evitar 
+  // que otras peticiones concurrentes en vuelo fallen con 401 durante la transición.
+  const oldTokenDoc = user.tokens.find((t) => t.token === currentToken);
+  
+  user.tokens.push({
+    token:      newToken,
+    expiresAt:  new Date(Date.now() + SESSION_TTL_MS),
+    lastUsedAt: new Date(),
+    deviceInfo: oldTokenDoc?.deviceInfo || {},
+  });
 
   // Limpiar sesiones expiradas de paso
   const now = Date.now();

@@ -1,0 +1,53 @@
+/* rsbo-app/src/components/laboratorio/modals/BarcodeModal.css */
+
+.barcode-modal__code {
+  font-weight: 1000;
+  font-size: 1.1rem;
+  margin-bottom: .35rem;
+  text-align: center;
+  color: var(--text-primary);
+}
+
+.barcode-modal__img {
+  display: flex;
+  justify-content: center;
+  padding: .75rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 16px;
+}
+
+.barcode-wrap svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.barcode-modal__validity {
+  display: flex;
+  justify-content: center;
+}
+
+.copy-feedback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0.75rem;
+  background: var(--c-success-alpha);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 900;
+  color: var(--c-success);
+  margin-top: 0.6rem;
+}
+
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: all 250ms ease;
+}
+
+.fade-slide-enter-from,
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+}

@@ -1907,7 +1907,7 @@ watch(
 
 .tab-item:hover {
   transform: translateY(-1px);
-  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.10);
+  box-shadow: var(--shadow-sm);
 }
 
 .tab-item.active {
@@ -1930,13 +1930,14 @@ watch(
 
 .tab-agregar {
   background: var(--text-primary);
-  color: var(--text-on-primary);
-  border-color: rgba(15, 23, 42, 0.25);
+  color: var(--surface-solid);
+  border-color: var(--border-strong);
   padding-right: 0.85rem;
 }
 
 .tab-agregar:hover {
-  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.18);
+  background: var(--text-secondary);
+  box-shadow: var(--shadow-lg);
 }
 
 .tab-text {
@@ -2120,7 +2121,7 @@ watch(
   overflow: hidden;
   background: var(--surface-raised);
   border: 1px solid var(--border);
-  box-shadow: 0 28px 80px rgba(15, 23, 42, 0.22);
+  box-shadow: var(--shadow-lg);
 }
 
 .rsbo-actions-head {
@@ -2176,7 +2177,7 @@ watch(
 
 .action-card:hover {
   transform: translateY(-1px);
-  box-shadow: 0 26px 70px rgba(15, 23, 42, 0.14);
+  box-shadow: var(--shadow-lg);
 }
 
 .action-card.primary {
@@ -2321,19 +2322,19 @@ watch(
 
 @keyframes tabFocusPulse {
   0% {
-    box-shadow: 0 0 0 0 rgba(121, 87, 213, 0.55), 0 18px 50px rgba(15, 23, 42, 0.12);
+    box-shadow: 0 0 0 0 rgba(121, 87, 213, 0.55), var(--shadow-lg);
   }
 
   35% {
-    box-shadow: 0 0 0 6px rgba(121, 87, 213, 0.28), 0 18px 50px rgba(15, 23, 42, 0.16);
+    box-shadow: 0 0 0 6px rgba(121, 87, 213, 0.28), var(--shadow-lg);
   }
 
   70% {
-    box-shadow: 0 0 0 3px rgba(121, 87, 213, 0.15), 0 18px 50px rgba(15, 23, 42, 0.12);
+    box-shadow: 0 0 0 3px rgba(121, 87, 213, 0.15), var(--shadow-lg);
   }
 
   100% {
-    box-shadow: 0 0 0 0 rgba(121, 87, 213, 0), 0 18px 50px rgba(15, 23, 42, 0.10);
+    box-shadow: 0 0 0 0 rgba(121, 87, 213, 0), var(--shadow-lg);
   }
 }
 

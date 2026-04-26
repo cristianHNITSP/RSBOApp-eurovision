@@ -29,26 +29,14 @@
               {{ sessions.length }} sesión{{ sessions.length !== 1 ? 'es' : '' }}
             </b-tag>
             <b-tooltip label="Cerrar todas las demás sesiones" position="is-left" append-to-body>
-              <b-button
-                type="is-danger is-light"
-                size="is-small"
-                icon-pack="fas"
-                icon-left="sign-out-alt"
-                :loading="loadingRevoke"
-                :disabled="sessions.filter(s => !s.isCurrent).length === 0"
-                @click="confirmRevokeAll"
-              >
+              <b-button type="is-danger is-light" size="is-small" icon-pack="fas" icon-left="sign-out-alt"
+                :loading="loadingRevoke" :disabled="sessions.filter(s => !s.isCurrent).length === 0"
+                @click="confirmRevokeAll">
                 Cerrar otras
               </b-button>
             </b-tooltip>
-            <b-button
-              type="is-light"
-              size="is-small"
-              icon-pack="fas"
-              icon-left="sync"
-              :loading="loadingSessions"
-              @click="loadSessions"
-            />
+            <b-button type="is-light" size="is-small" icon-pack="fas" icon-left="sync" :loading="loadingSessions"
+              @click="loadSessions" />
           </div>
         </div>
 
@@ -64,18 +52,10 @@
           </div>
 
           <div v-else class="sessions-list">
-            <div
-              v-for="session in sessions"
-              :key="session.id"
-              class="session-item"
-              :class="{ 'session-item--current': session.isCurrent }"
-            >
+            <div v-for="session in sessions" :key="session.id" class="session-item"
+              :class="{ 'session-item--current': session.isCurrent }">
               <div class="session-item__icon">
-                <b-icon
-                  pack="fas"
-                  :icon="getOsIcon(session)"
-                  size="is-medium"
-                />
+                <b-icon pack="fas" :icon="getOsIcon(session)" size="is-medium" />
               </div>
               <div class="session-item__info">
                 <div class="session-item__device">
@@ -93,7 +73,8 @@
                   </span>
                   <span class="session-meta-item">
                     <b-icon pack="fas" icon="clock" size="is-small" />
-                    {{ session.lastUsedAt ? 'Activo ' + timeAgo(session.lastUsedAt) : 'Inicio ' + timeAgo(session.createdAt) }}
+                    {{ session.lastUsedAt ? 'Activo ' + timeAgo(session.lastUsedAt) : 'Inicio ' +
+                      timeAgo(session.createdAt) }}
                   </span>
                   <span v-if="session.expiresAt" class="session-meta-item">
                     <b-icon pack="fas" icon="hourglass-half" size="is-small" />
@@ -102,27 +83,11 @@
                 </div>
               </div>
               <div class="session-item__actions">
-                <b-tooltip
-                  v-if="!session.isCurrent"
-                  label="Cerrar esta sesión"
-                  position="is-left"
-                  append-to-body
-                >
-                  <b-button
-                    type="is-danger is-light"
-                    size="is-small"
-                    icon-pack="fas"
-                    icon-left="times"
-                    :loading="revokingId === session.id"
-                    @click="confirmRevokeOne(session)"
-                  />
+                <b-tooltip v-if="!session.isCurrent" label="Cerrar esta sesión" position="is-left" append-to-body>
+                  <b-button type="is-danger is-light" size="is-small" icon-pack="fas" icon-left="times"
+                    :loading="revokingId === session.id" @click="confirmRevokeOne(session)" />
                 </b-tooltip>
-                <b-icon
-                  v-else
-                  pack="fas"
-                  icon="check-circle"
-                  class="current-icon"
-                />
+                <b-icon v-else pack="fas" icon="check-circle" class="current-icon" />
               </div>
             </div>
           </div>
@@ -145,44 +110,23 @@
           </p>
 
           <b-field label="Contraseña actual">
-            <b-input
-              v-model="pwForm.current"
-              type="password"
-              password-reveal
-              placeholder="••••••••"
-              :disabled="loadingPw"
-            />
+            <b-input v-model="pwForm.current" type="password" password-reveal placeholder="••••••••"
+              :disabled="loadingPw" />
           </b-field>
 
           <b-field label="Nueva contraseña" :message="pwStrengthMsg" :type="pwStrengthType">
-            <b-input
-              v-model="pwForm.next"
-              type="password"
-              password-reveal
-              placeholder="Mínimo 8 caracteres"
-              :disabled="loadingPw"
-            />
+            <b-input v-model="pwForm.next" type="password" password-reveal placeholder="Mínimo 8 caracteres"
+              :disabled="loadingPw" />
           </b-field>
 
           <b-field label="Confirmar nueva contraseña" :type="pwMatchType" :message="pwMatchMsg">
-            <b-input
-              v-model="pwForm.confirm"
-              type="password"
-              password-reveal
-              placeholder="Repite la nueva contraseña"
-              :disabled="loadingPw"
-            />
+            <b-input v-model="pwForm.confirm" type="password" password-reveal placeholder="Repite la nueva contraseña"
+              :disabled="loadingPw" />
           </b-field>
 
           <div class="is-flex is-justify-content-flex-end mt-4">
-            <b-button
-              type="is-primary"
-              icon-pack="fas"
-              icon-left="key"
-              :loading="loadingPw"
-              :disabled="!pwFormValid"
-              @click="submitChangePassword"
-            >
+            <b-button type="is-primary" icon-pack="fas" icon-left="key" :loading="loadingPw" :disabled="!pwFormValid"
+              @click="submitChangePassword">
               Actualizar contraseña
             </b-button>
           </div>
@@ -229,91 +173,76 @@
 
     </div>
 
-    <!-- ── Modal: cerrar una sesión ──────────────────────────────────────── -->
-    <b-modal
-      v-model="showRevokeOneModal"
-      has-modal-card
-      trap-focus
-      :destroy-on-hide="true"
-      aria-role="dialog"
-      aria-modal
-    >
-      <div class="modal-card" style="max-width: 420px; width: 100%;">
-        <header class="modal-card-head revoke-modal-head--warning">
-          <p class="modal-card-title">
-            <i class="fas fa-exclamation-triangle mr-2"></i>
-            Cerrar sesión
-          </p>
-          <button class="delete" aria-label="close" @click="showRevokeOneModal = false" />
-        </header>
-        <section class="modal-card-body">
-          <p>
-            Se cerrará la sesión de
-            <strong>{{ pendingRevokeSession ? getDisplayDevice(pendingRevokeSession) : 'este dispositivo' }}</strong>.
-            El dispositivo perderá el acceso inmediatamente.
-          </p>
-        </section>
-        <footer class="modal-card-foot">
-          <b-button @click="showRevokeOneModal = false" :disabled="revokingId !== null">
-            Cancelar
-          </b-button>
-          <b-button
-            type="is-danger"
-            icon-pack="fas"
-            icon-left="times"
-            :loading="revokingId !== null"
-            @click="onConfirmRevokeOne"
-          >
-            Cerrar sesión
-          </b-button>
-        </footer>
-      </div>
-    </b-modal>
 
-    <!-- ── Modal: cerrar todas las demás sesiones ─────────────────────────── -->
-    <b-modal
-      v-model="showRevokeAllModal"
-      has-modal-card
-      trap-focus
-      :destroy-on-hide="true"
-      aria-role="dialog"
-      aria-modal
-    >
-      <div class="modal-card" style="max-width: 440px; width: 100%;">
-        <header class="modal-card-head revoke-modal-head--danger">
-          <p class="modal-card-title">
-            <i class="fas fa-sign-out-alt mr-2"></i>
-            Cerrar otras sesiones
-          </p>
-          <button class="delete" aria-label="close" @click="showRevokeAllModal = false" />
-        </header>
-        <section class="modal-card-body">
-          <p class="mb-3">
-            Se cerrarán
-            <strong>{{ sessions.filter(s => !s.isCurrent).length }} sesión(es)</strong>
-            activas en otros dispositivos.
-          </p>
-          <div class="revoke-notice">
-            <i class="fas fa-info-circle mr-2"></i>
-            Esta acción no se puede deshacer. Los demás dispositivos perderán el acceso inmediatamente.
-          </div>
-        </section>
-        <footer class="modal-card-foot">
-          <b-button @click="showRevokeAllModal = false" :disabled="loadingRevoke">
-            Cancelar
-          </b-button>
-          <b-button
-            type="is-danger"
-            icon-pack="fas"
-            icon-left="sign-out-alt"
-            :loading="loadingRevoke"
-            @click="onConfirmRevokeAll"
-          >
-            Cerrar sesiones
-          </b-button>
-        </footer>
-      </div>
-    </b-modal>
+    <teleport to="body">
+
+      <!-- ── Modal: cerrar una sesión ──────────────────────────────────────── -->
+      <b-modal v-model="showRevokeOneModal" has-modal-card trap-focus :destroy-on-hide="true" aria-role="dialog"
+        aria-modal>
+        <div class="modal-card" style="max-width: 420px; width: 100%;">
+          <header class="modal-card-head revoke-modal-head--warning">
+            <p class="modal-card-title">
+              <i class="fas fa-exclamation-triangle mr-2"></i>
+              Cerrar sesión
+            </p>
+            <button class="delete" aria-label="close" @click="showRevokeOneModal = false" />
+          </header>
+          <section class="modal-card-body">
+            <p>
+              Se cerrará la sesión de
+              <strong>{{ pendingRevokeSession ? getDisplayDevice(pendingRevokeSession) : 'este dispositivo' }}</strong>.
+              El dispositivo perderá el acceso inmediatamente.
+            </p>
+          </section>
+          <footer class="modal-card-foot">
+            <b-button @click="showRevokeOneModal = false" :disabled="revokingId !== null">
+              Cancelar
+            </b-button>
+            <b-button type="is-danger" icon-pack="fas" icon-left="times" :loading="revokingId !== null"
+              @click="onConfirmRevokeOne">
+              Cerrar sesión
+            </b-button>
+          </footer>
+        </div>
+      </b-modal>
+
+      <!-- ── Modal: cerrar todas las demás sesiones ─────────────────────────── -->
+      <b-modal v-model="showRevokeAllModal" has-modal-card trap-focus :destroy-on-hide="true" aria-role="dialog"
+        aria-modal>
+        <div class="modal-card" style="max-width: 440px; width: 100%;">
+          <header class="modal-card-head revoke-modal-head--danger">
+            <p class="modal-card-title">
+              <i class="fas fa-sign-out-alt mr-2"></i>
+              Cerrar otras sesiones
+            </p>
+            <button class="delete" aria-label="close" @click="showRevokeAllModal = false" />
+          </header>
+          <section class="modal-card-body">
+            <p class="mb-3">
+              Se cerrarán
+              <strong>{{sessions.filter(s => !s.isCurrent).length}} sesión(es)</strong>
+              activas en otros dispositivos.
+            </p>
+            <div class="revoke-notice">
+              <i class="fas fa-info-circle mr-2"></i>
+              Esta acción no se puede deshacer. Los demás dispositivos perderán el acceso inmediatamente.
+            </div>
+          </section>
+          <footer class="modal-card-foot">
+            <b-button @click="showRevokeAllModal = false" :disabled="loadingRevoke">
+              Cancelar
+            </b-button>
+            <b-button type="is-danger" icon-pack="fas" icon-left="sign-out-alt" :loading="loadingRevoke"
+              @click="onConfirmRevokeAll">
+              Cerrar sesiones
+            </b-button>
+          </footer>
+        </div>
+      </b-modal>
+
+
+    </teleport>
+
 
   </section>
 </template>
@@ -328,10 +257,10 @@ const props = defineProps({
 });
 
 // ── Sesiones ────────────────────────────────────────────────────────────────
-const sessions        = ref([]);
+const sessions = ref([]);
 const loadingSessions = ref(false);
-const loadingRevoke   = ref(false);
-const revokingId      = ref(null);
+const loadingRevoke = ref(false);
+const revokingId = ref(null);
 
 // ── Geocalización de IPs ──
 const ipCache = reactive({});
@@ -373,8 +302,8 @@ watch(sessions, (newSessions) => {
 }, { deep: true });
 
 // Estado de los modales de confirmación
-const showRevokeOneModal   = ref(false);
-const showRevokeAllModal   = ref(false);
+const showRevokeOneModal = ref(false);
+const showRevokeAllModal = ref(false);
 const pendingRevokeSession = ref(null);
 
 async function loadSessions() {
@@ -392,7 +321,7 @@ async function loadSessions() {
 // ── Cerrar una sesión ──────────────────────────────────────────────────────
 function confirmRevokeOne(session) {
   pendingRevokeSession.value = session;
-  showRevokeOneModal.value   = true;
+  showRevokeOneModal.value = true;
 }
 
 async function onConfirmRevokeOne() {
@@ -448,7 +377,7 @@ const pwStrength = computed(() => {
   const p = pwForm.value.next;
   if (!p) return 0;
   let score = 0;
-  if (p.length >= 8)  score++;
+  if (p.length >= 8) score++;
   if (p.length >= 12) score++;
   if (/[A-Z]/.test(p)) score++;
   if (/[0-9]/.test(p)) score++;
@@ -472,7 +401,7 @@ const pwStrengthType = computed(() => {
   return 'is-success';
 });
 
-const pwMatchMsg  = computed(() => {
+const pwMatchMsg = computed(() => {
   if (!pwForm.value.confirm) return '';
   return pwForm.value.next === pwForm.value.confirm ? '' : 'Las contraseñas no coinciden';
 });
@@ -535,7 +464,7 @@ function getDisplayDevice(session) {
 function getOsIcon(session) {
   let os = session?.deviceInfo?.os;
   if (session?.isCurrent) os = currentDeviceInfo.value.os;
-  
+
   if (!os) return 'laptop';
   const s = os.toLowerCase();
   if (s.includes('linux')) return 'server';
@@ -551,14 +480,14 @@ function timeAgo(dateStr, future = false) {
   const diff = future
     ? new Date(dateStr).getTime() - Date.now()
     : Date.now() - new Date(dateStr).getTime();
-  const abs   = Math.abs(diff);
-  const mins  = Math.floor(abs / 60000);
+  const abs = Math.abs(diff);
+  const mins = Math.floor(abs / 60000);
   const hours = Math.floor(abs / 3600000);
-  const days  = Math.floor(abs / 86400000);
-  if (mins < 1)   return future ? 'en unos segundos' : 'ahora mismo';
-  if (mins < 60)  return future ? `en ${mins} min`   : `hace ${mins} min`;
-  if (hours < 24) return future ? `en ${hours} h`    : `hace ${hours} h`;
-  if (days === 1) return future ? 'mañana'            : 'ayer';
+  const days = Math.floor(abs / 86400000);
+  if (mins < 1) return future ? 'en unos segundos' : 'ahora mismo';
+  if (mins < 60) return future ? `en ${mins} min` : `hace ${mins} min`;
+  if (hours < 24) return future ? `en ${hours} h` : `hace ${hours} h`;
+  if (days === 1) return future ? 'mañana' : 'ayer';
   return future ? `en ${days} días` : `hace ${days} días`;
 }
 
@@ -766,11 +695,19 @@ onMounted(() => loadSessions());
 }
 
 /* ── Misc ───────────────────────────────────────────────────────────────── */
-.gap-2 { gap: 0.5rem; }
-.mono   { font-family: 'Courier New', monospace; font-size: 0.82rem; }
+.gap-2 {
+  gap: 0.5rem;
+}
+
+.mono {
+  font-family: 'Courier New', monospace;
+  font-size: 0.82rem;
+}
 
 @media screen and (max-width: 768px) {
-  .sec-card { grid-column: span 12; }
+  .sec-card {
+    grid-column: span 12;
+  }
 }
 
 /* ── Cabeceras de modales ────────────────────────────────────────────────── */

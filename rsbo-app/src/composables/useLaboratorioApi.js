@@ -97,7 +97,7 @@ export function useLaboratorioApi(getUser) {
   const selectedSheetId = ref("");
   const _itemsLimit = ref(5000);
   const itemQuery = ref("");
-  const stockFilter = ref("all");
+  const stockFilter = ref("withStock");
 
   const catalogQuery = ref("");
   const catalogFilter = ref("withStock");
@@ -119,6 +119,13 @@ export function useLaboratorioApi(getUser) {
   const sheetsDB = ref([]);
   const itemsDB = ref([]);
   const ordersDB = ref([]);
+  const filteredOrders = computed(() => {
+    const all = ordersDB.value || [];
+    const f = orderStatusFilter.value || "open";
+    if (f === "all") return all;
+    if (f === "open") return all.filter(o => o.status === "pendiente" || o.status === "parcial");
+    return all.filter(o => o.status === f);
+  });
   const entryEvents = ref([]);
   const exitEvents = ref([]);
   const correctionEvents = ref([]);
@@ -348,10 +355,8 @@ export function useLaboratorioApi(getUser) {
     loadingOrders.value = true;
     _inFlight.orders = (async () => {
       try {
-        const statusUi = String(orderStatusFilter.value || "open");
-        const statusParam = statusUi === "open" ? "all" : statusUi;
         const params = {
-          status: statusParam,
+          status: "all",
           q: String(orderQuery.value || "").trim() || undefined,
           limit: 200
         };
@@ -359,7 +364,6 @@ export function useLaboratorioApi(getUser) {
         const arr = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
         let mapped = arr.map(normalizeOrder);
         updatePendingCount(arr.filter((o) => o.status === "pendiente" || o.status === "parcial").length);
-        if (statusUi === "open") mapped = mapped.filter((o) => o.status === "pendiente" || o.status === "parcial");
         mapped.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
         ordersDB.value = mapped;
         if (!selectedOrderId.value && mapped.length) selectedOrderId.value = mapped[0].id;
@@ -757,7 +761,6 @@ export function useLaboratorioApi(getUser) {
   }
 
   // ======= Computed: filtros UI =======
-  const filteredSheets = computed(() => sheetsDB.value);
 
   const filteredItems = computed(() => {
     const rows = Array.isArray(itemsDB.value) ? itemsDB.value : [];
@@ -1288,7 +1291,7 @@ export function useLaboratorioApi(getUser) {
 
   // ======= Watchers =======
   let tOrders = null;
-  watch([orderStatusFilter, orderQuery], () => {
+  watch([orderQuery], () => {
     if (tOrders) clearTimeout(tOrders);
     tOrders = setTimeout(() => loadOrders(), 250);
   });
@@ -1326,6 +1329,24 @@ export function useLaboratorioApi(getUser) {
 
   function _onWsEvent(e) {
     const type = e?.detail?.type;
+    const payload = e?.detail?.payload;
+
+    // T28: Reactive patch for granular line picking
+    if (type === "LAB_LINE_PICK") {
+      const { orderId, lineId, picked } = payload || {};
+      if (!orderId || !lineId) return;
+      const order = ordersDB.value.find((o) => o.id === orderId);
+      if (order) {
+        const line = order.lines.find((l) => l.id === lineId || l.lineId === lineId);
+        if (line) {
+          line.picked = picked;
+          // Notify badge (optional but good for UX)
+          updatePendingCount(ordersDB.value.filter((o) => o.status === "pendiente" || o.status === "parcial").length);
+        }
+      }
+      return;
+    }
+
     if (LAB_WS_EVENTS.has(type)) {
       loadOrders();
       loadEvents();
@@ -1404,7 +1425,6 @@ export function useLaboratorioApi(getUser) {
 
     // computed
     lastUpdatedHuman,
-    filteredSheets,
     selectedSheet,
     selectedSheetLabel,
     filteredItems,
@@ -1413,6 +1433,7 @@ export function useLaboratorioApi(getUser) {
     recentSheets,
     totalCodes,
     canCreateOrder,
+    filteredOrders,
     todayEntries,
 
     // helpers

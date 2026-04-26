@@ -16,11 +16,13 @@
 
           <div class="panel__headActions">
             <b-field class="mb-0" label="Planilla">
-              <b-select v-model="lab.selectedSheetId.value" expanded>
-                <option v-for="s in lab.filteredSheets.value" :key="s.id" :value="s.id">
-                  {{ lab.sheetTitle(s) }}
-                </option>
-              </b-select>
+              <SheetPickerInput
+                v-model="lab.selectedSheetId.value"
+                :sheet-title="lab.sheetTitle"
+                :search-fn="lab.searchSheets"
+                :results="lab.sheetSearchResults.value"
+                :loading="lab.sheetSearchLoading.value"
+              />
             </b-field>
 
             <b-button
@@ -162,7 +164,7 @@
 
           <div v-if="lab.loadingOrders.value" class="empty empty--mini">
             <b-loading :is-full-page="false" :active="true" />
-            <div style="height:60px"></div>
+            <div class="spacer-lg"></div>
           </div>
 
           <div v-else-if="!lab.ordersDB.value.length" class="empty empty--mini">
@@ -173,7 +175,7 @@
 
           <div v-else class="order-card-list">
             <div
-              v-for="o in lab.ordersDB.value"
+              v-for="o in lab.filteredOrders.value"
               :key="o.id"
               class="order-card"
               :class="{
@@ -207,166 +209,14 @@
       </div>
 
       <!-- ── Detalle + Surtir ── -->
-      <div class="panel mt-4" v-if="lab.selectedOrder.value">
-        <div class="panel__head panel__head--compact">
-          <div>
-            <h3 class="panel__title mb-0">
-              <i class="fas fa-qrcode mr-2"></i>
-              Surtir pedido
-            </h3>
-            <p class="panel__hint mt-1">
-              <b>{{ lab.selectedOrder.value.folio }}</b> ·
-              {{ lab.selectedOrder.value.cliente }}
-            </p>
-          </div>
-        </div>
-
-        <div class="panel__body">
-          <!-- Progress -->
-          <div class="mini-order-head mb-3">
-            <div class="progress-bar">
-              <div class="progress-bar__fill" :style="{ width: lab.orderProgressPct(lab.selectedOrder.value) + '%' }" />
-            </div>
-            <div class="mini-order-sub mt-1 is-flex is-justify-content-space-between">
-              <span>
-                <b>{{ lab.orderPickedCount(lab.selectedOrder.value) }}</b>/
-                <b>{{ lab.orderTotalCount(lab.selectedOrder.value) }}</b> surtidas
-              </span>
-              <span>{{ lab.orderProgressPct(lab.selectedOrder.value) }}%</span>
-            </div>
-
-            <div v-if="lab.isOrderComplete(lab.selectedOrder.value)" class="complete-badge mt-2">
-              <i class="fas fa-check-circle mr-2"></i>
-              ¡Pedido completado! Listo para cerrar.
-            </div>
-
-            <div class="columns is-mobile is-variable is-2 mt-2">
-              <div class="column">
-                <b-button type="is-light" expanded icon-left="download" size="is-small"
-                  @click="lab.exportOrderCsv(lab.selectedOrder.value)">Excel</b-button>
-              </div>
-              <div class="column">
-                <b-button type="is-light" expanded icon-left="print" size="is-small"
-                  @click="lab.printOrder(lab.selectedOrder.value)">PDF</b-button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Scanner -->
-          <b-field label="Código (EAN-13)" class="mb-2">
-            <b-input
-              v-model="lab.scanCode.value"
-              placeholder="Escanea o escribe el código…"
-              icon="barcode"
-              @keyup.enter="lab.scanAndDispatch"
-            />
-          </b-field>
-
-          <div class="columns is-mobile is-variable is-2">
-            <div class="column">
-              <b-button
-                type="is-primary"
-                expanded
-                icon-left="check"
-                :loading="lab.loadingScan.value"
-                :disabled="!lab.scanCode.value || !lab.selectedOrder.value"
-                @click="lab.scanAndDispatch"
-              >
-                Marcar salida
-              </b-button>
-            </div>
-            <div class="column is-narrow">
-              <b-button
-                type="is-light"
-                icon-left="times"
-                :disabled="!lab.scanCode.value"
-                @click="lab.scanCode.value = ''"
-              />
-            </div>
-          </div>
-
-          <!-- Micas del pedido -->
-          <div class="mt-3">
-            <div class="micas-section-label">
-              <i class="fas fa-glasses mr-2"></i>
-              Micas del pedido
-              <span class="micas-count">{{ lab.selectedOrder.value.lines?.length || 0 }}</span>
-            </div>
-
-            <div class="order-lines mt-2">
-              <article
-                v-for="l in lab.selectedOrder.value.lines"
-                :key="l.id"
-                class="order-line"
-                :class="{ 'order-line--done': l.picked >= l.qty }"
-              >
-                <div class="order-line__top">
-                  <div class="order-line__title">
-                    {{ lab.lineHuman(l, lab.sheetById(l.lineSheetId || lab.selectedOrder.value.sheetId)) }}
-                    <div class="mica-meta-row mt-1">
-                      <span class="mica-type-tag">{{ l.micaType || lab.getMicaTypeName(l.tipoMatriz) }}</span>
-                      <span class="order-line__sub">{{ l.picked }}/{{ l.qty }} surtidas</span>
-                    </div>
-                  </div>
-                  <span class="tag is-light qty-tag" :class="l.picked >= l.qty ? 'is-success' : ''">
-                    {{ l.picked >= l.qty ? "✓ OK" : "Pendiente" }}
-                  </span>
-                </div>
-              </article>
-            </div>
-
-            <div class="mt-3">
-              <b-button
-                type="is-light"
-                expanded
-                icon-left="redo"
-                :loading="lab.loadingReset.value"
-                :disabled="!lab.selectedOrder.value"
-                @click="askReset"
-              >
-                Reiniciar surtido
-              </b-button>
-
-              <b-button
-                class="mt-2"
-                type="is-primary"
-                expanded
-                icon-left="lock"
-                :disabled="!lab.selectedOrder.value || !lab.isOrderComplete(lab.selectedOrder.value)"
-                :loading="lab.loadingCloseOrder.value"
-                @click="askClose"
-              >
-                Cerrar pedido
-              </b-button>
-
-              <b-button
-                class="mt-2"
-                type="is-warning"
-                expanded
-                outlined
-                icon-left="exclamation-triangle"
-                :disabled="!lab.selectedOrder.value"
-                @click="lab.correctionOpen.value = true"
-              >
-                Solicitar corrección
-              </b-button>
-
-              <b-button
-                class="mt-2"
-                type="is-light"
-                expanded
-                icon-left="tools"
-                @click="lab.activeMainTab.value = 'correcciones'"
-              >
-                Gestionar / editar pedido
-              </b-button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <OrderDetail 
+        :order="lab.selectedOrder.value" 
+        @ask-reset="askReset" 
+        @ask-close="askClose"
+      />
 
       <!-- Empty surtir state -->
-      <div v-else class="panel mt-4">
+      <div v-if="!lab.selectedOrder.value" class="panel mt-4">
         <div class="panel__body">
           <div class="empty empty--mini">
             <i class="fas fa-hand-pointer empty__icon"></i>
@@ -433,6 +283,10 @@
 
 <script setup>
 import { inject, ref, watch } from "vue";
+import OrderDetail from "./pedidos/OrderDetail.vue";
+import SheetPickerInput from "./SheetPickerInput.vue";
+import "./laboratorio-shared.css";
+import "./PedidosTab.css";
 
 const lab = inject("lab");
 if (!lab) throw new Error("PedidosTab necesita provide('lab', ...)");
@@ -466,219 +320,3 @@ function doClose() {
   lab.closeSelectedOrder();
 }
 </script>
-
-<style scoped>
-/* Order card list */
-.order-card-list {
-  display: grid;
-  gap: 0.5rem;
-  max-height: 360px;
-  overflow-y: auto;
-  padding-right: 0.15rem;
-}
-
-.order-card {
-  border: 1.5px solid var(--border);
-  border-radius: 14px;
-  padding: 0.7rem 0.85rem;
-  background: var(--surface);
-  cursor: pointer;
-  transition: border-color 120ms ease, background 120ms ease, box-shadow 120ms ease;
-}
-
-.order-card:hover {
-  border-color: rgba(144, 111, 225, 0.45);
-  background: var(--c-primary-alpha);
-}
-
-.order-card--active {
-  border-color: rgba(144, 111, 225, 0.7);
-  background: rgba(144, 111, 225, 0.08);
-  box-shadow: 0 0 0 3px rgba(144, 111, 225, 0.15);
-}
-
-.order-card--done {
-  border-color: rgba(34, 197, 94, 0.35);
-  background: rgba(34, 197, 94, 0.04);
-}
-
-.order-card--cancelled {
-  opacity: 0.55;
-}
-
-.order-card__top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.2rem;
-}
-
-.order-card__folio {
-  font-size: 0.82rem;
-  font-weight: 1000;
-  color: var(--text-primary);
-}
-
-.order-card__tag {
-  font-size: 0.7rem !important;
-  padding: 0.1rem 0.45rem !important;
-}
-
-.order-card__cliente {
-  font-size: 0.88rem;
-  font-weight: 900;
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.order-card__meta {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.75rem;
-  font-weight: 800;
-  color: var(--text-muted);
-  margin-top: 0.2rem;
-}
-
-/* Progress bars */
-.progress-mini {
-  height: 4px;
-  border-radius: 999px;
-  background: var(--border);
-  overflow: hidden;
-}
-
-.progress-mini__fill {
-  height: 100%;
-  border-radius: 999px;
-  background: var(--c-primary);
-  transition: width 300ms ease;
-}
-
-.progress-mini__fill--done {
-  background: var(--c-success, #22c55e);
-}
-
-.progress-bar {
-  height: 6px;
-  border-radius: 999px;
-  background: var(--border);
-  overflow: hidden;
-}
-
-.progress-bar__fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--c-primary), #ec4899);
-  border-radius: 999px;
-  transition: width 300ms ease;
-}
-
-/* Complete badge */
-.complete-badge {
-  display: flex;
-  align-items: center;
-  padding: 0.5rem 0.65rem;
-  background: var(--c-success-alpha);
-  border: 1px solid rgba(34, 197, 94, 0.3);
-  border-radius: 12px;
-  font-size: 0.82rem;
-  font-weight: 900;
-  color: var(--c-success);
-}
-
-/* Mica type tags */
-.mica-type-tag {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.1rem 0.45rem;
-  border-radius: 999px;
-  background: var(--c-primary-alpha);
-  border: 1px solid rgba(144, 111, 225, 0.25);
-  font-size: 0.72rem;
-  font-weight: 900;
-  color: var(--c-primary);
-}
-
-.mica-type-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.1rem 0.4rem;
-  border-radius: 8px;
-  background: var(--c-info-alpha);
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  font-size: 0.7rem;
-  font-weight: 900;
-  color: var(--c-info);
-  margin-left: 0.35rem;
-}
-
-.mica-meta-row {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  flex-wrap: wrap;
-}
-
-.micas-section-label {
-  display: flex;
-  align-items: center;
-  font-size: 0.82rem;
-  font-weight: 1000;
-  color: var(--text-primary);
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-}
-
-.micas-count {
-  margin-left: 0.4rem;
-  background: var(--c-primary-alpha);
-  border: 1px solid rgba(144, 111, 225, 0.25);
-  border-radius: 999px;
-  padding: 0.05rem 0.45rem;
-  font-size: 0.72rem;
-  font-weight: 900;
-}
-
-.mini-order-sub {
-  font-size: 0.8rem;
-  font-weight: 800;
-  color: var(--text-muted);
-}
-
-.order-lines { display: grid; gap: 0.5rem; }
-
-.order-line {
-  border: 1.5px solid var(--border);
-  border-radius: 14px;
-  padding: 0.65rem 0.75rem;
-  background: var(--surface);
-  transition: border-color 120ms ease;
-}
-
-.order-line--done {
-  border-color: rgba(34, 197, 94, 0.4);
-  background: rgba(34, 197, 94, 0.04);
-}
-
-.order-line__top {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 0.5rem;
-}
-
-.order-line__title { font-weight: 950; color: var(--text-primary); font-size: 0.88rem; }
-
-.order-line__sub {
-  display: block;
-  font-size: 0.78rem;
-  font-weight: 800;
-  color: var(--text-muted);
-  margin-top: 0.1rem;
-}
-
-.qty-tag { font-size: 0.72rem !important; white-space: nowrap; }
-</style>

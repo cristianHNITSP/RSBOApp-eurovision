@@ -1,0 +1,78 @@
+/* ── optica-modals.css ───────────────────────────────────────────────────────── */
+
+.glass-modal-card {
+  border-radius: var(--radius-lg) !important;
+  border: 1px solid var(--border) !important;
+  background: var(--surface) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  backdrop-filter: blur(20px) !important;
+  box-shadow: var(--shadow-xl, 0 24px 48px rgba(0,0,0,0.22)) !important;
+  overflow: hidden;
+  max-width: 520px;
+  width: 100%;
+}
+.glass-modal-card--wide { max-width: 660px; }
+
+.glass-modal-head {
+  background: linear-gradient(135deg, rgba(144,111,225,0.14), rgba(236,72,153,0.08)) !important;
+  border-bottom: 1px solid var(--border-light) !important;
+  padding: 1rem 1.5rem !important;
+}
+.glass-modal-head .modal-card-title {
+  color: var(--text-primary) !important;
+  font-weight: 700 !important;
+  font-size: 0.95rem !important;
+}
+
+.glass-modal-body {
+  background: transparent !important;
+  padding: 1.25rem 1.5rem !important;
+  max-height: 62vh;
+  overflow-y: auto;
+}
+.glass-modal-body::-webkit-scrollbar { width: 5px; }
+.glass-modal-body::-webkit-scrollbar-track { background: transparent; }
+.glass-modal-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
+
+.glass-modal-foot {
+  background: transparent !important;
+  border-top: 1px solid var(--border-light) !important;
+  padding: 0.85rem 1.5rem !important;
+}
+
+.confirm-message { color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5; }
+
+/* Inputs dentro del modal */
+:deep(.glass-modal-body .label) { font-size: 0.74rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.2rem; }
+:deep(.glass-modal-body .input),
+:deep(.glass-modal-body .select select),
+:deep(.glass-modal-body .textarea) {
+  background: var(--surface-raised) !important;
+  border-color: var(--border) !important;
+  color: var(--text-primary) !important;
+  font-size: 0.87rem;
+}
+:deep(.glass-modal-body .input:focus),
+:deep(.glass-modal-body .select select:focus),
+:deep(.glass-modal-body .textarea:focus) {
+  border-color: var(--c-primary) !important;
+  box-shadow: 0 0 0 2px var(--c-primary-alpha) !important;
+}
+
+/* ── Form section title ── */
+.form-section-title {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--c-primary);
+  margin-bottom: 0.85rem;
+  display: flex;
+  align-items: center;
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 0.7rem;
+  margin-bottom: 0.5rem;
+}

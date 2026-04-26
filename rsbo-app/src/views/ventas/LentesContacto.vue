@@ -1,5 +1,5 @@
 <template>
-  <section class="lc-ventas-section" v-motion-fade-visible-once>
+  <div class="view-hero">
     <header class="page-section-header">
       <div>
         <span class="lentes-pill">
@@ -27,7 +27,9 @@
         </div>
       </div>
     </header>
+  </div>
 
+  <section class="view-main">
     <div class="coming-soon-box">
       <i class="fas fa-hard-hat coming-soon-box__icon"></i>
       <p class="coming-soon-box__title">Módulo en desarrollo</p>
@@ -41,9 +43,19 @@
 </script>
 
 <style scoped>
-.lc-ventas-section {
-  padding: 1.5rem;
+/* Se eliminó .lc-ventas-section para permitir bloques independientes en el layout */
+.view-hero {
+  margin: 1.25rem 1.25rem 0;
 }
+
+.view-main {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+
 
 .lentes-pill {
   display: inline-flex;

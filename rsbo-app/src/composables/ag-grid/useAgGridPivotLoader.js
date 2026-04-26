@@ -94,16 +94,20 @@ export function useAgGridPivotLoader({
           });
           rowsInCacheCount.value = cache.size;
 
-          // Actualizar nodos en el grid
+          // Actualizar nodos en el grid en lote
           if (gridApi.value) {
+            const nodesToRefresh = [];
             realRows.forEach(row => {
               const id = rowIdGetter(row);
               const node = gridApi.value.getRowNode(String(id));
               if (node) {
                 node.setData(row);
-                gridApi.value.refreshCells({ rowNodes: [node], force: true });
+                nodesToRefresh.push(node);
               }
             });
+            if (nodesToRefresh.length > 0) {
+              gridApi.value.refreshCells({ rowNodes: nodesToRefresh, force: true });
+            }
           }
         } catch (e) {
           console.error("[PivotLoader] FASE 2 error:", e);

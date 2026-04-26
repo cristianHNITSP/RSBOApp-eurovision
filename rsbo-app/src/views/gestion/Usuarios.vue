@@ -1,5 +1,5 @@
 <template>
-  <section class="panel-usuarios-section">
+  <div class="view-hero">
     <UserBanner
       ref="bannerRef"
       :user="selectedUser"
@@ -14,7 +14,9 @@
       @soft-delete="confirmSoftDelete"
       @restore="confirmRestore"
     />
+  </div>
 
+  <section class="view-main">
     <UsuariosHeader :stats="stats" :roles="roles" />
 
     <UsuariosFilters
@@ -39,31 +41,33 @@
       @avatar-picked="onAvatarPicked"
       @update:selected-user="selectedUser = $event"
     />
-
-    <UserEditModal
-      v-model="editOpen"
-      :user="editUser"
-      :roles="roles"
-      :saving="saving"
-      @save="saveEdit"
-    />
-    <UserPasswordModal
-      v-model="passOpen"
-      :user="passUser"
-      :saving="saving"
-      @save="savePassword"
-      @toast="toast"
-    />
-    <UserCreateModal
-      v-model="createOpen"
-      :roles="roles"
-      :saving="saving"
-      :fallback-avatar="FALLBACK_AVATAR"
-      @save="createUser"
-      @toast="toast"
-    />
   </section>
+
+  <UserEditModal
+    v-model="editOpen"
+    :user="editUser"
+    :roles="roles"
+    :saving="saving"
+    @save="saveEdit"
+  />
+  <UserPasswordModal
+    v-model="passOpen"
+    :user="passUser"
+    :saving="saving"
+    @save="savePassword"
+    @toast="toast"
+  />
+  <UserCreateModal
+    v-model="createOpen"
+    :roles="roles"
+    :saving="saving"
+    :fallback-avatar="FALLBACK_AVATAR"
+    @save="createUser"
+    @toast="toast"
+  />
 </template>
+
+
 
 <script setup>
 import { onMounted } from "vue";

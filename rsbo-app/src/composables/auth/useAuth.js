@@ -57,13 +57,14 @@ export function useAuth() {
       hasIcon: true,
       type: 'is-danger',
       onConfirm: async () => {
-        try {
-          await api.post('/access/logout', {})
-        } catch (err) {
-          console.error('Error en logout:', err)
-        }
+        // Intentamos avisar al server, pero no bloqueamos la salida si el server tarda
+        api.post('/access/logout', {}).catch(() => {})
+
+        window.dispatchEvent(new CustomEvent('auth:session-expired'))
         user.value = null
-        router.push('/')
+        
+        // Redirigir inmediatamente
+        window.location.href = '/'
         labToast.success('Sesión cerrada correctamente');
       }
     })

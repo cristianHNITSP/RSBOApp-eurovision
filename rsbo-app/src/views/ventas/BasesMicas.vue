@@ -1,8 +1,8 @@
 <template>
-  <section class="lab-view bm-section" v-motion-fade-visible-once>
-
-    <!-- ── Hero ───────────────────────────────────────────────────────────── -->
+  <!-- ── Hero ───────────────────────────────────────────────────────────── -->
+  <div class="view-hero">
     <header class="lab-hero">
+
       <div class="lab-hero__left">
         <span class="bm-ventas-pill">
           <i class="fas fa-flask mr-1"></i>
@@ -43,8 +43,11 @@
         </div>
       </div>
     </header>
+  </div>
 
+  <section class="view-main">
     <!-- ── Main glass ─────────────────────────────────────────────────────── -->
+
     <div class="glass">
       <b-tabs v-model="activeTab" type="is-toggle" class="main-tabs" expanded :animated="false">
 
@@ -621,9 +624,10 @@
       </div>
     </b-modal>
   </teleport>
-
   </section>
 </template>
+
+
 
 <script setup>
 import { ref } from "vue";
@@ -699,15 +703,18 @@ function printVoucher() {
 
 <style>
 /* ── Shared structure (mirrors Laboratorio styles) ── */
-.bm-section {
-  border-radius: 14px;
-  padding: 1.5rem;
-  border: 1px solid var(--border-solid);
-  box-shadow: var(--shadow-soft);
+/* Se eliminó .bm-section para permitir bloques independientes en el layout */
+.view-hero {
+  margin: 1.25rem 1.25rem 0;
+}
+
+.view-main {
+  padding: 1.25rem;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.25rem;
 }
+
 
 .lab-hero {
   display: flex;

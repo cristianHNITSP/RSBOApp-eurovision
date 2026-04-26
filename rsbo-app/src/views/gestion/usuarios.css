@@ -1,16 +1,18 @@
 /* PANEL */
-.panel-usuarios-section {
-  border-radius: 12px;
-  padding: 1.5rem;
-  background-color: var(--surface-solid);
-  border: 1px solid var(--border-solid);
-  box-shadow: var(--shadow-md);
+/* PANEL */
+/* Se eliminó .panel-usuarios-section para permitir bloques independientes en el layout */
+
+.view-hero {
+  margin: 1.25rem 1.25rem 0;
+}
+
+.view-main {
+  padding: 1.25rem;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  animation: panel-fade-in 220ms ease-out;
-  overflow: hidden;
+  gap: 1.25rem;
 }
+
 
 @keyframes panel-fade-in {
   from {

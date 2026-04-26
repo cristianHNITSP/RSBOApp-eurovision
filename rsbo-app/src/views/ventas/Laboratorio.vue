@@ -1,7 +1,9 @@
 <template>
-  <section class="lab-view laboratorio-section" v-motion-fade-visible-once>
+  <div class="view-hero">
     <LabHero />
+  </div>
 
+  <section class="view-main">
     <div class="glass">
       <DynamicTabs v-model="lab.activeMainTab.value" :tabs="LAB_TABS">
         <template #pedidos><PedidosTab /></template>
@@ -10,12 +12,13 @@
         <template #correcciones><CorreccionesTab /></template>
       </DynamicTabs>
     </div>
-
-    <BarcodeModal />
-    <CorrectionModal />
-
   </section>
+
+  <BarcodeModal />
+  <CorrectionModal />
 </template>
+
+
 
 <script setup>
 import { provide } from "vue";

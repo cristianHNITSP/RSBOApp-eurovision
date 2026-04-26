@@ -164,14 +164,12 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(
-    112deg,
-    transparent 10%,
-    rgba(167, 139, 250, 0.08) 40%,
-    rgba(139, 92, 246, 0.18) 50%,
-    rgba(167, 139, 250, 0.08) 60%,
-    transparent 90%
-  );
+  background: linear-gradient(112deg,
+      transparent 10%,
+      rgba(167, 139, 250, 0.08) 40%,
+      rgba(139, 92, 246, 0.18) 50%,
+      rgba(167, 139, 250, 0.08) 60%,
+      transparent 90%);
   background-size: 250% 100%;
   animation: liquid-sweep 2.4s ease-in-out infinite;
 }
@@ -182,22 +180,32 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(
-    ellipse 60% 40% at 50% 50%,
-    rgba(121, 87, 213, 0.08) 0%,
-    transparent 70%
-  );
+  background: radial-gradient(ellipse 60% 40% at 50% 50%,
+      rgba(121, 87, 213, 0.08) 0%,
+      transparent 70%);
   animation: glow-pulse 3s ease-in-out infinite;
 }
 
 @keyframes liquid-sweep {
-  0%   { background-position: 240% center; }
-  100% { background-position: -240% center; }
+  0% {
+    background-position: 240% center;
+  }
+
+  100% {
+    background-position: -240% center;
+  }
 }
 
 @keyframes glow-pulse {
-  0%, 100% { opacity: 0.6; }
-  50%       { opacity: 1; }
+
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+
+  50% {
+    opacity: 1;
+  }
 }
 
 [data-theme="dark"] .grid-loading-veil {
@@ -216,7 +224,7 @@
   border-right-color: rgba(167, 139, 250, 0.55);
   animation: spin 0.9s cubic-bezier(0.5, 0, 0.5, 1) infinite;
   box-shadow: 0 0 14px rgba(121, 87, 213, 0.35),
-              inset 0 0 8px rgba(167, 139, 250, 0.08);
+    inset 0 0 8px rgba(167, 139, 250, 0.08);
 }
 
 .grid-loading-veil__label {
@@ -230,7 +238,9 @@
 }
 
 /* Enter: instant (no flash of old data) */
-.veil-enter-active { transition: none; }
+.veil-enter-active {
+  transition: none;
+}
 
 /* Leave: liquid evaporate — scales up slightly and blurs out */
 .veil-leave-active {
@@ -239,6 +249,7 @@
     transform 340ms cubic-bezier(0.34, 1.2, 0.64, 1),
     filter 340ms ease;
 }
+
 .veil-leave-to {
   opacity: 0;
   transform: scale(1.018);
@@ -290,13 +301,19 @@
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .dev-col-badge,
 .dev-row-badge {
-  display: none; /* Reemplazados por el nuevo status-badge */
+  display: none;
+  /* Reemplazados por el nuevo status-badge */
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -485,13 +502,15 @@
   color: var(--text-primary) !important;
   font-weight: 800 !important;
   box-sizing: border-box !important;
-  text-align: right; /* Para celdas numéricas */
+  text-align: right;
+  /* Para celdas numéricas */
 }
 
 [data-theme="dark"] .ag-grid-glass :deep(.ag-cell-inline-editing) {
   background: var(--surface-solid) !important;
   border-color: var(--c-primary-light) !important;
 }
+
 /* ═══════════════════════════════════════════════════════════════
    CELL FOCUS (Single Click)
    ═══════════════════════════════════════════════════════════════ */

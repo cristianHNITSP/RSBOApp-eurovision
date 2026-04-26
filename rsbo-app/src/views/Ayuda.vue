@@ -1,8 +1,8 @@
 <template>
-  <section class="ayuda-section" v-motion-fade-visible-once>
-
-    <!-- Encabezado -->
+  <!-- Encabezado -->
+  <div class="view-hero">
     <header class="help-header">
+
       <div class="help-title-block">
         <span class="help-pill">
           <b-icon :icon="ICONS.help" size="is-small" class="mr-1" />
@@ -66,8 +66,11 @@
         </p>
       </div>
     </header>
+  </div>
 
+  <section class="view-main">
     <!-- Buscador -->
+
     <div class="help-search">
       <b-field label="Buscar en la ayuda" label-position="on-border" custom-class="help-search-label">
         <b-input ref="searchInputRef" :value="search"
@@ -1208,6 +1211,8 @@
   </section>
 </template>
 
+
+
 <script setup>
 import { computed, ref, watch, nextTick, onMounted, onBeforeUnmount } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -1742,17 +1747,18 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
   scroll-margin-top: 96px;
 }
 
-.ayuda-section {
-  border-radius: 14px;
-  padding: 1.5rem;
-  background-color: var(--surface-solid);
-  border: 1px solid var(--border-solid);
-  box-shadow: var(--shadow-soft);
+/* Se eliminó .ayuda-section para permitir bloques independientes en el layout */
+.view-hero {
+  margin: 1.25rem 1.25rem 0;
+}
+
+.view-main {
+  padding: 1.25rem;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  animation: panel-fade-in 220ms ease-out;
+  gap: 1.25rem;
 }
+
 
 .help-header {
   display: flex;
@@ -2449,9 +2455,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeyDown));
 }
 
 @media (max-width: 768px) {
-  .ayuda-section {
-    padding: 1rem;
-  }
+
 
   .help-header {
     flex-direction: column;

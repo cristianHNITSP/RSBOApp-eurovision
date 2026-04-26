@@ -8,6 +8,67 @@
   overflow: hidden;
 }
 
+.panel__head {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border-light);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.panel__title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 1000;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.panel__badge {
+  font-size: 0.75rem;
+  background: var(--c-primary-alpha);
+  color: var(--c-primary);
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-weight: 900;
+}
+
+.panel__hint {
+  margin: 0.25rem 0 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.panel__headActions {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.panel__headActions>* {
+  min-width: 0;
+}
+
+/* Limitar el ancho de los selectores en el header para que no empujen todo */
+.panel__headActions .field {
+  max-width: 850px;
+  flex: 1;
+}
+
+
+.panel__body {
+  padding: 1.25rem;
+}
+
+
+
 .panel--sticky {
   position: sticky;
   top: 0.85rem;
@@ -83,10 +144,21 @@
 }
 
 /* Spacers */
-.spacer-sm { height: 32px; }
-.spacer-md { height: 48px; }
-.spacer-lg { height: 60px; }
-.spacer-xl { height: 220px; }
+.spacer-sm {
+  height: 32px;
+}
+
+.spacer-md {
+  height: 48px;
+}
+
+.spacer-lg {
+  height: 60px;
+}
+
+.spacer-xl {
+  height: 220px;
+}
 
 /* ============================================================
    LOGS SECTION — .logs-*  .log-card*

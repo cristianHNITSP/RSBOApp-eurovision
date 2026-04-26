@@ -1,15 +1,17 @@
 /* rsbo-app/src/views/ventas/Laboratorio.css */
 
-.laboratorio-section {
-  border-radius: 14px;
-  padding: 1.5rem;
-  border: 1px solid var(--border-solid);
-  box-shadow: var(--shadow-soft);
+/* Se eliminó .laboratorio-section para permitir bloques independientes en el layout */
+.view-hero {
+  margin: 1.25rem 1.25rem 0;
+}
+
+.view-main {
+  padding: 1.25rem;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  scrollbar-gutter: stable both-edges;
+  gap: 1.25rem;
 }
+
 
 .glass {
   border: 1px solid var(--border);

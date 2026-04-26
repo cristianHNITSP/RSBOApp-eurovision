@@ -2,62 +2,29 @@
 <template>
   <section class="navtools">
     <!-- 1. META & BADGE -->
-    <NavtoolsMeta
-      :tipo-human="tipoHuman"
-      :material="material"
-      :tratamientos-label="tratamientosLabel"
-      :total-rows="totalRows"
-      :server-badge="serverBadge"
-      :last-saved-label="lastSavedLabel"
-      :is-fullscreen="isFullscreen"
-      :internal-tabs="internalTabs"
-      :active-internal-tab="activeInternalTab"
-      @toggle-fullscreen="emit('toggle-fullscreen')"
-      @update:internal="emit('update:internal', $event)"
-    />
+    <NavtoolsMeta :tipo-human="tipoHuman" :material="material" :tratamientos-label="tratamientosLabel"
+      :total-rows="totalRows" :server-badge="serverBadge" :last-saved-label="lastSavedLabel"
+      :is-fullscreen="isFullscreen" :internal-tabs="internalTabs" :active-internal-tab="activeInternalTab"
+      @toggle-fullscreen="emit('toggle-fullscreen')" @update:internal="emit('update:internal', $event)" />
 
     <!-- 2. RIBBON ACTIONS -->
-    <NavtoolsRibbon
-      v-model:activeTab="activeTab"
-      :can-undo="canUndo"
-      :can-redo="canRedo"
-      :is-mobile="isMobile"
-      :op-pending="opPending"
-      :row-action-label="rowActionLabel"
-      :col-action-label="colActionLabel"
-      :allow-columns="allowColumns"
-      :dirty="dirty"
-      :saving="saving"
-      @undo="handleUndoClick"
-      @redo="handleRedoClick"
-      @copy="handleCopyClick"
-      @cut="handleCutClick"
-      @paste="handlePasteClick"
-      @add-row="openAddRowModal"
-      @add-column="openAddColumnModal"
-      @save="handleSaveInternal"
-      @discard="handleDiscard"
-      @refresh="handleRefreshInternal"
-      @seed="handleSeedInternal"
-      @export="emit('export')"
-    />
+    <NavtoolsRibbon class="p-2" v-model:activeTab="activeTab" :can-undo="canUndo" :can-redo="canRedo"
+      :is-mobile="isMobile" :op-pending="opPending" :row-action-label="rowActionLabel"
+      :col-action-label="colActionLabel" :allow-columns="allowColumns" :dirty="dirty" :saving="saving"
+      @undo="handleUndoClick" @redo="handleRedoClick" @copy="handleCopyClick" @cut="handleCutClick"
+      @paste="handlePasteClick" @add-row="openAddRowModal" @add-column="openAddColumnModal" @save="handleSaveInternal"
+      @discard="handleDiscard" @refresh="handleRefreshInternal" @seed="handleSeedInternal" @export="emit('export')" />
 
-    <!-- 3. FORMULA BAR (FX) -->
+    <!-- 3. FORMULA BAR (FX) 
     <NavtoolsFxBar
       v-model="localValue"
       @fx-input="handleFxInput"
       @apply="applyChange"
     />
-
+    -->
     <!-- 4. OVERLAY DIRTY -->
-    <DirtyFloat
-      :dirty="dirty"
-      :saving="saving"
-      :op-pending="opPending"
-      :change-key="dirtyChangeTick"
-      @save="handleSaveInternal"
-      @discard="handleDiscard"
-    />
+    <DirtyFloat :dirty="dirty" :saving="saving" :op-pending="opPending" :change-key="dirtyChangeTick"
+      @save="handleSaveInternal" @discard="handleDiscard" />
   </section>
 </template>
 
@@ -78,19 +45,19 @@ import { useNavtoolsHistory } from "../../composables/ag-grid/navtools/useNavtoo
 import { useNavtoolsModals } from "../../composables/ag-grid/navtools/useNavtoolsModals"
 
 const props = defineProps({
-  modelValue:  { type: [Number, String], default: '' },
-  dirty:       { type: Boolean, default: false },
-  saving:      { type: Boolean, default: false },
-  totalRows:   { type: Number,  default: 0 },
-  sheetName:   { type: String,  default: '' },
-  tipoMatriz:  { type: String,  default: '' },
-  material:    { type: String,  default: '' },
-  tratamientos: { type: Array,   default: () => [] },
+  modelValue: { type: [Number, String], default: '' },
+  dirty: { type: Boolean, default: false },
+  saving: { type: Boolean, default: false },
+  totalRows: { type: Number, default: 0 },
+  sheetName: { type: String, default: '' },
+  tipoMatriz: { type: String, default: '' },
+  material: { type: String, default: '' },
+  tratamientos: { type: Array, default: () => [] },
   lastSavedAt: { type: [String, Date], default: null },
   gridCanUndo: { type: Boolean, default: false },
   gridCanRedo: { type: Boolean, default: false },
   isFullscreen: { type: Boolean, default: false },
-  internalTabs:  { type: Array, default: () => [] },
+  internalTabs: { type: Array, default: () => [] },
   activeInternalTab: { type: String, default: "" }
 })
 
@@ -178,18 +145,18 @@ const lastSavedLabel = computed(() => {
 })
 
 // ─── 6. Event Handlers ──────────────────────────────────────────────
-const handleUndoClick  = () => { 
-  if (props.gridCanUndo) emit('grid-undo'); 
+const handleUndoClick = () => {
+  if (props.gridCanUndo) emit('grid-undo');
   else undo();
   safeToast('Acción deshecha (historial local).', 'is-light');
 }
-const handleRedoClick  = () => { 
-  if (props.gridCanRedo) emit('grid-redo'); 
+const handleRedoClick = () => {
+  if (props.gridCanRedo) emit('grid-redo');
   else redo();
   safeToast('Acción rehecha (historial local).', 'is-light');
 }
-const handleCopyClick  = () => { emit('grid-copy'); copyCell() }
-const handleCutClick   = () => { emit('grid-cut'); cutCell() }
+const handleCopyClick = () => { emit('grid-copy'); copyCell() }
+const handleCutClick = () => { emit('grid-cut'); cutCell() }
 const handlePasteClick = () => { emit('grid-paste'); pasteCell() }
 
 const handleFxInput = (val) => { fxDirty.value = true; emit('fx-input', val) }
@@ -231,7 +198,7 @@ const handleDiscard = () => {
     confirmText: 'Descartar',
     type: 'is-danger',
     container: containerSelector,
-    onConfirm: () => { 
+    onConfirm: () => {
       emit('discard-changes');
       safeToast('Cambios descartados.', 'is-warning');
       setTimeout(() => { if (props.isFullscreen) { /* refresh hook */ } }, 100);

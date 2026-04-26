@@ -11,13 +11,9 @@
 
         <div class="panel__body">
           <b-field label="Planilla" class="mb-2">
-            <SheetPickerInput
-              v-model="lab.selectedSheetId.value"
-              :sheet-title="lab.sheetTitle"
-              :search-fn="lab.searchSheets"
-              :results="lab.sheetSearchResults.value"
-              :loading="lab.sheetSearchLoading.value"
-            />
+            <SheetPickerInput v-model="lab.selectedSheetId.value" :sheet-title="lab.sheetTitle"
+              :search-fn="lab.searchSheets" :results="lab.sheetSearchResults.value"
+              :loading="lab.sheetSearchLoading.value" />
           </b-field>
 
           <div v-if="lab.selectedSheet.value" class="sheet-card">
@@ -32,37 +28,22 @@
             </div>
 
             <div class="sheet-card__actions">
-              <b-button
-                type="is-primary"
-                icon-left="sync"
-                expanded
-                :loading="lab.loadingItems.value"
-                @click="lab.refreshItems"
-              >
+              <b-button type="is-primary" icon-left="sync" expanded :loading="lab.loadingItems.value"
+                @click="lab.refreshItems">
                 Actualizar inventario
               </b-button>
 
               <div class="columns is-mobile is-variable is-2 mt-2">
                 <div class="column">
-                  <b-button
-                    type="is-light"
-                    expanded
-                    icon-left="print"
-                    :disabled="!lab.paginatedCatalog.value.length"
-                    @click="lab.printCatalogPage"
-                  >
+                  <b-button type="is-light" expanded icon-left="print" :disabled="!lab.paginatedCatalog.value.length"
+                    @click="lab.printCatalogPage">
                     Imprimir / PDF
                   </b-button>
                 </div>
                 <div class="column">
-                  <b-button
-                    type="is-light"
-                    expanded
-                    icon-left="download"
-                    :disabled="!lab.filteredCatalogRows.value.length"
-                    :loading="lab.loadingExportCat.value"
-                    @click="lab.exportCatalogCsv"
-                  >
+                  <b-button type="is-light" expanded icon-left="download"
+                    :disabled="!lab.filteredCatalogRows.value.length" :loading="lab.loadingExportCat.value"
+                    @click="lab.exportCatalogCsv">
                     Excel
                   </b-button>
                 </div>
@@ -73,11 +54,8 @@
           <hr class="soft-hr" />
 
           <b-field label="Filtrar códigos" class="mb-2">
-            <b-input
-              v-model="lab.catalogQuery.value"
-              icon="search"
-              placeholder="Código, parámetros (SPH/CYL/ADD/BASE)…"
-            />
+            <b-input v-model="lab.catalogQuery.value" icon="search"
+              placeholder="Código, parámetros (SPH/CYL/ADD/BASE)…" />
           </b-field>
 
           <b-field label="Mostrar" class="mb-0">
@@ -103,13 +81,8 @@
           </div>
 
           <div class="panel__headActions">
-            <b-button
-              type="is-light"
-              icon-left="sync"
-              :disabled="!lab.selectedSheetId.value"
-              :loading="lab.loadingItems.value"
-              @click="lab.refreshItems"
-            >
+            <b-button type="is-light" icon-left="sync" :disabled="!lab.selectedSheetId.value"
+              :loading="lab.loadingItems.value" @click="lab.refreshItems">
               Preparar / Recargar
             </b-button>
           </div>
@@ -129,15 +102,9 @@
           </div>
 
           <div v-else class="qr-grid">
-            <button
-              v-for="row in lab.paginatedCatalog.value"
-              :key="row._k"
-              v-memo="[row._k, row.existencias, row.codebar]"
-              class="qr-card"
-              type="button"
-              @click="lab.copyCodebar(row.codebar)"
-              :title="'Copiar: ' + (row.codebar || '')"
-            >
+            <button v-for="row in lab.paginatedCatalog.value" :key="row._k"
+              v-memo="[row._k, row.existencias, row.codebar]" class="qr-card" type="button"
+              @click="lab.copyCodebar(row.codebar)" :title="'Copiar: ' + (row.codebar || '')">
               <div class="qr-card__head">
                 <div class="qr-card__title">{{ lab.buildRowTitle(row, lab.selectedSheet.value) }}</div>
                 <span class="tag is-light qty-tag" :class="row.existencias > 0 ? 'is-success' : ''">
@@ -171,25 +138,15 @@
           </div>
 
           <nav v-if="lab.filteredCatalogRows.value.length > lab.catalogPageSize.value" class="pager">
-            <b-button
-              size="is-small"
-              type="is-light"
-              icon-left="chevron-left"
-              :disabled="lab.catalogPage.value === 1"
-              @click="lab.catalogPage.value--"
-            >
+            <b-button size="is-small" type="is-light" icon-left="chevron-left" :disabled="lab.catalogPage.value === 1"
+              @click="lab.catalogPage.value--">
               Prev
             </b-button>
 
             <span class="pager__text">Página {{ lab.catalogPage.value }} / {{ lab.catalogPages.value }}</span>
 
-            <b-button
-              size="is-small"
-              type="is-light"
-              icon-right="chevron-right"
-              :disabled="lab.catalogPage.value === lab.catalogPages.value"
-              @click="lab.catalogPage.value++"
-            >
+            <b-button size="is-small" type="is-light" icon-right="chevron-right"
+              :disabled="lab.catalogPage.value === lab.catalogPages.value" @click="lab.catalogPage.value++">
               Next
             </b-button>
           </nav>

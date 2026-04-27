@@ -1,0 +1,268 @@
+/* rsbo-app/src/components/tabsmanager/TabsBar.css */
+
+.tabs-wrapper {
+  position: relative;
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  gap: 0.35rem;
+  padding: 0.55rem 0.55rem 0;
+  border-bottom: 1px solid var(--border);
+  -webkit-overflow-scrolling: touch;
+}
+
+.tabs-wrapper--glass {
+  background: var(--surface-overlay);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.tabs-wrapper::before,
+.tabs-wrapper::after {
+  content: "";
+  position: sticky;
+  top: 0;
+  width: 20px;
+  height: 100%;
+  flex: 0 0 20px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.tabs-wrapper::before {
+  left: 0;
+  margin-left: -0.55rem;
+  background: linear-gradient(90deg, var(--surface-raised), transparent);
+}
+
+.tabs-wrapper::after {
+  right: 0;
+  margin-right: -0.55rem;
+  background: linear-gradient(270deg, var(--surface-raised), transparent);
+}
+
+.tabs-wrapper::-webkit-scrollbar {
+  height: 8px;
+}
+
+.tabs-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35);
+  border-radius: 999px;
+}
+
+.tabs-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tab-item {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  max-width: 280px;
+  padding: 0.45rem 2.1rem 0.45rem 0.75rem;
+  font-size: 0.86rem;
+  border-radius: 12px 12px 0 0;
+  cursor: pointer;
+  user-select: none;
+  border: 1px solid var(--border);
+  border-bottom: none;
+  transition: transform 0.16s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease;
+  will-change: transform;
+}
+
+.tab-item--glass {
+  background: var(--surface-overlay);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: var(--text-primary);
+}
+
+.tab-item:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.tab-item.active {
+  background: linear-gradient(90deg, rgba(121, 87, 213, 0.18), rgba(236, 72, 153, 0.10));
+  color: var(--text-primary);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--c-primary-alpha);
+}
+
+.tab-item.active::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: -1px;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(121, 87, 213, 1), rgba(236, 72, 153, 0.95));
+}
+
+.tab-agregar {
+  background: var(--text-primary);
+  color: var(--surface-solid);
+  border-color: var(--border-strong);
+  padding-right: 0.85rem;
+}
+
+.tab-agregar:hover {
+  background: var(--text-secondary);
+  box-shadow: var(--shadow-lg);
+}
+
+.tab-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding-right: 0.65rem;
+  line-height: 1.05;
+}
+
+.tab-label {
+  font-weight: 900;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tab-sku {
+  margin-top: 3px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-subtle);
+}
+
+.tab-item.active .tab-sku {
+  color: var(--text-muted);
+}
+
+.tab-sku--empty {
+  opacity: 0.55;
+  font-weight: 700;
+}
+
+.tab-menu-btn {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 1px solid var(--border);
+  background: var(--surface-overlay);
+  line-height: 1;
+  cursor: pointer;
+  font-size: 16px;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  opacity: 0.92;
+  transition: transform 0.14s ease, box-shadow 0.2s ease, background 0.2s ease, opacity 0.2s ease;
+}
+
+.tab-menu-btn:hover {
+  opacity: 1;
+  transform: translateY(-50%) scale(1.03);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── Pagination sentinels ── */
+.tab-sentinel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  height: 34px;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0 0.5rem;
+  gap: 0.3rem;
+  align-self: flex-end;
+  margin-bottom: 2px;
+  user-select: none;
+}
+
+.tab-prior-pill {
+  background: var(--c-primary-alpha);
+  color: var(--c-primary);
+  border: 1px solid var(--c-primary);
+  cursor: pointer;
+  transition: background 150ms, opacity 150ms;
+  min-width: 44px;
+}
+.tab-prior-pill:hover {
+  background: var(--c-primary);
+  color: #fff;
+}
+
+.tab-loading-pill {
+  background: var(--surface);
+  color: var(--text-muted);
+  border: 1px dashed var(--border);
+  min-width: 36px;
+  pointer-events: none;
+}
+
+.tab-sentinel-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: tab-spin 0.6s linear infinite;
+}
+
+@keyframes tab-spin {
+  to { transform: rotate(360deg); }
+}
+
+.skeleton-tab {
+  background: transparent;
+  border-color: transparent;
+  cursor: default;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.skeleton-bar {
+  display: block;
+  width: 120px;
+  height: 0.85rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(226, 232, 240, 0.9) 0%, rgba(248, 250, 252, 0.9) 50%, rgba(226, 232, 240, 0.9) 100%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.2s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes tabFocusPulse {
+  0% { box-shadow: 0 0 0 0 rgba(121, 87, 213, 0.55), var(--shadow-lg); }
+  35% { box-shadow: 0 0 0 6px rgba(121, 87, 213, 0.28), var(--shadow-lg); }
+  70% { box-shadow: 0 0 0 3px rgba(121, 87, 213, 0.15), var(--shadow-lg); }
+  100% { box-shadow: 0 0 0 0 rgba(121, 87, 213, 0), var(--shadow-lg); }
+}
+
+.tab-item.tab-focus-pulse {
+  animation: tabFocusPulse 0.9s ease forwards;
+  border-color: rgba(121, 87, 213, 0.55) !important;
+}
+
+.sortable-ghost {
+  opacity: 0.4;
+  background: var(--c-primary-alpha) !important;
+}

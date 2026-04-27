@@ -2,247 +2,38 @@
 <template>
   <div>
     <!-- TABS -->
-    <div ref="tabsContainer" class="tabs-wrapper tabs-wrapper--glass">
-      <template v-if="loadingTabs">
-        <div v-for="n in 3" :key="'sk-' + n" class="tab-item skeleton-tab">
-          <span class="skeleton-bar"></span>
-        </div>
-      </template>
-
-      <template v-else>
-        <!-- Left sentinel: triggers load-prior when scrolled into view -->
-        <div
-          v-if="hasPrior || loadingPrior"
-          ref="leftSentinel"
-          class="tab-sentinel tab-prior-pill"
-          @click="!loadingPrior && emit('load-prior')"
-          :title="loadingPrior ? 'Cargando…' : `Cargar ${priorCount} planillas anteriores`"
-        >
-          <span v-if="loadingPrior" class="tab-sentinel-spinner"></span>
-          <template v-else>
-            <i class="fas fa-chevron-left"></i>
-            <span>{{ priorCount }}</span>
-          </template>
-        </div>
-
-        <div v-for="planilla in sheets" :key="planilla.id" :data-id="planilla.id" :class="[
-          'tab-item',
-          'tab-item--glass',
-          { 'tab-agregar': planilla.id === 'nueva', active: planilla.id === activeId }
-        ]" @click="handleTabClick(planilla.id)">
-          <template v-if="planilla.id === 'nueva'">
-            <i class="fas fa-plus"></i>
-          </template>
-
-          <template v-else>
-            <div class="tab-text">
-              <span class="tab-label" :title="planilla.name">{{ planilla.name }}</span>
-
-              <span v-if="planilla.sku" class="tab-sku" :title="planilla.sku">
-                {{ planilla.sku }}
-              </span>
-              <span v-else class="tab-sku tab-sku--empty" title="Sin SKU (pendiente de backfill)">
-                SIN-SKU
-              </span>
-            </div>
-
-            <button class="tab-menu-btn" title="Más acciones" aria-label="Más acciones"
-              @click.stop="openActions(planilla)">
-              ⋮
-            </button>
-          </template>
-        </div>
-
-        <!-- Right sentinel: IntersectionObserver triggers load-more -->
-        <div
-          v-if="hasMore || loadingMore"
-          ref="rightSentinel"
-          class="tab-sentinel tab-loading-pill"
-        >
-          <span class="tab-sentinel-spinner"></span>
-        </div>
-      </template>
-    </div>
+    <TabsBar
+      :sheets="sheets"
+      :active-id="activeId"
+      :loading-tabs="loadingTabs"
+      :has-more="hasMore"
+      :has-prior="hasPrior"
+      :loading-more="loadingMore"
+      :loading-prior="loadingPrior"
+      :prior-count="priorCount"
+      @tab-click="handleTabClick"
+      @open-actions="openActions"
+      @load-more="$emit('load-more')"
+      @load-prior="$emit('load-prior')"
+      @reorder="handleReorder"
+    />
 
     <!-- CONTENIDO -->
     <div class="plantillas-contenedor">
       <!-- NUEVA -->
-      <div class="box" v-if="activeId === 'nueva'">
-        <form @submit.prevent="handleCrear">
-          <!-- PROVEEDOR / MARCA (CREAR) -->
-          <div class="columns is-multiline">
-            <div class="column is-12-mobile is-6-tablet">
-              <b-field label="Proveedor (opcional)">
-                <b-autocomplete v-model="newProveedorName" :data="filteredProveedorOptions"
-                  placeholder="Ej. Eurovisión / Luxottica / …" open-on-focus keep-first :clear-on-select="false"
-                  :max-height="220" :check-infinite-scroll="false" @select="onSelectProveedor">
-                  <template #empty>
-                    <span class="has-text-grey">Sin coincidencias (puedes crear uno nuevo escribiéndolo).</span>
-                  </template>
-                </b-autocomplete>
-              </b-field>
-            </div>
-
-            <div class="column is-12-mobile is-6-tablet">
-              <b-field label="Marca (opcional)">
-                <b-autocomplete v-model="newMarcaName" :data="filteredMarcaOptions"
-                  placeholder="Ej. Essilor / Zeiss / …" open-on-focus keep-first :clear-on-select="false"
-                  :max-height="220" :check-infinite-scroll="false" @select="onSelectMarca">
-                  <template #empty>
-                    <span class="has-text-grey">Sin coincidencias (puedes crear una nueva escribiéndola).</span>
-                  </template>
-                </b-autocomplete>
-              </b-field>
-            </div>
-          </div>
-
-          <!-- BASE -->
-          <b-field label="Selecciona la Base">
-            <div class="tabs tabs-opciones is-toggle is-small">
-              <ul>
-                <li v-for="base in props.catalog?.bases ?? []" :key="base.key" :class="{ 'is-active': selectedBase === base.key }"
-                  @click="selectBase(base.key)">
-                  <a>{{ base.label }}</a>
-                </li>
-              </ul>
-            </div>
-          </b-field>
-
-          <!-- MATERIALES -->
-          <b-field v-if="selectedBase && props.materialRequired" label="Selecciona el Material">
-            <div class="tabs tabs-opciones is-toggle is-small">
-              <ul>
-                <li v-for="mat in allMaterials" :key="mat" :class="[
-                  { 'is-active': selectedMaterial === mat },
-                  { 'is-disabled': !isMaterialAllowed(mat) }
-                ]" :aria-disabled="!isMaterialAllowed(mat)">
-                  <b-tooltip v-if="!isMaterialAllowed(mat)" :label="`No disponible con ${baseLabel}`" position="is-top"
-                    type="is-dark" multilined>
-                    <a @click.prevent>
-                      {{ mat }} <i class="fas fa-lock ml-1"></i>
-                    </a>
-                  </b-tooltip>
-
-                  <a v-else @click="selectMaterial(mat)">{{ mat }}</a>
-                </li>
-              </ul>
-            </div>
-
-            <p class="help is-danger mt-2" v-if="selectedBase && !hasAnyAllowedMaterial">
-              No hay materiales compatibles con la base seleccionada.
-            </p>
-           
-          </b-field>
-
-          <!-- TRATAMIENTO -->
-          <b-field v-if="props.showTratamiento && (props.materialRequired ? selectedMaterial : selectedBase)" label="Selecciona el Tratamiento">
-            <div class="tabs tabs-opciones is-toggle is-small">
-              <ul>
-                <li v-for="t in allowedTratamientos" :key="t.key"
-                  :class="{ 'is-active': selectedTratamientoKey === t.key }" @click="selectTratamiento(t.key)">
-                  <a>{{ t.label }}</a>
-                </li>
-              </ul>
-            </div>
-            <p class="help is-danger mt-2" v-if="selectedMaterial && !allowedTratamientos.length">
-              No hay tratamientos compatibles con la selección actual.
-            </p>
-          </b-field>
-
-          <!-- VARIANTE -->
-          <b-field v-if="props.showTratamiento && selectedTratamientoKey && varianteOptions.length" label="Selecciona la Variante">
-            <div class="tabs tabs-opciones is-toggle is-small">
-              <ul>
-                <li v-for="v in varianteOptions" :key="v" :class="{ 'is-active': selectedVariante === v }"
-                  @click="selectVariante(v)">
-                  <a>{{ v }}</a>
-                </li>
-              </ul>
-            </div>
-          </b-field>
-
-          <!-- ✅ DATOS DE COMPRA (CREAR) -->
-          <div class="action-card" style="margin-top: 1rem;">
-            <div class="action-icon"><i class="far fa-receipt"></i></div>
-            <div class="action-content">
-              <div class="action-title">Datos de compra (opcional)</div>
-              <div class="action-desc">
-                Al elegir <b>Fecha de compra</b>, la <b>Caducidad</b> se calcula automáticamente a {{
-                  DEFAULT_EXPIRY_MONTHS
-                }} meses.
-                Puedes editarla después.
-              </div>
-
-              <div class="columns is-multiline mt-2">
-
-                <div class="column is-12-mobile is-6-tablet">
-                  <b-field label="Precio de venta (actual) *"
-                    :type="newPrecioVenta !== '' && (!Number.isFinite(Number(newPrecioVenta)) || Number(newPrecioVenta) < 0) ? 'is-danger' : ''">
-                    <b-input v-model="newPrecioVenta" type="number" min="0" step="0.01" placeholder="Ej. 1200.00" />
-                    <p class="help is-danger" v-if="!String(newPrecioVenta ?? '').trim()"></p>
-                  </b-field>
-                </div>
-
-                <div class="column is-12-mobile is-6-tablet">
-                  <b-field label="Precio de compra (costo) *"
-                    :type="newPrecioCompra !== '' && (!Number.isFinite(Number(newPrecioCompra)) || Number(newPrecioCompra) < 0) ? 'is-danger' : ''">
-                    <b-input v-model="newPrecioCompra" type="number" min="0" step="0.01" placeholder="Ej. 850.00" />
-                    <p class="help is-danger" v-if="!String(newPrecioCompra ?? '').trim()"></p>
-                  </b-field>
-                </div>
-
-                <div class="column is-12-mobile is-6-tablet">
-                  <b-field label="Número de nota / factura">
-                    <b-input v-model.trim="newNumFactura" placeholder="Ej. FAC-10293" />
-                  </b-field>
-                </div>
-
-                <div class="column is-12-mobile is-6-tablet">
-                  <b-field label="Lote del producto">
-                    <b-input v-model.trim="newLoteProducto" placeholder="Ej. LOTE-2026-03" />
-                  </b-field>
-                </div>
-
-                <div class="column is-12-mobile is-6-tablet">
-                  <b-field label="Fecha de compra">
-                    <b-input v-model="newFechaCompra" type="date" />
-                  </b-field>
-                </div>
-
-                <div class="column is-12-mobile is-6-tablet">
-                  <b-field label="Fecha de caducidad">
-                    <b-input v-model="newFechaCaducidad" type="date" />
-                    <p class="help is-light"></p>
-                  </b-field>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Nombre autogenerado -->
-          <b-field label="Nombre generado automáticamente">
-            <b-input v-model="newSheetName" disabled expanded />
-          </b-field>
-
-          <div class="create-actions">
-            <b-button type="is-primary" native-type="submit" size="is-small" :disabled="!canCreate || creatingSheet"
-              :loading="creatingSheet">
-              <span v-if="!creatingSheet">Crear Planilla</span>
-              <span v-else>Creando…</span>
-            </b-button>
-
-            <div class="create-status" aria-live="polite" role="status">
-              <transition name="fade-status">
-                <div v-if="createStatus !== 'idle'" class="meta-status" :class="createStatus">
-                  <span v-if="createStatus === 'saving'" class="dot-pulse"></span>
-                  <i v-else-if="createStatus === 'saved'" class="far fa-check-circle"></i>
-                  <i v-else-if="createStatus === 'error'" class="far fa-exclamation-triangle"></i>
-                  <span class="meta-status-text">{{ createStatusMessage }}</span>
-                </div>
-              </transition>
-            </div>
-          </div>
-        </form>
+      <div v-if="activeId === 'nueva'" class="plantillas-contenedor">
+        <CreateSheetForm
+          :catalog="catalog"
+          :material-required="materialRequired"
+          :show-tratamiento="showTratamiento"
+          :sheets="sheets"
+          :catalog-bases-map="catalogBasesMap"
+          :catalog-treatments-map="catalogTreatmentsMap"
+          :create-sheet="createSheet"
+          :actor-ref="actorRef"
+          @crear="handleSheetCreated"
+          @update:active="setActiveTab"
+        />
       </div>
 
       <!-- EXISTENTES -->
@@ -250,378 +41,88 @@
         <slot :activeId="activeId" :activeInternal="activeInternalTab" :activeSheet="activeSheetObj"></slot>
 
         <!-- TABS INTERNAS -->
-        <div class="sheet-tabs" v-if="internalTabs.length">
-          <div v-for="tab in internalTabs" :key="tab.id" class="sheet-tab"
-            :class="{ active: activeInternalTab === tab.id }" @click="handleInternalTabClick(tab.id)">
-            {{ tab.label }}
-          </div>
-        </div>
+        <InternalTabs
+          v-if="internalTabs.length"
+          :tabs="internalTabs"
+          :active-tab-id="activeInternalTab"
+          @select="handleInternalTabClick"
+        />
       </div>
     </div>
 
     <!-- MODAL ACCIONES -->
-    <teleport to="body">
-      <b-modal v-model="isActionsOpen" has-modal-card :can-cancel="['escape']" :width="760" trap-focus scroll="keep"
-        custom-class="rsbo-sheet-actions-modal">
-        <div class="modal-card rsbo-actions-card">
-          <header class="modal-card-head rsbo-actions-head">
-            <div class="pill-row">
-              <span class="pill strong">{{ selectedSheet?.name || "Planilla" }}</span>
-              <span class="pill" v-if="selectedSheet?.sku">SKU: {{ selectedSheet.sku }}</span>
-              <span class="pill">Tipo: {{ tipoHuman(selectedSheet?.tipo_matriz) }}</span>
-              <span class="pill" v-if="selectedSheet?.material">Material: {{ selectedSheet.material }}</span>
-
-              <span class="pill" v-if="displayTratamiento(selectedSheet)">
-                {{ displayTratamiento(selectedSheet) }}
-              </span>
-
-              <span class="pill" v-if="selectedSheet?.fechaCaducidad">
-                Caduca: {{ fmtDateOnly(selectedSheet.fechaCaducidad) }}
-              </span>
-            </div>
-
-            <button class="delete" :class="{ 'is-disabled': anySaving }" :disabled="anySaving" aria-label="close"
-              :title="anySaving ? 'Hay cambios en proceso…' : 'Cerrar'" @click="isActionsOpen = false"></button>
-          </header>
-
-          <section class="modal-card-body rsbo-actions-body">
-            <b-field label="SKU" class="mb-3">
-              <b-input :value="selectedSheet?.sku || ''" disabled expanded />
-            </b-field>
-
-            <!-- ABRIR -->
-            <div class="action-card primary">
-              <div class="action-icon primary"><i class="far fa-table"></i></div>
-              <div class="action-content">
-                <div class="action-title">Abrir planilla</div>
-                <div class="action-desc">Ir a la planilla y gestionarla.</div>
-                <div class="mt-2">
-                  <b-button type="is-primary" :disabled="anySaving" @click="openSheet">Abrir</b-button>
-                </div>
-              </div>
-            </div>
-
-            <!-- ✅ DATOS DE COMPRA (EDITAR) -->
-            <div class="action-card" :class="{ 'meta-glow': purchaseGlow }">
-              <div class="action-icon"><i class="far fa-receipt"></i></div>
-              <div class="action-content">
-                <div class="action-title">Datos de compra</div>
-
-                <div class="columns is-multiline mt-2">
-                  <div class="column is-12-mobile is-6-tablet">
-                    <b-field label="Fecha de creación (solo lectura)">
-                      <b-input :value="purchaseFechaCreacion" disabled />
-                    </b-field>
-                  </div>
-
-
-                  <div class="column is-12-mobile is-6-tablet">
-                    <b-field label="Precio de venta (actual)">
-                      <b-input v-model="editPrecioVenta" type="number" min="0" step="0.01" :disabled="savingPurchase" />
-                    </b-field>
-                  </div>
-
-                  <div class="column is-12-mobile is-6-tablet">
-                    <b-field label="Precio de compra (costo)">
-                      <b-input v-model="editPrecioCompra" type="number" min="0" step="0.01"
-                        :disabled="savingPurchase" />
-                    </b-field>
-                  </div>
-
-
-                  <div class="column is-12-mobile is-6-tablet">
-                    <b-field label="Fecha de compra">
-                      <b-input v-model="editFechaCompra" type="date" :disabled="savingPurchase" />
-                    </b-field>
-                  </div>
-
-                  <div class="column is-12-mobile is-6-tablet">
-                    <b-field label="Fecha de caducidad">
-                      <b-input v-model="editFechaCaducidad" type="date" :disabled="savingPurchase" />
-                    </b-field>
-                  </div>
-
-                  <div class="column is-12-mobile is-6-tablet">
-                    <b-field label="Número de nota / factura">
-                      <b-input v-model.trim="editNumFactura" :disabled="savingPurchase" />
-                    </b-field>
-                  </div>
-
-                  <div class="column is-12-mobile is-6-tablet">
-                    <b-field label="Lote del producto">
-                      <b-input v-model.trim="editLoteProducto" :disabled="savingPurchase" />
-                    </b-field>
-                  </div>
-                </div>
-
-                <div class="buttons is-right mt-2 meta-actions-row">
-                  <div class="meta-status-wrapper" aria-live="polite" role="status">
-                    <transition name="fade-status">
-                      <div v-if="purchaseStatus !== 'idle'" class="meta-status" :class="purchaseStatus">
-                        <span v-if="purchaseStatus === 'saving'" class="dot-pulse"></span>
-                        <i v-else-if="purchaseStatus === 'saved'" class="far fa-check-circle"></i>
-                        <i v-else-if="purchaseStatus === 'error'" class="far fa-exclamation-triangle"></i>
-                        <span class="meta-status-text">{{ purchaseStatusMessage }}</span>
-                      </div>
-                    </transition>
-                  </div>
-
-                  <b-button type="is-primary" size="is-small" :loading="savingPurchase"
-                    :disabled="!canSavePurchase || savingPurchase" @click="confirmSavePurchase">
-                    <span v-if="!savingPurchase">Guardar datos</span>
-                    <span v-else>Sincronizando…</span>
-                  </b-button>
-                </div>
-              </div>
-            </div>
-
-
-            <!-- ✅ PROVEEDOR / MARCA (EDITAR) -->
-            <div class="action-card" :class="{ 'vendor-glow': vendorGlow }">
-              <div class="action-icon"><i class="far fa-building"></i></div>
-              <div class="action-content">
-                <div class="action-title">Proveedor y Marca</div>
-                <div class="action-desc">Editar proveedor y marca asociados a esta planilla.</div>
-
-                <div class="columns is-multiline mt-2">
-                  <div class="column is-12-mobile is-6-tablet">
-                    <b-field label="Proveedor">
-                      <b-autocomplete v-model="editProveedorName" :data="filteredProveedorOptionsEdit"
-                        placeholder="Ej. Eurovisión / Luxottica / …" open-on-focus keep-first :clear-on-select="false"
-                        :max-height="220" :check-infinite-scroll="false" :disabled="savingVendor"
-                        @select="(v) => (editProveedorName = typeof v === 'string' ? v : editProveedorName)">
-                        <template #empty>
-                          <span class="has-text-grey">Sin coincidencias (puedes escribir uno nuevo).</span>
-                        </template>
-                      </b-autocomplete>
-                    </b-field>
-                  </div>
-
-                  <div class="column is-12-mobile is-6-tablet">
-                    <b-field label="Marca">
-                      <b-autocomplete v-model="editMarcaName" :data="filteredMarcaOptionsEdit"
-                        placeholder="Ej. Essilor / Zeiss / …" open-on-focus keep-first :clear-on-select="false"
-                        :max-height="220" :check-infinite-scroll="false" :disabled="savingVendor"
-                        @select="(v) => (editMarcaName = typeof v === 'string' ? v : editMarcaName)">
-                        <template #empty>
-                          <span class="has-text-grey">Sin coincidencias (puedes escribir una nueva).</span>
-                        </template>
-                      </b-autocomplete>
-                    </b-field>
-                  </div>
-                </div>
-
-                <div class="buttons is-right mt-2 meta-actions-row">
-                  <div class="meta-status-wrapper" aria-live="polite" role="status">
-                    <transition name="fade-status">
-                      <div v-if="vendorStatus !== 'idle'" class="meta-status" :class="vendorStatus">
-                        <span v-if="vendorStatus === 'saving'" class="dot-pulse"></span>
-                        <i v-else-if="vendorStatus === 'saved'" class="far fa-check-circle"></i>
-                        <i v-else-if="vendorStatus === 'error'" class="far fa-exclamation-triangle"></i>
-                        <span class="meta-status-text">{{ vendorStatusMessage }}</span>
-                      </div>
-                    </transition>
-                  </div>
-
-                  <b-button type="is-primary" size="is-small" :loading="savingVendor"
-                    :disabled="!canSaveVendor || savingVendor" @click="confirmSaveVendor">
-                    <span v-if="!savingVendor">Guardar proveedor/marca</span>
-                    <span v-else>Sincronizando…</span>
-                  </b-button>
-                </div>
-              </div>
-            </div>
-
-            <!-- RENOMBRAR -->
-            <div class="action-card" :class="{ 'rename-glow': renameGlow }">
-              <div class="action-icon"><i class="far fa-edit"></i></div>
-              <div class="action-content">
-                <div class="action-title">Renombrar</div>
-                <div class="action-desc">Cambiar el nombre visible de la planilla</div>
-
-                <div class="rename-row">
-                  <b-field label="Nuevo nombre" class="rename-field">
-                    <b-input v-model.trim="renameName" placeholder="Escribe el nuevo nombre" maxlength="80"
-                      :disabled="renaming" />
-                  </b-field>
-
-                  <div class="rename-actions">
-                    <div class="rename-status-wrapper" aria-live="polite" role="status">
-                      <transition name="fade-status">
-                        <div v-if="renameStatus !== 'idle'" class="meta-status" :class="renameStatus">
-                          <span v-if="renameStatus === 'saving'" class="dot-pulse"></span>
-                          <i v-else-if="renameStatus === 'saved'" class="far fa-check-circle"></i>
-                          <i v-else-if="renameStatus === 'error'" class="far fa-exclamation-triangle"></i>
-                          <span class="meta-status-text">{{ renameStatusMessage }}</span>
-                        </div>
-                      </transition>
-                    </div>
-
-                    <b-button type="is-primary" :disabled="!canRename || renaming" :loading="renaming"
-                      @click="confirmRename">
-                      <span v-if="!renaming">Guardar</span>
-                      <span v-else>Guardando…</span>
-                    </b-button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- NOTAS Y OBSERVACIONES -->
-            <div class="action-card" :class="{ 'meta-glow': metaGlow }">
-              <div class="action-icon"><i class="far fa-comment-dots"></i></div>
-              <div class="action-content">
-                <div class="action-title">Notas y observaciones</div>
-                <div class="action-desc">Guarda comentarios internos sobre la planilla (no afectan el stock).</div>
-
-                <div class="meta-grid">
-                  <b-field label="Observaciones">
-                    <b-input v-model.trim="metaForm.observaciones" type="textarea" rows="2" maxlength="500"
-                      :disabled="savingMeta" />
-                  </b-field>
-
-                  <b-field label="Notas">
-                    <b-input v-model.trim="metaForm.notas" type="textarea" rows="2" maxlength="500"
-                      :disabled="savingMeta" />
-                  </b-field>
-                </div>
-
-                <div class="buttons is-right mt-2 meta-actions-row">
-                  <div class="meta-status-wrapper" aria-live="polite" role="status">
-                    <transition name="fade-status">
-                      <div v-if="metaStatus !== 'idle'" class="meta-status" :class="metaStatus">
-                        <span v-if="metaStatus === 'saving'" class="dot-pulse"></span>
-                        <i v-else-if="metaStatus === 'saved'" class="far fa-check-circle"></i>
-                        <i v-else-if="metaStatus === 'error'" class="far fa-exclamation-triangle"></i>
-                        <span class="meta-status-text">{{ metaStatusMessage }}</span>
-                      </div>
-                    </transition>
-                  </div>
-
-                  <b-button type="is-primary" size="is-small" :loading="savingMeta"
-                    :disabled="!canSaveMeta || savingMeta" @click="confirmSaveMeta">
-                    <span v-if="!savingMeta">Guardar notas</span>
-                    <span v-else>Sincronizando…</span>
-                  </b-button>
-                </div>
-              </div>
-            </div>
-
-            <!-- PAPELERA -->
-            <div class="action-card danger">
-              <div class="action-icon danger"><i class="far fa-trash-alt"></i></div>
-              <div class="action-content">
-                <div class="action-title">Enviar a papelera</div>
-
-                <div class="confirm-space">
-                  <div v-show="confirmingDelete" class="confirm-inline">
-                    <span class="confirm-text">
-                      ¿Enviar <strong class="truncate">{{ selectedSheet?.name }}</strong> a la papelera?
-                    </span>
-
-                    <div class="buttons are-small ml-2">
-                      <b-button :disabled="deleting" @click="confirmingDelete = false">Cancelar</b-button>
-                      <b-button type="is-danger" :loading="deleting" :disabled="deleting" @click="softDelete">
-                        <span v-if="!deleting">Sí, enviar</span>
-                        <span v-else>Enviando…</span>
-                      </b-button>
-                    </div>
-                  </div>
-
-                  <div class="mt-2" v-show="!confirmingDelete">
-                    <b-button type="is-danger" outlined :disabled="anySaving" @click="confirmingDelete = true">
-                      Enviar a papelera
-                    </b-button>
-                  </div>
-
-                  <div class="mt-2" aria-live="polite" role="status">
-                    <transition name="fade-status">
-                      <div v-if="trashStatus !== 'idle'" class="meta-status" :class="trashStatus">
-                        <span v-if="trashStatus === 'saving'" class="dot-pulse"></span>
-                        <i v-else-if="trashStatus === 'saved'" class="far fa-check-circle"></i>
-                        <i v-else-if="trashStatus === 'error'" class="far fa-exclamation-triangle"></i>
-                        <span class="meta-status-text">{{ trashStatusMessage }}</span>
-                      </div>
-                    </transition>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Lo demás (proveedor/marca, rename, meta, trash) lo dejas igual en tu archivo real -->
-          </section>
-
-          <footer class="modal-card-foot rsbo-actions-foot">
-            <b-button :disabled="anySaving" @click="isActionsOpen = false">
-              Cerrar
-            </b-button>
-          </footer>
-        </div>
-      </b-modal>
-    </teleport>
+    <SheetActionsModal
+      v-model:is-open="isActionsOpen"
+      :sheet="selectedSheet"
+      :created-date="purchaseFechaCreacion"
+      v-model:rename-name="renameName"
+      :renaming="renaming"
+      :rename-status="renameStatus"
+      :rename-status-message="renameStatusMessage"
+      :rename-glow="renameGlow"
+      :can-rename="canRename"
+      @save-rename="confirmRename"
+      v-model:edit-proveedor-name="editProveedorName"
+      v-model:edit-marca-name="editMarcaName"
+      :filtered-proveedores="filteredProveedorOptionsEdit"
+      :filtered-marcas="filteredMarcaOptionsEdit"
+      :saving-vendor="savingVendor"
+      :vendor-status="vendorStatus"
+      :vendor-status-message="vendorStatusMessage"
+      :vendor-glow="vendorGlow"
+      :can-save-vendor="canSaveVendor"
+      @save-vendor="confirmSaveVendor"
+      v-model:edit-precio-venta="editPrecioVenta"
+      v-model:edit-precio-compra="editPrecioCompra"
+      v-model:edit-num-factura="editNumFactura"
+      v-model:edit-lote-producto="editLoteProducto"
+      v-model:edit-fecha-compra="editFechaCompra"
+      v-model:edit-fecha-caducidad="editFechaCaducidad"
+      :saving-purchase="savingPurchase"
+      :purchase-status="purchaseStatus"
+      :purchase-status-message="purchaseStatusMessage"
+      :purchase-glow="purchaseGlow"
+      :can-save-purchase="canSavePurchase"
+      @save-purchase="confirmSavePurchase"
+      v-model:observaciones="metaForm.observaciones"
+      v-model:notas="metaForm.notas"
+      :saving-meta="savingMeta"
+      :meta-status="metaStatus"
+      :meta-status-message="metaStatusMessage"
+      :meta-glow="metaGlow"
+      :can-save-meta="canSaveMeta"
+      @save-meta="confirmSaveMeta"
+      :deleting="deleting"
+      @confirm-delete="softDelete"
+      @close="isActionsOpen = false"
+      @open="openSheet"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, computed, watch, nextTick } from "vue";
-import Sortable from "sortablejs";
+// New Sub-components
+import TabsBar from "./tabsmanager/TabsBar.vue";
+import CreateSheetForm from "./tabsmanager/CreateSheetForm.vue";
+import SheetActionsModal from "./tabsmanager/SheetActionsModal.vue";
+import InternalTabs from "./tabsmanager/InternalTabs.vue";
+
+// New Composables
+import { normalizeSheet, displayTratamiento, tipoHuman } from "@/composables/tabsmanager/useSheetNormalizer";
+import { 
+  ISO_DATE_ONLY_RX, 
+  DEFAULT_EXPIRY_MONTHS, 
+  fmtDateOnly, 
+  addMonthsToISODate,
+  dateForEdit,
+  numForEdit
+} from "../composables/tabsmanager/useDateHelpers";
+
+import { ref, computed, watch, nextTick } from "vue";
 import { useSheetApi } from "@/composables/api/useSheetApi";
 import { labToast } from "@/composables/shared/useLabToast.js";
 
 const DEBUG_PURCHASE = true;
-
-/** Caducidad por defecto: 24 meses (= 2 años) */
-const DEFAULT_EXPIRY_MONTHS = 24;
-
-/* ===================== Fechas “date-only” sin bugs de zona horaria ===================== */
-const ISO_DATE_ONLY_RX = /^\d{4}-\d{2}-\d{2}$/;
-
-const todayISO = () => new Date().toISOString().slice(0, 10);
-
-const fmtDateOnly = (v) => {
-  if (!v) return "";
-  if (typeof v === "string" && ISO_DATE_ONLY_RX.test(v.trim())) return v.trim();
-  const d = new Date(v);
-  if (!Number.isFinite(d.getTime())) return "";
-  return d.toISOString().slice(0, 10);
-};
-
-const addMonthsToISODate = (isoDate, months) => {
-  if (!isoDate || !ISO_DATE_ONLY_RX.test(String(isoDate).trim())) return "";
-  const [y, m, d] = String(isoDate).trim().split("-").map((n) => Number(n));
-  const dt = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
-  const day = dt.getUTCDate();
-  dt.setUTCMonth(dt.getUTCMonth() + Number(months || 0));
-  if (dt.getUTCDate() < day) dt.setUTCDate(0);
-  return dt.toISOString().slice(0, 10);
-};
-
-// create: "" -> undefined (no enviar)
-// edit: "" -> null (enviar intención de limpiar)
-const dateForCreate = (v) => {
-  const s = String(v || "").trim();
-  if (!s) return undefined;
-  return ISO_DATE_ONLY_RX.test(s) ? s : undefined;
-};
-const dateForEdit = (v) => {
-  const s = String(v || "").trim();
-  if (!s) return null;
-  return ISO_DATE_ONLY_RX.test(s) ? s : null;
-};
-
-// ✅ números requeridos (precioVenta, precioCompra)
-const numForCreate = (v) => {
-  const s = String(v ?? "").trim();
-  if (!s) return undefined;
-  const n = Number(s);
-  return Number.isFinite(n) ? n : undefined;
-};
-const numForEdit = (v) => {
-  const s = String(v ?? "").trim();
-  if (!s) return null;
-  const n = Number(s);
-  return Number.isFinite(n) ? n : null;
-};
 
 const props = defineProps({
   initialSheets:    { type: Array,   required: true },
@@ -661,74 +162,6 @@ const catalogTreatmentsMap = computed(() => {
   return map;
 });
 
-const composeTratamientoDisplay = (tratamiento, variante) => {
-  const t = String(tratamiento || "").trim();
-  const v = String(variante || "").trim();
-  if (!t) return "";
-  return v ? `${t} (${v})` : t;
-};
-
-const displayTratamiento = (sheet) => {
-  if (!sheet) return "";
-  const t = sheet.tratamiento || null;
-  const v = sheet.variante || null;
-  const text = composeTratamientoDisplay(t, v);
-  return text ? `Tratamiento: ${text}` : "";
-};
-
-/* ===================== NORMALIZADOR ===================== */
-const normalizeSheet = (s) => {
-  if (!s) return null;
-
-  const id = String(s.id ?? s._id ?? "");
-  const name = String(s.name ?? s.nombre ?? "");
-  const skuRaw = s.sku ?? s.SKU ?? null;
-
-  const proveedor =
-    s.proveedor && typeof s.proveedor === "object"
-      ? { id: s.proveedor.id ?? null, name: String(s.proveedor.name ?? "") }
-      : { id: null, name: String(s.proveedor || "") };
-
-  const marca =
-    s.marca && typeof s.marca === "object"
-      ? { id: s.marca.id ?? null, name: String(s.marca.name ?? "") }
-      : { id: null, name: String(s.marca || "") };
-
-  const pvRaw = s.precioVenta;
-  const pvNum = pvRaw === null || pvRaw === undefined || String(pvRaw).trim() === "" ? null : Number(pvRaw);
-  const precioVenta = Number.isFinite(pvNum) ? pvNum : null;
-
-  const pcRaw = s.precioCompra;
-  const pcNum = pcRaw === null || pcRaw === undefined || String(pcRaw).trim() === "" ? null : Number(pcRaw);
-  const precioCompra = Number.isFinite(pcNum) ? pcNum : null;
-
-  return {
-    ...s,
-    id,
-    name,
-    sku: skuRaw ? String(skuRaw) : null,
-
-    proveedor,
-    marca,
-
-    tratamiento: s.tratamiento ?? null,
-    variante: s.variante ?? null,
-
-    fechaCreacion: s.fechaCreacion ?? s.createdAt ?? null,
-    fechaCaducidad: s.fechaCaducidad ?? null,
-    fechaCompra: s.fechaCompra ?? null,
-    numFactura: s.numFactura ?? "",
-    loteProducto: s.loteProducto ?? "",
-
-    precioVenta,
-    precioCompra,
-
-    tratamientos: Array.isArray(s.tratamientos) ? s.tratamientos : [],
-    meta: s.meta && typeof s.meta === "object" ? s.meta : { observaciones: "", notas: "" },
-    tabs: Array.isArray(s.tabs) ? s.tabs : []
-  };
-};
-
 const mapSheets = (arr) => (Array.isArray(arr) ? arr : []).map(normalizeSheet).filter(Boolean);
 
 /* ===== Tabs ===== */
@@ -763,30 +196,6 @@ const uniqueNamesFromSheets = (getter) => {
 
 const proveedorOptions = computed(() => uniqueNamesFromSheets((s) => s?.proveedor?.name));
 const marcaOptions = computed(() => uniqueNamesFromSheets((s) => s?.marca?.name));
-
-const newProveedorName = ref("");
-const newMarcaName = ref("");
-
-const filteredProveedorOptions = computed(() => {
-  const q = normTxt(newProveedorName.value);
-  const base = proveedorOptions.value;
-  if (!q) return base.slice(0, 30);
-  return base.filter((x) => normTxt(x).includes(q)).slice(0, 30);
-});
-
-const filteredMarcaOptions = computed(() => {
-  const q = normTxt(newMarcaName.value);
-  const base = marcaOptions.value;
-  if (!q) return base.slice(0, 30);
-  return base.filter((x) => normTxt(x).includes(q)).slice(0, 30);
-});
-
-const onSelectProveedor = (val) => {
-  if (typeof val === "string") newProveedorName.value = val;
-};
-const onSelectMarca = (val) => {
-  if (typeof val === "string") newMarcaName.value = val;
-};
 
 const activeId = computed(() => props.activeId);
 const activeSheetObj = computed(() => sheets.value.find((s) => s.id === activeId.value));
@@ -856,379 +265,23 @@ const actorRef = computed(() => {
   return src && (src.id || src.userId) ? { userId: src.id || src.userId, name: src.name } : null;
 });
 
-/** ✅ ESTO era lo que te faltaba */
-const tipoHuman = (t) =>
-({
-  BASE: "Monofocal (Base)",
-  SPH_CYL: "Monofocal (Esf/Cil)",
-  SPH_ADD: "Bifocal (SPH + ADD)",
-  BASE_ADD: "Progresivo (BASE + ADD)"
-}[t] || t);
-
-/* ===================== Crear ===================== */
-const selectedBase = ref(null);
-const selectedMaterial = ref(null);
-const selectedTratamientoKey = ref(null);
-const selectedVariante = ref("");
-
-const newSheetName = ref("");
-const creatingSheet = ref(false);
-
-const createStatus = ref("idle");
-const createStatusMessage = ref("");
-const resetCreateStatus = () => {
-  createStatus.value = "idle";
-  createStatusMessage.value = "";
+const handleSheetCreated = ({ result, tabs }) => {
+  const newTab = normalizeSheet({ ...result, tabs });
+  const addIndex = sheets.value.findIndex((x) => x.id === "nueva");
+  sheets.value.splice(addIndex >= 0 ? addIndex : sheets.value.length, 0, newTab);
+  setActiveTab(newTab.id);
+  emit("crear", { result, tabs });
 };
 
-// compra (crear)
-const newNumFactura = ref("");
-const newLoteProducto = ref("");
-const newFechaCompra = ref("");
-const newFechaCaducidad = ref("");
-const newPrecioVenta = ref("");
-const newPrecioCompra = ref("");
-
-const resetPurchaseCreateDefaults = () => {
-  const base = newFechaCompra.value && ISO_DATE_ONLY_RX.test(newFechaCompra.value) ? newFechaCompra.value : todayISO();
-  newFechaCaducidad.value = addMonthsToISODate(base, DEFAULT_EXPIRY_MONTHS);
+const setActiveTab = (id) => {
+  emit("update:active", id);
 };
 
-const resetNewForm = () => {
-  selectedBase.value = null;
-  selectedMaterial.value = null;
-  selectedTratamientoKey.value = null;
-  selectedVariante.value = "";
-  newSheetName.value = "";
-  newProveedorName.value = "";
-  newMarcaName.value = "";
-  newNumFactura.value = "";
-  newLoteProducto.value = "";
-  newFechaCompra.value = "";
-  newPrecioVenta.value = "";
-  newPrecioCompra.value = "";
-  resetCreateStatus();
+const handleReorder = ({ oldIndex, newIndex }) => {
+  const moved = sheets.value.splice(oldIndex, 1)[0];
+  sheets.value.splice(newIndex, 0, moved);
+  emit("reorder", { oldIndex, newIndex });
 };
-resetPurchaseCreateDefaults();
-
-watch(
-  () => newFechaCompra.value,
-  (v) => {
-    const base = v && ISO_DATE_ONLY_RX.test(v) ? v : todayISO();
-    newFechaCaducidad.value = addMonthsToISODate(base, DEFAULT_EXPIRY_MONTHS);
-  }
-);
-
-watch([newNumFactura, newLoteProducto, newFechaCompra, newFechaCaducidad, newPrecioVenta, newPrecioCompra], () => {
-  if (!DEBUG_PURCHASE) return;
-  console.log("[INV][UI] create purchase fields changed", {
-    newNumFactura: newNumFactura.value,
-    newLoteProducto: newLoteProducto.value,
-    newFechaCompra: newFechaCompra.value,
-    newFechaCaducidad: newFechaCaducidad.value,
-    newPrecioVenta: newPrecioVenta.value,
-    newPrecioCompra: newPrecioCompra.value
-  });
-});
-
-const allMaterials = computed(() => {
-  const all = new Set();
-  for (const b of props.catalog?.bases ?? []) {
-    (b.materiales || []).forEach((m) => all.add(String(m)));
-  }
-  return Array.from(all).sort((a, b) => a.localeCompare(b));
-});
-
-const baseLabel = computed(() => {
-  const b = selectedBase.value && catalogBasesMap.value[selectedBase.value];
-  return b ? b.label : "";
-});
-
-const selectBase = (base) => {
-  selectedBase.value = base;
-  selectedMaterial.value = null;
-  selectedTratamientoKey.value = null;
-  selectedVariante.value = "";
-};
-
-const isMaterialAllowed = (mat) => {
-  if (!selectedBase.value) return false;
-  const b = catalogBasesMap.value[selectedBase.value];
-  return b && (b.materiales || []).includes(mat);
-};
-
-const selectMaterial = (mat) => {
-  if (!isMaterialAllowed(mat)) return;
-  selectedMaterial.value = mat;
-  selectedTratamientoKey.value = null;
-  selectedVariante.value = "";
-};
-
-const hasAnyAllowedMaterial = computed(() => allMaterials.value.some((m) => isMaterialAllowed(m)));
-
-const allowedTratamientos = computed(() => {
-  if (!selectedBase.value || !selectedMaterial.value) return [];
-  const baseCfg = catalogBasesMap.value[selectedBase.value];
-  if (!baseCfg) return [];
-
-  return (baseCfg.tratamientos || [])
-    .map((k) => catalogTreatmentsMap.value[k])
-    .filter((t) => {
-      if (!t) return false;
-      if (t.allowedMaterials?.length && !t.allowedMaterials.includes(selectedMaterial.value)) return false;
-      if (t.allowedBases?.length && !t.allowedBases.includes(selectedBase.value)) return false;
-      return true;
-    })
-    .map((t) => ({ key: t.key, label: t.label }));
-});
-
-const selectTratamiento = (key) => {
-  selectedTratamientoKey.value = key;
-  selectedVariante.value = "";
-};
-
-const varianteOptions = computed(() => {
-  const key = selectedTratamientoKey.value;
-  if (!key) return [];
-
-  const t = catalogTreatmentsMap.value[key];
-  if (!t) return [];
-
-  const mat = String(selectedMaterial.value || "");
-  if (t.variantsByMaterial && mat) {
-    const byMat = t.variantsByMaterial instanceof Map
-      ? t.variantsByMaterial.get(mat)
-      : t.variantsByMaterial[mat];
-    if (byMat?.length) return byMat;
-  }
-
-  return t.variants ? [...t.variants] : [];
-});
-
-const selectVariante = (v) => {
-  selectedVariante.value = v;
-};
-
-watch([selectedBase, selectedMaterial, selectedTratamientoKey, selectedVariante], () => {
-  const baseCfg = selectedBase.value && catalogBasesMap.value[selectedBase.value];
-  const baseLabelTxt = baseCfg ? baseCfg.label : "";
-  const materialLabel = props.materialRequired ? (selectedMaterial.value || "") : (selectedMaterial.value || "");
-  const tKey = props.showTratamiento ? selectedTratamientoKey.value : null;
-  const tLabel = tKey ? (catalogTreatmentsMap.value[tKey]?.label || tKey) : "";
-  const nameTrat = composeTratamientoDisplay(tLabel, selectedVariante.value || "");
-  newSheetName.value = [baseLabelTxt, materialLabel, nameTrat].filter(Boolean).join(" | ");
-});
-
-const canCreate = computed(() => {
-  if (!selectedBase.value) return false;
-  if (props.materialRequired && !selectedMaterial.value) return false;
-  if (props.showTratamiento && !selectedTratamientoKey.value) return false;
-  if (!newSheetName.value) return false;
-  if (creatingSheet.value) return false;
-  if (varianteOptions.value.length > 0 && !String(selectedVariante.value || "").trim()) return false;
-  const pv = String(newPrecioVenta.value ?? "").trim();
-  if (!pv || !Number.isFinite(Number(pv)) || Number(pv) < 0) return false;
-  const pc = String(newPrecioCompra.value ?? "").trim();
-  if (!pc || !Number.isFinite(Number(pc)) || Number(pc) < 0) return false;
-  return true;
-});
-
-const mapBaseToTipoMatriz = (baseKey) => {
-  const cfg = catalogBasesMap.value[baseKey];
-  if (cfg?.tipo_matriz) return cfg.tipo_matriz;
-  return "SPH_CYL";
-};
-
-const handleCrear = async () => {
-  if (!canCreate.value || creatingSheet.value) return;
-
-  creatingSheet.value = true;
-  createStatus.value = "saving";
-  createStatusMessage.value = "Validando selección…";
-  await nextTick();
-
-  try {
-    const baseCfg = catalogBasesMap.value[selectedBase.value];
-    const tipo_matriz = mapBaseToTipoMatriz(selectedBase.value);
-
-    const tKey = props.showTratamiento ? selectedTratamientoKey.value : null;
-    const tratamientoLabel = tKey ? (catalogTreatmentsMap.value[tKey]?.label || tKey) : "";
-    const varianteLabel = String(selectedVariante.value || "").trim();
-
-    const tratamientoDisplay = composeTratamientoDisplay(tratamientoLabel, varianteLabel);
-    const tratamientosLegacy = tratamientoDisplay ? [tratamientoDisplay] : [];
-
-    const baseCad = newFechaCompra.value && ISO_DATE_ONLY_RX.test(newFechaCompra.value) ? newFechaCompra.value : todayISO();
-    const cadFinal =
-      newFechaCaducidad.value && ISO_DATE_ONLY_RX.test(newFechaCaducidad.value)
-        ? newFechaCaducidad.value
-        : addMonthsToISODate(baseCad, DEFAULT_EXPIRY_MONTHS);
-
-    const payload = {
-      nombre: newSheetName.value,
-      baseKey: selectedBase.value,
-      base: baseCfg?.label || selectedBase.value,
-      material: selectedMaterial.value || "",
-
-      tratamiento: tratamientoLabel || null,
-      variante: varianteLabel || null,
-      tratamientos: tratamientosLegacy,
-
-      numFactura: String(newNumFactura.value || "").trim(),
-      loteProducto: String(newLoteProducto.value || "").trim(),
-      fechaCompra: dateForCreate(newFechaCompra.value),
-      fechaCaducidad: dateForCreate(cadFinal),
-
-      precioVenta: numForCreate(newPrecioVenta.value),
-      precioCompra: numForCreate(newPrecioCompra.value),
-
-      tipo_matriz,
-      seed: true,
-      autoGenerate: true,
-
-      proveedor: { id: null, name: (newProveedorName.value || "").trim() },
-      marca: { id: null, name: (newMarcaName.value || "").trim() },
-
-      actor: actorRef.value || undefined
-    };
-
-    if (DEBUG_PURCHASE) {
-      console.groupCollapsed("[INV][UI] handleCrear payload");
-      console.log(payload);
-      console.groupEnd();
-    }
-
-    createStatusMessage.value = "Subiendo planilla…";
-    const { data } = await createSheet(payload);
-
-    const s = data?.data?.sheet;
-    const tabs = data?.data?.tabs || [];
-    if (!s) throw new Error("Sin hoja en respuesta");
-
-    const newTab = normalizeSheet({ ...s, tabs });
-    const addIndex = sheets.value.findIndex((x) => x.id === "nueva");
-    sheets.value.splice(addIndex >= 0 ? addIndex : sheets.value.length, 0, newTab);
-
-    emit("update:active", newTab.id);
-    emit("crear", { result: s, tabs });
-
-    resetNewForm();
-
-    createStatus.value = "saved";
-    createStatusMessage.value = "Planilla creada correctamente";
-    labToast.success(`Planilla "${newTab.name}" creada.`);
-    setTimeout(() => resetCreateStatus(), 1800);
-  } catch (e) {
-    console.error("[INV][UI] Error al crear planilla:", e?.response?.data || e);
-    createStatus.value = "error";
-    createStatusMessage.value = errMsg(e, "No se pudo crear la planilla");
-    setTimeout(() => resetCreateStatus(), 2600);
-  } finally {
-    creatingSheet.value = false;
-  }
-};
-
-/* ===================== Drag & Drop de tabs + sentinel observers ===================== */
-const tabsContainer  = ref(null);
-const rightSentinel  = ref(null);
-const leftSentinel   = ref(null);
-
-let _ioRight = null;
-let _ioLeft  = null;
-
-function _destroyObservers() {
-  _ioRight?.disconnect();
-  _ioLeft?.disconnect();
-  _ioRight = null;
-  _ioLeft  = null;
-}
-
-function _setupObservers() {
-  _destroyObservers();
-  const root = tabsContainer.value;
-  if (!root) return;
-
-  // Right sentinel → load next page
-  if (rightSentinel.value) {
-    _ioRight = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && props.hasMore && !props.loadingMore) {
-          emit("load-more");
-        }
-      },
-      { root, threshold: 0.1 }
-    );
-    _ioRight.observe(rightSentinel.value);
-  }
-
-  // Left sentinel → load prior page
-  if (leftSentinel.value) {
-    _ioLeft = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && props.hasPrior && !props.loadingPrior) {
-          emit("load-prior");
-        }
-      },
-      { root, threshold: 0.1 }
-    );
-    _ioLeft.observe(leftSentinel.value);
-  }
-}
-
-onMounted(() => {
-  if (!tabsContainer.value) return;
-
-  Sortable.create(tabsContainer.value, {
-    animation: 150,
-    ghostClass: "sortable-ghost",
-    filter: ".tab-agregar, .tab-sentinel, .tab-prior-pill, .tab-loading-pill",
-    preventOnFilter: false,
-    delay: 200,
-    delayOnTouchOnly: true,
-    onEnd: (evt) => {
-      if (props.loadingTabs) return;
-
-      // Use data-id to locate items in the array — DOM indices may be
-      // offset by sentinel pills so we avoid relying on them.
-      const draggedId = evt.item?.dataset?.id;
-      if (!draggedId) return;
-
-      const oldIdx = sheets.value.findIndex((s) => s.id === draggedId);
-      if (oldIdx < 0) return;
-
-      // Find the element now at evt.newIndex in the DOM and get its id
-      const targetEl = evt.from.children[evt.newIndex];
-      const targetId = targetEl?.dataset?.id;
-      const newIdx = targetId ? sheets.value.findIndex((s) => s.id === targetId) : -1;
-
-      const last = sheets.value.length - 1; // "nueva" is last
-      if (oldIdx >= last || newIdx < 0 || newIdx >= last || oldIdx === newIdx) {
-        // revert invalid drop
-        evt.from.insertBefore(evt.item, evt.from.children[oldIdx]);
-        return;
-      }
-
-      const moved = sheets.value.splice(oldIdx, 1)[0];
-      sheets.value.splice(newIdx, 0, moved);
-      emit("reorder", { oldIndex: oldIdx, newIndex: newIdx });
-    }
-  });
-
-  _setupObservers();
-});
-
-onBeforeUnmount(() => {
-  _destroyObservers();
-});
-
-// Re-wire observers whenever sentinel visibility changes (they mount/unmount with v-if)
-watch(
-  [() => props.hasMore, () => props.hasPrior],
-  async () => {
-    await nextTick();
-    _setupObservers();
-  }
-);
 
 /* ===================== Modal acciones ===================== */
 const isActionsOpen = ref(false);
@@ -1605,7 +658,6 @@ const confirmSaveMeta = async () => {
 };
 
 /* ===== Trash ===== */
-const confirmingDelete = ref(false);
 const deleting = ref(false);
 const trashStatus = ref("idle");
 const trashStatusMessage = ref("");
@@ -1638,7 +690,6 @@ const softDelete = async () => {
     labToast.danger(`Planilla "${selectedSheet.value?.name}" enviada a papelera.`, 4000);
     emit("deleted", { id, sheet: updated });
 
-    confirmingDelete.value = false;
     isActionsOpen.value = false;
 
     if (activeId.value === id) emit("update:active", "nueva");
@@ -1654,15 +705,6 @@ const softDelete = async () => {
   }
 };
 
-const anySaving = computed(
-  () =>
-    creatingSheet.value ||
-    renaming.value ||
-    savingMeta.value ||
-    deleting.value ||
-    savingVendor.value ||
-    savingPurchase.value
-);
 
 /* ===================== openActions / openSheet / tabs click ===================== */
 const openActions = async (sheet) => {
@@ -1681,7 +723,6 @@ const openActions = async (sheet) => {
     console.groupEnd();
   }
 
-  confirmingDelete.value = false;
   resetPurchaseStatus();
   resetVendorStatus();
   resetRenameStatus();
@@ -1731,92 +772,10 @@ const handleTabClick = (id) => {
   emit("update:active", id);
 };
 
-watch(
-  () => props.activeId,
-  async (id, prev) => {
-    if (prev === "nueva") resetNewForm();
-    if (!id || id === "nueva") return;
-    await nextTick();
-
-    const container = tabsContainer.value;
-    if (!container) return;
-
-    const el = container.querySelector(`[data-id="${id}"]`);
-    if (!el) return;
-
-    // Scroll suave centrando la tab en el contenedor
-    const containerRect = container.getBoundingClientRect();
-    const elRect = el.getBoundingClientRect();
-    const scrollLeft =
-      container.scrollLeft +
-      (elRect.left - containerRect.left) -
-      containerRect.width / 2 +
-      elRect.width / 2;
-
-    container.scrollTo({ left: scrollLeft, behavior: "smooth" });
-
-    // Parpadeo visual de foco (800 ms)
-    el.classList.add("tab-focus-pulse");
-    setTimeout(() => el.classList.remove("tab-focus-pulse"), 900);
-  },
-  { flush: "post" }
-);
 </script>
 
 <style scoped>
-/* ── Pagination sentinels ── */
-.tab-sentinel {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  height: 34px;
-  border-radius: 8px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  padding: 0 0.5rem;
-  gap: 0.3rem;
-  align-self: flex-end;
-  margin-bottom: 2px;
-  user-select: none;
-}
-
-.tab-prior-pill {
-  background: var(--c-primary-alpha);
-  color: var(--c-primary);
-  border: 1px solid var(--c-primary);
-  cursor: pointer;
-  transition: background 150ms, opacity 150ms;
-  min-width: 44px;
-}
-.tab-prior-pill:hover {
-  background: var(--c-primary);
-  color: #fff;
-}
-
-.tab-loading-pill {
-  background: var(--surface);
-  color: var(--text-muted);
-  border: 1px dashed var(--border);
-  min-width: 36px;
-  pointer-events: none;
-}
-
-.tab-sentinel-spinner {
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  border: 2px solid currentColor;
-  border-top-color: transparent;
-  border-radius: 50%;
-  animation: tab-spin 0.6s linear infinite;
-}
-
-@keyframes tab-spin {
-  to { transform: rotate(360deg); }
-}
-
-/* ✅ tu CSS tal cual lo traías (sin cambios) */
+/* Contenedor principal de planillas (diseño original de 1 sola columna) */
 .plantillas-contenedor {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -1827,519 +786,4 @@ watch(
   overflow: hidden;
 }
 
-.tabs-wrapper {
-  position: relative;
-  display: flex;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  overflow-y: hidden;
-  gap: 0.35rem;
-  padding: 0.55rem 0.55rem 0;
-  border-bottom: 1px solid var(--border);
-  -webkit-overflow-scrolling: touch;
-}
-
-.tabs-wrapper--glass {
-  background: var(--surface-overlay);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-}
-
-.tabs-wrapper::before,
-.tabs-wrapper::after {
-  content: "";
-  position: sticky;
-  top: 0;
-  width: 20px;
-  height: 100%;
-  flex: 0 0 20px;
-  pointer-events: none;
-  z-index: 2;
-}
-
-.tabs-wrapper::before {
-  left: 0;
-  margin-left: -0.55rem;
-  background: linear-gradient(90deg, var(--surface-raised), transparent);
-}
-
-.tabs-wrapper::after {
-  right: 0;
-  margin-right: -0.55rem;
-  background: linear-gradient(270deg, var(--surface-raised), transparent);
-}
-
-.tabs-wrapper::-webkit-scrollbar {
-  height: 8px;
-}
-
-.tabs-wrapper::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.35);
-  border-radius: 999px;
-}
-
-.tabs-wrapper::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.tab-item {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  max-width: 280px;
-  padding: 0.45rem 2.1rem 0.45rem 0.75rem;
-  font-size: 0.86rem;
-  border-radius: 12px 12px 0 0;
-  cursor: pointer;
-  user-select: none;
-  border: 1px solid var(--border);
-  border-bottom: none;
-  transition: transform 0.16s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease;
-  will-change: transform;
-}
-
-.tab-item--glass {
-  background: var(--surface-overlay);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  color: var(--text-primary);
-}
-
-.tab-item:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-sm);
-}
-
-.tab-item.active {
-  background: linear-gradient(90deg, rgba(121, 87, 213, 0.18), rgba(236, 72, 153, 0.10));
-  color: var(--text-primary);
-  box-shadow: var(--shadow-lg);
-  border-color: var(--c-primary-alpha);
-}
-
-.tab-item.active::after {
-  content: "";
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  bottom: -1px;
-  height: 3px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, rgba(121, 87, 213, 1), rgba(236, 72, 153, 0.95));
-}
-
-.tab-agregar {
-  background: var(--text-primary);
-  color: var(--surface-solid);
-  border-color: var(--border-strong);
-  padding-right: 0.85rem;
-}
-
-.tab-agregar:hover {
-  background: var(--text-secondary);
-  box-shadow: var(--shadow-lg);
-}
-
-.tab-text {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  padding-right: 0.65rem;
-  line-height: 1.05;
-}
-
-.tab-label {
-  font-weight: 900;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.tab-sku {
-  margin-top: 3px;
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.03em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: var(--text-subtle);
-}
-
-.tab-item.active .tab-sku {
-  color: var(--text-muted);
-}
-
-.tab-sku--empty {
-  opacity: 0.55;
-  font-weight: 700;
-}
-
-.tab-menu-btn {
-  position: absolute;
-  right: 6px;
-  top: 50%;
-  transform: translateY(-50%);
-  border: 1px solid var(--border);
-  background: var(--surface-overlay);
-  line-height: 1;
-  cursor: pointer;
-  font-size: 16px;
-  width: 28px;
-  height: 28px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  opacity: 0.92;
-  transition: transform 0.14s ease, box-shadow 0.2s ease, background 0.2s ease, opacity 0.2s ease;
-}
-
-.tab-menu-btn:hover {
-  opacity: 1;
-  transform: translateY(-50%) scale(1.03);
-  background: var(--surface-raised);
-  box-shadow: var(--shadow-sm);
-}
-
-.skeleton-tab {
-  background: transparent;
-  border-color: transparent;
-  cursor: default;
-  box-shadow: none !important;
-  transform: none !important;
-}
-
-.skeleton-bar {
-  display: block;
-  width: 120px;
-  height: 0.85rem;
-  border-radius: 999px;
-  background: linear-gradient(90deg, rgba(226, 232, 240, 0.9) 0%, rgba(248, 250, 252, 0.9) 50%, rgba(226, 232, 240, 0.9) 100%);
-  background-size: 200% 100%;
-  animation: skeleton-shimmer 1.2s ease-in-out infinite;
-}
-
-@keyframes skeleton-shimmer {
-  0% {
-    background-position: 200% 0;
-  }
-
-  100% {
-    background-position: -200% 0;
-  }
-}
-
-.create-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  flex-wrap: wrap;
-}
-
-.create-status {
-  min-height: 26px;
-  display: flex;
-  align-items: center;
-}
-
-.sheet-tabs {
-  display: flex;
-  height: 38px;
-  align-items: center;
-  border-top: 1px solid var(--border);
-  background: var(--surface-overlay);
-  padding: 0.2rem 0.35rem;
-}
-
-.sheet-tab {
-  padding: 0.35rem 0.85rem;
-  font-size: 0.85rem;
-  font-weight: 800;
-  border-radius: 999px;
-  cursor: pointer;
-  transition: all 0.18s ease;
-  color: var(--text-muted);
-}
-
-.sheet-tab:hover {
-  background: var(--c-primary-alpha);
-}
-
-.sheet-tab.active {
-  background: var(--c-primary-alpha);
-  color: var(--text-primary);
-  box-shadow: var(--shadow-sm);
-}
-
-@keyframes shake {
-
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-
-  20%,
-  60% {
-    transform: translateX(-3px);
-  }
-
-  40%,
-  80% {
-    transform: translateX(3px);
-  }
-}
-
-.shake {
-  animation: shake 0.3s;
-}
-
-.tabs-wrapper .tab-item.shake-color {
-  background: rgba(220, 38, 38, 0.16);
-  border-color: rgba(220, 38, 38, 0.35);
-}
-
-.fade-status-enter-active,
-.fade-status-leave-active {
-  transition: opacity 0.22s ease, transform 0.22s ease;
-}
-
-.fade-status-enter-from,
-.fade-status-leave-to {
-  opacity: 0;
-  transform: translateY(3px);
-}
-
-.rsbo-sheet-actions-modal .modal-card {
-  width: 100%;
-  max-width: 760px;
-}
-
-.rsbo-actions-card {
-  width: 100%;
-  border-radius: 16px;
-  overflow: hidden;
-  background: var(--surface-raised);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-lg);
-}
-
-.rsbo-actions-head {
-  background: var(--surface-overlay);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--border);
-}
-
-.pill-row {
-  display: flex;
-  gap: 0.45rem;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.35rem 0.6rem;
-  border-radius: 999px;
-  font-weight: 800;
-  font-size: 0.78rem;
-  background: var(--surface-overlay);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-}
-
-.pill.strong {
-  background: linear-gradient(90deg, rgba(121, 87, 213, 0.16), rgba(236, 72, 153, 0.10));
-  border-color: rgba(121, 87, 213, 0.35);
-  color: var(--text-primary);
-}
-
-.rsbo-actions-body {
-  padding: 1rem 1.25rem;
-  min-height: 320px;
-}
-
-.action-card {
-  display: flex;
-  gap: 1rem;
-  align-items: flex-start;
-  padding: 1rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  box-shadow: var(--shadow-lg);
-  margin-bottom: 1rem;
-  transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.16s ease;
-}
-
-.action-card:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-lg);
-}
-
-.action-card.primary {
-  border-color: rgba(121, 87, 213, 0.35);
-}
-
-.action-card.danger {
-  border-color: rgba(220, 38, 38, 0.28);
-}
-
-.action-icon {
-  width: 44px;
-  height: 44px;
-  flex: 0 0 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 14px;
-  background: var(--c-primary-alpha);
-  color: var(--c-primary);
-}
-
-.action-icon.danger {
-  background: rgba(220, 38, 38, 0.12);
-  color: rgba(220, 38, 38, 1);
-}
-
-.action-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.action-title {
-  font-weight: 900;
-  font-size: 1rem;
-  margin-bottom: 0.15rem;
-}
-
-.action-desc {
-  opacity: 0.85;
-  font-size: 0.9rem;
-  color: var(--text-muted);
-}
-
-.meta-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.25rem 0.6rem;
-  border-radius: 999px;
-  font-size: 0.76rem;
-  font-weight: 800;
-  border: 1px solid transparent;
-  background: var(--bg-subtle);
-  color: var(--text-muted);
-}
-
-.meta-status.saving {
-  border-color: var(--c-info-alpha);
-  background: var(--c-info-alpha);
-}
-
-.meta-status.saved {
-  border-color: var(--c-success-alpha);
-  background: var(--c-success-alpha);
-  color: var(--text-primary);
-}
-
-.meta-status.error {
-  border-color: var(--c-danger-alpha);
-  background: var(--c-danger-alpha);
-  color: var(--text-primary);
-}
-
-.dot-pulse {
-  position: relative;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: currentColor;
-  box-shadow: 0 0 0 currentColor;
-  animation: dotPulse 1s infinite linear;
-}
-
-@keyframes dotPulse {
-  0% {
-    box-shadow: 0 0 0 0 currentColor;
-    opacity: 1;
-  }
-
-  70% {
-    box-shadow: 0 0 0 6px rgba(0, 0, 0, 0);
-    opacity: 0.6;
-  }
-
-  100% {
-    box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
-    opacity: 0.4;
-  }
-}
-
-.vendor-glow {
-  outline: 2px solid var(--c-success-alpha);
-}
-
-.rename-glow {
-  outline: 2px solid var(--c-success-alpha);
-}
-
-.meta-glow {
-  outline: 2px solid var(--c-success-alpha);
-}
-
-.confirm-inline {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.55rem 0.8rem;
-  background: var(--c-danger-alpha);
-  border: 1px solid rgba(220, 38, 38, 0.20);
-  border-radius: 14px;
-}
-
-.rsbo-actions-foot {
-  justify-content: flex-end;
-}
-
-.delete.is-disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-@media screen and (max-width: 768px) {
-  .tab-item {
-    max-width: 220px;
-  }
-
-  .rsbo-actions-body {
-    padding: 0.9rem;
-  }
-}
-
-@keyframes tabFocusPulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(121, 87, 213, 0.55), var(--shadow-lg);
-  }
-
-  35% {
-    box-shadow: 0 0 0 6px rgba(121, 87, 213, 0.28), var(--shadow-lg);
-  }
-
-  70% {
-    box-shadow: 0 0 0 3px rgba(121, 87, 213, 0.15), var(--shadow-lg);
-  }
-
-  100% {
-    box-shadow: 0 0 0 0 rgba(121, 87, 213, 0), var(--shadow-lg);
-  }
-}
-
-.tab-item.tab-focus-pulse {
-  animation: tabFocusPulse 0.9s ease forwards;
-  border-color: rgba(121, 87, 213, 0.55) !important;
-}
 </style>

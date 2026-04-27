@@ -1,0 +1,58 @@
+/* rsbo-app/src/components/tabsmanager/CatalogSelector.css */
+
+.catalog-selector-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+.options-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  margin-top: 0.5rem;
+}
+
+.option-pill {
+  appearance: none;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.5rem 1.25rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+  outline: none;
+}
+
+.option-pill:hover:not(.is-disabled) {
+  border-color: var(--c-primary-alpha);
+  background: var(--surface);
+  color: var(--text-primary);
+}
+
+.option-pill.is-active {
+  background: var(--c-primary);
+  color: #fff;
+  border-color: var(--c-primary);
+  box-shadow: 0 4px 12px rgba(121, 87, 213, 0.25);
+}
+
+.option-pill.is-disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: var(--surface-overlay);
+  border-style: dashed;
+}
+
+.option-pill-wrapper {
+  display: inline-flex;
+}
+
+/* Tooltip correction if needed */
+.option-pill-wrapper .tooltip {
+  display: flex;
+}

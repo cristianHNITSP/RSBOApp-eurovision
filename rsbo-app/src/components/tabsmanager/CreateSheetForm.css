@@ -1,0 +1,67 @@
+/* rsbo-app/src/components/tabsmanager/CreateSheetForm.css */
+
+.action-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.25rem;
+  padding: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-bottom: 1rem;
+  box-shadow: var(--shadow-lg);
+}
+
+.action-card:hover {
+  border-color: var(--c-primary-alpha);
+  background: var(--surface-raised);
+}
+
+.action-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: var(--c-primary-alpha);
+  border-radius: 12px;
+  font-size: 1.5rem;
+  color: var(--c-primary);
+  flex-shrink: 0;
+}
+
+.action-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.action-title {
+  font-weight: 800;
+  font-size: 1.1rem;
+  margin-bottom: 0.25rem;
+  color: var(--text-primary);
+}
+
+.action-desc {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.create-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.create-status {
+  min-height: 26px;
+  display: flex;
+  align-items: center;
+}
+
+form > * + * {
+  margin-top: 1.5rem;
+}

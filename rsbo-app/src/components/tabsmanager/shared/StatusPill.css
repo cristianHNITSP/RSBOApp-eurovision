@@ -1,0 +1,69 @@
+/* rsbo-app/src/components/tabsmanager/shared/StatusPill.css */
+
+.meta-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  border: 1px solid transparent;
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+}
+
+.meta-status.saving {
+  border-color: var(--c-info-alpha);
+  background: var(--c-info-alpha);
+}
+
+.meta-status.saved {
+  border-color: var(--c-success-alpha);
+  background: var(--c-success-alpha);
+  color: var(--text-primary);
+}
+
+.meta-status.error {
+  border-color: var(--c-danger-alpha);
+  background: var(--c-danger-alpha);
+  color: var(--text-primary);
+}
+
+.dot-pulse {
+  position: relative;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 currentColor;
+  animation: dotPulse 1s infinite linear;
+}
+
+@keyframes dotPulse {
+  0% {
+    box-shadow: 0 0 0 0 currentColor;
+    opacity: 1;
+  }
+
+  70% {
+    box-shadow: 0 0 0 6px rgba(0, 0, 0, 0);
+    opacity: 0.6;
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+    opacity: 0.4;
+  }
+}
+
+.fade-status-enter-active,
+.fade-status-leave-active {
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.fade-status-enter-from,
+.fade-status-leave-to {
+  opacity: 0;
+  transform: translateY(3px);
+}

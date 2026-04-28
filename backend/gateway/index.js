@@ -216,6 +216,7 @@ app.post("/api/access/login", rateLimit(RATE_LIMIT_LOGIN));
 // 🔹 Rutas proxy
 app.use("/api/access", proxyRequest(SERVICES.auth));
 app.use("/api/users", proxyRequest(SERVICES.users));
+app.use("/api/workspace", proxyRequest(SERVICES.auth));
 app.use("/api/catalog", proxyRequest(SERVICES.inventory));
 app.use("/api/inventory", proxyRequest(SERVICES.inventory));
 app.use("/api/laboratory", proxyRequest(SERVICES.inventory));

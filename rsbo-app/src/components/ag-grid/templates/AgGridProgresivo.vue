@@ -80,6 +80,7 @@ import { useAgGridBase, localeText, ackOk, ackErr, msgFromErr, statusFromErr, no
 import { useAgGridIncrementalColumns } from "@/composables/ag-grid/useAgGridIncrementalColumns";
 
 import { useAgGridIntegration } from "@/composables/ag-grid/useAgGridIntegration";
+import { useGridKeyboardShortcuts } from "@/composables/ag-grid/useGridKeyboardShortcuts";
 import { useAgGridHandlers } from "@/composables/ag-grid/useAgGridHandlers";
 import { useAgGridFormulaBar } from "@/composables/ag-grid/useAgGridFormulaBar";
 import { useAgGridPivotLoader } from "@/composables/ag-grid/useAgGridPivotLoader";
@@ -89,8 +90,8 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 
 const DEV_MODE = import.meta.env.DEV;
 const DEV_DELAY_MS = 0;
-const ROW_PAGE_SIZE = DEV_MODE ? 4 : 10;
-const COL_CHUNK_SIZE = DEV_MODE ? 3 : 8;
+const ROW_PAGE_SIZE = DEV_MODE ? 4 : 25;
+const COL_CHUNK_SIZE = DEV_MODE ? 3 : 15;
 
 const LOG = (...a) => DEV_MODE && console.log("[Progresivo]", ...a);
 const LOG_ROWS = (...a) => DEV_MODE && console.log("[Progresivo][Rows]", ...a);
@@ -271,14 +272,16 @@ const { datasource, loadingRowsCount, rowsInCacheCount } = useAgGridPivotLoader(
       const nullFields = Object.fromEntries(addAll.flatMap(a => eyes.map(eye => [`add_${norm(a)}_${eye}`, null])));
       return pageKeys.map(rk => { const [bi, bd] = rk.split("|").map(Number); return { base_izq: bi, base_der: bd, base: bi, __loading: true, ...nullFields }; });
     }
+    // Pre-indexar items en Map para O(1) lookup
+    const itemMap = new Map();
+    items.forEach(it => itemMap.set(`${to2(it.base_izq)}|${to2(it.base_der)}|${to2(it.add)}|${it.eye}`, it.existencias));
+
     return pageKeys.map(rk => {
       const [bi, bd] = rk.split("|").map(Number); const row = { base_izq: bi, base_der: bd, base: bi };
-      const pageItems = items.filter(i => i.base_izq === bi && i.base_der === bd);
       addAll.forEach(add => {
         eyes.forEach(eye => {
           const field = `add_${norm(add)}_${eye}`;
-          const match = pageItems.find(i => i.add === add && i.eye === eye);
-          row[field] = match?.existencias ?? 0;
+          row[field] = itemMap.get(`${to2(bi)}|${to2(bd)}|${to2(add)}|${eye}`) ?? 0;
           const pk = `${to2(bi)}|${to2(bd)}|${to2(add)}|${eye}`;
           if (pendingChanges?.has(pk)) row[field] = pendingChanges.get(pk).existencias;
         });
@@ -360,6 +363,17 @@ function applyGridHistoryOp(op) {
 }
 const handleGridUndo = () => applyGridHistoryOp(gridHistory.undo());
 const handleGridRedo = () => applyGridHistoryOp(gridHistory.redo());
+
+useGridKeyboardShortcuts({
+  onSave: handleSave,
+  onUndo: handleGridUndo,
+  onRedo: handleGridRedo,
+  gridApi: gridApi,
+  dirty: dirty,
+  canUndo: gridHistory.canUndo,
+  canRedo: gridHistory.canRedo,
+  isActive: () => gridPageRef.value && gridPageRef.value.offsetParent !== null
+});
 
 const handleAddRow = async (nuevoValor, ack) => {
   const P = phys.value; const base = to2(nuevoValor);

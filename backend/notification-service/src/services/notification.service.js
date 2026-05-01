@@ -55,7 +55,6 @@ async function listForUser({ roleName, userId, limit = 50, skip = 0 }) {
   const userStr = String(userId);
   const result = notifications.map((n) => ({
     ...n,
-    isRead:   n.readBy.some((r) => String(r.userId) === userStr),
     isPinned: (n.pinnedBy || []).some((id) => String(id) === userStr),
   }));
 
@@ -63,18 +62,30 @@ async function listForUser({ roleName, userId, limit = 50, skip = 0 }) {
 }
 
 /**
- * Cuenta las no leídas para el usuario (para el badge del frontend).
- * Excluye descartadas. Usa countDocuments para evitar cargar todos los documentos a JS.
+ * Cuenta las notificaciones creadas o actualizadas después de un timestamp.
+ * Sirve para el badge de "nuevas" notificaciones.
  */
-async function countUnread({ roleName, userId }) {
+async function countNew({ roleName, userId, since }) {
   const filter = {
     $and: [
       visibilityFilter(roleName),
       notExpired(),
       { dismissedBy: { $nin: [userId] } },
-      { 'readBy.userId': { $ne: userId } },
     ],
   };
+  
+  if (since) {
+    const sinceDate = new Date(since);
+    if (!isNaN(sinceDate.getTime())) {
+      filter.$and.push({
+        $or: [
+          { createdAt: { $gt: sinceDate } },
+          { updatedAt: { $gt: sinceDate } }
+        ]
+      });
+    }
+  }
+
   return Notification.countDocuments(filter);
 }
 
@@ -114,8 +125,6 @@ async function createOrAccumulate({ groupKey, title, messageTemplate, type, prio
     existing.count += 1;
     existing.message = messageTemplate(existing.count);
     existing.title   = title;
-    // Resetear readBy para que reaparezca como no leída para todos
-    existing.readBy  = [];
     existing.updatedAt = new Date();
     await existing.save();
     return { notification: existing, accumulated: true };
@@ -138,45 +147,7 @@ async function createOrAccumulate({ groupKey, title, messageTemplate, type, prio
   return { notification: n, accumulated: false };
 }
 
-/**
- * Marca una notificación como leída. Idempotente.
- */
-async function markRead({ notificationId, roleName, userId }) {
-  const notification = await Notification.findOne({
-    _id: notificationId,
-    ...baseFilter(roleName),
-  });
 
-  if (!notification) return null;
-
-  const alreadyRead = notification.readBy.some((r) => String(r.userId) === String(userId));
-  if (!alreadyRead) {
-    notification.readBy.push({ userId, readAt: new Date() });
-    await notification.save();
-  }
-
-  return notification;
-}
-
-/**
- * Marca TODAS las notificaciones visibles como leídas para el usuario.
- * Usa updateMany para evitar N operaciones save individuales.
- */
-async function markAllRead({ roleName, userId }) {
-  const filter = {
-    $and: [
-      visibilityFilter(roleName),
-      notExpired(),
-      { dismissedBy: { $nin: [userId] } },
-      { 'readBy.userId': { $ne: userId } },
-    ],
-  };
-  const result = await Notification.updateMany(
-    filter,
-    { $push: { readBy: { userId, readAt: new Date() } } }
-  );
-  return { marked: result.modifiedCount };
-}
 
 /**
  * Alterna el pin de una notificación para el usuario. Idempotente.
@@ -218,11 +189,6 @@ async function dismiss({ notificationId, roleName, userId }) {
     notification.dismissedBy.push(userId);
   }
 
-  const alreadyRead = notification.readBy.some((r) => String(r.userId) === userStr);
-  if (!alreadyRead) {
-    notification.readBy.push({ userId, readAt: new Date() });
-  }
-
   // También quitar el pin si estaba fijado
   const pinIdx = (notification.pinnedBy || []).findIndex((id) => String(id) === userStr);
   if (pinIdx !== -1) notification.pinnedBy.splice(pinIdx, 1);
@@ -260,9 +226,16 @@ async function upsertDaily({ groupKey, date, title, message, metadata, type, pri
     existing.message  = message;
     existing.metadata = metadata ?? existing.metadata;
     existing.count    = (existing.count || 1) + 1;
-    existing.readBy   = []; // re-notificar a todos
     if (type)     existing.type     = type;
-    if (priority) existing.priority = priority;
+    
+    // Solo escalar prioridad hacia arriba si tiene pins activos
+    if (priority) {
+      const PRIO_ORDER = { low: 0, medium: 1, high: 2, critical: 3 };
+      const hasPins = (existing.pinnedBy || []).length > 0;
+      if (!hasPins || PRIO_ORDER[priority] >= PRIO_ORDER[existing.priority]) {
+        existing.priority = priority;
+      }
+    }
     existing.markModified('metadata');
     await existing.save();
     return { notification: existing, accumulated: true };
@@ -308,4 +281,4 @@ async function remove(notificationId) {
   return Notification.findByIdAndDelete(notificationId);
 }
 
-module.exports = { listForUser, countUnread, create, createOrAccumulate, upsertDaily, markRead, markAllRead, togglePin, dismiss, update, remove };
+module.exports = { listForUser, countNew, create, createOrAccumulate, upsertDaily, togglePin, dismiss, update, remove };

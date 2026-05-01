@@ -244,11 +244,14 @@ function select(tab) {
    CONTENT PANEL
    ════════════════════════════════════════════════════════════ */
 .dyn-tabs__content {
-  overflow: hidden;
+  /* Eliminamos overflow: hidden para permitir que los tooltips se vean por fuera */
+  position: relative;
 }
 
 .dyn-tab-panel {
   width: 100%;
+  /* Padding superior estable (0.75rem = mt-3) para evitar el "salto" de los márgenes durante la transición */
+  padding-top: 0.75rem;
 }
 
 /* ════════════════════════════════════════════════════════════

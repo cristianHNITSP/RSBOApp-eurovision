@@ -122,6 +122,7 @@ app.get("/health", (_req, res) => {
 // -------------------------
 app.use("/api/access", require("./routes/auth.routes"));
 app.use("/api/users", require("./routes/user.routes"));
+app.use("/api/workspace/preferences", require("./routes/preferences.routes"));
 
 // -------------------------
 // AdminJS + global error handler + listen

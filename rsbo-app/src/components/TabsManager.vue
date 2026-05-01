@@ -3,7 +3,7 @@
   <div>
     <!-- TABS -->
     <TabsBar
-      :sheets="sheets"
+      :sheets="activeTabs"
       :active-id="activeId"
       :loading-tabs="loadingTabs"
       :has-more="hasMore"
@@ -16,17 +16,22 @@
       @load-more="$emit('load-more')"
       @load-prior="$emit('load-prior')"
       @reorder="handleReorder"
+      @close-tab="closeTab"
+      @toggle-pin="handleTogglePin"
     />
 
-    <!-- CONTENIDO -->
+    <!-- CONTENIDO (Mount-once with v-show pattern) -->
     <div class="plantillas-contenedor">
-      <!-- NUEVA -->
-      <div v-if="activeId === 'nueva'" class="plantillas-contenedor">
+      <!-- NUEVA (always mounted, shown when active) -->
+      <div
+        v-show="activeId === 'nueva'"
+        class="plantillas-contenedor"
+      >
         <CreateSheetForm
           :catalog="catalog"
           :material-required="materialRequired"
           :show-tratamiento="showTratamiento"
-          :sheets="sheets"
+          :sheets="activeTabs"
           :catalog-bases-map="catalogBasesMap"
           :catalog-treatments-map="catalogTreatmentsMap"
           :create-sheet="createSheet"
@@ -36,18 +41,30 @@
         />
       </div>
 
-      <!-- EXISTENTES -->
-      <div v-else>
-        <slot :activeId="activeId" :activeInternal="activeInternalTab" :activeSheet="activeSheetObj"></slot>
-
-        <!-- TABS INTERNAS -->
-        <InternalTabs
-          v-if="internalTabs.length"
-          :tabs="internalTabs"
-          :active-tab-id="activeInternalTab"
-          @select="handleInternalTabClick"
+      <!-- EXISTENTES (mount-once, v-show) -->
+      <div
+        v-for="tab in activeTabs"
+        :key="tab.id"
+        v-show="tab.id !== 'nueva' && tab.id === activeIdStore"
+        class="tab-pane"
+      >
+        <SheetContent
+          v-if="tab.id !== 'nueva' && mountedTabIds.has(tab.id)"
+          :sheet="tab"
+          :active-internal="getInternalTabFor(tab.id)"
+          :actor="props.actor"
+          :api-type="props.apiType"
+          @update:internal="handleInternalTabClick"
         />
       </div>
+
+      <!-- TABS INTERNAS (global, shown with active sheet) -->
+      <InternalTabs
+        v-if="internalTabs.length && activeId !== 'nueva'"
+        :tabs="internalTabs"
+        :active-tab-id="activeInternalTab"
+        @select="handleInternalTabClick"
+      />
     </div>
 
     <!-- MODAL ACCIONES -->
@@ -97,6 +114,9 @@
       @close="isActionsOpen = false"
       @open="openSheet"
     />
+
+    <!-- MODAL LÍMITE (Nuevo) -->
+    <TabLimitWarningModal />
   </div>
 </template>
 
@@ -104,11 +124,13 @@
 // New Sub-components
 import TabsBar from "./tabsmanager/TabsBar.vue";
 import CreateSheetForm from "./tabsmanager/CreateSheetForm.vue";
+import SheetContent from "./tabsmanager/SheetContent.vue";
 import SheetActionsModal from "./tabsmanager/SheetActionsModal.vue";
 import InternalTabs from "./tabsmanager/InternalTabs.vue";
+import TabLimitWarningModal from "./tabsmanager/TabLimitWarningModal.vue";
 
 // New Composables
-import { normalizeSheet, displayTratamiento, tipoHuman } from "@/composables/tabsmanager/useSheetNormalizer";
+import { normalizeSheet } from "@/composables/tabsmanager/useSheetNormalizer";
 import { 
   ISO_DATE_ONLY_RX, 
   DEFAULT_EXPIRY_MONTHS, 
@@ -118,9 +140,10 @@ import {
   numForEdit
 } from "../composables/tabsmanager/useDateHelpers";
 
-import { ref, computed, watch, nextTick } from "vue";
+import { ref, computed, watch, nextTick, onMounted, reactive } from "vue";
 import { useSheetApi } from "@/composables/api/useSheetApi";
 import { labToast } from "@/composables/shared/useLabToast.js";
+import { useWorkspaceTabs } from "@/composables/tabsmanager/useWorkspaceTabs";
 
 const DEBUG_PURCHASE = true;
 
@@ -143,9 +166,59 @@ const props = defineProps({
   activeInternalId: { type: String,  default: null },
 });
 
-const { createSheet, updateSheet, moveSheetToTrash } = useSheetApi(() => props.apiType);
-
 const emit = defineEmits(["update:active", "reorder", "crear", "update:internal", "deleted", "renamed", "load-more", "load-prior"]);
+
+const { getSheet, createSheet, updateSheet, moveSheetToTrash } = useSheetApi(() => props.apiType);
+
+const { 
+  activeTabs, 
+  activeId: activeIdStore, 
+  openTemplate,
+  reorderTabs, 
+  setActiveTab: setActiveTabStore,
+  closeTab: closeTabStore,
+  togglePinTab
+} = useWorkspaceTabs();
+
+const mountedTabIds = reactive(new Set());
+
+watch(activeIdStore, (id) => {
+  if (id && id !== 'nueva') {
+    mountedTabIds.add(id);
+  }
+  // Sync store state to parent without re-triggering loops
+  if (id !== props.activeId) {
+    emit("update:active", id);
+  }
+}, { immediate: true });
+
+const closeTab = (id) => {
+  closeTabStore(id);
+  mountedTabIds.delete(id);
+};
+
+const handleTogglePin = (id) => {
+  togglePinTab(id);
+};
+
+// Sincronizar sheets iniciales con el store al montar
+onMounted(() => {
+  if (Array.isArray(props.initialSheets) && activeTabs.value.length === 0) {
+    activeTabs.value = props.initialSheets.map(s => ({
+      ...normalizeSheet(s),
+      isPinned: false
+    }));
+  }
+  if (props.activeId && props.activeId !== activeIdStore.value) {
+    activeIdStore.value = props.activeId;
+  }
+});
+
+watch(() => props.activeId, (newId) => {
+  if (newId && newId !== activeIdStore.value) {
+    activeIdStore.value = newId;
+  }
+});
 
 /* ===================== CATÁLOGO DESDE BD ===================== */
 // Mapa key → CatalogBase (para lookups O(1))
@@ -162,15 +235,7 @@ const catalogTreatmentsMap = computed(() => {
   return map;
 });
 
-const mapSheets = (arr) => (Array.isArray(arr) ? arr : []).map(normalizeSheet).filter(Boolean);
-
-/* ===== Tabs ===== */
-const sheets = ref(mapSheets(props.initialSheets));
-watch(
-  () => props.initialSheets,
-  (v) => (sheets.value = mapSheets(v)),
-  { deep: true, immediate: true }
-);
+/* ===== Tabs (Sincronizado con Store) ===== */
 
 /* ===================== Autocomplete Proveedor/Marca ===================== */
 const normTxt = (s) =>
@@ -182,7 +247,7 @@ const normTxt = (s) =>
 
 const uniqueNamesFromSheets = (getter) => {
   const set = new Map();
-  for (const sh of sheets.value || []) {
+  for (const sh of activeTabs.value || []) {
     if (sh?.id === "nueva") continue;
     const raw = getter(sh);
     const pretty = String(raw || "").trim();
@@ -197,13 +262,25 @@ const uniqueNamesFromSheets = (getter) => {
 const proveedorOptions = computed(() => uniqueNamesFromSheets((s) => s?.proveedor?.name));
 const marcaOptions = computed(() => uniqueNamesFromSheets((s) => s?.marca?.name));
 
-const activeId = computed(() => props.activeId);
-const activeSheetObj = computed(() => sheets.value.find((s) => s.id === activeId.value));
+const activeSheetObj = computed(() => activeTabs.value.find((s) => s.id === activeIdStore.value));
 
 /* ===== Tabs internas ===== */
 const activeInternalTab = ref(null);
 /** Recuerda la última pestaña interna elegida por sheetId para sobrevivir al KeepAlive */
-const internalTabHistory = new Map();
+const internalTabHistory = reactive(new Map());
+
+/** Devuelve la pestaña interna almacenada para un sheet específico (no la global compartida) */
+const getInternalTabFor = (sheetId) => {
+  const saved = internalTabHistory.get(sheetId);
+  if (saved) return saved;
+
+  // Determinar el default correcto para este sheet basándose en su tipo de matriz
+  const tab = activeTabs.value.find(t => t.id === sheetId);
+  const tipo = tab?.tipo_matriz;
+  if (tipo === 'SPH_ADD' || tipo === 'SPH_CYL' || tipo === 'SPH_CYL_AXIS') return 'sph-neg';
+  if (tipo === 'BASE' || tipo === 'BASE_ADD') return 'base-neg';
+  return null;
+};
 
 const internalTabs = computed(() => {
   const t = activeSheetObj.value?.tipo_matriz;
@@ -229,12 +306,15 @@ const internalTabs = computed(() => {
 watch(
   internalTabs,
   (tabs) => {
-    const sheetId = activeId.value;
+    const sheetId = activeIdStore.value;
+    if (!sheetId || sheetId === 'nueva') return;
     const saved   = internalTabHistory.get(sheetId);
     const first   = tabs[0]?.id ?? null;
     const valid   = saved && tabs.some(t => t.id === saved);
     const target  = valid ? saved : first;
     activeInternalTab.value = target;
+    // Persistir en el Map para que getInternalTabFor lo devuelva a tabs inactivos
+    if (target) internalTabHistory.set(sheetId, target);
     emit("update:internal", target);
   },
   { immediate: true }
@@ -243,13 +323,13 @@ watch(
 watch(() => props.activeInternalId, (val) => {
   if (val && val !== activeInternalTab.value) {
     activeInternalTab.value = val;
-    internalTabHistory.set(activeId.value, val);
+    internalTabHistory.set(activeIdStore.value, val);
   }
 });
 
 const handleInternalTabClick = (id) => {
   activeInternalTab.value = id;
-  internalTabHistory.set(activeId.value, id); // persistir elección por sheet
+  internalTabHistory.set(activeIdStore.value, id); // persistir elección por sheet
   emit("update:internal", id);
   
   // Feedback sutil del cambio de vista
@@ -266,20 +346,17 @@ const actorRef = computed(() => {
 });
 
 const handleSheetCreated = ({ result, tabs }) => {
-  const newTab = normalizeSheet({ ...result, tabs });
-  const addIndex = sheets.value.findIndex((x) => x.id === "nueva");
-  sheets.value.splice(addIndex >= 0 ? addIndex : sheets.value.length, 0, newTab);
-  setActiveTab(newTab.id);
+  openTemplate(result);
   emit("crear", { result, tabs });
 };
 
-const setActiveTab = (id) => {
+const setActiveTab = (id, options = {}) => {
+  setActiveTabStore(id, options);
   emit("update:active", id);
 };
 
 const handleReorder = ({ oldIndex, newIndex }) => {
-  const moved = sheets.value.splice(oldIndex, 1)[0];
-  sheets.value.splice(newIndex, 0, moved);
+  reorderTabs(oldIndex, newIndex);
   emit("reorder", { oldIndex, newIndex });
 };
 
@@ -393,24 +470,15 @@ const confirmSavePurchase = async () => {
     if (!updated) throw new Error("Respuesta inválida: falta data.sheet");
 
     const norm = normalizeSheet(updated);
-    const idx = sheets.value.findIndex((s) => s.id === id);
-    const newTabs = tabs || (idx >= 0 ? sheets.value[idx].tabs : selectedSheet.value?.tabs || []);
+    const idx = activeTabs.value.findIndex((s) => s.id === id);
+    const newTabs = tabs || (idx >= 0 ? activeTabs.value[idx].tabs : selectedSheet.value?.tabs || []);
 
-    if (idx >= 0) sheets.value[idx] = normalizeSheet({ ...sheets.value[idx], ...norm, tabs: newTabs });
-    selectedSheet.value = normalizeSheet({ ...selectedSheet.value, ...norm, tabs: newTabs });
+    if (idx >= 0) {
+      activeTabs.value[idx] = { ...activeTabs.value[idx], ...norm, tabs: newTabs };
+    }
+    selectedSheet.value = { ...selectedSheet.value, ...norm, tabs: newTabs };
 
-    editNumFactura.value = String(selectedSheet.value?.numFactura || "");
-    editLoteProducto.value = String(selectedSheet.value?.loteProducto || "");
-    editFechaCompra.value = selectedSheet.value?.fechaCompra ? fmtDateOnly(selectedSheet.value.fechaCompra) : "";
-    editFechaCaducidad.value = selectedSheet.value?.fechaCaducidad ? fmtDateOnly(selectedSheet.value.fechaCaducidad) : "";
-    editPrecioVenta.value =
-      selectedSheet.value?.precioVenta === null || selectedSheet.value?.precioVenta === undefined
-        ? ""
-        : String(selectedSheet.value.precioVenta);
-    editPrecioCompra.value =
-      selectedSheet.value?.precioCompra === null || selectedSheet.value?.precioCompra === undefined
-        ? ""
-        : String(selectedSheet.value.precioCompra);
+    _syncEditRefsFromSheet(selectedSheet.value);
 
     purchaseStatus.value = "saved";
     purchaseStatusMessage.value = "Datos guardados";
@@ -495,14 +563,15 @@ const confirmSaveVendor = async () => {
     if (!updated) throw new Error("Respuesta inválida: falta data.sheet");
 
     const norm = normalizeSheet(updated);
-    const idx = sheets.value.findIndex((s) => s.id === id);
-    const newTabs = tabs || (idx >= 0 ? sheets.value[idx].tabs : selectedSheet.value?.tabs || []);
+    const idx = activeTabs.value.findIndex((s) => s.id === id);
+    const newTabs = tabs || (idx >= 0 ? activeTabs.value[idx].tabs : selectedSheet.value?.tabs || []);
 
-    if (idx >= 0) sheets.value[idx] = normalizeSheet({ ...sheets.value[idx], ...norm, tabs: newTabs });
-    selectedSheet.value = normalizeSheet({ ...selectedSheet.value, ...norm, tabs: newTabs });
+    if (idx >= 0) {
+      activeTabs.value[idx] = { ...activeTabs.value[idx], ...norm, tabs: newTabs };
+    }
+    selectedSheet.value = { ...selectedSheet.value, ...norm, tabs: newTabs };
 
-    editProveedorName.value = String(selectedSheet.value?.proveedor?.name || "");
-    editMarcaName.value = String(selectedSheet.value?.marca?.name || "");
+    _syncEditRefsFromSheet(selectedSheet.value);
 
     vendorStatus.value = "saved";
     vendorStatusMessage.value = "Proveedor/marca actualizados";
@@ -561,11 +630,13 @@ const confirmRename = async () => {
     if (!updated) throw new Error("Respuesta inválida: falta data.sheet");
 
     const norm = normalizeSheet(updated);
-    const idx = sheets.value.findIndex((s) => s.id === id);
-    const newTabs = tabs || (idx >= 0 ? sheets.value[idx].tabs : selectedSheet.value?.tabs || []);
+    const idx = activeTabs.value.findIndex((s) => s.id === id);
+    const newTabs = tabs || (idx >= 0 ? activeTabs.value[idx].tabs : selectedSheet.value?.tabs || []);
 
-    if (idx >= 0) sheets.value[idx] = normalizeSheet({ ...sheets.value[idx], ...norm, tabs: newTabs });
-    selectedSheet.value = normalizeSheet({ ...selectedSheet.value, ...norm, tabs: newTabs });
+    if (idx >= 0) {
+      activeTabs.value[idx] = { ...activeTabs.value[idx], ...norm, tabs: newTabs };
+    }
+    selectedSheet.value = { ...selectedSheet.value, ...norm, tabs: newTabs };
 
     renameName.value = String(selectedSheet.value?.name || "");
 
@@ -633,10 +704,10 @@ const confirmSaveMeta = async () => {
     if (!updated) throw new Error("Respuesta inválida: falta data.sheet");
 
     const norm = normalizeSheet(updated);
-    const idx = sheets.value.findIndex((s) => s.id === id);
-    const newTabs = tabs || (idx >= 0 ? sheets.value[idx].tabs : selectedSheet.value?.tabs || []);
+    const idx = activeTabs.value.findIndex((s) => s.id === id);
+    const newTabs = tabs || (idx >= 0 ? activeTabs.value[idx].tabs : selectedSheet.value?.tabs || []);
 
-    if (idx >= 0) sheets.value[idx] = normalizeSheet({ ...sheets.value[idx], ...norm, tabs: newTabs });
+    if (idx >= 0) activeTabs.value[idx] = normalizeSheet({ ...activeTabs.value[idx], ...norm, tabs: newTabs });
     selectedSheet.value = normalizeSheet({ ...selectedSheet.value, ...norm, tabs: newTabs });
 
     loadMetaFromSheet(selectedSheet.value);
@@ -682,8 +753,8 @@ const softDelete = async () => {
 
     const updated = data?.data?.sheet || data?.data || null;
 
-    const idx = sheets.value.findIndex((s) => s.id === id);
-    if (idx >= 0) sheets.value.splice(idx, 1);
+    const idx = activeTabs.value.findIndex((s) => s.id === id);
+    if (idx >= 0) activeTabs.value.splice(idx, 1);
 
     trashStatus.value = "saved";
     trashStatusMessage.value = "Enviada a papelera";
@@ -692,7 +763,7 @@ const softDelete = async () => {
 
     isActionsOpen.value = false;
 
-    if (activeId.value === id) emit("update:active", "nueva");
+    if (activeIdStore.value === id) emit("update:active", "nueva");
 
     setTimeout(() => resetTrashStatus(), 1500);
   } catch (e) {
@@ -707,58 +778,64 @@ const softDelete = async () => {
 
 
 /* ===================== openActions / openSheet / tabs click ===================== */
-const openActions = async (sheet) => {
-  selectedSheet.value = normalizeSheet(sheet);
+const _syncEditRefsFromSheet = (s) => {
+  if (!s) return;
+  renameName.value = String(s.name || "");
+  loadMetaFromSheet(s);
 
-  if (DEBUG_PURCHASE) {
-    console.groupCollapsed("[INV][UI] openActions selectedSheet");
-    console.log("keys:", selectedSheet.value ? Object.keys(selectedSheet.value) : []);
-    console.log("purchase:", {
-      numFactura: selectedSheet.value?.numFactura,
-      loteProducto: selectedSheet.value?.loteProducto,
-      fechaCompra: selectedSheet.value?.fechaCompra,
-      fechaCaducidad: selectedSheet.value?.fechaCaducidad,
-      precioVenta: selectedSheet.value?.precioVenta
-    });
-    console.groupEnd();
+  editProveedorName.value = String(s.proveedor?.name || "");
+  editMarcaName.value = String(s.marca?.name || "");
+
+  suppressEditAutoExpiry.value = true;
+  editNumFactura.value = String(s.numFactura || "");
+  editLoteProducto.value = String(s.loteProducto || "");
+  editFechaCompra.value = s.fechaCompra ? fmtDateOnly(s.fechaCompra) : "";
+  editFechaCaducidad.value = s.fechaCaducidad ? fmtDateOnly(s.fechaCaducidad) : "";
+
+  editPrecioVenta.value =
+    s.precioVenta === null || s.precioVenta === undefined
+      ? ""
+      : String(s.precioVenta);
+
+  editPrecioCompra.value =
+    s.precioCompra === null || s.precioCompra === undefined
+      ? ""
+      : String(s.precioCompra);
+
+  if (!editFechaCaducidad.value && editFechaCompra.value) {
+    editFechaCaducidad.value = addMonthsToISODate(editFechaCompra.value, DEFAULT_EXPIRY_MONTHS);
   }
+  
+  nextTick(() => {
+    suppressEditAutoExpiry.value = false;
+  });
+};
 
+const openActions = async (sheet) => {
+  // 1. Mostrar modal inmediatamente con lo que tengamos (SKU, nombre)
+  selectedSheet.value = normalizeSheet(sheet);
+  
   resetPurchaseStatus();
   resetVendorStatus();
   resetRenameStatus();
   resetMetaStatus();
   resetTrashStatus();
 
-  renameName.value = String(selectedSheet.value?.name || "");
-  loadMetaFromSheet(selectedSheet.value);
-
-  editProveedorName.value = String(selectedSheet.value?.proveedor?.name || "");
-  editMarcaName.value = String(selectedSheet.value?.marca?.name || "");
-
-  suppressEditAutoExpiry.value = true;
-
-  editNumFactura.value = String(selectedSheet.value?.numFactura || "");
-  editLoteProducto.value = String(selectedSheet.value?.loteProducto || "");
-  editFechaCompra.value = selectedSheet.value?.fechaCompra ? fmtDateOnly(selectedSheet.value.fechaCompra) : "";
-  editFechaCaducidad.value = selectedSheet.value?.fechaCaducidad ? fmtDateOnly(selectedSheet.value.fechaCaducidad) : "";
-
-  editPrecioVenta.value =
-    selectedSheet.value?.precioVenta === null || selectedSheet.value?.precioVenta === undefined
-      ? ""
-      : String(selectedSheet.value.precioVenta);
-
-  editPrecioCompra.value =
-    selectedSheet.value?.precioCompra === null || selectedSheet.value?.precioCompra === undefined
-      ? ""
-      : String(selectedSheet.value.precioCompra);
-
-  if (!editFechaCaducidad.value && editFechaCompra.value) {
-    editFechaCaducidad.value = addMonthsToISODate(editFechaCompra.value, DEFAULT_EXPIRY_MONTHS);
-  }
+  _syncEditRefsFromSheet(selectedSheet.value);
 
   isActionsOpen.value = true;
-  await nextTick();
-  suppressEditAutoExpiry.value = false;
+
+  // 2. Cargar datos completos en segundo plano
+  try {
+    const { data } = await getSheet(selectedSheet.value.id);
+    const full = data?.data?.sheet || data?.sheet || data;
+    if (full) {
+      selectedSheet.value = normalizeSheet(full);
+      _syncEditRefsFromSheet(selectedSheet.value);
+    }
+  } catch (e) {
+    console.error("[INV][UI] openActions fetch error:", e);
+  }
 };
 
 const openSheet = () => {
@@ -769,7 +846,7 @@ const openSheet = () => {
 
 const handleTabClick = (id) => {
   if (props.loadingTabs) return;
-  emit("update:active", id);
+  setActiveTab(id, { sync: true, touch: true });
 };
 
 </script>
@@ -784,6 +861,17 @@ const handleTabClick = (id) => {
   box-shadow: var(--shadow-lg);
   transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
+
+.tab-pane {
+  height: 600px; /* Matching the original design height */
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
 
 </style>

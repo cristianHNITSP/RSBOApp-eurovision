@@ -1,6 +1,5 @@
 // src/composables/useBasesMicasVentas.js
 import { ref, computed, watch, onMounted, onBeforeUnmount } from "vue";
-import { useLocalStorage } from "@vueuse/core";
 import { labToast } from "@/composables/shared/useLabToast.js";
 import { listSheets as invListSheets, fetchItems as invFetchItems } from "@/services/inventory";
 import { createOrder, listOrders } from "@/services/laboratorio";
@@ -108,15 +107,6 @@ export function useBasesMicasVentas(getUser) {
   const catalogPage     = ref(1);
   const catalogPageSize = ref(15);
 
-  // ── Cliente cache (useLocalStorage — reactivo, con serialización automática) ──
-  const _clientCache = useLocalStorage("rsbo_client_cache_v1", {});
-  function _saveClientToCache(nombre, data) {
-    _clientCache.value[nombre.toLowerCase()] = { ...data, savedAt: Date.now() };
-  }
-  function _getClientFromCache(nombre) {
-    return _clientCache.value[nombre.toLowerCase()] || null;
-  }
-
   // ── AbortController — cancela requests pendientes al desmontar ────────────
   let _ac = new AbortController();
   onBeforeUnmount(() => { _ac.abort(); });
@@ -136,6 +126,8 @@ export function useBasesMicasVentas(getUser) {
   const loadingItems       = ref(false);
   const loadingSale        = ref(false);
   const loadingLabStatuses = ref(false);
+  const sheetSearchLoading = ref(false);
+  const sheetSearchQuery   = ref("");
 
   // ── Voucher & Lab statuses ─────────────────────────────────────────────────
   const voucherOpen  = ref(false);
@@ -199,8 +191,18 @@ export function useBasesMicasVentas(getUser) {
       const name = (sale.cliente || "").trim();
       if (!name) continue;
       const existing = map.get(name);
+      // Mantener la información más reciente de cada cliente
       if (!existing || new Date(sale.fecha) > new Date(existing.fecha)) {
-        map.set(name, { nombre: name, nota: sale.note || "", fecha: sale.fecha, pedidos: (existing?.pedidos || 0) + 1 });
+        map.set(name, {
+          nombre:    name,
+          nombres:   sale.clienteNombres   || "",
+          apellidos: sale.clienteApellidos || "",
+          empresa:   sale.clienteEmpresa   || "",
+          contacto:  sale.clienteContacto  || "",
+          nota:      sale.note || "",
+          fecha:     sale.fecha,
+          pedidos:   (existing?.pedidos || 0) + 1
+        });
       } else {
         existing.pedidos++;
       }
@@ -214,17 +216,26 @@ export function useBasesMicasVentas(getUser) {
     return recentClientes.value.filter((c) => normTxt(c.nombre).includes(q));
   });
 
+  const sheetSearchResults = computed(() => {
+    const q = normTxt(sheetSearchQuery.value);
+    if (!q) return sheetsDB.value;
+    return sheetsDB.value.filter(s =>
+      normTxt(s.nombre).includes(q) ||
+      normTxt(s.sku).includes(q) ||
+      normTxt(s.material).includes(q)
+    );
+  });
+
   function selectCliente(cliente) {
     if (!cliente) return;
     cartCliente.value = cliente.nombre;
     if (cliente.nota && !cartNote.value) cartNote.value = cliente.nota;
-    const cached = _getClientFromCache(cliente.nombre);
-    if (cached) {
-      cartClienteNombres.value   = cached.nombres   || "";
-      cartClienteApellidos.value = cached.apellidos || "";
-      cartClienteEmpresa.value   = cached.empresa   || "";
-      cartClienteContacto.value  = cached.contacto  || "";
-    }
+    
+    // Auto-rellenar desde los datos del cliente recurrente (API)
+    cartClienteNombres.value   = cliente.nombres   || "";
+    cartClienteApellidos.value = cliente.apellidos || "";
+    cartClienteEmpresa.value   = cliente.empresa   || "";
+    cartClienteContacto.value  = cliente.contacto  || "";
   }
 
   // ── Sheet helpers ─────────────────────────────────────────────────────────
@@ -235,6 +246,14 @@ export function useBasesMicasVentas(getUser) {
     const sku  = s.sku ? ` · ${s.sku}` : "";
     return `${name}${sku}`;
   };
+
+  function sheetById(id) {
+    return sheetsDB.value.find(s => String(s.id) === String(id));
+  }
+
+  function searchSheets(query) {
+    sheetSearchQuery.value = query;
+  }
 
   // ── Load sheets ───────────────────────────────────────────────────────────
 
@@ -410,13 +429,7 @@ export function useBasesMicasVentas(getUser) {
         sheetNombre: ci.sheet.nombre || ci.sheet.name || ""
       }));
 
-      // Guardar datos del cliente en caché local para futuras ventas
-      _saveClientToCache(cartCliente.value.trim(), {
-        nombres:   cartClienteNombres.value.trim(),
-        apellidos: cartClienteApellidos.value.trim(),
-        empresa:   cartClienteEmpresa.value.trim(),
-        contacto:  cartClienteContacto.value.trim(),
-      });
+      // (Eliminado: guardado en cache local - ahora se persiste en DB vía order)
 
       const voucher = {
         id:               order?._id ? String(order._id) : `VTA-${Date.now()}`,
@@ -559,17 +572,16 @@ export function useBasesMicasVentas(getUser) {
     if (tab === "historial") loadLabStatuses();
   });
 
-  // Auto-rellenar datos complementarios desde caché cuando el usuario escribe
-  // un nombre que coincide exactamente con un cliente guardado anteriormente.
-  // Solo aplica si los campos todavía están vacíos para no pisar ediciones manuales.
+  // Auto-rellenar datos complementarios desde el historial (API) cuando el usuario escribe
+  // un nombre que coincide exactamente con un cliente previo.
   watch(cartCliente, (nombre) => {
     if (!nombre) return;
-    const cached = _getClientFromCache(nombre.trim());
-    if (!cached) return;
-    if (!cartClienteNombres.value)   cartClienteNombres.value   = cached.nombres   || "";
-    if (!cartClienteApellidos.value) cartClienteApellidos.value = cached.apellidos || "";
-    if (!cartClienteEmpresa.value)   cartClienteEmpresa.value   = cached.empresa   || "";
-    if (!cartClienteContacto.value)  cartClienteContacto.value  = cached.contacto  || "";
+    const existing = recentClientes.value.find(c => c.nombre.toLowerCase() === nombre.trim().toLowerCase());
+    if (!existing) return;
+    if (!cartClienteNombres.value)   cartClienteNombres.value   = existing.nombres   || "";
+    if (!cartClienteApellidos.value) cartClienteApellidos.value = existing.apellidos || "";
+    if (!cartClienteEmpresa.value)   cartClienteEmpresa.value   = existing.empresa   || "";
+    if (!cartClienteContacto.value)  cartClienteContacto.value  = existing.contacto  || "";
   });
 
   // ── Init ──────────────────────────────────────────────────────────────────
@@ -593,6 +605,8 @@ export function useBasesMicasVentas(getUser) {
     loadingSheets, loadingItems, loadingSale, loadingLabStatuses,
     voucherOpen, lastVoucher,
     labStatuses,
+    sheetSearchLoading,
+    sheetSearchResults,
     // computed
     selectedSheet, filteredItems, paginatedItems, catalogPages, cartTotal,
     cartTotalMonto, cartClienteDisplay,
@@ -604,6 +618,7 @@ export function useBasesMicasVentas(getUser) {
     loadSheets, loadItems,
     addToCart, removeFromCart, incCartQty, decCartQty, clearCart, selectCliente,
     registrarVenta, loadHistory,
-    checkVoucherStatus, loadLabStatuses
+    checkVoucherStatus, loadLabStatuses,
+    sheetById, searchSheets
   };
 }

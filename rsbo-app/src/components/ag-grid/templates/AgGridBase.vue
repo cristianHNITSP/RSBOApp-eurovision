@@ -110,6 +110,7 @@ import { useStockRules } from "@/composables/ag-grid/useStockRules";
 import { useAgGridBase, localeText, ackOk, ackErr, msgFromErr, statusFromErr, normalizeAxiosOk, numOr, isNumeric, to2, fmtSigned, isMultipleOfStep } from "@/composables/ag-grid/useAgGridBase";
 
 import { useAgGridIntegration } from "@/composables/ag-grid/useAgGridIntegration";
+import { useGridKeyboardShortcuts } from "@/composables/ag-grid/useGridKeyboardShortcuts";
 import { useAgGridHandlers } from "@/composables/ag-grid/useAgGridHandlers";
 import { useAgGridFormulaBar } from "@/composables/ag-grid/useAgGridFormulaBar";
 import { useAgGridPivotLoader } from "@/composables/ag-grid/useAgGridPivotLoader";
@@ -119,7 +120,7 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 
 const DEV_MODE      = import.meta.env.DEV;
 const DEV_DELAY_MS  = 0;
-const ROW_PAGE_SIZE  = DEV_MODE ? 4 : 10;
+const ROW_PAGE_SIZE  = DEV_MODE ? 4 : 25;
 
 const LOG      = (...a) => DEV_MODE && console.log("[Base]", ...a);
 const LOG_ROWS = (...a) => DEV_MODE && console.log("[Base][Rows]", ...a);
@@ -358,6 +359,17 @@ function applyGridHistoryOp(op) {
 }
 const handleGridUndo = () => applyGridHistoryOp(gridHistory.undo());
 const handleGridRedo = () => applyGridHistoryOp(gridHistory.redo());
+
+useGridKeyboardShortcuts({
+  onSave: handleSave,
+  onUndo: handleGridUndo,
+  onRedo: handleGridRedo,
+  gridApi: gridApi,
+  dirty: dirty,
+  canUndo: gridHistory.canUndo,
+  canRedo: gridHistory.canRedo,
+  isActive: () => gridPageRef.value && gridPageRef.value.offsetParent !== null
+});
 
 const handleAddRow = async (nuevoValor, ack) => {
   const P = phys.value; const base = to2(nuevoValor);

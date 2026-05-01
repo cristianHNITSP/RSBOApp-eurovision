@@ -7,9 +7,9 @@ const BASE = '/notification';
 export const fetchNotifications = (params = {}) =>
   api.get(BASE, { params });
 
-/** Conteo de no leídas */
-export const fetchUnreadCount = () =>
-  api.get(`${BASE}/unread`);
+/** Conteo de nuevas (acepta since timestamp) */
+export const fetchActiveCount = (since) =>
+  api.get(`${BASE}/count`, { params: { since } });
 
 /**
  * Crea o acumula una notificación agrupada.
@@ -26,13 +26,6 @@ export const fetchUnreadCount = () =>
 export const createGroupedNotification = (payload) =>
   api.post(`${BASE}/grouped`, payload);
 
-/** Marca una notificación como leída */
-export const markNotifRead = (id) =>
-  api.patch(`${BASE}/${id}/read`, {});
-
-/** Marca todas las notificaciones como leídas */
-export const markAllNotifRead = () =>
-  api.patch(`${BASE}/read-all`, {});
 
 /** Alterna el pin de una notificación para el usuario actual */
 export const pinNotification = (id) =>

@@ -11,9 +11,9 @@
 #Mongo Express (solo desde tu máquina): http://localhost:8081
 
 # DESPLIGUE:
-# desarrollo: docker-compose --profile dev up --build
-# sudo docker-compose down && docker-compose --profile dev up --build
-# producción: docker-compose --profile prod up --build
+# desarrollo: docker compose --profile dev up --build
+# docker compose down && docker compose --profile dev up --build
+# producción: docker compose --profile prod up --build
 
 #BAJAR Y DESPLEGAR EN DEV:
 # sudo docker compose down && sudo docker compose --profile dev up --build
@@ -204,8 +204,10 @@ services:
       MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${NOTIFICATION_DB}?authSource=admin"
       GATEWAY_WS_URL: "ws://gateway:3000/ws-internal"
       INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN}"
+      REDIS_URL: "redis://redis:6379"
     depends_on:
       - mongo
+      - redis
     expose:
       - "3000"
     restart: unless-stopped
@@ -219,7 +221,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: rsboapp-redis
-    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
+    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru --save "" --appendonly no
     expose:
       - "6379"
     restart: unless-stopped

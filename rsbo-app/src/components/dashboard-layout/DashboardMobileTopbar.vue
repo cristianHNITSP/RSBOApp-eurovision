@@ -45,8 +45,12 @@
           <b-icon icon="user" size="is-small" />&nbsp; Perfil
         </b-dropdown-item>
 
-        <b-dropdown-item aria-role="menu-item" @click="$emit('settings')">
-          <b-icon icon="cog" size="is-small" />&nbsp; Configuración
+        <b-dropdown-item aria-role="menu-item" @click="$emit('accessibility')">
+          <b-icon icon="universal-access" size="is-small" />&nbsp; Accesibilidad
+        </b-dropdown-item>
+
+        <b-dropdown-item aria-role="menu-item" @click="$emit('security')">
+          <b-icon icon="shield-alt" size="is-small" />&nbsp; Seguridad
         </b-dropdown-item>
 
         <hr class="dropdown-divider" />
@@ -70,7 +74,7 @@ defineProps({
   unreadNotifications: Number
 })
 
-defineEmits(['toggle-sidebar', 'toggle-search', 'toggle-notifications', 'profile', 'settings', 'logout'])
+defineEmits(['toggle-sidebar', 'toggle-search', 'toggle-notifications', 'profile', 'accessibility', 'security', 'logout'])
 </script>
 
 <style scoped>

@@ -121,14 +121,15 @@ import { useAgGridIntegration } from "@/composables/ag-grid/useAgGridIntegration
 import { useAgGridHandlers } from "@/composables/ag-grid/useAgGridHandlers";
 import { useAgGridFormulaBar } from "@/composables/ag-grid/useAgGridFormulaBar";
 import { useAgGridPivotLoader } from "@/composables/ag-grid/useAgGridPivotLoader";
+import { useGridKeyboardShortcuts } from "@/composables/ag-grid/useGridKeyboardShortcuts";
 import { norm, parseCylFromField, raf } from "@/components/ag-grid/utils/ag-grid-utils";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 const DEV_MODE      = import.meta.env.DEV;
 const DEV_DELAY_MS  = 0;
-const ROW_PAGE_SIZE  = DEV_MODE ? 4 : 10;
-const COL_CHUNK_SIZE = DEV_MODE ? 3 : 8;
+const ROW_PAGE_SIZE  = DEV_MODE ? 4 : 25;
+const COL_CHUNK_SIZE = DEV_MODE ? 3 : 15;
 
 const LOG      = (...a) => DEV_MODE && console.log("[Monofocal]", ...a);
 const LOG_ROWS = (...a) => DEV_MODE && console.log("[Monofocal][Rows]", ...a);
@@ -288,12 +289,16 @@ const { datasource, loadingRowsCount, rowsInCacheCount } = useAgGridPivotLoader(
   buildPivotPage: (pageSphs, items, { loading, pendingChanges }) => {
     const cylAll = allCylValues.value;
     if (loading) { return pageSphs.map(sph => ({ sph, __loading: true, ...Object.fromEntries(cylAll.map(c => [`cyl_${norm(c)}`, null])) })); }
+    
+    // Pre-indexar items en Map para O(1) lookup
+    const itemMap = new Map();
+    items.forEach(it => itemMap.set(`${it.sph}|${to2(Math.abs(it.cyl))}`, it.existencias));
+
     return pageSphs.map(sph => {
       const row = { sph };
       cylAll.forEach(cDisp => {
-        const match = items.find(it => it.sph === sph && to2(Math.abs(it.cyl)) === cDisp);
         const field = `cyl_${norm(cDisp)}`;
-        row[field] = match?.existencias ?? 0;
+        row[field] = itemMap.get(`${sph}|${cDisp}`) ?? 0;
         const pk = `${to2(sph)}|${cDisp}`;
         if (pendingChanges?.has(pk)) row[field] = pendingChanges.get(pk).existencias;
       });
@@ -369,6 +374,17 @@ function applyGridHistoryOp(op) {
 }
 const handleGridUndo = () => applyGridHistoryOp(gridHistory.undo());
 const handleGridRedo = () => applyGridHistoryOp(gridHistory.redo());
+
+useGridKeyboardShortcuts({
+  onSave: handleSave,
+  onUndo: handleGridUndo,
+  onRedo: handleGridRedo,
+  gridApi: gridApi,
+  dirty: dirty,
+  canUndo: gridHistory.canUndo,
+  canRedo: gridHistory.canRedo,
+  isActive: () => gridPageRef.value && gridPageRef.value.offsetParent !== null
+});
 
 const handleAddRow = async (nuevoValor, ack) => {
   const P = phys.value; const sph = to2(nuevoValor);

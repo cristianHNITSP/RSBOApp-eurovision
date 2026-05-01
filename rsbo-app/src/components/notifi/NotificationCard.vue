@@ -6,13 +6,13 @@ const props = defineProps({
     type: Object,
     required: true
   },
-  isReading: {
-    type: Boolean,
-    default: false
+  notif: {
+    type: Object,
+    required: true
   }
 });
 
-const emit = defineEmits(['toggle-pin', 'mark-read', 'dismiss']);
+const emit = defineEmits(['toggle-pin', 'dismiss']);
 
 const isExpanded = ref(false);
 const showMobileMenu = ref(false);
@@ -33,7 +33,6 @@ const TYPE_ICON = {
 const tagClass = computed(() => TYPE_TAG[props.notif.type] ?? 'is-info');
 const iconClass = computed(() => TYPE_ICON[props.notif.type] ?? 'info-circle');
 const isPinned = computed(() => props.notif.isPinned === true);
-const isUnread = computed(() => !props.notif.isRead);
 
 function timeAgo(dateStr) {
   if (!dateStr) return '';
@@ -80,10 +79,7 @@ function closeMobileMenu() {
     class="notif-card"
     :data-notif-id="notif._id"
     :class="{
-      'notif-card--unread':   isUnread,
-      'notif-card--read':     !isUnread && !isPinned,
       'notif-card--pinned':   isPinned,
-      'notif-card--reading':  isReading,
     }"
   >
     <!-- Indicador de tipo -->
@@ -114,13 +110,6 @@ function closeMobileMenu() {
                     @click="$emit('toggle-pin', notif)" />
           </b-tooltip>
 
-          <b-tooltip v-if="isUnread" label="Marcar como leída"
-                     position="is-bottom" append-to-body>
-            <b-icon pack="fas" icon="check-circle"
-                    class="action-icon action-icon--check"
-                    @click="$emit('mark-read', notif)" />
-          </b-tooltip>
-
           <b-tooltip label="Descartar" position="is-bottom" append-to-body>
             <b-icon pack="fas" icon="times"
                     class="action-icon action-icon--dismiss"
@@ -139,9 +128,6 @@ function closeMobileMenu() {
                       class="action-icon"
                       :class="{ 'action-icon--pinned': isPinned }"
                       @click="$emit('toggle-pin', notif); closeMobileMenu()" />
-              <b-icon v-if="isUnread" pack="fas" icon="check-circle"
-                      class="action-icon action-icon--check"
-                      @click="$emit('mark-read', notif); closeMobileMenu()" />
               <b-icon pack="fas" icon="times"
                       class="action-icon action-icon--dismiss"
                       @click="$emit('dismiss', notif); closeMobileMenu()" />

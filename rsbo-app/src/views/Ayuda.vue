@@ -1229,6 +1229,7 @@ const HELP_TABS = [
 
 const props = defineProps({
   user: { type: Object, default: () => null },
+  loading: { type: Boolean, default: false },
   appVersion: { type: String, default: "" },
 });
 

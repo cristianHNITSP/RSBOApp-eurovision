@@ -117,8 +117,6 @@ onMounted(async () => {
     const newQuery = { ...route.query };
     delete newQuery.sheetId;
     router.replace({ query: Object.keys(newQuery).length ? newQuery : undefined });
-  } else if (pager.sheets.length) {
-    activeSheet.value = pager.sheets[0].id;
   }
 });
 
@@ -267,34 +265,6 @@ const resolverGridProps = (sheet, activeInternal) => {
           @load-more="pager.loadNext()"
           @load-prior="pager.loadPrior()"
         >
-          <template #default="{ activeSheet: sheet, activeInternal }">
-            <!--
-              Sin <Transition> aquí: KeepAlive debe ser un ancestro ESTABLE.
-              Si el div tuviera :key cambiaría → destruiría el KeepAlive →
-              se perdería el caché. La animación de entrada se delega a
-              CSS de los propios templates (glass-shell transition).
-
-              :max="8" → mantiene vivos hasta 8 sheets visitados.
-              El :key del <component> distingue instancias por sheet+tipo.
-            -->
-            <div
-              v-if="sheet && sheet.id !== 'nueva'"
-              class="contenido-planilla"
-            >
-              <div class="planilla-wrapper">
-                <!-- AG-Grid con KeepAlive: la instancia sobrevive al cambio de sheet -->
-                <KeepAlive :max="8">
-                  <component
-                    :is="resolverGrid(sheet.tipo_matriz)"
-                    :key="`${sheet.id}:${sheet.tipo_matriz}`"
-                    v-bind="resolverGridProps(sheet, activeInternalTab)"
-                    :actor="user"
-                    @update:internal="activeInternalTab = $event"
-                  />
-                </KeepAlive>
-              </div>
-            </div>
-          </template>
         </TabsManager>
       </div>
     </div>

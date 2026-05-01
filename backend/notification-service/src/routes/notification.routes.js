@@ -2,11 +2,11 @@
  * @fileoverview Rutas de notificaciones
  *
  * GET    /                → lista notificaciones del usuario (todos los roles)
- * GET    /unread          → conteo de no leídas (todos los roles)
+ * GET    /count           → conteo de nuevas notificaciones (acepta ?since=timestamp)
  * POST   /                → crear (root, eurovision, supervisor)
  * POST   /grouped         → crear o acumular agrupada (todos los roles autenticados)
- * PATCH  /read-all        → marcar todas como leídas (todos los roles)
- * PATCH  /:id/read        → marcar una como leída (todos los roles)
+ * PATCH  /:id/pin         → alternar pin
+ * PATCH  /:id/dismiss     → descartar (ocultar para el usuario)
  * PUT    /:id             → actualizar (root, eurovision)
  * DELETE /:id             → eliminar (root, eurovision)
  *
@@ -31,10 +31,10 @@ function userCtx(req) {
   return { roleName: req.user.roleName, userId: req.user.id };
 }
 
-async function broadcastUnread(roleName, userId) {
+async function broadcastCount(roleName, userId, since) {
   try {
-    const count = await svc.countUnread({ roleName, userId });
-    ws.broadcast('NOTIFICATION_NEW', { unread: count });
+    const count = await svc.countNew({ roleName, userId, since });
+    ws.broadcast('NOTIFICATION_NEW', { count });
   } catch {}
 }
 
@@ -50,13 +50,13 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-// ─── GET /unread ─────────────────────────────────────────────────────────────
-router.get('/unread', auth, async (req, res) => {
+// ─── GET /count ─────────────────────────────────────────────────────────────
+router.get('/count', auth, async (req, res) => {
   try {
-    const count = await svc.countUnread(userCtx(req));
-    res.json({ unread: count });
+    const count = await svc.countNew({ ...userCtx(req), since: req.query.since });
+    res.json({ count });
   } catch (err) {
-    console.error('GET /notification/unread:', err);
+    console.error('GET /notification/count:', err);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
@@ -78,7 +78,7 @@ router.post('/', auth, requireManager, async (req, res) => {
       createdByName: req.user.email,
     });
 
-    broadcastUnread(req.user.roleName, req.user.id);
+    broadcastCount(req.user.roleName, req.user.id);
     res.status(201).json(notification);
   } catch (err) {
     console.error('POST /notification:', err);
@@ -113,7 +113,7 @@ router.post('/grouped', auth, async (req, res) => {
       createdByName:   req.user.email,
     });
 
-    broadcastUnread(req.user.roleName, req.user.id);
+    broadcastCount(req.user.roleName, req.user.id);
     res.status(accumulated ? 200 : 201).json(notification);
   } catch (err) {
     console.error('POST /notification/grouped:', err);
@@ -121,35 +121,7 @@ router.post('/grouped', auth, async (req, res) => {
   }
 });
 
-// ─── PATCH /read-all ─────────────────────────────────────────────────────────
-router.patch('/read-all', auth, async (req, res) => {
-  try {
-    const result = await svc.markAllRead(userCtx(req));
-    res.json(result);
-  } catch (err) {
-    console.error('PATCH /notification/read-all:', err);
-    res.status(500).json({ error: 'Error interno del servidor' });
-  }
-});
 
-// ─── PATCH /:id/read ─────────────────────────────────────────────────────────
-router.patch('/:id/read', auth, async (req, res) => {
-  try {
-    const notification = await svc.markRead({
-      notificationId: req.params.id,
-      ...userCtx(req),
-    });
-
-    if (!notification) {
-      return res.status(404).json({ error: 'Notificación no encontrada o no disponible para tu rol' });
-    }
-
-    res.json(notification);
-  } catch (err) {
-    console.error('PATCH /notification/:id/read:', err);
-    res.status(500).json({ error: 'Error interno del servidor' });
-  }
-});
 
 // ─── PATCH /:id/pin ──────────────────────────────────────────────────────────
 router.patch('/:id/pin', auth, async (req, res) => {

@@ -81,6 +81,7 @@ import StatusPill from "./shared/StatusPill.vue";
 import { useCatalogSelection } from "../../composables/tabsmanager/useCatalogSelection";
 import { useVendorAutocomplete } from "../../composables/tabsmanager/useVendorAutocomplete";
 import { useCreateSheet } from "../../composables/tabsmanager/useCreateSheet";
+import { useWorkspaceTabs } from "../../composables/tabsmanager/useWorkspaceTabs";
 import { DEFAULT_EXPIRY_MONTHS, ISO_DATE_ONLY_RX, addMonthsToISODate } from "../../composables/tabsmanager/useDateHelpers";
 import { composeTratamientoDisplay } from "../../composables/tabsmanager/useSheetNormalizer";
 

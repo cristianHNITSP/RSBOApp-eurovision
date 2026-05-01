@@ -73,10 +73,10 @@ function mapSheet(s) {
 ───────────────────────────────────────────────────────────────────────── */
 const pager = useSheetPagination(listSheets, mapSheet);
 
-/** dynamicSheets = planillas paginadas + tab "nueva" al final */
+/** dynamicSheets = tab "nueva" al principio + planillas paginadas */
 const dynamicSheets = computed(() => [
-  ...pager.sheets,
-  { id: "nueva", name: "+ Agregar" }
+  { id: "nueva", name: "+ Agregar" },
+  ...pager.sheets
 ]);
 
 const loadingSheets = computed(() => pager.loadingForward.value || pager.loadingBackward.value);
@@ -145,8 +145,6 @@ onMounted(async () => {
     const newQuery = { ...route.query };
     delete newQuery.sheetId;
     router.replace({ query: Object.keys(newQuery).length ? newQuery : undefined });
-  } else if (pager.sheets.length) {
-    activeSheet.value = pager.sheets[0].id;
   }
 });
 
@@ -251,18 +249,6 @@ const resolverGridProps = (sheet, activeInternal) => {
           @update:active="activeSheet = $event" @update:internal="activeInternalTab = $event"
           @crear="crearNuevaPlanilla" @reorder="reordenarSheets" @load-more="pager.loadNext()"
           @load-prior="pager.loadPrior()">
-          <template #default="{ activeSheet: sheet, activeInternal }">
-            <div v-if="sheet && sheet.id !== 'nueva'" class="contenido-planilla">
-              <div class="planilla-wrapper">
-                <!-- AG-Grid con KeepAlive: la instancia sobrevive al cambio de sheet -->
-                <KeepAlive :max="8">
-                  <component :is="resolverGrid(sheet.tipo_matriz)" :key="`${sheet.id}:${sheet.tipo_matriz}`"
-                    v-bind="resolverGridProps(sheet, activeInternalTab)" :actor="user"
-                    @update:internal="activeInternalTab = $event" />
-                </KeepAlive>
-              </div>
-            </div>
-          </template>
         </TabsManager>
       </div>
     </div>

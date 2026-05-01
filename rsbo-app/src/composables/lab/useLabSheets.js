@@ -63,10 +63,18 @@ export function useLabSheets() {
   }
 
   const _searchSheetsCore = async (q = "") => {
+    const query = String(q || "").trim();
+    
+    // Si la búsqueda es vacía y ya tenemos datos, evitamos el flash y la llamada API
+    if (!query && sheetsDB.value.length) {
+      sheetSearchResults.value = [...sheetsDB.value];
+      return;
+    }
+
     sheetSearchLoading.value = true;
     try {
       const { data } = await invListSheets({
-        q: String(q || "").trim() || undefined,
+        q: query || undefined,
         limit: 50,
         includeDeleted: String(includeDeleted.value),
       });

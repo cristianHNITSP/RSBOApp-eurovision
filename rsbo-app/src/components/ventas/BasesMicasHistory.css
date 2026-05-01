@@ -1,0 +1,30 @@
+.order-lines { display: grid; gap: 0.6rem; }
+
+.order-line {
+  border: 1px solid var(--border);
+  background: var(--surface-overlay);
+  border-radius: 16px;
+  padding: 0.75rem;
+}
+
+.order-line--history { cursor: pointer; transition: background 120ms ease; }
+.order-line--history:hover { background: var(--c-primary-alpha); }
+
+.order-line__top    { display: flex; justify-content: space-between; gap: 0.75rem; }
+.order-line__title  { font-weight: 950; color: var(--text-primary); }
+.order-line__sub    {
+  display: block;
+  margin-top: 0.15rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.lab-hist-badge { font-size: 0.72rem !important; font-weight: 900 !important; }
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+}
+
+.muted { color: var(--text-muted); font-weight: 700; }

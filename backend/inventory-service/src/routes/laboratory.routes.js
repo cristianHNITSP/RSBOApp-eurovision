@@ -71,9 +71,9 @@ function lineTitle(tipo, params, eye, codebar) {
   const base = String(eye || "").toUpperCase() === "OD"
     ? Number(p.base_der ?? 0) : Number(p.base_izq ?? 0);
   if (tipo === "BASE")     return `Base ${fv(p.base)}`;
-  if (tipo === "SPH_CYL")  return `Esfera ${fv(p.sph)} · Cilindro ${fv(p.cyl)}`;
-  if (tipo === "SPH_ADD")  return `${eyeLabel(eye)} · Esfera ${fv(p.sph)} · Adición ${fv(p.add)}`;
-  if (tipo === "BASE_ADD") return `${eyeLabel(eye)} · Base ${fv(base)} · Adición ${fv(p.add)}`;
+  if (tipo === "SPH_CYL")  return `Esfera ${fv(p.sph)} | Cilindro ${fv(p.cyl)}`;
+  if (tipo === "SPH_ADD")  return `${eyeLabel(eye)} | Esfera ${fv(p.sph)} | Adición ${fv(p.add)}`;
+  if (tipo === "BASE_ADD") return `${eyeLabel(eye)} | Base ${fv(base)} | Adición ${fv(p.add)}`;
   return String(codebar || "");
 }
 
@@ -84,7 +84,7 @@ function micaTypeName(tipo) {
     SPH_ADD: "Bifocal",
     BASE_ADD: "Progresivo"
   };
-  return map[tipo] || tipo || "—";
+  return map[tipo] || tipo || "N/A";
 }
 
 async function resolveCodebarLocation(sheet, codebar) {

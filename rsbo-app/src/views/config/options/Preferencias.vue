@@ -207,11 +207,15 @@ const {
     toggleReducedMotion,
 } = useAccessibility();
 
-const isDark = computed(() => a11y.resolvedTheme === "dark");
-const reducedEffects = computed(() => a11y.reducedEffects);
-
-/* fontSize como ref mutable para el v-model del b-select */
+const isDark = ref(a11y.resolvedTheme === "dark");
+const reducedEffects = ref(a11y.reducedEffects);
 const fontSize = ref(a11y.fontSize);
+
+/* Sincronizar isDark cuando el estado externo cambie */
+watch(() => a11y.resolvedTheme, (val) => { isDark.value = val === "dark"; });
+
+/* Sincronizar reducedEffects cuando el estado externo cambie */
+watch(() => a11y.reducedEffects, (val) => { reducedEffects.value = val; });
 
 /* Sincronizar el select cuando el estado externo cambie */
 watch(() => a11y.fontSize, (val) => { fontSize.value = val; });

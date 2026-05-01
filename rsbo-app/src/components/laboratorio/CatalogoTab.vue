@@ -33,20 +33,16 @@
                 Actualizar inventario
               </b-button>
 
-              <div class="columns is-mobile is-variable is-2 mt-2">
-                <div class="column">
-                  <b-button type="is-light" expanded icon-left="print" :disabled="!lab.paginatedCatalog.value.length"
-                    @click="lab.printCatalogPage">
-                    Imprimir / PDF
-                  </b-button>
-                </div>
-                <div class="column">
-                  <b-button type="is-light" expanded icon-left="download"
-                    :disabled="!lab.filteredCatalogRows.value.length" :loading="lab.loadingExportCat.value"
-                    @click="lab.exportCatalogCsv">
-                    Excel
-                  </b-button>
-                </div>
+              <div class="sheet-card__buttons mt-2">
+                <b-button type="is-light" expanded icon-left="print" :disabled="!lab.paginatedCatalog.value.length"
+                  @click="lab.printCatalogPage">
+                  Imprimir / PDF
+                </b-button>
+                <b-button type="is-light" expanded icon-left="download"
+                  :disabled="!lab.filteredCatalogRows.value.length" :loading="lab.loadingExportCat.value"
+                  @click="lab.exportCatalogCsv">
+                  Excel
+                </b-button>
               </div>
             </div>
           </div>
@@ -159,7 +155,7 @@
 <script setup>
 import { inject } from "vue";
 import BarcodeEAN13 from "./barcode/BarcodeEAN13.vue";
-import SheetPickerInput from "./SheetPickerInput.vue";
+import SheetPickerInput from "@/components/ui/SheetPickerInput.vue";
 import "./laboratorio-shared.css";
 import "./CatalogoTab.css";
 

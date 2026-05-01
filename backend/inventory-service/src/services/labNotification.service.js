@@ -17,13 +17,13 @@ function todayStr() {
 
 function lineLabel(tipo, params, eye) {
   const p   = params || {};
-  const fmt = (v) => (v === null || v === undefined ? "—" : Number(v) >= 0 ? `+${Number(v).toFixed(2)}` : Number(v).toFixed(2));
+  const fmt = (v) => (v === null || v === undefined ? "0.00" : Number(v) >= 0 ? `+${Number(v).toFixed(2)}` : Number(v).toFixed(2));
   switch (tipo) {
     case "BASE":     return `Base ${fmt(p.base)}`;
     case "SPH_CYL":  return `SPH ${fmt(p.sph)} / CYL ${fmt(p.cyl)}`;
     case "SPH_ADD":  return `${eye || ""} SPH ${fmt(p.sph)} / ADD ${fmt(p.add)}`.trim();
     case "BASE_ADD": return `${eye || ""} Base Izq ${fmt(p.base_izq)} / Base Der ${fmt(p.base_der)} / ADD ${fmt(p.add)}`.trim();
-    default:         return tipo || "—";
+    default:         return tipo || "N/A";
   }
 }
 
@@ -83,8 +83,8 @@ async function notifyPendingOrders() {
     if (pendienteCount > 0) partes.push(`${pendienteCount} por iniciar`);
     if (parcialCount   > 0) partes.push(`${parcialCount} en proceso`);
 
-    const title   = `Pedidos pendientes — ${orders.length} pedido${orders.length > 1 ? "s" : ""}`;
-    const message = `Hay ${orders.length} pedido${orders.length > 1 ? "s" : ""} pendiente${orders.length > 1 ? "s" : ""} de surtir (${partes.join(", ")}). Revisa el detalle para ver todos los pedidos y sus combinaciones.`;
+    const title   = `PEDIDOS PENDIENTES | ${orders.length} pedido${orders.length > 1 ? "s" : ""}`;
+    const message = `Hay ${orders.length} pedido${orders.length > 1 ? "s" : ""} pendiente${orders.length > 1 ? "s" : ""} de surtir (${partes.join(" | ")}). Revisa el detalle para ver los pedidos.`;
 
     const metadata = {
       type:    "pending_orders",
@@ -123,8 +123,8 @@ async function notifyNewOrder(order) {
     const previewLines = lines.slice(0, 3);
     const extraCount   = lines.length > 3 ? lines.length - 3 : 0;
 
-    const linesPreview = previewLines.join(" · ") + (extraCount > 0 ? ` y ${extraCount} combinacion${extraCount > 1 ? "es" : ""} mas` : "");
-    const message      = `Cliente: ${order.cliente}${order.note ? ` — Nota: ${order.note}` : ""}. Combinaciones: ${linesPreview || "—"}`;
+    const linesPreview = previewLines.join(" / ") + (extraCount > 0 ? ` y ${extraCount} más` : "");
+    const message      = `Cliente: ${order.cliente}${order.note ? ` | Nota: ${order.note}` : ""}. Combinaciones: ${linesPreview || "N/A"}`;
 
     const metadata = {
       type:    "new_order",
@@ -146,7 +146,7 @@ async function notifyNewOrder(order) {
     await notifClient.upsertDaily({
       groupKey:    `new_order:${order.folio}`,
       date:        today,
-      title:       `Nuevo pedido — ${order.folio}`,
+      title:       `NUEVO PEDIDO | ${order.folio}`,
       message:     message.slice(0, 2000),
       metadata,
       type:        "info",
@@ -168,7 +168,7 @@ async function notifyNewOrder(order) {
 async function notifyCorrection({ folio, orderId, message, actorName }) {
   try {
     const today         = todayStr();
-    const notifMessage  = `Pedido ${folio}${actorName ? ` — solicitado por ${actorName}` : ""}. Motivo: ${message || "Sin detalle"}`;
+    const notifMessage  = `Pedido ${folio}${actorName ? ` | Solicitado por: ${actorName}` : ""}. Motivo: ${message || "Sin detalle"}`;
 
     const metadata = {
       type:    "correction",
@@ -181,7 +181,7 @@ async function notifyCorrection({ folio, orderId, message, actorName }) {
     await notifClient.upsertDaily({
       groupKey:    `correction:${folio}:${today}`,
       date:        today,
-      title:       `Correccion solicitada — ${folio}`,
+      title:       `CORRECCIÓN SOLICITADA | ${folio}`,
       message:     notifMessage.slice(0, 2000),
       metadata,
       type:        "warning",

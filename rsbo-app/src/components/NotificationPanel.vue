@@ -1,7 +1,7 @@
 <script>
 import { ref } from 'vue';
 import { labToast } from '@/composables/shared/useLabToast.js';
-import { fetchNotifications, markNotifRead, markAllNotifRead, pinNotification, dismissNotifApi } from '@/services/notifications';
+import { fetchNotifications, pinNotification, dismissNotifApi } from '@/services/notifications';
 
 import NotificationHeader from './notifi/NotificationHeader.vue';
 import NotificationCard from './notifi/NotificationCard.vue';
@@ -19,7 +19,7 @@ export default {
   props: {
     visible: Boolean,
   },
-  emits: ['close', 'update-unread'],
+  emits: ['close', 'update-count'],
 
   setup() {
     let _wsDebounceTimer = null;
@@ -35,23 +35,16 @@ export default {
     return {
       notifications: [],
       loading: false,
-      showRead: false,
-      readingIds: [],   // IDs animándose al marcarse como leídas
       _loadedAt: null,  // timestamp del último fetch (para control de stale)
     };
   },
 
   computed: {
-    unreadCount() {
-      return this.notifications.filter((n) => !n.isRead).length;
+    activeCount() {
+      return this.notifications.length;
     },
     visibleNotifications() {
-      // Fijadas siempre visibles, independiente de showRead
-      const base = this.showRead
-        ? this.notifications
-        : this.notifications.filter((n) => !n.isRead || n.isPinned);
-
-      return [...base].sort((a, b) => {
+      return [...this.notifications].sort((a, b) => {
         const pa = a.isPinned ? 1 : 0;
         const pb = b.isPinned ? 1 : 0;
         if (pa !== pb) return pb - pa;
@@ -64,7 +57,6 @@ export default {
   },
 
   watch: {
-    unreadCount(val) { this.$emit('update-unread', val); },
     // Carga al abrir el panel; si ya tiene datos y < 60 s, reutiliza
     visible(val) {
       if (!val) return;
@@ -74,45 +66,14 @@ export default {
   },
 
   methods: {
-    isReading(notif) { return this.readingIds.includes(String(notif._id)); },
-
     async load() {
       this.loading = true;
       try {
-        const { data } = await fetchNotifications({ limit: 80 });
+        const { data } = await fetchNotifications({ limit: 10 });
         this.notifications = data.notifications ?? data ?? [];
         this._loadedAt = Date.now();
-        this.$emit('update-unread', this.unreadCount);
       } catch { /* silencioso */ } finally {
         this.loading = false;
-      }
-    },
-
-    async markAsRead(notif) {
-      if (notif.isRead) return;
-      try {
-        await markNotifRead(notif._id);
-        // Animación "leída" antes de cambiar el estado
-        const id = String(notif._id);
-        this.readingIds.push(id);
-        setTimeout(() => {
-          const idx = this.readingIds.indexOf(id);
-          if (idx !== -1) this.readingIds.splice(idx, 1);
-        }, 700);
-        notif.isRead = true;
-        this.$emit('update-unread', this.unreadCount);
-      } catch {
-        labToast.warning('No se pudo marcar como leída.');
-      }
-    },
-
-    async markAllRead() {
-      try {
-        await markAllNotifRead();
-        this.notifications.forEach((n) => { n.isRead = true; });
-        this.$emit('update-unread', 0);
-      } catch {
-        labToast.warning('No se pudo marcar todas como leídas.');
       }
     },
 
@@ -129,7 +90,6 @@ export default {
         setTimeout(() => {
           const idx = this.notifications.findIndex((n) => String(n._id) === String(notif._id));
           if (idx !== -1) this.notifications.splice(idx, 1);
-          this.$emit('update-unread', this.unreadCount);
         }, 300);
       } catch {
         if (el) el.classList.remove('slide-out-right');
@@ -142,7 +102,6 @@ export default {
       notif.isPinned = !prev; // optimistic
       try {
         await pinNotification(notif._id);
-        if (!notif.isRead && !prev) this.markAsRead(notif);
       } catch {
         notif.isPinned = prev; // rollback
         labToast.warning('No se pudo actualizar el pin.');
@@ -180,11 +139,7 @@ export default {
       <div class="aside-container">
         
         <NotificationHeader 
-          :unreadCount="unreadCount"
-          :showRead="showRead"
           @close="$emit('close')"
-          @toggle-read="showRead = !showRead"
-          @mark-all-read="markAllRead"
         />
 
         <div class="notification-list">
@@ -192,9 +147,7 @@ export default {
           <NotificationEmptyState 
             v-if="loading || visibleNotifications.length === 0"
             :loading="loading"
-            :showRead="showRead"
             :hasNotifications="notifications.length > 0"
-            @toggle-read="showRead = !showRead"
           />
 
           <template v-else>
@@ -202,11 +155,15 @@ export default {
               v-for="notif in visibleNotifications"
               :key="notif._id"
               :notif="notif"
-              :isReading="isReading(notif)"
               @toggle-pin="togglePin"
-              @mark-read="markAsRead"
               @dismiss="dismissNotification"
             />
+            
+            <div v-if="visibleNotifications.length > 0" class="panel-view-all">
+              <router-link to="/l/notificaciones" @click="$emit('close')">
+                <b-button type="is-text" expanded>Ver todas las notificaciones</b-button>
+              </router-link>
+            </div>
           </template>
 
         </div>

@@ -104,13 +104,17 @@ const orchestrator = {
 
     // Validar si aplica
     if (config.valid && !config.valid.includes(value)) value = config.default;
-    
+
     // Ejecutar lógica de aplicación DOM
     const result = config.apply(value, config);
-    
-    // Actualizar estado reactivo
+
+    // Actualizar estado reactivo: asignar directamente para garantizar reactividad
     state[id] = value;
-    if (result) Object.assign(state, result);
+    if (result) {
+      Object.keys(result).forEach(key => {
+        state[key] = result[key];
+      });
+    }
   },
 
   /** Persiste y aplica una preferencia */

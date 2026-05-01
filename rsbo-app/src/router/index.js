@@ -107,6 +107,12 @@ const routes = [
         component: () => import("../views/Ayuda.vue"),
         meta: { requiresAuth: true, breadcrumb: "Ayuda" },
       },
+      {
+        path: "notificaciones",
+        name: "Notificaciones",
+        component: () => import("../views/NotificationsView.vue"),
+        meta: { requiresAuth: true, breadcrumb: "Notificaciones" },
+      },
     ],
   },
   {

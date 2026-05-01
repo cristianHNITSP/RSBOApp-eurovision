@@ -31,6 +31,7 @@
 
 /* Ribbon Card */
 .navtools-card--ribbon {
+    overflow: visible !important;
     background:
         linear-gradient(120deg, rgba(121, 87, 213, 0.10), rgba(154, 109, 255, 0.08), rgba(236, 72, 153, 0.06)),
         var(--surface-raised);
@@ -139,7 +140,7 @@
     width: 100%;
     max-width: 100%;
     overflow-x: auto;
-    overflow-y: hidden;
+    overflow-y: visible; /* Permitir que las tooltips asomen por arriba */
     -webkit-overflow-scrolling: touch;
     padding: 0.2rem 0.1rem;
     scrollbar-width: none;

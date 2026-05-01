@@ -10,14 +10,6 @@ const mongoose = require('mongoose');
 
 const VALID_ROLES = ['root', 'eurovision', 'supervisor', 'ventas', 'laboratorio'];
 
-const readEntrySchema = new mongoose.Schema(
-  {
-    userId: { type: mongoose.Schema.Types.ObjectId, required: true },
-    readAt:  { type: Date, default: Date.now },
-  },
-  { _id: false }
-);
-
 const notificationSchema = new mongoose.Schema(
   {
     title: {
@@ -65,11 +57,6 @@ const notificationSchema = new mongoose.Schema(
     createdByName: {
       type: String,
       default: '',
-    },
-    /** Lista de usuarios que ya la leyeron */
-    readBy: {
-      type: [readEntrySchema],
-      default: [],
     },
     /** Usuarios que fijaron esta notificación (per-user, persistente) */
     pinnedBy: {
@@ -120,9 +107,9 @@ const notificationSchema = new mongoose.Schema(
 );
 
 // Índices útiles
-notificationSchema.index({ createdAt: -1 });
-notificationSchema.index({ targetRoles: 1 });
-notificationSchema.index({ isGlobal: 1 });
+// Índice compuesto para consulta principal: "visibles, no descartadas, ordenadas"
+notificationSchema.index({ targetRoles: 1, priority: -1, createdAt: -1 });
+notificationSchema.index({ isGlobal: 1, priority: -1, createdAt: -1 });
 notificationSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0, partialFilterExpression: { expiresAt: { $ne: null } } });
 notificationSchema.index({ groupKey: 1, date: 1 });
 

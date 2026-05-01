@@ -16,6 +16,8 @@ const router = require('express').Router();
 const jwt    = require('jsonwebtoken');
 const CatalogBase      = require('../models/CatalogBase');
 const CatalogTreatment = require('../models/CatalogTreatment');
+const InventorySheet   = require('../models/InventorySheet');
+const ContactLensesSheet = require('../models/ContactLensesSheet');
 
 const JWT_SECRET    = process.env.JWT_SECRET || 'dev_secret';
 const ADMIN_ROLES   = ['root', 'eurovision'];
@@ -67,6 +69,39 @@ router.get('/treatments', async (_req, res) => {
     res.json({ ok: true, data: treatments });
   } catch (err) {
     res.status(500).json({ error: 'Error interno' });
+  }
+});
+
+// ── GET /api/catalog/vendors ─────────────────────────────────────────────────
+router.get('/vendors', async (_req, res) => {
+  try {
+    const [invProv, invMarca, clProv, clMarca] = await Promise.all([
+      InventorySheet.distinct('proveedor.name', { 'proveedor.name': { $ne: null, $ne: '' } }),
+      InventorySheet.distinct('marca.name', { 'marca.name': { $ne: null, $ne: '' } }),
+      ContactLensesSheet.distinct('proveedor.name', { 'proveedor.name': { $ne: null, $ne: '' } }),
+      ContactLensesSheet.distinct('marca.name', { 'marca.name': { $ne: null, $ne: '' } })
+    ]);
+
+    const normalizeNames = (arrList) => {
+      const set = new Set();
+      for (const arr of arrList) {
+        for (const name of arr) {
+          if (name && typeof name === 'string') {
+            const pretty = name.trim();
+            if (pretty) set.add(pretty);
+          }
+        }
+      }
+      return Array.from(set).sort((a, b) => a.localeCompare(b));
+    };
+
+    const proveedores = normalizeNames([invProv, clProv]);
+    const marcas = normalizeNames([invMarca, clMarca]);
+
+    res.json({ ok: true, data: { proveedores, marcas } });
+  } catch (err) {
+    console.error('GET /catalog/vendors:', err);
+    res.status(500).json({ error: 'Error interno al obtener proveedores y marcas' });
   }
 });
 

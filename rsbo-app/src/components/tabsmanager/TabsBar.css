@@ -4,12 +4,26 @@
   position: relative;
   display: flex;
   flex-wrap: nowrap;
-  overflow-x: auto;
-  overflow-y: hidden;
   gap: 0.35rem;
   padding: 0.55rem 0.55rem 0;
   border-bottom: 1px solid var(--border);
+}
+
+.tabs-sortable-zone {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  gap: 0.35rem;
+  flex: 1;
   -webkit-overflow-scrolling: touch;
+}
+
+.tabs-static-zone {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.35rem;
+  flex-shrink: 0;
 }
 
 .tabs-wrapper--glass {
@@ -42,16 +56,16 @@
   background: linear-gradient(270deg, var(--surface-raised), transparent);
 }
 
-.tabs-wrapper::-webkit-scrollbar {
+.tabs-sortable-zone::-webkit-scrollbar {
   height: 8px;
 }
 
-.tabs-wrapper::-webkit-scrollbar-thumb {
+.tabs-sortable-zone::-webkit-scrollbar-thumb {
   background: rgba(148, 163, 184, 0.35);
   border-radius: 999px;
 }
 
-.tabs-wrapper::-webkit-scrollbar-track {
+.tabs-sortable-zone::-webkit-scrollbar-track {
   background: transparent;
 }
 
@@ -60,15 +74,15 @@
   display: inline-flex;
   align-items: center;
   max-width: 280px;
-  padding: 0.45rem 2.1rem 0.45rem 0.75rem;
+  padding: 0.45rem 3.4rem 0.45rem 0.75rem;
   font-size: 0.86rem;
   border-radius: 12px 12px 0 0;
   cursor: pointer;
   user-select: none;
   border: 1px solid var(--border);
   border-bottom: none;
-  transition: transform 0.16s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease;
-  will-change: transform;
+  transition: transform 0.16s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease, width 0.3s ease;
+  will-change: transform, width;
 }
 
 .tab-item--glass {
@@ -149,10 +163,10 @@
 }
 
 .tab-menu-btn {
-  position: absolute;
-  right: 6px;
-  top: 50%;
-  transform: translateY(-50%);
+  position: relative;
+  right: auto;
+  top: auto;
+  transform: none;
   border: 1px solid var(--border);
   background: var(--surface-overlay);
   line-height: 1;
@@ -166,11 +180,12 @@
   border-radius: 999px;
   opacity: 0.92;
   transition: transform 0.14s ease, box-shadow 0.2s ease, background 0.2s ease, opacity 0.2s ease;
+  flex-shrink: 0;
 }
 
 .tab-menu-btn:hover {
   opacity: 1;
-  transform: translateY(-50%) scale(1.03);
+  transform: scale(1.03);
   background: var(--surface-raised);
   box-shadow: var(--shadow-sm);
 }
@@ -265,4 +280,96 @@
 .sortable-ghost {
   opacity: 0.4;
   background: var(--c-primary-alpha) !important;
+}
+
+/* ── Estilos para Pestañas con Acciones (Pin/Cerrar) ── */
+
+.tab-sentinel.tab-menu-manager-wrapper {
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  align-self: center;
+  margin-bottom: 0;
+  height: 100%;
+}
+
+.tab-sentinel.tab-menu-manager-wrapper.no-drag,
+.no-drag {
+  pointer-events: auto;
+}
+
+.tab-pin-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  opacity: 0.5;
+  cursor: pointer;
+  padding: 4px;
+  margin-right: 8px;
+  transition: all 0.2s ease;
+  font-size: 0.8rem;
+}
+
+.tab-item.is-pinned .tab-pin-btn {
+  color: var(--c-primary);
+  opacity: 1;
+}
+
+.tab-pin-btn:hover {
+  color: var(--text-primary);
+  opacity: 1;
+}
+
+.tab-actions {
+  position: absolute;
+  right: 6px;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.tab-actions button {
+  pointer-events: auto;
+}
+
+.tab-item.active .tab-actions,
+.tab-item:hover .tab-actions {
+  opacity: 1;
+}
+
+/* Visibilidad en dispositivos táctiles o pantallas pequeñas */
+@media (pointer: coarse), (max-width: 1024px) {
+  .tab-actions {
+    opacity: 1;
+  }
+  .tab-pin-btn {
+    opacity: 0.8;
+  }
+}
+
+.tab-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  opacity: 0.6;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.tab-close-btn:hover {
+  background: var(--c-danger-alpha);
+  color: var(--c-danger);
+  opacity: 1;
+}
+
+.tab-item.is-pinned {
+  border-bottom: 2px solid var(--c-primary);
 }

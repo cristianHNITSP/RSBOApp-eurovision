@@ -39,6 +39,10 @@
 </template>
 
 <script setup>
+const props = defineProps({
+  user: { type: Object, default: null },
+  loading: { type: Boolean, default: false }
+});
 // Placeholder para gestión de óptica en ventas
 </script>
 

@@ -1,0 +1,90 @@
+/* ── Order lines (cart) ── */
+.order-lines   { display: grid; gap: 0.6rem; }
+
+.order-line {
+  border: 1px solid var(--border);
+  background: var(--surface-overlay);
+  border-radius: 16px;
+  padding: 0.75rem;
+}
+
+.order-line__top    { display: flex; justify-content: space-between; gap: 0.75rem; }
+.order-line__title  { font-weight: 950; color: var(--text-primary); }
+.order-line__sub    {
+  display: block;
+  margin-top: 0.15rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+.order-line__bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.6rem;
+}
+
+.qty-control { display: flex; gap: 0.35rem; align-items: center; }
+.stock-hint  { font-weight: 900; color: var(--text-muted); font-size: 0.82rem; }
+
+/* ── Cart summary ── */
+.bm-cart-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 900;
+}
+.bm-cart-summary__val {
+  font-size: 1.3rem;
+  font-weight: 1000;
+  color: var(--text-primary);
+}
+
+/* ── Mono ── */
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+}
+
+/* ── Muted ── */
+.muted { color: var(--text-muted); font-weight: 700; }
+
+/* ── Datos adicionales del cliente ── */
+.nv-cliente-section-label {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--text-muted);
+}
+
+.nv-cliente-form {
+  border: 1px solid var(--border);
+  background: var(--surface-overlay);
+  border-radius: 14px;
+  padding: 0.75rem;
+}
+
+/* ── Condiciones de pago checkboxes ── */
+.nv-pago-check__label {
+  font-weight: 900;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+}
+
+.nv-pago-check__opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.85rem;
+}
+
+/* ── Precio tag en cart item ── */
+.nv-precio-tag {
+  font-size: 0.82rem;
+  font-weight: 900;
+  color: var(--c-primary);
+  background: var(--c-primary-alpha);
+  border: 1px solid var(--c-primary-alpha);
+  border-radius: 999px;
+  padding: 0.15rem 0.5rem;
+}

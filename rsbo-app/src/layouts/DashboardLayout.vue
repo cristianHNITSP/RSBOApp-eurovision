@@ -29,7 +29,7 @@
       <NotificationPanel
         :visible="showPanel"
         @close="handleClosePanel"
-        @update-unread="unreadNotifications = $event"
+        @update-count="activeNotifications = $event"
       />
 
       <!-- Overlay blur sidebar móvil -->
@@ -51,10 +51,11 @@
             :page-title="pageTitle"
             :show-panel="showPanel"
             :bell-ringing="bellRinging"
-            :unread-notifications="unreadNotifications"
+            :unread-notifications="activeNotifications"
             @toggle-notifications="showPanel ? handleClosePanel() : openPanelMobile()"
             @profile="profile"
-            @settings="settings"
+            @accessibility="goToAccessibility"
+            @security="goToSecurity"
             @logout="logout"
           >
             <template #search>
@@ -69,12 +70,13 @@
             :page-title="pageTitle"
             :show-panel="showPanel"
             :bell-ringing="bellRinging"
-            :unread-notifications="unreadNotifications"
+            :unread-notifications="activeNotifications"
             @toggle-sidebar="toggleMobileSidebar"
             @toggle-search="toggleMobileSearch"
             @toggle-notifications="showPanel ? closePanel() : openPanelMobile()"
             @profile="profile"
-            @settings="settings"
+            @accessibility="goToAccessibility"
+            @security="goToSecurity"
             @logout="logout"
           />
 
@@ -125,7 +127,7 @@ import { useMotionEffects } from "@/composables/ui/useMotionEffects";
 import { useNotifications } from "@/composables/notifi/useNotificationsState";
 import { useAccessibility } from "@/composables/ui/useAccessibility";
 import { pendingOrdersCount } from "@/composables/ui/useOrdersBadge.js";
-import { fetchUnreadCount } from "@/services/notifications.js";
+import { fetchActiveCount } from "@/services/notifications.js";
 
 /* =========================
    Sidebar & motion
@@ -137,16 +139,16 @@ const { motionRef, animateSidebarShift } = useMotionEffects();
    Notificaciones
    ========================= */
 const { showPanel, openPanel, closePanel } = useNotifications();
-const unreadNotifications = ref(0);
+const activeNotifications = ref(0);
 const bellRinging = ref(false);
-let _prevUnread = 0;
+let _prevActive = 0;
 
-watch(unreadNotifications, (newVal) => {
-  if (newVal > _prevUnread) {
+watch(activeNotifications, (newVal) => {
+  if (newVal > _prevActive) {
     bellRinging.value = true;
     setTimeout(() => { bellRinging.value = false; }, 800);
   }
-  _prevUnread = newVal;
+  _prevActive = newVal;
 });
 
 /* =========================
@@ -239,6 +241,14 @@ function openPanelMobile() {
   openPanel();
 }
 
+watch(showPanel, (newVal) => {
+  if (newVal && user.value?.id) {
+    // Cuando el panel se abre, actualizamos lastSeenAt
+    localStorage.setItem(`lastSeenNotif_${user.value.id}`, new Date().toISOString());
+    activeNotifications.value = 0; // reset local count
+  }
+});
+
 watch(isMobile, (nowMobile) => {
   if (!nowMobile) {
     isMobileSidebarVisible.value = true;
@@ -300,23 +310,26 @@ const loading = ref(true);
 const _instance = getCurrentInstance();
 
 function profile()  { router.push('/l/mi.perfil.panel'); }
-function settings() { router.push('/l/config.panel'); }
+function goToAccessibility() { router.push({ path: '/l/config.panel', query: { tab: 'preferences' } }); }
+function goToSecurity()      { router.push({ path: '/l/config.panel', query: { tab: 'security' } }); }
 function logout()   { _authLogout(router, _instance?.proxy?.$buefy); }
 
 /* =========================
    Lifecycle / WS
    ========================= */
-async function refreshUnreadCount() {
+async function refreshActiveCount() {
+  if (!user.value?.id) return;
   try {
-    const { data } = await fetchUnreadCount();
-    unreadNotifications.value = data?.unread ?? 0;
+    const since = localStorage.getItem(`lastSeenNotif_${user.value.id}`);
+    const { data } = await fetchActiveCount(since);
+    activeNotifications.value = data?.count ?? 0;
   } catch { /* silencioso */ }
 }
 
 function _onLabWs(e) {
   const type = e?.detail?.type;
   if (type === "NOTIFICATION_NEW" || type === "STOCK_ALERT") {
-    refreshUnreadCount();
+    refreshActiveCount();
   }
 }
 
@@ -333,10 +346,11 @@ onMounted(async () => {
   if (mql1020.addEventListener) mql1020.addEventListener("change", onMediaChange1020);
   else mql1020.addListener(onMediaChange1020);
 
-  refreshUnreadCount();
+  await fetchUser();
+  refreshActiveCount();
+  
   window.addEventListener("lab:ws", _onLabWs);
 
-  await fetchUser();
   loading.value = false;
 });
 

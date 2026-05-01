@@ -1,17 +1,8 @@
 <!-- rsbo-app/src/components/tabsmanager/SheetActionsModal.vue -->
 <template>
   <teleport to="body">
-    <b-modal
-      v-model="localIsOpen"
-      has-modal-card
-      trap-focus
-      :destroy-on-hide="true"
-      :can-cancel="['escape']"
-      scroll="keep"
-      aria-role="dialog"
-      aria-modal
-      class="rsbo-sheet-actions-modal"
-    >
+    <b-modal v-model="localIsOpen" has-modal-card trap-focus :destroy-on-hide="true" :can-cancel="['escape']"
+      scroll="keep" aria-role="dialog" aria-modal class="rsbo-sheet-actions-modal">
       <div class="modal-card glass-modal-card glass-modal-card--wide">
         <header class="modal-card-head glass-modal-head">
           <b-icon icon="cog" type="is-primary" size="is-small" class="mr-2" />
@@ -75,8 +66,8 @@
               @update:loteProducto="$emit('update:edit-lote-producto', $event)" :fechaCompra="editFechaCompra"
               @update:fechaCompra="$emit('update:edit-fecha-compra', $event)" :fechaCaducidad="editFechaCaducidad"
               @update:fechaCaducidad="$emit('update:edit-fecha-caducidad', $event)" :loading="savingPurchase"
-              :status="purchaseStatus" :message="purchaseStatusMessage" :glow="purchaseGlow"
-              :can-save="canSavePurchase" @save="$emit('save-purchase')" />
+              :status="purchaseStatus" :message="purchaseStatusMessage" :glow="purchaseGlow" :can-save="canSavePurchase"
+              @save="$emit('save-purchase')" />
 
             <!-- META NOTES -->
             <ActionMetaNotes :observaciones="observaciones"

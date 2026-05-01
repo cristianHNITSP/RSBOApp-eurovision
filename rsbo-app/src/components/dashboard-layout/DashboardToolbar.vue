@@ -24,13 +24,8 @@
       <div class="dashboard-actions">
         <b-tooltip label="Notificaciones" position="is-bottom" append-to-body :triggers="['hover']">
           <div class="has-badge-wrapper">
-            <b-button
-              class="toolbar-btn"
-              type="is-light"
-              :icon-right="showPanel ? 'close' : 'bell'"
-              :class="{ 'bell-btn--ringing': bellRinging && !showPanel }"
-              @click="$emit('toggle-notifications')"
-            />
+            <b-button class="toolbar-btn" type="is-light" :icon-right="showPanel ? 'close' : 'bell'"
+              :class="{ 'bell-btn--ringing': bellRinging && !showPanel }" @click="$emit('toggle-notifications')" />
             <transition name="badge-fade">
               <b-tag v-if="unreadNotifications > 0" type="is-primary" size="is-small" rounded class="is-badge">
                 {{ unreadNotifications }}
@@ -48,8 +43,12 @@
             <b-icon icon="user" size="is-small" />&nbsp; Perfil
           </b-dropdown-item>
 
-          <b-dropdown-item aria-role="menu-item" @click="$emit('settings')" class="dropmenu-is-light">
-            <b-icon icon="cog" size="is-small" />&nbsp; Configuración
+          <b-dropdown-item aria-role="menu-item" @click="$emit('accessibility')" class="dropmenu-is-light">
+            <b-icon icon="universal-access" size="is-small" />&nbsp; Accesibilidad
+          </b-dropdown-item>
+
+          <b-dropdown-item aria-role="menu-item" @click="$emit('security')" class="dropmenu-is-light">
+            <b-icon icon="shield-alt" size="is-small" />&nbsp; Seguridad
           </b-dropdown-item>
 
           <hr class="dropdown-divider" />
@@ -58,6 +57,7 @@
             <b-icon icon="sign-out-alt" size="is-small" />&nbsp; Cerrar sesión
           </b-dropdown-item>
         </b-dropdown>
+
       </div>
     </div>
   </div>
@@ -72,7 +72,7 @@ defineProps({
   unreadNotifications: Number
 })
 
-defineEmits(['toggle-notifications', 'profile', 'settings', 'logout'])
+defineEmits(['toggle-notifications', 'profile', 'accessibility', 'security', 'logout'])
 </script>
 
 <style scoped>

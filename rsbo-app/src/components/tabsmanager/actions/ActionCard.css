@@ -1,131 +1,113 @@
 /* rsbo-app/src/components/tabsmanager/actions/ActionCard.css */
 
-.action-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 1.25rem;
-  padding: 1.5rem;
+/* 
+   ============================================================
+   Action Card System — Basado en Design Tokens y Bulma
+   ============================================================ 
+*/
+
+/* Contenedor base (usamos .box de Bulma como base en el HTML) */
+.action-box {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 16px;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  margin-bottom: 1rem;
+  border-radius: var(--radius-lg, 14px);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-base, 180ms ease);
+  overflow: hidden;
+  position: relative;
 }
 
-.action-card:hover {
+.action-box:hover {
   border-color: var(--c-primary-alpha);
   background: var(--surface-raised);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
-.action-card.primary {
-  background: linear-gradient(135deg, var(--surface) 0%, rgba(121, 87, 213, 0.05) 100%);
-  border-color: var(--c-primary-alpha);
+/* Variantes de color */
+.action-box.primary { border-color: var(--c-primary-alpha); }
+.action-box.danger { border-color: var(--c-danger-alpha); }
+.action-box.info { border-color: var(--c-info-alpha); }
+.action-box.warning { border-color: var(--c-warning-alpha); }
+
+/* Glows (animados) */
+@keyframes glow-pulse {
+  0% { box-shadow: 0 0 5px var(--glow-color); }
+  50% { box-shadow: 0 0 20px var(--glow-color); }
+  100% { box-shadow: 0 0 5px var(--glow-color); }
 }
 
-.action-card.danger {
-  border-color: rgba(255, 56, 96, 0.2);
-}
+.action-glow-primary { --glow-color: var(--c-primary-alpha); animation: glow-pulse 2s infinite; }
+.action-glow-info { --glow-color: var(--c-info-alpha); animation: glow-pulse 2s infinite; }
+.action-glow-success { --glow-color: var(--c-success-alpha); animation: glow-pulse 2s infinite; }
 
-.action-icon {
+/* Icono circular */
+.action-icon-circle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  height: 48px;
-  background: var(--surface-raised);
-  border-radius: 12px;
-  font-size: 1.5rem;
-  color: var(--c-primary);
   flex-shrink: 0;
+  transition: transform var(--transition-base);
 }
 
-.action-icon.danger {
-  color: #ff3860;
-  background: rgba(255, 56, 96, 0.1);
+.action-box:hover .action-icon-circle {
+  transform: scale(1.1) rotate(5deg);
 }
 
-.action-content {
-  flex: 1;
-  min-width: 0;
-}
+/* Colores de iconos */
+.icon-bg-primary { background: var(--c-primary-alpha); color: var(--c-primary); }
+.icon-bg-danger { background: var(--c-danger-alpha); color: var(--c-danger); }
+.icon-bg-info { background: var(--c-info-alpha); color: var(--c-info); }
+.icon-bg-warning { background: var(--c-warning-alpha); color: var(--c-warning); }
 
+/* Tipografía */
 .action-title {
-  font-weight: 800;
-  font-size: 1.1rem;
-  margin-bottom: 0.25rem;
+  font-family: 'Switzer', sans-serif;
+  font-weight: 700;
   color: var(--text-primary);
+  line-height: 1.2;
 }
 
 .action-desc {
-  font-size: 0.9rem;
   color: var(--text-muted);
   line-height: 1.4;
 }
 
-.action-button {
-  display: flex;
-  align-items: center;
-  margin-left: auto;
-  flex-shrink: 0;
-}
-
-/* Glows */
-.vendor-glow { box-shadow: 0 0 20px rgba(121, 87, 213, 0.15); }
-.rename-glow { box-shadow: 0 0 20px rgba(72, 199, 142, 0.15); }
-.meta-glow { box-shadow: 0 0 20px rgba(50, 152, 220, 0.15); }
-.purchase-glow { box-shadow: 0 0 20px rgba(255, 221, 87, 0.15); }
-
-/* Grid y Layouts internos */
-.meta-grid {
+/* Form Layouts */
+.action-form-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1rem;
   margin-top: 1rem;
 }
 
-.meta-actions-row {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 1rem;
-  margin-top: 1.25rem;
-}
-
-.rename-row {
-  display: flex;
-  gap: 0.75rem;
-  margin-top: 1rem;
-}
-
-.rename-field { flex: 1; }
-
-.confirm-space {
-  margin-top: 1rem;
-  padding: 1rem;
-  background: rgba(255, 56, 96, 0.05);
-  border-radius: 12px;
-  border: 1px dashed rgba(255, 56, 96, 0.3);
-}
-
-.confirm-text {
-  font-size: 0.9rem;
-  color: #ff3860;
-  margin-bottom: 1rem;
-}
-
-.delete.is-disabled {
-  opacity: 0.3;
-  pointer-events: none;
-}
-
-.truncate {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-@media screen and (max-width: 768px) {
-  .meta-grid {
-    grid-template-columns: 1fr;
+/* Responsividad mejorada para Bulma Media */
+@media screen and (max-width: 600px) {
+  .media.is-responsive-action {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
   }
+
+  .media.is-responsive-action .media-left {
+    margin-right: 0;
+    margin-bottom: 1rem;
+  }
+
+  .media.is-responsive-action .is-flex-wrap-wrap {
+    justify-content: center;
+  }
+}
+
+/* Animaciones de entrada */
+.action-fade-enter-active {
+  transition: all 0.3s ease-out;
+}
+
+.action-fade-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
 }

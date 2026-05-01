@@ -133,6 +133,7 @@ import { useAgGridBase, localeText, ackOk, ackErr, msgFromErr, statusFromErr, no
 import { useAgGridIncrementalColumns } from "@/composables/ag-grid/useAgGridIncrementalColumns";
 
 import { useAgGridIntegration } from "@/composables/ag-grid/useAgGridIntegration";
+import { useGridKeyboardShortcuts } from "@/composables/ag-grid/useGridKeyboardShortcuts";
 import { useAgGridHandlers } from "@/composables/ag-grid/useAgGridHandlers";
 import { useAgGridFormulaBar } from "@/composables/ag-grid/useAgGridFormulaBar";
 import { useAgGridPivotLoader } from "@/composables/ag-grid/useAgGridPivotLoader";
@@ -142,8 +143,8 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 
 const DEV_MODE      = import.meta.env.DEV;
 const DEV_DELAY_MS  = 0; // Eliminado delay artificial para respuesta flash
-const ROW_PAGE_SIZE  = DEV_MODE ? 4 : 10;
-const COL_CHUNK_SIZE = DEV_MODE ? 3 : 8;
+const ROW_PAGE_SIZE  = DEV_MODE ? 4 : 25;
+const COL_CHUNK_SIZE = DEV_MODE ? 3 : 15;
 
 const LOG      = (...a) => DEV_MODE && console.log("[Torico]", ...a);
 const LOG_ROWS = (...a) => DEV_MODE && console.log("[Torico][Rows]", ...a);
@@ -553,6 +554,17 @@ function applyGridHistoryOp(op) {
 }
 const handleGridUndo = () => applyGridHistoryOp(gridHistory.undo());
 const handleGridRedo = () => applyGridHistoryOp(gridHistory.redo());
+
+useGridKeyboardShortcuts({
+  onSave: handleSave,
+  onUndo: handleGridUndo,
+  onRedo: handleGridRedo,
+  gridApi: gridApi,
+  dirty: dirty,
+  canUndo: gridHistory.canUndo,
+  canRedo: gridHistory.canRedo,
+  isActive: () => gridPageRef.value && gridPageRef.value.offsetParent !== null
+});
 
 const handleAddRow = async (nuevoValor, ack) => {
   const P = phys.value; const sph = to2(nuevoValor);

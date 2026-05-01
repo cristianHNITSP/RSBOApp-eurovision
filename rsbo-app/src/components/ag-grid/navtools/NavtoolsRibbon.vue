@@ -5,24 +5,24 @@
       <!-- Tira de EDICIÓN -->
       <template #edicion>
         <div class="ribbon-actions-row">
-          <b-field class="mt-2" grouped>
-            <NavButton tooltip="Ctrl+Z" icon="undo-alt" :disabled="!canUndo" @click="$emit('undo')">
+          <b-field grouped>
+            <NavButton icon="undo-alt" :disabled="!canUndo" @click="$emit('undo')">
               Deshacer
             </NavButton>
 
-            <NavButton tooltip="Ctrl+Y" icon="redo-alt" :disabled="!canRedo" @click="$emit('redo')">
+            <NavButton icon="redo-alt" :disabled="!canRedo" @click="$emit('redo')">
               Rehacer
             </NavButton>
 
-            <NavButton tooltip="Ctrl+C" icon="copy" @click="$emit('copy')">
+            <NavButton icon="copy" @click="$emit('copy')">
               Copiar
             </NavButton>
 
-            <NavButton tooltip="Ctrl+X" icon="cut" @click="$emit('cut')">
+            <NavButton icon="cut" @click="$emit('cut')">
               Cortar
             </NavButton>
 
-            <NavButton v-if="!isMobile" tooltip="Ctrl+V" icon="paste" @click="$emit('paste')">
+            <NavButton v-if="!isMobile" icon="paste" @click="$emit('paste')">
               Pegar
             </NavButton>
           </b-field>
@@ -32,7 +32,7 @@
       <!-- Tira de ESTRUCTURA -->
       <template #estructura>
         <div class="ribbon-actions-row">
-          <b-field class="mt-2" grouped>
+          <b-field grouped>
             <NavButton icon="plus-square" type="is-light" :disabled="opPending" @click="$emit('add-row')">
               {{ rowActionLabel }}
             </NavButton>
@@ -48,7 +48,7 @@
       <!-- Tira de DATOS -->
       <template #datos>
         <div class="ribbon-actions-row">
-          <b-field class="mt-2" grouped>
+          <b-field grouped>
 
 
             <NavButton extra-class="rbtn--primary" :type="dirty ? 'is-primary' : 'is-light'" icon="save"

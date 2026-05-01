@@ -129,3 +129,14 @@
 .catalog-loading {
   position: relative;
 }
+
+.sheet-card__buttons {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.sheet-card__buttons > * {
+  flex: 1 1 120px;
+  min-width: 0;
+}

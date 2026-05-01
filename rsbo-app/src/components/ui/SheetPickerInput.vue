@@ -76,6 +76,7 @@ const listRef = ref(null);
 
 const currentName = computed(() => {
   const found = lab?.sheetById(props.modelValue);
+  if (!found && props.modelValue) return "Cargando…";
   return found ? props.sheetTitle(found) : "Seleccionar planilla…";
 });
 
@@ -106,7 +107,7 @@ function openPicker() {
     left: `${rect.left}px`,
     width: `${Math.max(340, rect.width)}px`
   };
-  isOpening.value = true;
+  isOpening.value = props.loading;
   open.value = true;
   query.value = "";
   props.searchFn(""); 

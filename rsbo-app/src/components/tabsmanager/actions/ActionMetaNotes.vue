@@ -1,48 +1,64 @@
 <!-- rsbo-app/src/components/tabsmanager/actions/ActionMetaNotes.vue -->
 <template>
-  <div class="action-card" :class="{ 'meta-glow': glow }">
-    <div class="action-icon">
-      <i class="far fa-sticky-note"></i>
-    </div>
-    <div class="action-content">
-      <h3 class="action-title">Notas y observaciones</h3>
-      <p class="action-desc">Información interna de la planilla</p>
-
-      <div class="meta-grid">
-        <b-field label="Observaciones">
-          <b-input
-            type="textarea"
-            rows="2"
-            maxlength="500"
-            :model-value="observaciones"
-            @update:model-value="$emit('update:observaciones', $event)"
-            placeholder="Visibles en el dashboard..."
-          />
-        </b-field>
-        <b-field label="Notas">
-          <b-input
-            type="textarea"
-            rows="2"
-            maxlength="500"
-            :model-value="notas"
-            @update:model-value="$emit('update:notas', $event)"
-            placeholder="Información técnica interna..."
-          />
-        </b-field>
+  <div class="action-box info p-5 mb-4" :class="{ 'action-glow-info': glow }">
+    <article class="media is-responsive-action">
+      <!-- Icono -->
+      <div class="media-left">
+        <div class="action-icon-circle icon-bg-info">
+          <b-icon icon="comment-alt" pack="far" type="is-info" size="is-medium"></b-icon>
+        </div>
       </div>
 
-      <div class="meta-actions-row">
-        <StatusPill :status="status" :message="message" />
-        <b-button
-          label="Guardar notas"
-          type="is-info"
-          size="is-small"
-          :loading="loading"
-          :disabled="!canSave"
-          @click="$emit('save')"
-        />
+      <!-- Contenido -->
+      <div class="media-content">
+        <div class="content mb-3">
+          <h4 class="action-title is-size-5 mb-1">Notas y Observaciones</h4>
+          <p class="action-desc is-size-7">
+            Anotaciones internas o detalles específicos para esta planilla.
+          </p>
+        </div>
+
+        <div class="action-form-grid">
+          <b-field label="Observaciones" custom-class="is-small">
+            <b-input
+              type="textarea"
+              :modelValue="observaciones"
+              @update:modelValue="$emit('update:observaciones', $event)"
+              placeholder="Detalles sobre el inventario…"
+              rows="2"
+              :disabled="loading"
+              size="is-small"
+            />
+          </b-field>
+
+          <b-field label="Notas internas" custom-class="is-small">
+            <b-input
+              type="textarea"
+              :modelValue="notas"
+              @update:modelValue="$emit('update:notas', $event)"
+              placeholder="Solo visible en este panel…"
+              rows="2"
+              :disabled="loading"
+              size="is-small"
+            />
+          </b-field>
+        </div>
+
+        <div class="is-flex is-align-items-center is-flex-wrap-wrap mt-4" style="gap: 1rem;">
+          <b-button 
+            type="is-info" 
+            size="is-small" 
+            icon-left="save"
+            :loading="loading" 
+            :disabled="!canSave || loading" 
+            @click="$emit('save')"
+          >
+            Guardar notas
+          </b-button>
+          <StatusPill :status="status" :message="message" />
+        </div>
       </div>
-    </div>
+    </article>
   </div>
 </template>
 

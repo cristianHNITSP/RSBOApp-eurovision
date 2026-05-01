@@ -5,7 +5,7 @@
       :user="selectedUser"
       :fallback-avatar="FALLBACK_AVATAR"
       :permission-catalog="permissionsCatalog"
-      :loading="loading"
+      :loading="usersLoading"
       @avatar-picked="onAvatarPicked"
       @open-create="openCreate"
       @reload="loadUsers"
@@ -32,7 +32,7 @@
       :total="total"
       :per-page="perPage"
       :current-page="currentPage"
-      :loading="loading"
+      :loading="usersLoading"
       :selected-user="selectedUser"
       :fallback-avatar="FALLBACK_AVATAR"
       @page-change="onPageChange"
@@ -73,6 +73,11 @@
 import { onMounted } from "vue";
 import { useUsuariosLogic } from "@/composables/gestion/usuarios/useUsuariosLogic.js";
 
+const props = defineProps({
+  user: { type: Object, default: null },
+  loading: { type: Boolean, default: false }
+});
+
 import UserBanner        from "@/components/usuarios/UserBanner.vue";
 import UserEditModal     from "@/components/usuarios/UserEditModal.vue";
 import UserPasswordModal from "@/components/usuarios/UserPasswordModal.vue";
@@ -84,7 +89,7 @@ import UsuariosTable   from "./UsuariosTable.vue";
 
 const {
   roles, total, stats, permissionsCatalog,
-  loading, saving, isMobile,
+  loading: usersLoading, saving, isMobile,
   searchQuery, roleFilter, statusFilter,
   perPage, currentPage,
   selectedUser, bannerRef,

@@ -326,6 +326,17 @@
   --ag-odd-row-background-color: transparent;
 }
 
+/* Quitar scroll horizontal molesto en la primera columna (pinned) */
+.ag-grid-glass :deep(.ag-pinned-left-cols-viewport),
+.ag-grid-glass :deep(.ag-pinned-left-header),
+.ag-grid-glass :deep(.ag-horizontal-left-spacer) {
+  overflow-x: hidden !important;
+}
+
+.ag-grid-glass :deep(.ag-horizontal-left-spacer::-webkit-scrollbar) {
+  display: none !important;
+}
+
 /* Eliminar bordes internos rígidos */
 .ag-grid-glass :deep(.ag-root-wrapper) {
   border: none !important;

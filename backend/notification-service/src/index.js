@@ -51,6 +51,7 @@ mongoose
   .then(() => {
     console.log('✅ Conectado a MongoDB (notification_db)');
     ws.connect(); // conectar al Gateway WS para broadcasting
+    require('./services/redisPubSub').startSubscriber();
     const PORT = process.env.PORT || 3000;
     app.listen(PORT, () => console.log(`🟢 Notification service en puerto ${PORT}`));
   })

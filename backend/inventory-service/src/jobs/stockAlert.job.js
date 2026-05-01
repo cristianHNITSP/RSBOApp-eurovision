@@ -34,16 +34,23 @@ function startStockAlertJob() {
     await notifyPendingOrders();
   })().catch((e) => console.error("[STOCK_ALERT] Error en sweep inicial:", e?.message));
 
-  // ── Sweep diario a las 3:00 AM — safety net minimo ───────────────────────
-  // La deteccion en tiempo real la hacen los triggers en las rutas (setImmediate).
-  // Este cron solo sirve como red de seguridad para capturas perdidas.
-  cron.schedule("0 3 * * *", () => {
-    console.log("[STOCK_ALERT] Cron 3AM: iniciando barrido diario...");
-    sweepAllSheets({ respectCooldown: true })
-      .catch((e) => console.error("[STOCK_ALERT] Error en cron diario:", e?.message));
+  // ── Sweep Inteligente (Redis Pub/Sub) ───────────────────────────────────
+  
+  // REGLA 1: Horario Laboral (8 AM - 8 PM) - Cada Hora
+  cron.schedule("0 8-20 * * *", () => {
+    console.log("[STOCK_ALERT] Cron Laboral: iniciando barrido horario...");
+    sweepAllSheets({ respectCooldown: true, useRedis: true })
+      .catch((e) => console.error("[STOCK_ALERT] Error en cron laboral:", e?.message));
   });
 
-  console.log("[STOCK_ALERT] Job iniciado — triggers en tiempo real + cron diario 3AM.");
+  // REGLA 2: Horario Nocturno - Cada 4 Horas (00:00, 04:00)
+  cron.schedule("0 0,4 * * *", () => {
+    console.log("[STOCK_ALERT] Cron Nocturno: iniciando barrido preventivo...");
+    sweepAllSheets({ respectCooldown: true, useRedis: true })
+      .catch((e) => console.error("[STOCK_ALERT] Error en cron nocturno:", e?.message));
+  });
+
+  console.log("[STOCK_ALERT] Job iniciado — Horario laboral (8-20h: cada hora) | Nocturno (cada 4h).");
 }
 
 module.exports = { startStockAlertJob };

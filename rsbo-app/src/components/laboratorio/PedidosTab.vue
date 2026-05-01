@@ -284,7 +284,7 @@
 <script setup>
 import { inject, ref, watch } from "vue";
 import OrderDetail from "./pedidos/OrderDetail.vue";
-import SheetPickerInput from "./SheetPickerInput.vue";
+import SheetPickerInput from "@/components/ui/SheetPickerInput.vue";
 import "./laboratorio-shared.css";
 import "./PedidosTab.css";
 

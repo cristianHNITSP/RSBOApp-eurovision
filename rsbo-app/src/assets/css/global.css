@@ -39,7 +39,12 @@ strong {
 }
 
 .dropdown .background {
-  bottom: auto !important;
+  position: fixed !important;
+  inset: 0 !important;
+  background-color: rgba(15, 18, 40, 0.45) !important;
+  backdrop-filter: blur(6px) saturate(1.2);
+  -webkit-backdrop-filter: blur(6px) saturate(1.2);
+  z-index: 39 !important;
 }
 
 /* ----------------------------------------------------------
@@ -1236,6 +1241,7 @@ button.dropdown-item:hover {
   gap: 0.85rem;
   flex-wrap: wrap;
 }
+.panel__head > * { min-width: 0; }
 
 .panel__head--compact {
   padding: 0.85rem 1rem;

@@ -1,7 +1,7 @@
 <!-- src/components/ag-grid/navtools/NavButton.vue -->
 <template>
   <p class="control">
-    <b-tooltip :label="tooltip" :position="tooltipPos" :active="!!tooltip">
+    <b-tooltip :label="tooltip" :position="tooltipPos" :active="!!tooltip" type="is-primary" animated>
       <b-button
         class="rbtn"
         :class="extraClass"

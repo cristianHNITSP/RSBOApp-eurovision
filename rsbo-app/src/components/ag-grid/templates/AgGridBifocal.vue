@@ -7,7 +7,8 @@
              → agregar columnas NO reinvoca getRows (anti-colisión)
   ============================================================ -->
 <template>
-  <div class="grid-page" :class="{ 'is-fullscreen': isFullscreen, 'ag-grid-fullscreen-container': isFullscreen }" ref="gridPageRef">
+  <div class="grid-page" :class="{ 'is-fullscreen': isFullscreen, 'ag-grid-fullscreen-container': isFullscreen }"
+    ref="gridPageRef">
     <header class="grid-topbar">
       <navtools class="navtools-wrap" v-model="formulaValue" :dirty="dirty" :saving="saving" :total-rows="totalRows"
         :sheet-name="sheetName" :tipo-matriz="tipoMatriz" :material="material" :tratamientos="tratamientos"
@@ -17,8 +18,8 @@
         @update:internal="$emit('update:internal', $event)" @add-row="handleAddRow" @add-column="handleAddColumn"
         @toggle-filters="handleToggleFilters" @clear-filters="clearFilters" @reset-sort="resetSort"
         @save-request="handleSave" @discard-changes="handleDiscard" @refresh="handleRefresh" @seed="handleSeed"
-        @export="handleExport" @fx-input="onFxInput" @fx-commit="onFxCommit"
-        @grid-undo="handleGridUndo" @grid-redo="handleGridRedo" />
+        @export="handleExport" @fx-input="onFxInput" @fx-commit="onFxCommit" @grid-undo="handleGridUndo"
+        @grid-redo="handleGridRedo" />
     </header>
 
     <main class="grid-main">
@@ -77,6 +78,7 @@ import { useAgGridBase, localeText, ackOk, ackErr, msgFromErr, statusFromErr, no
 import { useAgGridIncrementalColumns } from "@/composables/ag-grid/useAgGridIncrementalColumns";
 
 import { useAgGridIntegration } from "@/composables/ag-grid/useAgGridIntegration";
+import { useGridKeyboardShortcuts } from "@/composables/ag-grid/useGridKeyboardShortcuts";
 import { useAgGridHandlers } from "@/composables/ag-grid/useAgGridHandlers";
 import { useAgGridFormulaBar } from "@/composables/ag-grid/useAgGridFormulaBar";
 import { useAgGridPivotLoader } from "@/composables/ag-grid/useAgGridPivotLoader";
@@ -86,8 +88,8 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 
 const DEV_MODE = import.meta.env.DEV;
 const DEV_DELAY_MS = 0;
-const ROW_PAGE_SIZE = DEV_MODE ? 4 : 10;
-const COL_CHUNK_SIZE = DEV_MODE ? 3 : 8;
+const ROW_PAGE_SIZE = DEV_MODE ? 4 : 25;
+const COL_CHUNK_SIZE = DEV_MODE ? 3 : 15;
 
 const LOG = (...a) => DEV_MODE && console.log("[Bifocal]", ...a);
 const LOG_ROWS = (...a) => DEV_MODE && console.log("[Bifocal][Rows]", ...a);
@@ -266,14 +268,23 @@ const { datasource, loadingRowsCount, rowsInCacheCount } = useAgGridPivotLoader(
       const nullFields = Object.fromEntries(addAll.flatMap(a => [`add_${norm(a)}_OD`, `add_${norm(a)}_OI`].map(f => [f, null])));
       return pageSphs.map(sph => ({ sph, base_izq: 0, base_der: 0, __loading: true, ...nullFields }));
     }
+    // Pre-indexar items en Map para O(1) lookup
+    const itemMap = new Map();
+    items.forEach(it => itemMap.set(`${it.sph}|${to2(it.add)}|${it.eye}`, it.existencias));
+
+    // Mapear base_izq y base_der a un diccionario para O(1)
+    const baseMap = new Map();
+    items.forEach(it => {
+      if (!baseMap.has(it.sph)) baseMap.set(it.sph, { base_izq: to2(it.base_izq ?? 0), base_der: to2(it.base_der ?? 0) });
+    });
+
     return pageSphs.map(sph => {
-      const sphItems = items.filter(i => i.sph === sph);
-      const row = { sph, base_izq: to2(sphItems[0]?.base_izq ?? 0), base_der: to2(sphItems[0]?.base_der ?? 0) };
+      const bases = baseMap.get(sph) || { base_izq: 0, base_der: 0 };
+      const row = { sph, base_izq: bases.base_izq, base_der: bases.base_der };
       addAll.forEach(add => {
         eyes.forEach(eye => {
           const field = `add_${norm(add)}_${eye}`;
-          const match = sphItems.find(i => i.add === add && i.eye === eye);
-          row[field] = match?.existencias ?? 0;
+          row[field] = itemMap.get(`${sph}|${to2(add)}|${eye}`) ?? 0;
           const pk = `${to2(sph)}|${to2(add)}|${eye}`;
           if (pendingChanges?.has(pk)) row[field] = pendingChanges.get(pk).existencias;
         });
@@ -350,6 +361,17 @@ function applyGridHistoryOp(op) {
 }
 const handleGridUndo = () => applyGridHistoryOp(gridHistory.undo());
 const handleGridRedo = () => applyGridHistoryOp(gridHistory.redo());
+
+useGridKeyboardShortcuts({
+  onSave: handleSave,
+  onUndo: handleGridUndo,
+  onRedo: handleGridRedo,
+  gridApi: gridApi,
+  dirty: dirty,
+  canUndo: gridHistory.canUndo,
+  canRedo: gridHistory.canRedo,
+  isActive: () => gridPageRef.value && gridPageRef.value.offsetParent !== null
+});
 
 const handleAddRow = async (nuevoValor, ack) => {
   const P = PHYS.value; const sph = to2(nuevoValor);

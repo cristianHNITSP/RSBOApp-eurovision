@@ -67,7 +67,7 @@ function classifyStock(existencias, distance) {
 function cellLabel(tipoMatriz, cellKey, eye) {
   try {
     const p   = String(cellKey).split("|").map(denormNum);
-    const fmt = (v) => (v === null ? "—" : v >= 0 ? `+${v.toFixed(2)}` : v.toFixed(2));
+    const fmt = (v) => (v === null ? "0.00" : v >= 0 ? `+${v.toFixed(2)}` : v.toFixed(2));
     let label;
     switch (tipoMatriz) {
       case "BASE":     label = `Base ${fmt(p[0])}`; break;
@@ -82,7 +82,7 @@ function cellLabel(tipoMatriz, cellKey, eye) {
 
 function sheetLabel(sheet) {
   return [sheet.baseKey, sheet.material, sheet.tratamiento]
-    .filter(Boolean).join(" · ").trim() || String(sheet._id);
+    .filter(Boolean).join(" | ").trim() || String(sheet._id);
 }
 
 function getMatrixModel(tipoMatriz) {
@@ -183,14 +183,14 @@ async function upsertSheetAlertNotification(sheet, opts = {}) {
     const hasCrit   = critCount > 0;
 
     const title = hasCrit
-      ? `Stock Critico — ${sLabel}`
-      : `Stock Bajo — ${sLabel}`;
+      ? `STOCK CRÍTICO | ${sLabel}`
+      : `STOCK BAJO | ${sLabel}`;
 
     const parts = [];
     if (critCount > 0) parts.push(`${critCount} combinacion${critCount > 1 ? "es" : ""} en estado CRITICO`);
     if (lowCount  > 0) parts.push(`${lowCount} combinacion${lowCount > 1 ? "es" : ""} con stock bajo`);
 
-    const message = `Planilla: ${sLabel} — ${parts.join(", ")}. Revisa el detalle para ver todas las combinaciones afectadas.`;
+    const message = `[Planilla: ${sLabel}] | ${parts.join(" | ")}. Revisa el detalle para ver las combinaciones afectadas.`;
 
     const metadata = {
       type:       "stock_alert",
@@ -201,8 +201,7 @@ async function upsertSheetAlertNotification(sheet, opts = {}) {
       lowCount,
     };
 
-    // Delegar persistencia al notification-service
-    await notifClient.upsertDaily({
+    const payload = {
       groupKey,
       date:          today,
       title,
@@ -214,7 +213,24 @@ async function upsertSheetAlertNotification(sheet, opts = {}) {
       isGlobal:      false,
       respectCooldown,
       cooldownMs:    COOLDOWN_MS,
-    });
+    };
+
+    if (opts.useRedis) {
+      const { getClient, isReady } = require("./redis");
+      if (isReady()) {
+        try {
+          getClient().publish("stock:alerts", JSON.stringify(payload));
+        } catch (e) {
+          console.warn("[STOCK_ALERT] Redis publish error:", e?.message);
+        }
+      } else {
+        // Fallback to HTTP
+        await notifClient.upsertDaily(payload);
+      }
+    } else {
+      // Delegar persistencia al notification-service (HTTP)
+      await notifClient.upsertDaily(payload);
+    }
 
     // WS broadcast del evento de dominio (independiente de la notificacion)
     try {

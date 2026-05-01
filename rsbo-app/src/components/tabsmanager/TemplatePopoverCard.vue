@@ -90,12 +90,16 @@
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
 import { useWorkspaceTabs } from "@/composables/tabsmanager/useWorkspaceTabs";
-import { listSheets } from "@/services/inventory";
+import { useSheetApi } from "@/composables/api/useSheetApi";
 import * as prefsService from "@/services/preferencesService";
 import { useDebounceFn } from "@vueuse/core";
 
+const props = defineProps({
+  apiType: { type: String, default: "inventory" }
+});
 const emit = defineEmits(["close"]);
-const { recentTemplates, openTemplate, removeRecentTemplate, hydrate, catalogDefaultSection } = useWorkspaceTabs();
+const { recentTemplates, openTemplate, removeRecentTemplate, hydrate, catalogDefaultSection } = useWorkspaceTabs(props.apiType);
+const { listSheets } = useSheetApi(() => props.apiType);
 
 const searchQuery = ref("");
 const searchInput = ref(null);
@@ -204,7 +208,7 @@ const selectSection = async (section) => {
   if (!section || section === activeSection.value) return;
   activeSection.value = section;
   try {
-    await prefsService.setCatalogSection(section);
+    await prefsService.setCatalogSection(section, props.apiType);
   } catch (e) {
     console.warn("[TemplatePopover] Failed to persist section", e);
   }
@@ -220,7 +224,7 @@ const selectTemplate = (template) => {
 };
 
 const handleDeleteRecent = async (id) => {
-  await removeRecentTemplate(id);
+  await removeRecentTemplate(id, props.apiType);
 };
 
 const formatDate = (dateStr) => {

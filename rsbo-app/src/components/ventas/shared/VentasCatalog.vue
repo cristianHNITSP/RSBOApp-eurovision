@@ -9,18 +9,24 @@
         <p class="panel__hint">Selecciona productos para agregar a la venta.</p>
       </div>
 
-      <div class="panel__headActions">
+      <div v-if="showSheetPicker" class="panel__headActions">
         <b-field label="Planilla" class="mb-0 catalog-sheet-field">
-        <SheetPickerInput
-          :model-value="selectedSheetId"
-          @update:model-value="$emit('update:selectedSheetId', $event)"
-          :sheet-title="sheetTitle"
-          :search-fn="searchSheets"
-          :results="sheetSearchResults"
-          :loading="loadingSheets || sheetSearchLoading"
-        />
+          <SheetPickerInput
+            :model-value="selectedSheetId"
+            @update:model-value="$emit('update:selectedSheetId', $event)"
+            :sheet-title="sheetTitle"
+            :search-fn="searchSheets"
+            :results="sheetSearchResults"
+            :loading="loadingSheets || sheetSearchLoading"
+            :placeholder="pickerPlaceholder"
+            :icon="pickerIcon"
+          />
         </b-field>
       </div>
+    </div>
+
+    <div v-if="$slots['extra-filters']" class="panel__filters">
+      <slot name="extra-filters"></slot>
     </div>
 
     <div class="panel__body">
@@ -31,7 +37,7 @@
             <b-input
               v-model="localItemQuery"
               icon="search"
-              placeholder="Parámetros (SPH, CYL, ADD, BASE) o código de barra…"
+              placeholder="Parámetros o código de barra…"
             />
           </b-field>
         </div>
@@ -55,7 +61,7 @@
       <div v-if="!loadingItems && !filteredItemsLength" class="empty">
         <i class="fas fa-boxes empty__icon"></i>
         <p class="empty__title">Sin productos</p>
-        <p class="empty__text">Cambia filtros o selecciona otra planilla.</p>
+        <p class="empty__text">Cambia filtros o selecciona otra categoría.</p>
       </div>
 
       <!-- Tabla -->
@@ -81,7 +87,7 @@
           </div>
           <div class="prod__meta">
             <span class="meta-k mono">
-              <i class="fas fa-barcode mr-1"></i>{{ row.codebar || "sin código" }}
+              <i class="fas fa-barcode mr-1"></i>{{ (codeLabel === 'SKU' ? (row.sku || row.codebar) : (row.codebar || row.sku)) || `sin ${codeLabel}` }}
             </span>
           </div>
         </b-table-column>
@@ -131,7 +137,7 @@ import SheetPickerInput from "@/components/ui/SheetPickerInput.vue";
 
 const props = defineProps({
   filteredItemsLength: { type: Number, default: 0 },
-  sheetsDB: { type: Array, default: () => [] },
+  showSheetPicker: { type: Boolean, default: false },
   selectedSheetId: { type: String, default: "" },
   loadingSheets: { type: Boolean, default: false },
   itemQuery: { type: String, default: "" },
@@ -142,11 +148,14 @@ const props = defineProps({
   catalogPages: { type: Number, default: 1 },
   catalogPageSize: { type: Number, default: 15 },
   selectedSheet: { type: Object, default: null },
-  sheetTitle: { type: Function, required: true },
+  sheetTitle: { type: Function, default: () => '' },
   buildRowTitle: { type: Function, required: true },
   sheetSearchLoading: { type: Boolean, default: false },
   sheetSearchResults: { type: Array, default: () => [] },
-  searchSheets: { type: Function, required: true }
+  searchSheets: { type: Function, default: () => {} },
+  pickerPlaceholder: { type: String, default: "Buscar planilla…" },
+  pickerIcon: { type: String, default: "fa-layer-group" },
+  codeLabel: { type: String, default: "código" }
 });
 
 const emit = defineEmits([
@@ -168,4 +177,4 @@ const localStockFilter = computed({
 });
 </script>
 
-<style src="./BasesMicasCatalog.css" scoped></style>
+<style src="./VentasCatalog.css" scoped></style>

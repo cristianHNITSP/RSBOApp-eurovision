@@ -25,7 +25,7 @@
           @input="$emit('update:cartCliente', $event)"
           :data="clienteSuggestions"
           field="nombre"
-          placeholder="Buscar cliente recurrente o escribir nombre…"
+          placeholder="Buscar cliente o escribir nombre…"
           icon="user"
           :open-on-focus="true"
           :keep-first="false"
@@ -142,7 +142,7 @@
             <div>
               <div class="order-line__title">{{ ci.title }}</div>
               <span class="order-line__sub">{{ ci.params }}</span>
-              <span class="order-line__sub muted">{{ ci.sheet.nombre }}</span>
+              <span v-if="ci.sheet && ci.sheet.nombre" class="order-line__sub muted">{{ ci.sheet.nombre }}</span>
             </div>
             <b-button
               size="is-small"
@@ -181,27 +181,27 @@
       <hr class="soft-hr" />
 
       <!-- Total -->
-      <div class="bm-cart-summary">
+      <div class="ventas-cart-summary">
         <span class="muted">Total piezas:</span>
-        <span class="bm-cart-summary__val">{{ cartTotal }}</span>
+        <span class="ventas-cart-summary__val">{{ cartTotal }}</span>
       </div>
-      <div v-if="cartTotalMonto > 0" class="bm-cart-summary mt-1">
+      <div v-if="cartTotalMonto > 0" class="ventas-cart-summary mt-1">
         <span class="muted">Total:</span>
-        <span class="bm-cart-summary__val" style="font-size:1.05rem">
+        <span class="ventas-cart-summary__val" style="font-size:1.05rem">
           ${{ cartTotalMonto.toFixed(2) }} MXN
         </span>
       </div>
 
       <b-button
-        type="is-primary"
-        icon-left="flask"
+        :type="kind === 'lab' ? 'is-primary' : 'is-success'"
+        :icon-left="kind === 'lab' ? 'flask' : 'cash-register'"
         expanded
         :loading="loadingSale"
         :disabled="!cartItems.length || !cartCliente.trim()"
         class="mt-3"
-        @click="$emit('ask-send-to-lab')"
+        @click="$emit('checkout')"
       >
-        Enviar a Laboratorio
+        {{ kind === 'lab' ? 'Enviar a Laboratorio' : 'Cobrar y Entregar' }}
       </b-button>
     </div>
   </div>
@@ -209,6 +209,7 @@
 
 <script setup>
 defineProps({
+  kind: { type: String, default: 'direct', validator: v => ['lab', 'direct'].includes(v) },
   cartItems: { type: Array, default: () => [] },
   cartCliente: { type: String, default: "" },
   cartNote: { type: String, default: "" },
@@ -243,8 +244,8 @@ defineEmits([
   "remove-from-cart",
   "dec-cart-qty",
   "inc-cart-qty",
-  "ask-send-to-lab"
+  "checkout"
 ]);
 </script>
 
-<style src="./BasesMicasCart.css" scoped></style>
+<style src="./VentasCart.css" scoped></style>

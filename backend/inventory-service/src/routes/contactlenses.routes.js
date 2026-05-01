@@ -764,6 +764,7 @@ router.get(
       if (sheet.isDeleted) return res.status(410).json({ ok: false, message: "Sheet eliminada (soft-delete)" });
 
       const limit = Math.min(Number(req.query.limit ?? 5000), 20000);
+      const withStock = req.query.withStock === "true";
 
       if (sheet.tipo_matriz === "BASE") {
         const doc = await MatrixBase.findOne({ sheet: sheet._id });
@@ -778,6 +779,7 @@ router.get(
         let rows = [];
         if (doc?.cells) {
           for (const [k, cell] of doc.cells.entries()) {
+            if (withStock && (cell.existencias || 0) <= 0) continue;
             const base = denormNum(k);
             if (Number.isFinite(base) && base >= baseRange.min && base <= baseRange.max) {
               rows.push({ sheet: sheet._id, tipo_matriz: "BASE", base, existencias: cell.existencias ?? 0, sku: cell.sku || null, codebar: cell.codebar || null });
@@ -807,6 +809,7 @@ router.get(
         let rows = [];
         if (doc?.cells) {
           for (const [k, cell] of doc.cells.entries()) {
+            if (withStock && (cell.existencias || 0) <= 0) continue;
             const [sph, cyl] = parseKey(k);
             if (Number.isFinite(sph) && Number.isFinite(cyl) && sph >= sphRange.min && sph <= sphRange.max && cyl >= cylRange.min && cyl <= cylRange.max) {
               rows.push({ sheet: sheet._id, tipo_matriz: "SPH_CYL", sph, cyl, existencias: cell.existencias ?? 0, sku: cell.sku || null, codebar: cell.codebar || null });
@@ -835,6 +838,7 @@ router.get(
             for (const eye of eyes) {
               const eyeNode = cell[eye];
               if (!eyeNode) continue;
+              if (withStock && (eyeNode.existencias || 0) <= 0) continue;
               rows.push({ sheet: sheet._id, tipo_matriz: "SPH_ADD", sph, add, eye, base_izq: to2(cell.base_izq), base_der: to2(cell.base_der), existencias: Number(eyeNode.existencias || 0), sku: eyeNode.sku || null, codebar: eyeNode.codebar || null });
             }
           }
@@ -858,6 +862,7 @@ router.get(
             for (const eye of eyes) {
               const eyeNode = cell[eye];
               if (!eyeNode) continue;
+              if (withStock && (eyeNode.existencias || 0) <= 0) continue;
               rows.push({ sheet: sheet._id, tipo_matriz: "BASE_ADD", base_izq: to2(cell.base_izq), base_der: to2(cell.base_der), add: to2(add), eye, existencias: Number(eyeNode.existencias || 0), sku: eyeNode.sku || null, codebar: eyeNode.codebar || null });
             }
           }
@@ -881,16 +886,21 @@ router.get(
           for (const [k, cell] of doc.cells.entries()) {
             const [sph, cyl, axis] = parseKey(k);
             if (!Number.isFinite(sph) || !Number.isFinite(cyl) || !Number.isFinite(axis)) continue;
+
+            const existencias = cell.existencias ?? 0;
+            if (withStock && existencias <= 0) continue;
+
             if (sph < sphMin || sph > sphMax) continue;
             if (cyl < cylMin || cyl > cylMax) continue;
             if (axis < axisMin || axis > axisMax) continue;
+
             rows.push({
               sheet: sheet._id,
               tipo_matriz: "SPH_CYL_AXIS",
               sph,
               cyl,
               axis,
-              existencias: cell.existencias ?? 0,
+              existencias,
               sku: cell.sku || null,
               codebar: cell.codebar || null
             });

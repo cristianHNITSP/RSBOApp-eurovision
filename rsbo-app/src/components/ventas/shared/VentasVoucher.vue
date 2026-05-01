@@ -1,5 +1,5 @@
 <template>
-  <div class="bm-voucher" v-if="order">
+  <div class="ventas-voucher" v-if="order">
     <!-- ── Nota de Venta (formato imprimible) ─────────────────────── -->
     <div class="nv-nota">
       <div class="nv-nota__title">NOTA DE VENTA</div>
@@ -44,49 +44,49 @@
     </div>
 
     <!-- ── Detalles adicionales ───────────────────────────────────── -->
-    <div class="bm-voucher__meta" style="margin-top:0.75rem">
-      <div class="bm-voucher__row">
-        <span class="bm-voucher__label">Total piezas</span>
-        <span class="bm-voucher__val">{{ order.totalPiezas }}</span>
+    <div class="ventas-voucher__meta" style="margin-top:0.75rem">
+      <div class="ventas-voucher__row">
+        <span class="ventas-voucher__label">Total piezas</span>
+        <span class="ventas-voucher__val">{{ order.totalPiezas }}</span>
       </div>
-      <div v-if="order.note" class="bm-voucher__row">
-        <span class="bm-voucher__label">Notas</span>
-        <span class="bm-voucher__val">{{ order.note }}</span>
+      <div v-if="order.note" class="ventas-voucher__row">
+        <span class="ventas-voucher__label">Notas</span>
+        <span class="ventas-voucher__val">{{ order.note }}</span>
       </div>
-      <div v-if="order.clienteEmpresa" class="bm-voucher__row">
-        <span class="bm-voucher__label">Empresa</span>
-        <span class="bm-voucher__val">{{ order.clienteEmpresa }}</span>
+      <div v-if="order.clienteEmpresa" class="ventas-voucher__row">
+        <span class="ventas-voucher__label">Empresa</span>
+        <span class="ventas-voucher__val">{{ order.clienteEmpresa }}</span>
       </div>
-      <div v-if="order.clienteContacto" class="bm-voucher__row">
-        <span class="bm-voucher__label">Contacto</span>
-        <span class="bm-voucher__val">{{ order.clienteContacto }}</span>
+      <div v-if="order.clienteContacto" class="ventas-voucher__row">
+        <span class="ventas-voucher__label">Contacto</span>
+        <span class="ventas-voucher__val">{{ order.clienteContacto }}</span>
       </div>
-      <div class="bm-voucher__row">
-        <span class="bm-voucher__label">Atendido por</span>
-        <span class="bm-voucher__val">{{ order.actor }}</span>
+      <div class="ventas-voucher__row">
+        <span class="ventas-voucher__label">Atendido por</span>
+        <span class="ventas-voucher__val">{{ order.actor }}</span>
       </div>
-      <div v-if="order.ventaFolio" class="bm-voucher__row">
-        <span class="bm-voucher__label">Folio venta</span>
-        <span class="bm-voucher__val mono">{{ order.ventaFolio }}</span>
+      <div v-if="order.ventaFolio" class="ventas-voucher__row">
+        <span class="ventas-voucher__label">Folio venta</span>
+        <span class="ventas-voucher__val mono">{{ order.ventaFolio }}</span>
       </div>
-      <div v-if="order.labFolio" class="bm-voucher__row">
-        <span class="bm-voucher__label">Folio lab</span>
-        <span class="bm-voucher__val mono">{{ order.labFolio }}</span>
+      <div v-if="order.labFolio" class="ventas-voucher__row">
+        <span class="ventas-voucher__label">Folio lab</span>
+        <span class="ventas-voucher__val mono">{{ order.labFolio }}</span>
       </div>
     </div>
 
     <!-- ── Lab order info ─────────────────────────────────────────── -->
-    <div v-if="order.labFolio" class="bm-voucher__lab-order">
-      <i class="fas fa-flask bm-voucher__lab-icon"></i>
+    <div v-if="order.labFolio" class="ventas-voucher__lab-order">
+      <i class="fas fa-flask ventas-voucher__lab-icon"></i>
       <div>
-        <div class="bm-voucher__lab-folio mono">{{ order.labFolio }}</div>
-        <div class="bm-voucher__lab-status">
+        <div class="ventas-voucher__lab-folio mono">{{ order.labFolio }}</div>
+        <div class="ventas-voucher__lab-status">
           <span
-            v-if="order.labOrderId && labStatuses[order.labOrderId]"
+            v-if="order.labStatus"
             class="lab-status-pill"
-            :class="`lab-status-pill--${labStatuses[order.labOrderId]?.status}`"
+            :class="`lab-status-pill--${order.labStatus}`"
           >
-            {{ labStatusHuman(labStatuses[order.labOrderId]?.status) }}
+            {{ labStatusHuman(order.labStatus) }}
           </span>
           <span v-else class="lab-status-pill lab-status-pill--pendiente">
             Pendiente de surtir
@@ -94,7 +94,6 @@
         </div>
       </div>
       <b-button
-        v-if="order.labOrderId"
         size="is-small"
         type="is-light"
         icon-left="sync"
@@ -103,7 +102,7 @@
     </div>
 
     <!-- ── Acciones ───────────────────────────────────────────────── -->
-    <div class="bm-voucher__actions">
+    <div class="ventas-voucher__actions">
       <b-button type="is-primary" icon-left="print" expanded @click="$emit('print')">
         Imprimir / PDF
       </b-button>
@@ -115,14 +114,14 @@
 </template>
 
 <script setup>
+import { fmtDateShort } from '@/utils/formatters';
+import { labStatusHuman } from '@/utils/statusHelpers';
+
 defineProps({
-  order: { type: Object, default: null },
-  labStatuses: { type: Object, default: () => ({}) },
-  fmtDateShort: { type: Function, required: true },
-  labStatusHuman: { type: Function, required: true }
+  order: { type: Object, default: null }
 });
 
 defineEmits(["close", "print", "check-status"]);
 </script>
 
-<style src="./BasesMicasVoucher.css" scoped></style>
+<style src="./VentasVoucher.css" scoped></style>

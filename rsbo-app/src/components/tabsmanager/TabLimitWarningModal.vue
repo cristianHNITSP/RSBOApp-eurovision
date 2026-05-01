@@ -56,6 +56,10 @@
 import { computed } from "vue";
 import { useWorkspaceTabs } from "@/composables/tabsmanager/useWorkspaceTabs";
 
+const props = defineProps({
+  apiType: { type: String, default: "inventory" }
+});
+
 const { 
   showLimitModal, 
   pendingTemplate, 
@@ -63,7 +67,7 @@ const {
   replaceTab,
   closeMostRecentUnpinned,
   dismissLimitModal
-} = useWorkspaceTabs();
+} = useWorkspaceTabs(props.apiType);
 
 const allPinned = computed(() => {
   const openTabs = activeTabs.value.filter((t) => t.id !== "nueva");

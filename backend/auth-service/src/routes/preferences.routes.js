@@ -10,12 +10,14 @@ const { csrfProtection } = require("../middlewares/csrf.middleware");
  */
 router.get("/", authMiddleware, async (req, res) => {
   try {
-    let prefs = await UserWorkspacePreferences.findOne({ userId: req.user.id });
+    const context = req.query.context || "inventory";
+    let prefs = await UserWorkspacePreferences.findOne({ userId: req.user.id, context });
     
     if (!prefs) {
       // Create default if not exists
       prefs = await UserWorkspacePreferences.create({
         userId: req.user.id,
+        context,
         pinned_templates: [],
         recent_templates: [],
         open_tabs: [],
@@ -26,6 +28,7 @@ router.get("/", authMiddleware, async (req, res) => {
     
     res.json({ ok: true, data: prefs });
   } catch (error) {
+    console.error("[preferences.routes] Error:", error);
     res.status(500).json({ ok: false, message: error.message });
   }
 });
@@ -36,16 +39,17 @@ router.get("/", authMiddleware, async (req, res) => {
  */
 router.put("/pinned", authMiddleware, csrfProtection, async (req, res) => {
   try {
-    const { pinned_templates } = req.body;
+    const { pinned_templates, context = "inventory" } = req.body;
     
     const prefs = await UserWorkspacePreferences.findOneAndUpdate(
-      { userId: req.user.id },
+      { userId: req.user.id, context },
       { $set: { pinned_templates } },
       { new: true, upsert: true }
     );
     
     res.json({ ok: true, data: prefs });
   } catch (error) {
+    console.error("[preferences.routes] Error:", error);
     res.status(500).json({ ok: false, message: error.message });
   }
 });
@@ -56,12 +60,12 @@ router.put("/pinned", authMiddleware, csrfProtection, async (req, res) => {
  */
 router.patch("/recent", authMiddleware, csrfProtection, async (req, res) => {
   try {
-    const { template } = req.body;
+    const { template, context = "inventory" } = req.body;
     if (!template?.id) return res.status(400).json({ ok: false, message: "Template ID required" });
 
-    let prefs = await UserWorkspacePreferences.findOne({ userId: req.user.id });
+    let prefs = await UserWorkspacePreferences.findOne({ userId: req.user.id, context });
     if (!prefs) {
-      prefs = new UserWorkspacePreferences({ userId: req.user.id, recent_templates: [] });
+      prefs = new UserWorkspacePreferences({ userId: req.user.id, context, recent_templates: [] });
     }
 
     // Update LRU logic
@@ -84,6 +88,7 @@ router.patch("/recent", authMiddleware, csrfProtection, async (req, res) => {
     await prefs.save();
     res.json({ ok: true, data: prefs });
   } catch (error) {
+    console.error("[preferences.routes] Error:", error);
     res.status(500).json({ ok: false, message: error.message });
   }
 });
@@ -94,17 +99,18 @@ router.patch("/recent", authMiddleware, csrfProtection, async (req, res) => {
  */
 router.patch("/active-tab", authMiddleware, csrfProtection, async (req, res) => {
   try {
-    const { tabId } = req.body;
+    const { tabId, context = "inventory" } = req.body;
     if (!tabId) return res.status(400).json({ ok: false, message: "tabId is required" });
 
     const prefs = await UserWorkspacePreferences.findOneAndUpdate(
-      { userId: req.user.id },
+      { userId: req.user.id, context },
       { $set: { active_tab_id: tabId } },
       { new: true, upsert: true }
     );
 
     res.json({ ok: true, data: prefs });
   } catch (error) {
+    console.error("[preferences.routes] Error:", error);
     res.status(500).json({ ok: false, message: error.message });
   }
 });
@@ -115,20 +121,21 @@ router.patch("/active-tab", authMiddleware, csrfProtection, async (req, res) => 
  */
 router.patch("/catalog-section", authMiddleware, csrfProtection, async (req, res) => {
   try {
-    const { section } = req.body;
+    const { section, context = "inventory" } = req.body;
     const allowed = new Set(["search", "recent_modified", "recent_opened"]);
     if (!allowed.has(section)) {
       return res.status(400).json({ ok: false, message: "Invalid section" });
     }
 
     const prefs = await UserWorkspacePreferences.findOneAndUpdate(
-      { userId: req.user.id },
+      { userId: req.user.id, context },
       { $set: { catalog_default_section: section } },
       { new: true, upsert: true }
     );
 
     res.json({ ok: true, data: prefs });
   } catch (error) {
+    console.error("[preferences.routes] Error:", error);
     res.status(500).json({ ok: false, message: error.message });
   }
 });
@@ -140,16 +147,18 @@ router.patch("/catalog-section", authMiddleware, csrfProtection, async (req, res
 router.delete("/recent/:id", authMiddleware, csrfProtection, async (req, res) => {
   try {
     const templateId = req.params.id;
+    const context = req.query.context || "inventory";
     if (!templateId) return res.status(400).json({ ok: false, message: "templateId is required" });
 
     const prefs = await UserWorkspacePreferences.findOneAndUpdate(
-      { userId: req.user.id },
+      { userId: req.user.id, context },
       { $pull: { recent_templates: { id: templateId } } },
       { new: true, upsert: true }
     );
 
     res.json({ ok: true, data: prefs });
   } catch (error) {
+    console.error("[preferences.routes] Error:", error);
     res.status(500).json({ ok: false, message: error.message });
   }
 });
@@ -160,11 +169,11 @@ router.delete("/recent/:id", authMiddleware, csrfProtection, async (req, res) =>
  */
 router.post("/open-tabs", authMiddleware, csrfProtection, async (req, res) => {
   try {
-    const { tab } = req.body;
+    const { tab, context = "inventory" } = req.body;
     if (!tab?.id) return res.status(400).json({ ok: false, message: "tab.id is required" });
 
-    const prefs = await UserWorkspacePreferences.findOne({ userId: req.user.id });
-    const target = prefs || new UserWorkspacePreferences({ userId: req.user.id, open_tabs: [] });
+    const prefs = await UserWorkspacePreferences.findOne({ userId: req.user.id, context });
+    const target = prefs || new UserWorkspacePreferences({ userId: req.user.id, context, open_tabs: [] });
 
     const idx = target.open_tabs.findIndex((t) => t.id === tab.id);
     const next = {
@@ -183,6 +192,7 @@ router.post("/open-tabs", authMiddleware, csrfProtection, async (req, res) => {
     await target.save();
     res.json({ ok: true, data: target });
   } catch (error) {
+    console.error("[preferences.routes] Error:", error);
     res.status(500).json({ ok: false, message: error.message });
   }
 });
@@ -194,16 +204,18 @@ router.post("/open-tabs", authMiddleware, csrfProtection, async (req, res) => {
 router.delete("/open-tabs/:id", authMiddleware, csrfProtection, async (req, res) => {
   try {
     const tabId = req.params.id;
+    const context = req.query.context || "inventory";
     if (!tabId) return res.status(400).json({ ok: false, message: "tabId is required" });
 
     const prefs = await UserWorkspacePreferences.findOneAndUpdate(
-      { userId: req.user.id },
+      { userId: req.user.id, context },
       { $pull: { open_tabs: { id: tabId } } },
       { new: true, upsert: true }
     );
 
     res.json({ ok: true, data: prefs });
   } catch (error) {
+    console.error("[preferences.routes] Error:", error);
     res.status(500).json({ ok: false, message: error.message });
   }
 });

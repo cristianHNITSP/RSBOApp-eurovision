@@ -1,23 +1,23 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount } from "vue";
 import { labToast } from "@/composables/shared/useLabToast.js";
-import { listSheets as invListSheets, fetchItems as invFetchItems } from "@/services/inventory";
-import { createOrder } from "@/services/laboratorio";
-import { createGroupedNotification } from "@/services/notifications";
+import { 
+  listContactLensSheets, 
+  fetchContactLensItems 
+} from "@/services/contactlenses";
+import { createOrder } from "@/services/laboratorio"; // Assuming LC orders also go to lab or are registered here
 import { 
   normTxt, 
-  fv, 
   buildRowTitle, 
   buildRowParams, 
-  getActor, 
-  PAGO_LABELS 
+  getActor 
 } from "./_ventasShared";
 
 /**
- * Composable for Bases and Micas sales (orders that go to the laboratory).
- * Implements the VentasStrategy contract.
+ * Strategy for Lentes de Contacto sales.
+ * Uses sheets/matrices similar to Bases y Micas.
  */
-export function useBasesMicasVentas(getUser) {
-  const kind = 'lab';
+export function useLentesContactoVentas(getUser) {
+  const kind = 'direct'; // User specified direct, but we'll see
   const _ac = new AbortController();
   onBeforeUnmount(() => { _ac.abort(); });
 
@@ -31,6 +31,7 @@ export function useBasesMicasVentas(getUser) {
   const stockFilter     = ref("withStock");
   const catalogPage     = ref(1);
   const catalogPageSize = ref(15);
+  const selectedAxis    = ref(null); // New state for filtering by axis
 
   const cartItems            = ref([]);
   const cartCliente          = ref("");
@@ -90,12 +91,6 @@ export function useBasesMicasVentas(getUser) {
     cartItems.value.reduce((sum, ci) => sum + ci.qty * (Number(ci.precio) || 0), 0)
   );
 
-  const cartClienteDisplay = computed(() => {
-    const nombres   = cartClienteNombres.value.trim();
-    const apellidos = cartClienteApellidos.value.trim();
-    return [nombres, apellidos].filter(Boolean).join(" ") || cartCliente.value.trim();
-  });
-
   const sheetSearchResults = computed(() => {
     const q = normTxt(sheetSearchQuery.value);
     if (!q) return sheetsDB.value;
@@ -106,24 +101,33 @@ export function useBasesMicasVentas(getUser) {
     );
   });
 
+  const availableAxes = computed(() => {
+    // Standard toric axes are 10-180 in steps of 10.
+    const axes = [];
+    for (let a = 10; a <= 180; a += 10) {
+      axes.push({ id: a, name: `${a}°` });
+    }
+    return axes;
+  });
+
+  const isToric = computed(() => selectedSheet.value?.tipo_matriz === 'SPH_CYL_AXIS');
+
   // ── Actions ───────────────────────────────────────────────────────────────
 
   async function loadSheets() {
     loadingSheets.value = true;
     try {
-      const { data } = await invListSheets({ signal: _ac.signal });
+      const { data } = await listContactLensSheets({ signal: _ac.signal });
       const arr = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
       const mapped = arr.map((s) => ({
         ...s,
         id:          String(s._id ?? s.id ?? ""),
         nombre:      s.nombre ?? s.name ?? "",
-        tratamientos: Array.isArray(s.tratamientos) ? s.tratamientos : []
       }));
-      mapped.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
       sheetsDB.value = mapped;
       if (!selectedSheetId.value && mapped.length) selectedSheetId.value = mapped[0].id;
     } catch (e) {
-      labToast.danger("No se pudieron cargar las planillas");
+      labToast.danger("Error al cargar planillas de LC");
     } finally {
       loadingSheets.value = false;
     }
@@ -134,7 +138,13 @@ export function useBasesMicasVentas(getUser) {
     if (!sid) { itemsDB.value = []; return; }
     loadingItems.value = true;
     try {
-      const { data } = await invFetchItems(sid, { limit: 500, signal: _ac.signal });
+      const { data } = await fetchContactLensItems(sid, { 
+        limit: 500, 
+        withStock: stockFilter.value === "withStock",
+        axisMin: selectedAxis.value || undefined,
+        axisMax: selectedAxis.value || undefined,
+        signal: _ac.signal 
+      });
       const arr = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
       const sheet = sheetsDB.value.find((s) => String(s.id) === String(sid)) || null;
       itemsDB.value = arr.map((r) => ({
@@ -146,7 +156,7 @@ export function useBasesMicasVentas(getUser) {
       }));
       catalogPage.value = 1;
     } catch (e) {
-      labToast.danger("Error al cargar productos");
+      labToast.danger("Error al cargar lentes de contacto");
     } finally {
       loadingItems.value = false;
     }
@@ -203,14 +213,14 @@ export function useBasesMicasVentas(getUser) {
     loadingSale.value = true;
     const actor = getActor(getUser);
     try {
+      // For now, using createOrder (even if it's direct, we might want a record)
+      // If we had a specific DirectSale service, we would use it here.
       const lines = cartItems.value.map((ci) => ({
         codebar: ci.row.codebar, qty: ci.qty, sheetId: ci.sheetId, precio: Number(ci.precio) || 0
       }));
-      const pagoDisplay = cartPago.value.map((p) => PAGO_LABELS[p] || p).join(" / ") || "—";
 
       const { data } = await createOrder({
         cliente: cartCliente.value.trim(),
-        clienteDisplay: cartClienteDisplay.value,
         clienteNombres: cartClienteNombres.value.trim(),
         clienteApellidos: cartClienteApellidos.value.trim(),
         clienteEmpresa: cartClienteEmpresa.value.trim(),
@@ -219,7 +229,8 @@ export function useBasesMicasVentas(getUser) {
         pago: [...cartPago.value],
         totalMonto: cartTotalMonto.value,
         lines,
-        actor
+        actor,
+        category: 'lentes-contacto'
       });
 
       const order = data?.data;
@@ -229,24 +240,15 @@ export function useBasesMicasVentas(getUser) {
         fecha: order.createdAt,
         lineas: cartItems.value.map(ci => ({ ...ci, sheetNombre: ci.sheet.nombre })),
         totalPiezas: cartTotal.value,
-        pagoDisplay,
         actor: actor?.name || "Usuario"
       };
       voucherOpen.value = true;
       clearCart();
-      labToast.success(`Pedido ${order?.folio || ""} enviado`);
-
-      createGroupedNotification({
-        groupKey: "pending_orders",
-        title: "Pedidos pendientes",
-        messageTemplate: "{count} pedido(s) pendiente(s) de atención",
-        type: "warning", priority: "medium",
-        targetRoles: ["laboratorio", "supervisor", "ventas"],
-      }).catch(() => {});
+      labToast.success(`Venta de LC registrada`);
       
       return order;
     } catch (e) {
-      labToast.danger(e?.response?.data?.message || "Error al crear pedido");
+      labToast.danger("Error al registrar venta");
       throw e;
     } finally {
       loadingSale.value = false;
@@ -254,7 +256,11 @@ export function useBasesMicasVentas(getUser) {
   }
 
   // ── Watchers ──────────────────────────────────────────────────────────────
-  watch(selectedSheetId, () => { loadItems(); });
+  watch(selectedSheetId, () => { 
+    selectedAxis.value = null; // Reset axis when sheet changes
+    loadItems(); 
+  });
+  watch(selectedAxis, () => { loadItems(); });
   watch([itemQuery, stockFilter], () => { catalogPage.value = 1; });
   watch([cartClienteNombres, cartClienteApellidos], () => {
     const n = cartClienteNombres.value.trim();
@@ -264,7 +270,6 @@ export function useBasesMicasVentas(getUser) {
 
   onMounted(() => { loadSheets(); });
 
-  // ── Expose grouped for Strategy contract ──────────────────────────────────
   return {
     kind,
     catalog: {
@@ -284,7 +289,10 @@ export function useBasesMicasVentas(getUser) {
       sheetTitle: (s) => s?.nombre || "—",
       buildRowTitle,
       searchSheets: (q) => { sheetSearchQuery.value = q; },
-      reload: loadItems
+      reload: loadItems,
+      isToric,
+      selectedAxis,
+      availableAxes
     },
     cart: {
       items: cartItems,
@@ -299,15 +307,13 @@ export function useBasesMicasVentas(getUser) {
       totalMonto: cartTotalMonto,
       loadingSale
     },
-    // Expose flat for v-model compatibility in Dashboard
     selectedSheetId, itemQuery, stockFilter, catalogPage,
     cartCliente, cartNote, cartClienteNombres, cartClienteApellidos, 
     cartClienteEmpresa, cartClienteContacto, cartPago,
-    
     addToCart, removeFromCart, incCartQty, decCartQty, clearCart, 
     registrarVenta,
     lastVoucher, voucherOpen,
     loadingSale,
-    sheetsDB // for some internal uses
+    sheetsDB
   };
 }

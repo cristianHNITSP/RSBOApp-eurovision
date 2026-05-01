@@ -2,7 +2,7 @@
   <div class="spi-container">
     <!-- Trigger -->
     <div class="spi-trigger" @click="openPicker" ref="triggerRef">
-      <i class="fas fa-layer-group spi-trigger__icon"></i>
+      <i class="fas spi-trigger__icon" :class="icon"></i>
       <span class="spi-trigger__name">{{ currentName }}</span>
       <i class="fas fa-chevron-down spi-trigger__chev"></i>
     </div>
@@ -16,7 +16,7 @@
             ref="inputRef"
             v-model="query"
             class="spi-search__input"
-            placeholder="Buscar planilla…"
+            :placeholder="placeholder"
             @input="props.searchFn(query)"
             @keydown.down.prevent="highlight(highlighted + 1)"
             @keydown.up.prevent="highlight(highlighted - 1)"
@@ -61,7 +61,9 @@ const props = defineProps({
   sheetTitle: { type: Function, required: true },
   searchFn: { type: Function, required: true },
   results: { type: Array, default: () => [] },
-  loading: { type: Boolean, default: false }
+  loading: { type: Boolean, default: false },
+  placeholder: { type: String, default: "Buscar planilla…" },
+  icon: { type: String, default: "fa-layer-group" }
 });
 
 const emit = defineEmits(['update:modelValue']);

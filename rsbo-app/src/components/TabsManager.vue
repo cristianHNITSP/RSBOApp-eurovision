@@ -11,6 +11,7 @@
       :loading-more="loadingMore"
       :loading-prior="loadingPrior"
       :prior-count="priorCount"
+      :api-type="apiType"
       @tab-click="handleTabClick"
       @open-actions="openActions"
       @load-more="$emit('load-more')"
@@ -116,7 +117,7 @@
     />
 
     <!-- MODAL LÍMITE (Nuevo) -->
-    <TabLimitWarningModal />
+    <TabLimitWarningModal :api-type="apiType" />
   </div>
 </template>
 
@@ -178,7 +179,7 @@ const {
   setActiveTab: setActiveTabStore,
   closeTab: closeTabStore,
   togglePinTab
-} = useWorkspaceTabs();
+} = useWorkspaceTabs(props.apiType);
 
 const mountedTabIds = reactive(new Set());
 

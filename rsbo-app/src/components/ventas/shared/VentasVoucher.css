@@ -1,4 +1,4 @@
-.bm-voucher {
+.ventas-voucher {
   background: var(--card);
   border-radius: 20px;
   padding: 2rem;
@@ -7,34 +7,34 @@
   gap: 0.5rem;
 }
 
-.bm-voucher__meta { display: grid; gap: 0.45rem; }
+.ventas-voucher__meta { display: grid; gap: 0.45rem; }
 
-.bm-voucher__row {
+.ventas-voucher__row {
   display: flex;
   justify-content: space-between;
   gap: 0.75rem;
   font-size: 0.9rem;
 }
 
-.bm-voucher__label {
+.ventas-voucher__label {
   font-weight: 800;
   color: var(--text-muted);
 }
 
-.bm-voucher__val {
+.ventas-voucher__val {
   font-weight: 900;
   color: var(--text-primary);
   text-align: right;
 }
 
-.bm-voucher__actions {
+.ventas-voucher__actions {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
   margin-top: 0.5rem;
 }
 
-.bm-voucher__lab-order {
+.ventas-voucher__lab-order {
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -44,17 +44,17 @@
   border: 1px solid rgba(144, 111, 225, 0.2);
   border-radius: 14px;
 }
-.bm-voucher__lab-icon {
+.ventas-voucher__lab-icon {
   font-size: 1.2rem;
   color: var(--c-primary);
   flex-shrink: 0;
 }
-.bm-voucher__lab-folio {
+.ventas-voucher__lab-folio {
   font-size: 0.9rem;
   font-weight: 1000;
   color: var(--text-primary);
 }
-.bm-voucher__lab-status { margin-top: 0.2rem; }
+.ventas-voucher__lab-status { margin-top: 0.2rem; }
 
 .lab-status-pill {
   display: inline-flex;
@@ -209,9 +209,9 @@
 
 @media print {
   body * { visibility: hidden; }
-  .bm-voucher,
-  .bm-voucher * { visibility: visible; }
-  .bm-voucher {
+  .ventas-voucher,
+  .ventas-voucher * { visibility: visible; }
+  .ventas-voucher {
     position: fixed;
     top: 0; left: 0;
     width: 100%;
@@ -219,9 +219,9 @@
     border-radius: 0;
     padding: 1.5rem;
   }
-  .bm-voucher__actions,
-  .bm-voucher__meta,
-  .bm-voucher__lab-order { display: none !important; }
+  .ventas-voucher__actions,
+  .ventas-voucher__meta,
+  .ventas-voucher__lab-order { display: none !important; }
   .nv-nota { border-color: #000 !important; }
   .nv-nota__table thead th,
   .nv-nota__table tbody td { border-color: #000 !important; }

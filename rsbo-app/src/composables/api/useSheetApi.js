@@ -15,6 +15,7 @@ import {
   createSheet,
   updateSheet,
   moveSheetToTrash,
+  listSheets
 } from '@/services/inventory';
 
 import {
@@ -25,6 +26,7 @@ import {
   createContactLensSheet,
   updateContactLensSheet,
   moveContactLensSheetToTrash,
+  listContactLensSheets
 } from '@/services/contactlenses';
 
 /**
@@ -44,5 +46,6 @@ export function useSheetApi(getApiType) {
     createSheet:      (...a) => isCL() ? createContactLensSheet(...a)      : createSheet(...a),
     updateSheet:      (...a) => isCL() ? updateContactLensSheet(...a)      : updateSheet(...a),
     moveSheetToTrash: (...a) => isCL() ? moveContactLensSheetToTrash(...a) : moveSheetToTrash(...a),
+    listSheets:       (...a) => isCL() ? listContactLensSheets(...a)       : listSheets(...a),
   };
 }

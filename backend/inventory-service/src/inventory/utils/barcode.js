@@ -30,6 +30,8 @@ const makeSku = (_sheetId, tipo, coords = {}) => {
       return `BASE:${fmt2(coords.base)}`;
     case "SPH_CYL":
       return `SPH:${fmt2(coords.sph)}|CYL:${fmt2(coords.cyl)}`;
+    case "SPH_CYL_AXIS":
+      return `SPH:${fmt2(coords.sph)}|CYL:${fmt2(coords.cyl)}|AXIS:${coords.axis}`;
     case "SPH_ADD":
       return `BIF:SPH:${fmt2(coords.sph)}|ADD:${fmt2(coords.add)}|EYE:${
         coords.eye || "OD"
@@ -54,6 +56,7 @@ const makeCodebar = (sheetId, tipo, coords = {}) => {
     normStr(coords.eye),
     normNum(coords.base_izq),
     normNum(coords.base_der),
+    normNum(coords.axis),
   ].join("|");
 
   const numericPart = hashToDigits(core, 12 - BARCODE_PREFIX.length);

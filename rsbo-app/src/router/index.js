@@ -51,22 +51,11 @@ const routes = [
         meta: { requiresAuth: true, breadcrumb: "Ventas / Laboratorio" },
       },
       {
-        path: "ventas/bases-micas",
-        name: "ventas-bases-micas",
-        component: () => import("../views/ventas/BasesMicas.vue"),
-        meta: { requiresAuth: true, breadcrumb: "Ventas / Bases y Micas" },
-      },
-      {
-        path: "ventas/optica",
-        name: "ventas-optica",
-        component: () => import("../views/ventas/Optica.vue"),
-        meta: { requiresAuth: true, breadcrumb: "Ventas / Óptica" },
-      },
-      {
-        path: "ventas/lentes-contacto",
-        name: "ventas-lentes-contacto",
-        component: () => import("../views/ventas/LentesContacto.vue"),
-        meta: { requiresAuth: true, breadcrumb: "Ventas / Lentes de Contacto" },
+        path: "ventas/:category(bases-micas|optica|lentes-contacto|historial)?",
+        name: "ventas-dashboard",
+        component: () => import("../views/ventas/VentasDashboard.vue"),
+        props: true,
+        meta: { requiresAuth: true, breadcrumb: "Ventas" },
       },
 
       {

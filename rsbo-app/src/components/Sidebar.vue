@@ -108,9 +108,10 @@ export default {
           badgeType: "is-warning",
           children: [
             { label: "Laboratorio", icon: "flask", path: "/l/ventas/laboratorio", badge: labBadge, badgeType: "is-warning" },
-            { label: "Bases y Micas", icon: "glasses", path: "/l/ventas/bases-micas", badge: labBadge, badgeType: "is-warning" },
+            { label: "Bases y Micas", icon: "glasses", path: "/l/ventas/bases-micas" },
             { label: "Óptica", icon: "eye", path: "/l/ventas/optica" },
             { label: "Lentes de Contacto", icon: "circle", path: "/l/ventas/lentes-contacto" },
+            { label: "Historial", icon: "history", path: "/l/ventas/historial" },
           ],
         },
         { label: "Devoluciones", icon: "rotate-left", path: "/l/devoluciones" },

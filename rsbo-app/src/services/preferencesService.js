@@ -4,9 +4,12 @@ import api from "../api/axios";
 /**
  * Get user workspace preferences (pinned and recent tabs)
  */
-export const getPreferences = async () => {
+export const getPreferences = async (context = "inventory") => {
   try {
-    const res = await api.get("/workspace/preferences", { withCredentials: true });
+    const res = await api.get("/workspace/preferences", { 
+      params: { context },
+      withCredentials: true 
+    });
     return res.data;
   } catch (error) {
     console.error("[preferencesService] Error getting preferences:", error);
@@ -18,11 +21,11 @@ export const getPreferences = async () => {
  * Update pinned templates
  * @param {Array} pinnedTemplates 
  */
-export const updatePinnedTemplates = async (pinnedTemplates) => {
+export const updatePinnedTemplates = async (pinnedTemplates, context = "inventory") => {
   try {
     const res = await api.put(
       "/workspace/preferences/pinned",
-      { pinned_templates: pinnedTemplates },
+      { pinned_templates: pinnedTemplates, context },
       { withCredentials: true }
     );
     return res.data;
@@ -36,11 +39,11 @@ export const updatePinnedTemplates = async (pinnedTemplates) => {
  * Add template to recent list
  * @param {Object} template 
  */
-export const addRecentTemplate = async (template) => {
+export const addRecentTemplate = async (template, context = "inventory") => {
   try {
     const res = await api.patch(
       "/workspace/preferences/recent",
-      { template },
+      { template, context },
       { withCredentials: true }
     );
     return res.data;
@@ -54,11 +57,11 @@ export const addRecentTemplate = async (template) => {
  * Remove template from recent list
  * @param {string} id
  */
-export const removeRecentTemplate = async (id) => {
+export const removeRecentTemplate = async (id, context = "inventory") => {
   try {
     const res = await api.delete(
       `/workspace/preferences/recent/${id}`,
-      { withCredentials: true }
+      { params: { context }, withCredentials: true }
     );
     return res.data;
   } catch (error) {
@@ -71,11 +74,11 @@ export const removeRecentTemplate = async (id) => {
  * Update active tab id
  * @param {string} tabId
  */
-export const setActiveTab = async (tabId) => {
+export const setActiveTab = async (tabId, context = "inventory") => {
   try {
     const res = await api.patch(
       "/workspace/preferences/active-tab",
-      { tabId },
+      { tabId, context },
       { withCredentials: true }
     );
     return res.data;
@@ -89,11 +92,11 @@ export const setActiveTab = async (tabId) => {
  * Save (upsert) an open tab
  * @param {Object} tab
  */
-export const saveOpenTab = async (tab) => {
+export const saveOpenTab = async (tab, context = "inventory") => {
   try {
     const res = await api.post(
       "/workspace/preferences/open-tabs",
-      { tab },
+      { tab, context },
       { withCredentials: true }
     );
     return res.data;
@@ -107,11 +110,11 @@ export const saveOpenTab = async (tab) => {
  * Remove an open tab
  * @param {string} tabId
  */
-export const removeOpenTab = async (tabId) => {
+export const removeOpenTab = async (tabId, context = "inventory") => {
   try {
     const res = await api.delete(
       `/workspace/preferences/open-tabs/${tabId}`,
-      { withCredentials: true }
+      { params: { context }, withCredentials: true }
     );
     return res.data;
   } catch (error) {
@@ -123,9 +126,12 @@ export const removeOpenTab = async (tabId) => {
 /**
  * Get catalog default section
  */
-export const getCatalogSection = async () => {
+export const getCatalogSection = async (context = "inventory") => {
   try {
-    const res = await api.get("/workspace/preferences", { withCredentials: true });
+    const res = await api.get("/workspace/preferences", { 
+      params: { context },
+      withCredentials: true 
+    });
     return res.data;
   } catch (error) {
     console.error("[preferencesService] Error getting catalog section:", error);
@@ -137,11 +143,11 @@ export const getCatalogSection = async () => {
  * Set catalog default section
  * @param {string} section
  */
-export const setCatalogSection = async (section) => {
+export const setCatalogSection = async (section, context = "inventory") => {
   try {
     const res = await api.patch(
       "/workspace/preferences/catalog-section",
-      { section },
+      { section, context },
       { withCredentials: true }
     );
     return res.data;

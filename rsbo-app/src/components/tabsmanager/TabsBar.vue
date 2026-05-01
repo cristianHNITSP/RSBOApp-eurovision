@@ -38,7 +38,7 @@
 
           <!-- Menu de Plantillas (Insertado tras el botón +) -->
           <div v-if="planilla.id === 'nueva'" class="tab-sentinel tab-menu-manager-wrapper">
-            <TemplateMenuManager />
+            <TemplateMenuManager :api-type="apiType" />
           </div>
         </template>
       </div>
@@ -114,7 +114,8 @@ const props = defineProps({
   hasPrior:     { type: Boolean, default: false },
   loadingMore:  { type: Boolean, default: false },
   loadingPrior: { type: Boolean, default: false },
-  priorCount:   { type: Number,  default: 0 }
+  priorCount:   { type: Number,  default: 0 },
+  apiType:      { type: String,  default: "inventory" }
 });
 
 const emit = defineEmits(["tab-click", "open-actions", "load-more", "load-prior", "reorder", "close-tab", "toggle-pin"]);

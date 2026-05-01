@@ -29,13 +29,13 @@
 .stock-hint  { font-weight: 900; color: var(--text-muted); font-size: 0.82rem; }
 
 /* ── Cart summary ── */
-.bm-cart-summary {
+.ventas-cart-summary {
   display: flex;
   justify-content: space-between;
   align-items: center;
   font-weight: 900;
 }
-.bm-cart-summary__val {
+.ventas-cart-summary__val {
   font-size: 1.3rem;
   font-weight: 1000;
   color: var(--text-primary);

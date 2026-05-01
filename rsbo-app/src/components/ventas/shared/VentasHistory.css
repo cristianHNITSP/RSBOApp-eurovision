@@ -28,3 +28,9 @@
 }
 
 .muted { color: var(--text-muted); font-weight: 700; }
+
+.history-filters {
+  margin-bottom: 1.25rem;
+  display: flex;
+  justify-content: center;
+}

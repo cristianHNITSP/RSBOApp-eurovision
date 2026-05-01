@@ -2,18 +2,10 @@ import { ref } from "vue";
 import { labToast } from "@/composables/shared/useLabToast.js";
 import * as prefsService from "@/services/preferencesService";
 
-// Global state to be shared across components
-const activeTabs = ref([]); // [{ id, name, sku, isPinned, opened_at, pinnedAt }]
-const recentTemplates = ref([]); // History of used templates
-const activeId = ref("nueva");
-const showLimitModal = ref(false);
-const pendingTemplate = ref(null); // Template that triggered the modal
-const catalogDefaultSection = ref("search");
+// Global state Map to store state for different contexts (e.g., 'inventory', 'contactlenses')
+const contexts = {};
 
 const MAX_ACTIVE_TABS = 6;
-
-// Flag to avoid infinite loops during sync
-let isHydrating = false;
 
 const nowIso = () => new Date().toISOString();
 
@@ -97,50 +89,70 @@ const orderPersistedTabs = (tabs) => {
   return [...pinned, ...unpinned];
 };
 
-export function useWorkspaceTabs() {
+/**
+ * Main Composable
+ * @param {string} contextKey Module context (e.g., 'inventory', 'contactlenses')
+ */
+export function useWorkspaceTabs(contextKey = 'inventory') {
+  // Initialize context state if it doesn't exist
+  if (!contexts[contextKey]) {
+    contexts[contextKey] = {
+      activeTabs: ref([]),
+      recentTemplates: ref([]),
+      activeId: ref("nueva"),
+      showLimitModal: ref(false),
+      pendingTemplate: ref(null),
+      catalogDefaultSection: ref("search"),
+      isHydrating: false,
+      isHydrated: false
+    };
+  }
+
+  const state = contexts[contextKey];
+
   // -- Lifecycle / Initial Load --
 
   async function hydrate() {
-    if (isHydrating) return;
-    isHydrating = true;
+    if (state.isHydrating) return;
+    state.isHydrating = true;
     try {
-      const res = await prefsService.getPreferences();
+      const res = await prefsService.getPreferences(contextKey);
       if (res.ok && res.data) {
-        catalogDefaultSection.value = res.data.catalog_default_section || "search";
+        state.catalogDefaultSection.value = res.data.catalog_default_section || "search";
 
-        const existingNueva = activeTabs.value.find((t) => t.id === "nueva");
-        const nuevaIndex = activeTabs.value.findIndex((t) => t.id === "nueva");
+        const existingNueva = state.activeTabs.value.find((t) => t.id === "nueva");
+        const nuevaIndex = state.activeTabs.value.findIndex((t) => t.id === "nueva");
 
         const openTabs = (res.data.open_tabs || []).map(toOpenTab);
         const pinnedTabs = (res.data.pinned_templates || []).map(toPinnedTab);
         const hasPersistedTabs = openTabs.length > 0 || pinnedTabs.length > 0;
-        const mergedTabs = mergePersistedTabs(openTabs, pinnedTabs, activeTabs.value);
+        const mergedTabs = mergePersistedTabs(openTabs, pinnedTabs, state.activeTabs.value);
         const orderedTabs = orderPersistedTabs(mergedTabs);
 
         if (hasPersistedTabs) {
-          activeTabs.value = insertNuevaAt(orderedTabs, buildNuevaTab(existingNueva), nuevaIndex);
+          state.activeTabs.value = insertNuevaAt(orderedTabs, buildNuevaTab(existingNueva), nuevaIndex);
         } else {
-          activeTabs.value = insertNuevaAt([], buildNuevaTab(existingNueva), nuevaIndex);
+          state.activeTabs.value = insertNuevaAt([], buildNuevaTab(existingNueva), nuevaIndex);
         }
 
-        recentTemplates.value = res.data.recent_templates || [];
+        state.recentTemplates.value = res.data.recent_templates || [];
 
         if (hasPersistedTabs || res.data.active_tab_id) {
-          activeId.value = pickActiveId(res.data, orderedTabs);
+          state.activeId.value = pickActiveId(res.data, orderedTabs);
         } else {
-          activeId.value = "nueva";
+          state.activeId.value = "nueva";
         }
+        state.isHydrated = true;
       }
     } catch (e) {
-      console.error("[useWorkspaceTabs] Hydration failed:", e);
+      console.error(`[useWorkspaceTabs][${contextKey}] Hydration failed:`, e);
     } finally {
-      isHydrating = false;
+      state.isHydrating = false;
     }
   }
 
-  // Global hydration state to prevent multiple calls
-  if (typeof window !== "undefined" && !window.__tabsHydrated) {
-    window.__tabsHydrated = true;
+  // Auto-hydrate once per context
+  if (!state.isHydrated && !state.isHydrating) {
     hydrate();
   }
 
@@ -148,24 +160,24 @@ export function useWorkspaceTabs() {
 
   function setActiveTab(id, { sync = true, touch = true } = {}) {
     if (!id) return;
-    activeId.value = id;
+    state.activeId.value = id;
 
     if (touch && id !== "nueva") {
-      const tab = activeTabs.value.find((t) => t.id === id);
+      const tab = state.activeTabs.value.find((t) => t.id === id);
       if (tab) {
         tab.opened_at = nowIso();
         _syncOpenTab(tab);
       }
     }
 
-    if (sync && !isHydrating) {
+    if (sync && !state.isHydrating) {
       _syncActiveTab(id);
     }
   }
 
   function dismissLimitModal() {
-    showLimitModal.value = false;
-    pendingTemplate.value = null;
+    state.showLimitModal.value = false;
+    state.pendingTemplate.value = null;
   }
 
   function openTemplate(template) {
@@ -173,17 +185,17 @@ export function useWorkspaceTabs() {
     if (!id) return;
 
     // Check if already open
-    const existing = activeTabs.value.find((t) => t.id === id);
+    const existing = state.activeTabs.value.find((t) => t.id === id);
     if (existing) {
       setActiveTab(id);
       _updateRecent(template);
       return;
     }
 
-    const openCount = activeTabs.value.filter((t) => t.id !== "nueva").length;
+    const openCount = state.activeTabs.value.filter((t) => t.id !== "nueva").length;
     if (openCount >= MAX_ACTIVE_TABS) {
-      pendingTemplate.value = template;
-      showLimitModal.value = true;
+      state.pendingTemplate.value = template;
+      state.showLimitModal.value = true;
       return;
     }
 
@@ -203,18 +215,18 @@ export function useWorkspaceTabs() {
   }
 
   function closeTab(id) {
-    const idx = activeTabs.value.findIndex((t) => t.id === id);
+    const idx = state.activeTabs.value.findIndex((t) => t.id === id);
     if (idx === -1) return;
 
-    const tab = activeTabs.value[idx];
+    const tab = state.activeTabs.value[idx];
     if (tab.isPinned) {
       labToast.info("Desfija la pestaña para poder cerrarla.");
       return;
     }
 
-    activeTabs.value.splice(idx, 1);
+    state.activeTabs.value.splice(idx, 1);
 
-    if (activeId.value === id) {
+    if (state.activeId.value === id) {
       const fallback = _pickFallbackActive();
       setActiveTab(fallback, { touch: fallback !== "nueva" });
     }
@@ -224,7 +236,7 @@ export function useWorkspaceTabs() {
   }
 
   function togglePinTab(id) {
-    const tab = activeTabs.value.find((t) => t.id === id);
+    const tab = state.activeTabs.value.find((t) => t.id === id);
     if (!tab) return;
 
     tab.isPinned = !tab.isPinned;
@@ -240,7 +252,7 @@ export function useWorkspaceTabs() {
   }
 
   function reorderTabs(oldIndex, newIndex) {
-    const tabs = activeTabs.value;
+    const tabs = state.activeTabs.value;
     const moved = tabs[oldIndex];
     if (!moved || moved.id === "nueva" || moved.isPinned) return;
 
@@ -261,7 +273,7 @@ export function useWorkspaceTabs() {
   }
 
   function closeMostRecentUnpinned() {
-    const candidates = activeTabs.value.filter((t) => t.id !== "nueva" && !t.isPinned);
+    const candidates = state.activeTabs.value.filter((t) => t.id !== "nueva" && !t.isPinned);
     if (!candidates.length) return null;
     const mostRecent = candidates.sort(sortByDateDesc("opened_at"))[0];
     closeTab(mostRecent.id);
@@ -271,7 +283,7 @@ export function useWorkspaceTabs() {
   // -- Internal Helpers --
 
   function _insertAfterPinned(tab) {
-    const tabs = activeTabs.value;
+    const tabs = state.activeTabs.value;
     const nuevaIdx = tabs.findIndex((t) => t.id === "nueva");
     const startIdx = nuevaIdx >= 0 ? nuevaIdx + 1 : 0;
     let insertIdx = startIdx;
@@ -285,7 +297,7 @@ export function useWorkspaceTabs() {
   }
 
   function _repositionAfterPinChange(tab) {
-    const tabs = activeTabs.value;
+    const tabs = state.activeTabs.value;
     const idx = tabs.findIndex((t) => t.id === tab.id);
     if (idx === -1) return;
 
@@ -294,7 +306,7 @@ export function useWorkspaceTabs() {
   }
 
   function _pickFallbackActive() {
-    const tabs = activeTabs.value.filter((t) => t.id !== "nueva");
+    const tabs = state.activeTabs.value.filter((t) => t.id !== "nueva");
     if (!tabs.length) return "nueva";
 
     const pinned = tabs.filter((t) => t.isPinned).sort(sortByDateDesc("pinnedAt"));
@@ -315,33 +327,33 @@ export function useWorkspaceTabs() {
     };
 
     try {
-      await prefsService.addRecentTemplate(entry);
-      const idx = recentTemplates.value.findIndex((t) => t.id === id);
-      if (idx !== -1) recentTemplates.value.splice(idx, 1);
-      recentTemplates.value.unshift(entry);
-      if (recentTemplates.value.length > 20) recentTemplates.value.pop();
+      await prefsService.addRecentTemplate(entry, contextKey);
+      const idx = state.recentTemplates.value.findIndex((t) => t.id === id);
+      if (idx !== -1) state.recentTemplates.value.splice(idx, 1);
+      state.recentTemplates.value.unshift(entry);
+      if (state.recentTemplates.value.length > 20) state.recentTemplates.value.pop();
     } catch (e) {
-      console.warn("[useWorkspaceTabs] Failed to sync recent template", e);
+      console.warn(`[useWorkspaceTabs][${contextKey}] Failed to sync recent template`, e);
     }
   }
 
   async function removeRecentTemplate(id) {
     if (!id) return;
     try {
-      await prefsService.removeRecentTemplate(id);
-      const idx = recentTemplates.value.findIndex((t) => t.id === id);
+      await prefsService.removeRecentTemplate(id, contextKey);
+      const idx = state.recentTemplates.value.findIndex((t) => t.id === id);
       if (idx !== -1) {
-        recentTemplates.value.splice(idx, 1);
+        state.recentTemplates.value.splice(idx, 1);
       }
     } catch (e) {
-      console.warn("[useWorkspaceTabs] Failed to remove recent template", e);
+      console.warn(`[useWorkspaceTabs][${contextKey}] Failed to remove recent template`, e);
     }
   }
 
   async function _syncPinnedWithBackend() {
-    if (isHydrating) return;
+    if (state.isHydrating) return;
     try {
-      const pinned = activeTabs.value
+      const pinned = state.activeTabs.value
         .filter((t) => t.isPinned && t.id !== "nueva")
         .map((t) => ({
           id: t.id,
@@ -350,14 +362,14 @@ export function useWorkspaceTabs() {
           tipo_matriz: t.tipo_matriz,
           pinnedAt: t.pinnedAt ? new Date(t.pinnedAt) : new Date()
         }));
-      await prefsService.updatePinnedTemplates(pinned);
+      await prefsService.updatePinnedTemplates(pinned, contextKey);
     } catch (e) {
-      console.error("[useWorkspaceTabs] Sync pinned failed:", e);
+      console.error(`[useWorkspaceTabs][${contextKey}] Sync pinned failed:`, e);
     }
   }
 
   async function _syncOpenTab(tab) {
-    if (isHydrating || !tab?.id || tab.id === "nueva") return;
+    if (state.isHydrating || !tab?.id || tab.id === "nueva") return;
     try {
       await prefsService.saveOpenTab({
         id: tab.id,
@@ -367,37 +379,37 @@ export function useWorkspaceTabs() {
         opened_at: tab.opened_at,
         is_pinned: Boolean(tab.isPinned),
         pinned_at: tab.pinnedAt
-      });
+      }, contextKey);
     } catch (e) {
-      console.warn("[useWorkspaceTabs] Failed to sync open tab", e);
+      console.warn(`[useWorkspaceTabs][${contextKey}] Failed to sync open tab`, e);
     }
   }
 
   async function _removeOpenTab(id) {
-    if (isHydrating || !id || id === "nueva") return;
+    if (state.isHydrating || !id || id === "nueva") return;
     try {
-      await prefsService.removeOpenTab(id);
+      await prefsService.removeOpenTab(id, contextKey);
     } catch (e) {
-      console.warn("[useWorkspaceTabs] Failed to remove open tab", e);
+      console.warn(`[useWorkspaceTabs][${contextKey}] Failed to remove open tab`, e);
     }
   }
 
   async function _syncActiveTab(id) {
-    if (isHydrating || !id) return;
+    if (state.isHydrating || !id) return;
     try {
-      await prefsService.setActiveTab(id);
+      await prefsService.setActiveTab(id, contextKey);
     } catch (e) {
-      console.warn("[useWorkspaceTabs] Failed to sync active tab", e);
+      console.warn(`[useWorkspaceTabs][${contextKey}] Failed to sync active tab`, e);
     }
   }
 
   return {
-    activeTabs,
-    recentTemplates,
-    activeId,
-    showLimitModal,
-    pendingTemplate,
-    catalogDefaultSection,
+    activeTabs: state.activeTabs,
+    recentTemplates: state.recentTemplates,
+    activeId: state.activeId,
+    showLimitModal: state.showLimitModal,
+    pendingTemplate: state.pendingTemplate,
+    catalogDefaultSection: state.catalogDefaultSection,
     openTemplate,
     closeTab,
     closeMostRecentUnpinned,

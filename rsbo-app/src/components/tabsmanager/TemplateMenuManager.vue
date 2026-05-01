@@ -15,6 +15,7 @@
       <Transition name="popover-fade">
         <TemplatePopoverCard
           v-if="isOpen"
+          :api-type="apiType"
           @close="closeMenu"
           class="teleported-popover"
           :style="popoverStyle"
@@ -27,6 +28,10 @@
 <script setup>
 import { ref, onBeforeUnmount, watch } from "vue";
 import TemplatePopoverCard from "./TemplatePopoverCard.vue";
+
+const props = defineProps({
+  apiType: { type: String, default: "inventory" }
+});
 
 const isOpen = ref(false);
 const triggerRef = ref(null);
@@ -93,7 +98,7 @@ const handleScroll = (event) => {
 
   // Si el scroll ocurre dentro del popover, lo ignoramos
   const popover = document.querySelector('.teleported-popover');
-  if (popover && popover.contains(event.target)) {
+  if (popover && event.target instanceof Node && popover.contains(event.target)) {
     return;
   }
 
@@ -122,9 +127,9 @@ const vClickOutside = {
     el._clickOutside = (event) => {
       // Don't close if clicking the popover itself (which is teleported outside el)
       const popover = document.querySelector('.teleported-popover');
-      if (popover && popover.contains(event.target)) return;
+      if (popover && event.target instanceof Node && popover.contains(event.target)) return;
       
-      if (!(el === event.target || el.contains(event.target))) {
+      if (!(el === event.target || (event.target instanceof Node && el.contains(event.target)))) {
         binding.value(event);
       }
     };

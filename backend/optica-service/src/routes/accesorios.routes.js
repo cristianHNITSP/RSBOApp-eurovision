@@ -6,8 +6,12 @@ const { body, param, validationResult } = require("express-validator");
 const Accesorio       = require("../models/Accesorio");
 const { logMovement } = require("../utils/logHelper");
 const { sanitizeMiddleware } = require("../utils/sanitizer");
+const { protect }          = require("../utils/auth");
+const { broadcast }   = require("../ws");
+const { handleAtomicSale } = require("../utils/saleHelper");
 
 const COLLECTION = "accesorios";
+router.use(protect());
 const TEXT_FIELDS = ["sku", "nombre", "categoria", "marca", "compatible", "descripcion"];
 
 const validate = (req, res, next) => {
@@ -64,12 +68,14 @@ router.get("/:id", param("id").isMongoId(), validate, async (req, res) => {
 
 router.post("/", bodyRules, sanitizeMiddleware(TEXT_FIELDS), validate, async (req, res) => {
   try {
-    const { actor, ...fields } = req.body;
+    const fields = req.body;
+    const actor = req.user;
     const exists = await Accesorio.findOne({ sku: fields.sku });
     if (exists) return res.status(409).json({ ok: false, error: `SKU "${fields.sku}" ya existe` });
     const item = await Accesorio.create(fields);
     console.log(`[OPTICA][ACCESORIOS] POST / → Creado SKU ${item.sku} por ${actor?.name || "Sistema"}`);
     await logMovement(COLLECTION, item._id, item.sku, "CREATE", { fields }, actor);
+    broadcast("INV_CHANGE", { collection: COLLECTION });
     return res.status(201).json({ ok: true, data: item.toJSON() });
   } catch (err) {
     return res.status(500).json({ ok: false, error: err.message });
@@ -78,7 +84,8 @@ router.post("/", bodyRules, sanitizeMiddleware(TEXT_FIELDS), validate, async (re
 
 router.put("/:id", param("id").isMongoId(), bodyRules, sanitizeMiddleware(TEXT_FIELDS), validate, async (req, res) => {
   try {
-    const { actor, ...fields } = req.body;
+    const fields = req.body;
+    const actor = req.user;
     const item = await Accesorio.findById(req.params.id);
     if (!item) return res.status(404).json({ ok: false, error: "No encontrado" });
     if (item.isDeleted) return res.status(410).json({ ok: false, error: "Elemento en papelera" });
@@ -90,6 +97,7 @@ router.put("/:id", param("id").isMongoId(), bodyRules, sanitizeMiddleware(TEXT_F
     Object.assign(item, fields);
     await item.save();
     await logMovement(COLLECTION, item._id, item.sku, "UPDATE", { before, after: item.toJSON() }, actor);
+    broadcast("INV_CHANGE", { collection: COLLECTION, id: String(item._id), newStock: item.stock });
     return res.json({ ok: true, data: item.toJSON() });
   } catch (err) {
     return res.status(500).json({ ok: false, error: err.message });
@@ -98,7 +106,8 @@ router.put("/:id", param("id").isMongoId(), bodyRules, sanitizeMiddleware(TEXT_F
 
 router.patch("/:id/stock", param("id").isMongoId(), body("stock").isInt({ min: 0 }), validate, async (req, res) => {
   try {
-    const { stock, actor } = req.body;
+    const { stock } = req.body;
+    const actor = req.user;
     const item = await Accesorio.findById(req.params.id);
     if (!item) return res.status(404).json({ ok: false, error: "No encontrado" });
     if (item.isDeleted) return res.status(410).json({ ok: false, error: "Elemento en papelera" });
@@ -106,15 +115,36 @@ router.patch("/:id/stock", param("id").isMongoId(), body("stock").isInt({ min: 0
     item.stock = stock;
     await item.save();
     await logMovement(COLLECTION, item._id, item.sku, "STOCK_UPDATE", { prevStock, newStock: stock }, actor);
+    broadcast("INV_CHANGE", {
+      collection: COLLECTION,
+      id: String(item._id),
+      prevStock,
+      newStock: stock,
+      delta: stock - prevStock,
+    });
     return res.json({ ok: true, data: item.toJSON() });
   } catch (err) {
     return res.status(500).json({ ok: false, error: err.message });
   }
 });
 
+// ── POST /accesorios/:id/sale — Venta atómica ──────────────────────────────
+router.post("/:id/sale", param("id").isMongoId(), body("qty").optional().isInt({ min: 1 }), validate, async (req, res) => {
+  try {
+    const qty = req.body.qty || 1;
+    const actor = req.user;
+    const result = await handleAtomicSale(Accesorio, COLLECTION, req.params.id, qty, actor);
+    if (!result.ok) return res.status(result.status).json({ ok: false, error: result.message, current: result.current });
+    return res.json({ ok: true, data: result.data });
+  } catch (err) {
+    console.error(`[OPTICA][${COLLECTION.toUpperCase()}] SALE error:`, err);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 router.delete("/:id", param("id").isMongoId(), validate, async (req, res) => {
   try {
-    const actor = req.body?.actor || {};
+    const actor = req.user;
     const item  = await Accesorio.findById(req.params.id);
     if (!item) return res.status(404).json({ ok: false, error: "No encontrado" });
     if (item.isDeleted) return res.status(410).json({ ok: false, error: "Ya está en papelera" });
@@ -123,6 +153,7 @@ router.delete("/:id", param("id").isMongoId(), validate, async (req, res) => {
     item.deletedBy = { userId: actor?.userId || null, name: actor?.name || "Sistema" };
     await item.save();
     await logMovement(COLLECTION, item._id, item.sku, "SOFT_DELETE", { sku: item.sku }, actor);
+    broadcast("INV_CHANGE", { collection: COLLECTION });
     return res.json({ ok: true, message: "Movido a papelera" });
   } catch (err) {
     return res.status(500).json({ ok: false, error: err.message });
@@ -131,7 +162,7 @@ router.delete("/:id", param("id").isMongoId(), validate, async (req, res) => {
 
 router.delete("/:id/hard", param("id").isMongoId(), validate, async (req, res) => {
   try {
-    const actor = req.body?.actor || {};
+    const actor = req.user;
     const item  = await Accesorio.findById(req.params.id);
     if (!item) return res.status(404).json({ ok: false, error: "No encontrado" });
     const snapshot = { sku: item.sku, nombre: item.nombre };
@@ -145,7 +176,7 @@ router.delete("/:id/hard", param("id").isMongoId(), validate, async (req, res) =
 
 router.patch("/:id/restore", param("id").isMongoId(), validate, async (req, res) => {
   try {
-    const actor = req.body?.actor || {};
+    const actor = req.user;
     const item  = await Accesorio.findById(req.params.id);
     if (!item) return res.status(404).json({ ok: false, error: "No encontrado" });
     if (!item.isDeleted) return res.status(400).json({ ok: false, error: "No está en papelera" });
@@ -154,6 +185,7 @@ router.patch("/:id/restore", param("id").isMongoId(), validate, async (req, res)
     item.deletedBy = { userId: null, name: null };
     await item.save();
     await logMovement(COLLECTION, item._id, item.sku, "RESTORE", { sku: item.sku }, actor);
+    broadcast("INV_CHANGE", { collection: COLLECTION });
     return res.json({ ok: true, data: item.toJSON(), message: "Restaurado correctamente" });
   } catch (err) {
     return res.status(500).json({ ok: false, error: err.message });

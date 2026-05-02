@@ -18,6 +18,8 @@ const currentPage = ref(1);
 const perPage = 20;
 
 const total = ref(0);
+const expandedIds = ref(new Set());
+const selectedAxisMap = ref({}); // { notifId: axisLabel }
 
 async function loadNotifications() {
   isHistoryLoading.value = true;
@@ -26,9 +28,16 @@ async function loadNotifications() {
       limit: perPage,
       skip: (currentPage.value - 1) * perPage
     });
-    // The backend lists ALL visible/not-dismissed notifications.
     notifications.value = data.notifications ?? [];
     total.value = data.total ?? 0;
+    
+    // Initialize selected axis for toric notifications
+    notifications.value.forEach(n => {
+      if (!selectedAxisMap.value[n._id]) {
+        const axes = getAxes(n);
+        if (axes.length > 0) selectedAxisMap.value[n._id] = axes[0];
+      }
+    });
   } catch (e) {
     console.error(e);
     labToast.warning('Error al cargar notificaciones');
@@ -37,16 +46,45 @@ async function loadNotifications() {
   }
 }
 
+function hasAxisData(notif) {
+  const cells = notif.metadata?.cells || [];
+  return cells.some(c => c.axis !== null && c.axis !== undefined);
+}
+
+function getAxes(notif) {
+  const cells = notif.metadata?.cells || [];
+  const axes = [...new Set(cells.map(c => String(c.axis)).filter(a => a !== 'null' && a !== 'undefined'))];
+  return axes.sort((a, b) => Number(b) - Number(a)); // 180 to 0
+}
+
+function getAlertsForAxis(notif, axis) {
+  const cells = notif.metadata?.cells || [];
+  return cells.filter(c => String(c.axis) === String(axis));
+}
+
+function getCurrentAlerts(notif) {
+  if (!hasAxisData(notif)) return notif.metadata?.cells || [];
+  const axis = selectedAxisMap.value[notif._id] || getAxes(notif)[0];
+  return getAlertsForAxis(notif, axis);
+}
+
+function toggleDetail(id) {
+  if (expandedIds.value.has(id)) expandedIds.value.delete(id);
+  else expandedIds.value.add(id);
+}
+
+function selectAxis(notifId, axis) {
+  selectedAxisMap.value[notifId] = axis;
+}
+
 const filteredNotifications = computed(() => {
-  let list = notifications.value;
+  let list = [...notifications.value];
   if (filterType.value) {
     list = list.filter(n => n.type === filterType.value);
   }
   if (showPinnedOnly.value) {
     list = list.filter(n => n.isPinned);
   }
-  // Sorting is already handled primarily by backend (createdAt desc). 
-  // We can push pinned to top again.
   return list.sort((a, b) => {
     if (a.isPinned && !b.isPinned) return -1;
     if (!a.isPinned && b.isPinned) return 1;
@@ -77,6 +115,7 @@ async function dismissNotification(notif) {
 
 function onPageChange(page) {
   currentPage.value = page;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
   loadNotifications();
 }
 
@@ -170,9 +209,6 @@ onMounted(() => {
                       <b-tag type="is-dark" class="has-text-weight-bold mr-2" size="is-small">
                         @{{ notif.createdByName || 'SISTEMA' }}
                       </b-tag>
-                      <span v-if="notif.count > 1" class="has-text-primary has-text-weight-bold is-size-7">
-                        [{{ notif.count }} ALERTAS]
-                      </span>
                     </span>
                     <h3 class="has-text-weight-bold is-size-6 mt-1 has-text-black">{{ notif.title }}</h3>
                   </div>
@@ -190,23 +226,88 @@ onMounted(() => {
                   {{ notif.message }}
                 </p>
 
-                <div class="is-flex is-align-items-center">
-                  <span class="is-size-7 has-text-grey">
+                <div class="is-flex is-align-items-center mb-3">
+                  <span class="is-size-7 has-text-grey mr-3">
                     <b-icon pack="fas" icon="clock" size="is-small" class="mr-1" />
                     {{ timeAgo(notif.updatedAt || notif.createdAt) }}
                   </span>
-                  <div class="ml-auto">
-                    <b-tag v-if="notif.priority === 'critical'" type="is-danger" class="has-text-weight-bold">ALTA PRIORIDAD</b-tag>
-                    <b-tag v-else-if="notif.type === 'warning'" type="is-warning" class="has-text-weight-bold">ATENCIÓN</b-tag>
-                  </div>
+
+                  <b-tag v-if="notif.priority === 'critical'" type="is-danger" class="has-text-weight-bold mr-2">ALTA PRIORIDAD</b-tag>
+                  <b-tag v-else-if="notif.type === 'warning'" type="is-warning" class="has-text-weight-bold mr-2">ATENCIÓN</b-tag>
+
+                  <b-button 
+                    v-if="notif.metadata?.cells?.length"
+                    type="is-primary" 
+                    is-light 
+                    rounded 
+                    size="is-small"
+                    class="has-text-weight-bold ml-auto"
+                    :icon-right="expandedIds.has(notif._id) ? 'chevron-up' : 'chevron-down'"
+                    @click="toggleDetail(notif._id)"
+                  >
+                    {{ expandedIds.has(notif._id) ? 'OCULTAR DETALLE' : 'VER DETALLE' }}
+                  </b-button>
                 </div>
+
+                <!-- Expanded Detail Section -->
+                <transition name="fade">
+                  <div v-if="expandedIds.has(notif._id)" class="notif-detail-panel mt-3 p-0 bg-light rounded shadow-inner overflow-hidden">
+                    
+                    <!-- Navigator for Toric (By Axis) -->
+                    <div v-if="hasAxisData(notif)" class="axis-navigator p-3 border-bottom-light bg-white">
+                      <p class="is-size-7 has-text-weight-bold mb-2 has-text-grey">NAVEGAR POR GRADOS (EJE):</p>
+                      <div class="axis-pills d-flex flex-wrap gap-2">
+                        <button 
+                          v-for="axisLabel in getAxes(notif)" 
+                          :key="axisLabel"
+                          class="axis-pill"
+                          :class="{ 'active': (selectedAxisMap[notif._id] || getAxes(notif)[0]) === axisLabel }"
+                          @click="selectAxis(notif._id, axisLabel)"
+                        >
+                          {{ axisLabel }}°
+                          <span class="count-badge">{{ getAlertsForAxis(notif, axisLabel).length }}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- Cells List with Internal Scroll -->
+                    <div class="cells-list-container" style="max-height: 400px; overflow-y: auto;">
+                      <div class="p-3">
+                        <div 
+                          v-for="(cell, cidx) in getCurrentAlerts(notif)" 
+                          :key="cidx" 
+                          class="cell-item d-flex is-align-items-center py-2 border-bottom-light"
+                        >
+                          <b-tag :type="cell.level === 'CRITICO' ? 'is-danger' : 'is-warning'" size="is-small" class="mr-3 has-text-weight-bold">
+                            {{ cell.level }}
+                          </b-tag>
+                          <span class="is-size-7 has-text-weight-semibold is-flex-grow-1">{{ cell.label }}</span>
+                          <span class="is-size-7 has-text-weight-bold">{{ cell.existencias }} pzas</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="p-2 has-text-centered border-top-light bg-white">
+                      <p class="is-size-7 has-text-grey-light">Mostrando {{ getCurrentAlerts(notif).length }} combinaciones</p>
+                    </div>
+
+                  </div>
+                </transition>
+
               </div>
             </div>
           </div>
 
+          <!-- Pagination -->
           <div class="pagination-wrapper mt-6" v-if="total > perPage">
-            <b-pagination :total="total" :current.sync="currentPage" :per-page="perPage" @change="onPageChange"
-              order="is-centered" rounded />
+            <b-pagination 
+              :total="total" 
+              v-model="currentPage" 
+              :per-page="perPage" 
+              @change="onPageChange"
+              order="is-centered" 
+              rounded 
+            />
           </div>
         </div>
 
@@ -225,6 +326,73 @@ onMounted(() => {
   box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05);
 }
 
+.notif-detail-panel {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.shadow-inner {
+  box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+}
+
+.axis-pills {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.axis-pill {
+  border: 1px solid #cbd5e1;
+  background: white;
+  padding: 0.4rem 0.75rem;
+  border-radius: 2rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: all 0.2s ease;
+  color: #475569;
+}
+
+.axis-pill:hover {
+  border-color: #3b82f6;
+  color: #3b82f6;
+}
+
+.axis-pill.active {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: white;
+}
+
+.count-badge {
+  background: rgba(0,0,0,0.1);
+  margin-left: 0.5rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 1rem;
+  font-size: 0.65rem;
+}
+
+.axis-pill.active .count-badge {
+  background: rgba(255,255,255,0.2);
+}
+
+.border-bottom-light {
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.cell-item:last-child {
+  border-bottom: none;
+}
+
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
 .page-header {
   display: flex;
   justify-content: space-between;
@@ -239,7 +407,6 @@ onMounted(() => {
   align-items: center;
 }
 
-/* Row Styling */
 .notif-row {
   display: flex;
 }

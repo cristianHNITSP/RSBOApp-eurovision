@@ -11,6 +11,8 @@ export function useLabEvents() {
   const correctionEvents = ref([]);
   const loadingEvents = ref(false);
   const loadingOrderEvents = ref(false);
+  const orderHistory = ref([]);
+  const loadingOrderHistory = computed(() => loadingOrderEvents.value);
 
   const _inFlight = { events: null };
 
@@ -76,16 +78,21 @@ export function useLabEvents() {
     loadingOrderEvents.value = true;
     try {
       const { data } = await listEvents({
-        orderId,
-        type: "ORDER_CREATE,EXIT_SCAN",
-        limit: 500,
-        signal,
-      });
-      const rows = Array.isArray(data?.data) ? data.data : [];
-      const ent = rows.filter(r => r.type === "ORDER_CREATE").map(mapEntryEvent);
-      const sal = rows.filter(r => r.type === "EXIT_SCAN").map(mapExitEvent);
-      orderEntries.value = ent;
-      orderExits.value = sal;
+          orderId,
+          type: "ORDER_CREATE,EXIT_SCAN,ORDER_EDIT,ORDER_CANCEL,CORRECTION_REQUEST",
+          limit: 500,
+          signal,
+        });
+        const rows = Array.isArray(data?.data) ? data.data : [];
+        
+        // Mantener compatibilidad con mappers específicos si se usan en otros lados
+        const ent = rows.filter(r => r.type === "ORDER_CREATE").map(mapEntryEvent);
+        const sal = rows.filter(r => r.type === "EXIT_SCAN").map(mapExitEvent);
+        orderEntries.value = ent;
+        orderExits.value = sal;
+
+        // Nuevo: Historial unificado para CorrectionDetail
+        orderHistory.value = rows;
     } catch (e) {
       if (e?.name !== "CanceledError" && e?.code !== "ERR_CANCELED") {
         console.error("[LAB] loadOrderEvents", e?.response?.data || e);
@@ -117,6 +124,8 @@ export function useLabEvents() {
     loadEvents,
     loadOrderEvents,
     loadOrderHistory: loadOrderEvents,
+    orderHistory,
+    loadingOrderHistory,
     todayEntries
   };
 }

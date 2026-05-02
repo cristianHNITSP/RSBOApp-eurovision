@@ -2,7 +2,8 @@ import { ref, computed, watch, onMounted, onBeforeUnmount } from "vue";
 import { labToast } from "@/composables/shared/useLabToast.js";
 import { 
   listContactLensSheets, 
-  fetchContactLensItems 
+  fetchContactLensItems,
+  registerContactLensSale
 } from "@/services/contactlenses";
 import { createOrder } from "@/services/laboratorio"; // Assuming LC orders also go to lab or are registered here
 import { 
@@ -19,7 +20,61 @@ import {
 export function useLentesContactoVentas(getUser) {
   const kind = 'direct'; // User specified direct, but we'll see
   const _ac = new AbortController();
-  onBeforeUnmount(() => { _ac.abort(); });
+  let _wsRefreshTimer = null;
+
+  const WS_REFRESH_TYPES = new Set([
+    "INVENTORY_CHUNK_SAVED",
+    "INV_CHANGE",
+  ]);
+
+  function _onLabWs(e) {
+    const type = e?.detail?.type;
+    if (!WS_REFRESH_TYPES.has(type)) return;
+    
+    const payload = e?.detail?.payload || {};
+    const sid = payload.sheetId;
+
+    console.log(`[WS][LC-VENTAS] Event: ${type}`, payload);
+
+    if (type === "INV_CHANGE" && payload.codebar && typeof payload.newStock === "number") {
+      const codeStr = String(payload.codebar);
+      let found = false;
+
+      if (String(sid || "") === String(selectedSheetId.value)) {
+        const item = itemsDB.value.find(i => String(i.codebar) === codeStr);
+        if (item) {
+          item.existencias = payload.newStock;
+          found = true;
+        }
+      }
+
+      const inCart = cartItems.value.find(ci => String(ci.row.codebar) === codeStr);
+      if (inCart) {
+        inCart.row.existencias = payload.newStock;
+        if (inCart.qty > payload.newStock) inCart.qty = Math.max(0, payload.newStock);
+        found = true;
+      }
+
+      if (found) {
+        console.log(`[WS][LC-VENTAS] Surgical update success`);
+        return;
+      }
+    }
+
+    if (sid && String(sid) !== String(selectedSheetId.value)) return;
+
+    clearTimeout(_wsRefreshTimer);
+    _wsRefreshTimer = setTimeout(() => {
+      console.log(`[WS][LC-VENTAS] Fallback reload`);
+      loadItems(true);
+    }, 1500);
+  }
+
+  onBeforeUnmount(() => {
+    _ac.abort();
+    clearTimeout(_wsRefreshTimer);
+    window.removeEventListener("lab:ws", _onLabWs);
+  });
 
   // ── DB state ──────────────────────────────────────────────────────────────
   const sheetsDB = ref([]);
@@ -133,31 +188,52 @@ export function useLentesContactoVentas(getUser) {
     }
   }
 
-  async function loadItems() {
+  let itemsAc = null;
+  async function loadItems(silent = false) {
     const sid = selectedSheetId.value;
     if (!sid) { itemsDB.value = []; return; }
-    loadingItems.value = true;
+
+    if (itemsAc) itemsAc.abort();
+    itemsAc = new AbortController();
+
+    if (!silent) loadingItems.value = true;
     try {
       const { data } = await fetchContactLensItems(sid, { 
         limit: 500, 
         withStock: stockFilter.value === "withStock",
         axisMin: selectedAxis.value || undefined,
         axisMax: selectedAxis.value || undefined,
-        signal: _ac.signal 
+        signal: itemsAc.signal 
       });
       const arr = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
       const sheet = sheetsDB.value.find((s) => String(s.id) === String(sid)) || null;
       itemsDB.value = arr.map((r) => ({
         ...r,
         existencias: Number(r.existencias ?? 0),
+        precioVenta: Number(sheet?.precioVenta || 0),
         _normTitle:  normTxt(buildRowTitle(r, sheet)),
         _normParams: normTxt(buildRowParams(r, sheet)),
         _normCode:   normTxt(r.codebar || "")
       }));
+
+      // 🔄 Sincronizar el carrito con los nuevos datos del catálogo
+      cartItems.value.forEach(ci => {
+        const matching = itemsDB.value.find(i => String(i.codebar) === String(ci.row.codebar));
+        if (matching) {
+          ci.row.existencias = matching.existencias;
+          // 🛡️ CAPEO AUTOMÁTICO
+          if (ci.qty > matching.existencias) {
+            ci.qty = Math.max(0, matching.existencias);
+          }
+        }
+      });
+
       catalogPage.value = 1;
     } catch (e) {
+      if (e.name === 'AbortError') return;
       labToast.danger("Error al cargar lentes de contacto");
     } finally {
+      if (itemsAc?.signal.aborted) return;
       loadingItems.value = false;
     }
   }
@@ -207,37 +283,40 @@ export function useLentesContactoVentas(getUser) {
   }
 
   async function registrarVenta() {
+    if (loadingSale.value) return;
     if (!cartItems.value.length) { labToast.warning("Carrito vacío"); return; }
-    if (!cartCliente.value.trim()) { labToast.warning("Nombre de cliente requerido"); return; }
+
+    const clienteVal = String(cartCliente.value || "").trim();
+    if (!clienteVal) { labToast.warning("Nombre de cliente requerido"); return; }
 
     loadingSale.value = true;
     const actor = getActor(getUser);
     try {
-      // For now, using createOrder (even if it's direct, we might want a record)
-      // If we had a specific DirectSale service, we would use it here.
-      const lines = cartItems.value.map((ci) => ({
-        codebar: ci.row.codebar, qty: ci.qty, sheetId: ci.sheetId, precio: Number(ci.precio) || 0
-      }));
+      // 🚀 VENTA DIRECTA: Iteramos por los productos y descontamos stock de inmediato
+      const results = [];
+      for (const ci of cartItems.value) {
+        const { data } = await registerContactLensSale(ci.sheetId, {
+          codebar: ci.row.codebar,
+          qty: ci.qty,
+          actor
+        });
+        results.push(data);
+      }
 
-      const { data } = await createOrder({
-        cliente: cartCliente.value.trim(),
-        clienteNombres: cartClienteNombres.value.trim(),
-        clienteApellidos: cartClienteApellidos.value.trim(),
-        clienteEmpresa: cartClienteEmpresa.value.trim(),
-        clienteContacto: cartClienteContacto.value.trim(),
-        note: cartNote.value.trim(),
-        pago: [...cartPago.value],
+      // Mock de "order" para el voucher (ya que no hay LaboratoryOrder real)
+      const fakeOrder = {
+        _id: `SALE-${Date.now()}`,
+        folio: `VTA-LC-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${Math.random().toString(36).slice(2,5).toUpperCase()}`,
+        cliente: clienteVal,
         totalMonto: cartTotalMonto.value,
-        lines,
-        actor,
-        category: 'lentes-contacto'
-      });
+        createdAt: new Date(),
+        status: 'completado'
+      };
 
-      const order = data?.data;
       lastVoucher.value = {
-        ...order,
-        id: String(order._id),
-        fecha: order.createdAt,
+        ...fakeOrder,
+        id: fakeOrder._id,
+        fecha: fakeOrder.createdAt,
         lineas: cartItems.value.map(ci => ({ ...ci, sheetNombre: ci.sheet.nombre })),
         totalPiezas: cartTotal.value,
         actor: actor?.name || "Usuario"
@@ -246,7 +325,7 @@ export function useLentesContactoVentas(getUser) {
       clearCart();
       labToast.success(`Venta de LC registrada`);
       
-      return order;
+      return fakeOrder;
     } catch (e) {
       labToast.danger("Error al registrar venta");
       throw e;
@@ -268,7 +347,10 @@ export function useLentesContactoVentas(getUser) {
     if (n || a) cartCliente.value = [n, a].filter(Boolean).join(" ");
   });
 
-  onMounted(() => { loadSheets(); });
+  onMounted(() => {
+    loadSheets();
+    window.addEventListener("lab:ws", _onLabWs);
+  });
 
   return {
     kind,
@@ -310,8 +392,8 @@ export function useLentesContactoVentas(getUser) {
     selectedSheetId, itemQuery, stockFilter, catalogPage,
     cartCliente, cartNote, cartClienteNombres, cartClienteApellidos, 
     cartClienteEmpresa, cartClienteContacto, cartPago,
-    addToCart, removeFromCart, incCartQty, decCartQty, clearCart, 
-    registrarVenta,
+    addToCart, removeFromCart, incCartQty, decCartQty, clearCart,
+    registrarVenta, loadItems,
     lastVoucher, voucherOpen,
     loadingSale,
     sheetsDB

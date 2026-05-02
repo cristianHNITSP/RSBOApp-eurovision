@@ -392,3 +392,49 @@
   color: var(--text-muted);
 }
 
+
+/* Navegador de Ejes para Panel Lateral */
+.axis-navigator-mini {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.axis-pills-mini {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.axis-pill-mini {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+  color: #64748b;
+  transition: all 0.2s;
+}
+
+.axis-pill-mini:hover {
+  background: #e2e8f0;
+}
+
+.axis-pill-mini.active {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: white;
+}
+
+.cell-list-container-mini {
+  overflow-y: auto;
+  margin: 0.5rem 0;
+}
+
+.detail-footer-mini {
+  font-size: 0.65rem;
+  color: #94a3b8;
+  text-align: center;
+  border-top: 1px solid rgba(0,0,0,0.05);
+}

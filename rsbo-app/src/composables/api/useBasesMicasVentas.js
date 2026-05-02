@@ -19,7 +19,58 @@ import {
 export function useBasesMicasVentas(getUser) {
   const kind = 'lab';
   const _ac = new AbortController();
-  onBeforeUnmount(() => { _ac.abort(); });
+  let _wsRefreshTimer = null;
+  const WS_STOCK_TYPES = new Set([
+    "LAB_ORDER_SCAN",
+    "LAB_ORDER_CLOSE",
+    "LAB_ORDER_CANCEL",
+    "LAB_ORDER_RESET",
+    "INVENTORY_CHUNK_SAVED",
+    "INV_CHANGE",
+  ]);
+
+  function _onLabWs(e) {
+    const type = e?.detail?.type;
+    if (!WS_STOCK_TYPES.has(type)) return;
+
+    const payload = e?.detail?.payload || {};
+
+    // 1. Intentar actualización SILENCIOSA si es un INV_CHANGE con datos suficientes
+    if (type === "INV_CHANGE" && payload.codebar && typeof payload.newStock === "number") {
+      const codeStr = String(payload.codebar);
+      
+      // Actualizar en el catálogo
+      const item = itemsDB.value.find(i => String(i.codebar) === codeStr);
+      if (item) item.existencias = payload.newStock;
+
+      // Actualizar en el CARRITO
+      const inCart = cartItems.value.find(ci => String(ci.row.codebar) === codeStr);
+      if (inCart) {
+        inCart.row.existencias = payload.newStock;
+        // 🛡️ CAPEO AUTOMÁTICO: Si la cantidad en carrito supera el nuevo stock, bajarla al máximo disponible
+        if (inCart.qty > payload.newStock) {
+          inCart.qty = Math.max(0, payload.newStock);
+        }
+      }
+
+      // Si lo encontramos en catálogo o carrito, podemos dar por terminada la actualización quirúrgica
+      if (item || inCart) return;
+    }
+
+    // 2. Fallback: recarga completa con debounce para otros casos
+    const sheetIds = payload.sheetIds;
+    if (Array.isArray(sheetIds) && sheetIds.length > 0 && !sheetIds.includes(selectedSheetId.value)) return;
+    if (payload.sheetId && String(payload.sheetId) !== String(selectedSheetId.value)) return;
+
+    clearTimeout(_wsRefreshTimer);
+    _wsRefreshTimer = setTimeout(() => loadItems(true), 1500);
+  }
+
+  onBeforeUnmount(() => {
+    _ac.abort();
+    clearTimeout(_wsRefreshTimer);
+    window.removeEventListener("lab:ws", _onLabWs);
+  });
 
   // ── DB state ──────────────────────────────────────────────────────────────
   const sheetsDB = ref([]);
@@ -129,25 +180,47 @@ export function useBasesMicasVentas(getUser) {
     }
   }
 
-  async function loadItems() {
+  let itemsAc = null;
+  async function loadItems(silent = false) {
     const sid = selectedSheetId.value;
     if (!sid) { itemsDB.value = []; return; }
-    loadingItems.value = true;
+    
+    // Abortar petición previa si existe
+    if (itemsAc) itemsAc.abort();
+    itemsAc = new AbortController();
+    
+    if (!silent) loadingItems.value = true;
     try {
-      const { data } = await invFetchItems(sid, { limit: 500, signal: _ac.signal });
+      const { data } = await invFetchItems(sid, { limit: 500, signal: itemsAc.signal });
       const arr = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
       const sheet = sheetsDB.value.find((s) => String(s.id) === String(sid)) || null;
       itemsDB.value = arr.map((r) => ({
         ...r,
         existencias: Number(r.existencias ?? 0),
+        precioVenta: Number(sheet?.precioVenta || 0),
         _normTitle:  normTxt(buildRowTitle(r, sheet)),
         _normParams: normTxt(buildRowParams(r, sheet)),
         _normCode:   normTxt(r.codebar || "")
       }));
+      
+      // 🔄 Sincronizar el carrito con los nuevos datos del catálogo
+      cartItems.value.forEach(ci => {
+        const matching = itemsDB.value.find(i => String(i.codebar) === String(ci.row.codebar));
+        if (matching) {
+          ci.row.existencias = matching.existencias;
+          // 🛡️ CAPEO AUTOMÁTICO
+          if (ci.qty > matching.existencias) {
+            ci.qty = Math.max(0, matching.existencias);
+          }
+        }
+      });
+
       catalogPage.value = 1;
     } catch (e) {
+      if (e.name === "AbortError") return;
       labToast.danger("Error al cargar productos");
     } finally {
+      if (itemsAc?.signal.aborted) return;
       loadingItems.value = false;
     }
   }
@@ -197,8 +270,11 @@ export function useBasesMicasVentas(getUser) {
   }
 
   async function registrarVenta() {
+    if (loadingSale.value) return;
     if (!cartItems.value.length) { labToast.warning("Carrito vacío"); return; }
-    if (!cartCliente.value.trim()) { labToast.warning("Nombre de cliente requerido"); return; }
+    
+    const clienteVal = String(cartCliente.value || "").trim();
+    if (!clienteVal) { labToast.warning("Nombre de cliente requerido"); return; }
 
     loadingSale.value = true;
     const actor = getActor(getUser);
@@ -206,9 +282,11 @@ export function useBasesMicasVentas(getUser) {
       const lines = cartItems.value.map((ci) => ({
         codebar: ci.row.codebar, qty: ci.qty, sheetId: ci.sheetId, precio: Number(ci.precio) || 0
       }));
-      const pagoDisplay = cartPago.value.map((p) => PAGO_LABELS[p] || p).join(" / ") || "—";
+      const pagoArr = Array.isArray(cartPago.value) ? cartPago.value : [];
+      const pagoDisplay = pagoArr.map((p) => PAGO_LABELS[p] || p).join(" / ") || "—";
 
       const { data } = await createOrder({
+        sheetId: selectedSheetId.value,
         cliente: cartCliente.value.trim(),
         clienteDisplay: cartClienteDisplay.value,
         clienteNombres: cartClienteNombres.value.trim(),
@@ -262,7 +340,10 @@ export function useBasesMicasVentas(getUser) {
     if (n || a) cartCliente.value = [n, a].filter(Boolean).join(" ");
   });
 
-  onMounted(() => { loadSheets(); });
+  onMounted(() => {
+    loadSheets();
+    window.addEventListener("lab:ws", _onLabWs);
+  });
 
   // ── Expose grouped for Strategy contract ──────────────────────────────────
   return {
@@ -304,8 +385,8 @@ export function useBasesMicasVentas(getUser) {
     cartCliente, cartNote, cartClienteNombres, cartClienteApellidos, 
     cartClienteEmpresa, cartClienteContacto, cartPago,
     
-    addToCart, removeFromCart, incCartQty, decCartQty, clearCart, 
-    registrarVenta,
+    addToCart, removeFromCart, incCartQty, decCartQty, clearCart,
+    registrarVenta, loadItems,
     lastVoucher, voucherOpen,
     loadingSale,
     sheetsDB // for some internal uses

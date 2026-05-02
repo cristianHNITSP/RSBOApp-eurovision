@@ -85,7 +85,7 @@ export const mapExitEvent = (e) => ({
   micaType: e?.details?.micaType || "—"
 });
 
-const fmtVal = (v) => { const n = Number(v ?? 0); return n === 0 ? "—" : n.toFixed(2); };
+const fmtVal = (v) => { const n = Number(v ?? 0); return n.toFixed(2); };
 
 export const buildRowTitle = (row, sheet) => {
   const t = sheet?.tipo_matriz;

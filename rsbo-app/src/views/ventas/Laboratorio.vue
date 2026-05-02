@@ -5,7 +5,7 @@
 
   <section class="view-main">
     <div class="glass">
-      <DynamicTabs v-model="lab.activeMainTab.value" :tabs="LAB_TABS">
+      <DynamicTabs v-model="activeMainTab" :tabs="LAB_TABS">
         <template #pedidos><PedidosTab /></template>
         <template #bandeja><BandejaTab /></template>
         <template #catalogo><CatalogoTab /></template>
@@ -47,5 +47,6 @@ const props = defineProps({
 });
 
 const lab = useLaboratorioApi(() => props.user);
+const { activeMainTab } = lab;
 provide("lab", lab);
 </script>

@@ -9,7 +9,50 @@ const MAX_ACTIVE_TABS = 6;
 
 const nowIso = () => new Date().toISOString();
 
+// -- Debounce Logic for Preferences Sync --
+const syncQueue = {
+  activeId: null,
+  pendingSync: null,
+  contextTimers: new Map()
+};
+
+const debounceSync = (contextKey, fn, delay = 1000) => {
+  if (syncQueue.contextTimers.has(contextKey)) {
+    clearTimeout(syncQueue.contextTimers.get(contextKey));
+  }
+  const timer = setTimeout(() => {
+    fn();
+    syncQueue.contextTimers.delete(contextKey);
+  }, delay);
+  syncQueue.contextTimers.set(contextKey, timer);
+};
+
 const normalizeId = (t) => String(t?.id ?? t?._id ?? "");
+
+// -- Global Listeners for Sheet Status Sync --
+if (typeof window !== "undefined") {
+  window.addEventListener("sheet-deleted-externally", (e) => {
+    const { sheetId } = e.detail;
+    Object.values(contexts).forEach(state => {
+      const t = state.recentTemplates.value.find(x => x.id === sheetId);
+      if (t) t.isDeleted = true;
+    });
+  });
+  window.addEventListener("sheet-restored-externally", (e) => {
+    const { sheetId } = e.detail;
+    Object.values(contexts).forEach(state => {
+      const t = state.recentTemplates.value.find(x => x.id === sheetId);
+      if (t) t.isDeleted = false;
+    });
+  });
+  window.addEventListener("sheet-purged-externally", (e) => {
+    const { sheetId } = e.detail;
+    Object.values(contexts).forEach(state => {
+      const idx = state.recentTemplates.value.findIndex(x => x.id === sheetId);
+      if (idx !== -1) state.recentTemplates.value.splice(idx, 1);
+    });
+  });
+}
 
 const normalizeTemplateBase = (t) => ({
   id: normalizeId(t),
@@ -125,9 +168,15 @@ export function useWorkspaceTabs(contextKey = 'inventory') {
 
         const openTabs = (res.data.open_tabs || []).map(toOpenTab);
         const pinnedTabs = (res.data.pinned_templates || []).map(toPinnedTab);
+        
+        // Filter out tabs that might be marked as deleted in the store (if we have that info)
+        // or just ensure they aren't duplicates
         const hasPersistedTabs = openTabs.length > 0 || pinnedTabs.length > 0;
         const mergedTabs = mergePersistedTabs(openTabs, pinnedTabs, state.activeTabs.value);
-        const orderedTabs = orderPersistedTabs(mergedTabs);
+        
+        // CRITICAL: Filter out any tab that has been identified as deleted by the user
+        const finalTabs = mergedTabs.filter(t => !t.isDeleted);
+        const orderedTabs = orderPersistedTabs(finalTabs);
 
         if (hasPersistedTabs) {
           state.activeTabs.value = insertNuevaAt(orderedTabs, buildNuevaTab(existingNueva), nuevaIndex);
@@ -241,10 +290,6 @@ export function useWorkspaceTabs(contextKey = 'inventory') {
 
     tab.isPinned = !tab.isPinned;
     tab.pinnedAt = tab.isPinned ? nowIso() : null;
-
-    if (tab.isPinned) {
-      labToast.info(`Pestaña "${tab.name}" fijada.`);
-    }
 
     _repositionAfterPinChange(tab);
     _syncPinnedWithBackend();
@@ -396,11 +441,13 @@ export function useWorkspaceTabs(contextKey = 'inventory') {
 
   async function _syncActiveTab(id) {
     if (state.isHydrating || !id) return;
-    try {
-      await prefsService.setActiveTab(id, contextKey);
-    } catch (e) {
-      console.warn(`[useWorkspaceTabs][${contextKey}] Failed to sync active tab`, e);
-    }
+    debounceSync(`${contextKey}:activeTab`, async () => {
+      try {
+        await prefsService.setActiveTab(id, contextKey);
+      } catch (e) {
+        console.warn(`[useWorkspaceTabs][${contextKey}] Failed to sync active tab`, e);
+      }
+    }, 1500);
   }
 
   return {

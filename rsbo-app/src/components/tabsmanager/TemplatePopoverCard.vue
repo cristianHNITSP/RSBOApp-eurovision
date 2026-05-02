@@ -43,10 +43,16 @@
           v-for="item in displayTemplates" 
           :key="item.id || item._id" 
           class="template-row"
-          @click="selectTemplate(item)"
+          :class="{ 'is-deleted': item.isDeleted }"
+          @click="item.isDeleted ? null : selectTemplate(item)"
         >
           <div class="template-info">
-            <span class="template-name">{{ item.name || item.nombre }}</span>
+            <span class="template-name">
+              {{ item.name || item.nombre }}
+              <span v-if="item.isDeleted" class="trash-indicator" title="Esta plantilla está en la papelera">
+                <i class="fas fa-trash-alt"></i> En Papelera
+              </span>
+            </span>
             <div class="template-meta-row">
               <span v-if="item.sku" class="sku-tag">{{ item.sku }}</span>
               <span class="date-tag">{{ formatDate(item.lastModified || item.updatedAt) }}</span>
@@ -144,7 +150,8 @@ const debouncedSearch = useDebounceFn(async (q) => {
     searchResults.value = sheets.map(s => ({
       ...s,
       id: s._id || s.id,
-      name: s.nombre || s.name
+      name: s.nombre || s.name,
+      isDeleted: s.isDeleted || false
     }));
   } catch (e) {
     console.error("[TemplatePopover] Search error:", e);
@@ -182,7 +189,8 @@ const fetchRecentModified = async () => {
     recentModified.value = sheets.map((s) => ({
       ...s,
       id: s._id || s.id,
-      name: s.nombre || s.name
+      name: s.nombre || s.name,
+      isDeleted: s.isDeleted || false
     }));
   } catch (e) {
     console.error("[TemplatePopover] Recent modified error:", e);
@@ -219,12 +227,14 @@ const selectSection = async (section) => {
 };
 
 const selectTemplate = (template) => {
+  if (template.isDeleted) return;
   openTemplate(template);
   emit("close");
 };
 
 const handleDeleteRecent = async (id) => {
   await removeRecentTemplate(id, props.apiType);
+  recentModified.value = [];
 };
 
 const formatDate = (dateStr) => {
@@ -518,5 +528,24 @@ const formatDate = (dateStr) => {
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: var(--text-subtle);
+}
+
+.template-row.is-deleted {
+  opacity: 0.6;
+}
+
+.trash-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.6rem;
+  background: var(--c-danger-alpha);
+  color: var(--c-danger);
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+  font-weight: 800;
+  text-transform: uppercase;
+  border: 1px solid rgba(239, 68, 68, 0.2);
 }
 </style>

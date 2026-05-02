@@ -16,6 +16,7 @@ const emit = defineEmits(['toggle-pin', 'dismiss']);
 
 const isExpanded = ref(false);
 const showMobileMenu = ref(false);
+const selectedAxisMap = ref({});
 
 const TYPE_TAG = {
   info:    'is-info',
@@ -60,6 +61,32 @@ const hasDetail = computed(() => {
     props.notif.metadata.type === 'correction'
   ));
 });
+
+function hasAxisData(notif) {
+  const cells = notif.metadata?.cells || [];
+  return cells.some(c => c.axis !== null && c.axis !== undefined);
+}
+
+function getAxes(notif) {
+  const cells = notif.metadata?.cells || [];
+  const axes = [...new Set(cells.map(c => String(c.axis)).filter(a => a !== 'null' && a !== 'undefined'))];
+  return axes.sort((a, b) => Number(b) - Number(a));
+}
+
+function getAlertsForAxis(notif, axis) {
+  const cells = notif.metadata?.cells || [];
+  return cells.filter(c => String(c.axis) === String(axis));
+}
+
+function getCurrentAlerts(notif) {
+  if (!hasAxisData(notif)) return notif.metadata?.cells || [];
+  const axis = selectedAxisMap.value[notif._id] || getAxes(notif)[0];
+  return getAlertsForAxis(notif, axis);
+}
+
+function selectAxis(notifId, axis) {
+  selectedAxisMap.value[notifId] = axis;
+}
 
 function toggleExpand() {
   isExpanded.value = !isExpanded.value;
@@ -163,27 +190,47 @@ function closeMobileMenu() {
               <span class="detail-header__label">{{ notif.metadata.sheetLabel }}</span>
               <span class="detail-header__counts">
                 <span v-if="notif.metadata.critCount > 0" class="level-badge level-badge--critico">
-                  {{ notif.metadata.critCount }} CRÍTICO{{ notif.metadata.critCount > 1 ? 'S' : '' }}
-                </span>
-                <span v-if="notif.metadata.lowCount > 0" class="level-badge level-badge--bajo">
-                  {{ notif.metadata.lowCount }} BAJO{{ notif.metadata.lowCount > 1 ? 'S' : '' }}
+                  {{ notif.metadata.critCount }} CRÍTICO
                 </span>
               </span>
             </div>
-            <ul class="cell-list">
-              <li
-                v-for="(cell, idx) in notif.metadata.cells"
-                :key="idx"
-                class="cell-row"
-              >
-                <span
-                  class="level-badge"
-                  :class="cell.level === 'CRITICO' ? 'level-badge--critico' : 'level-badge--bajo'"
-                >{{ cell.level }}</span>
-                <span class="cell-label">{{ cell.label }}</span>
-                <span class="cell-stock">{{ cell.existencias }} pza{{ cell.existencias !== 1 ? 's' : '' }}</span>
-              </li>
-            </ul>
+
+            <!-- Navegador de Grados (Ejes) -->
+            <div v-if="hasAxisData(notif)" class="axis-navigator-mini mb-3">
+              <div class="axis-pills-mini">
+                <button 
+                  v-for="axisLabel in getAxes(notif)" 
+                  :key="axisLabel"
+                  class="axis-pill-mini"
+                  :class="{ 'active': (selectedAxisMap[notif._id] || getAxes(notif)[0]) === axisLabel }"
+                  @click.stop="selectAxis(notif._id, axisLabel)"
+                >
+                  {{ axisLabel }}°
+                </button>
+              </div>
+            </div>
+
+            <!-- Lista con Scroll Interno -->
+            <div class="cell-list-container-mini" :style="{ maxHeight: hasAxisData(notif) ? '250px' : '400px' }">
+              <ul class="cell-list">
+                <li
+                  v-for="(cell, idx) in getCurrentAlerts(notif)"
+                  :key="idx"
+                  class="cell-row"
+                >
+                  <span
+                    class="level-badge"
+                    :class="cell.level === 'CRITICO' ? 'level-badge--critico' : 'level-badge--bajo'"
+                  >{{ cell.level }}</span>
+                  <span class="cell-label">{{ cell.label }}</span>
+                  <span class="cell-stock">{{ cell.existencias }} pza{{ cell.existencias !== 1 ? 's' : '' }}</span>
+                </li>
+              </ul>
+            </div>
+            
+            <div v-if="hasAxisData(notif)" class="detail-footer-mini pt-2">
+              Mostrando eje {{ selectedAxisMap[notif._id] || getAxes(notif)[0] }}° ({{ getCurrentAlerts(notif).length }} ítems)
+            </div>
           </template>
 
           <!-- DETALLE: Pedidos pendientes -->

@@ -53,11 +53,27 @@ export function useAgGridIntegration({ sheetId, sphType, guardKeyPrefix, onWsRef
   }
 
   // ─── WebSocket ────────────────────────────────────────────────────
-  const _WS_STOCK = new Set(["LAB_ORDER_SCAN", "LAB_ORDER_CANCEL", "LAB_ORDER_RESET", "INVENTORY_CHUNK_SAVED"]);
+  const _WS_STOCK = new Set(["LAB_ORDER_SCAN", "LAB_ORDER_CANCEL", "LAB_ORDER_RESET", "INVENTORY_CHUNK_SAVED", "INV_CHANGE"]);
   function onLabWs(e) {
-    if (!_WS_STOCK.has(e?.detail?.type)) return;
-    const sheetIds = e.detail?.payload?.sheetIds;
-    if (sheetIds && sheetIds.length > 0 && !sheetIds.includes(sheetId.value)) return;
+    const type = e?.detail?.type;
+    if (!_WS_STOCK.has(type)) return;
+
+    const payload = e.detail?.payload || {};
+    
+    // Caso 1: Array de IDs (Bases y Micas / Laboratorio)
+    if (payload.sheetIds && payload.sheetIds.length > 0) {
+      if (!payload.sheetIds.includes(sheetId.value)) return;
+    } 
+    // Caso 2: ID único (Lentes de Contacto)
+    else if (payload.sheetId) {
+      if (String(payload.sheetId) !== String(sheetId.value)) return;
+    }
+    // Caso 3: Colección (Óptica - aunque las grillas AG-Grid no se usan para óptica usualmente)
+    else if (payload.collection) {
+      // Ignorar para grillas AG-Grid por ahora
+      return;
+    }
+
     if (_suppressNextWsRefresh) { _suppressNextWsRefresh = false; return; }
     onWsRefresh?.();
   }

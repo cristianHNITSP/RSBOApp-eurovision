@@ -120,9 +120,13 @@
           </b-table>
 
           <div v-if="!lab.filteredItems.value.length && !lab.loadingItems.value" class="empty">
-            <i class="fas fa-inbox empty__icon"></i>
-            <p class="empty__title">No hay resultados</p>
-            <p class="empty__text">Prueba cambiar el filtro o la búsqueda.</p>
+            <i class="fas fa-search empty__icon muted"></i>
+            <p class="empty__title">No se encontraron micas</p>
+            <p class="empty__text">
+              No hay coincidencias con el filtro 
+              <b>"{{ lab.stockFilter.value === 'withStock' ? 'Solo con stock' : lab.stockFilter.value === 'zero' ? 'Sin stock' : 'Todos' }}"</b>
+              {{ lab.itemQuery.value ? 'y la búsqueda "' + lab.itemQuery.value + '"' : '' }}.
+            </p>
           </div>
         </div>
       </div>
@@ -171,6 +175,12 @@
             <i class="fas fa-hand-pointer empty__icon"></i>
             <p class="empty__title">Sin pedidos</p>
             <p class="empty__text">Los pedidos creados desde Ventas aparecen aquí.</p>
+          </div>
+
+          <div v-else-if="!lab.filteredOrders.value.length" class="empty empty--mini">
+            <i class="fas fa-search empty__icon muted"></i>
+            <p class="empty__title">Sin resultados</p>
+            <p class="empty__text">{{ emptyMessage }}</p>
           </div>
 
           <div v-else class="order-card-list">
@@ -282,7 +292,7 @@
 </template>
 
 <script setup>
-import { inject, ref, watch } from "vue";
+import { inject, ref, watch, computed } from "vue";
 import OrderDetail from "./pedidos/OrderDetail.vue";
 import SheetPickerInput from "@/components/ui/SheetPickerInput.vue";
 import "./laboratorio-shared.css";
@@ -319,4 +329,12 @@ function doClose() {
   confirmCloseOpen.value = false;
   lab.closeSelectedOrder();
 }
+
+const emptyMessage = computed(() => {
+  const f = lab.orderStatusFilter.value;
+  if (f === "open") return "No hay pedidos pendientes.";
+  if (f === "cerrado") return "No hay pedidos cerrados.";
+  if (f === "cancelado") return "No hay pedidos cancelados.";
+  return "No se encontraron pedidos.";
+});
 </script>

@@ -7,6 +7,7 @@ const Armazon         = require("../models/Armazon");
 const { logMovement } = require("../utils/logHelper");
 const { sanitizeMiddleware } = require("../utils/sanitizer");
 const { protect }          = require("../utils/auth");
+const { broadcast }        = require("../ws");
 
 const COLLECTION = "armazones";
 // Proteger todas las rutas: requiere estar logueado
@@ -86,6 +87,7 @@ router.post("/", bodyRules, sanitizeMiddleware(TEXT_FIELDS), validate, async (re
     const item = await Armazon.create(fields);
     console.log(`[OPTICA][ARMAZONES] POST / → Creado SKU ${item.sku} por ${actor?.name || "Sistema"}`);
     await logMovement(COLLECTION, item._id, item.sku, "CREATE", { fields }, actor);
+    broadcast("INV_CHANGE", { collection: COLLECTION });
 
     return res.status(201).json({ ok: true, data: item.toJSON() });
   } catch (err) {
@@ -115,6 +117,7 @@ router.put("/:id", param("id").isMongoId(), bodyRules, sanitizeMiddleware(TEXT_F
 
     console.log(`[OPTICA][ARMAZONES] PUT /${req.params.id} → Actualizado SKU ${item.sku} por ${actor?.name || "Sistema"}`);
     await logMovement(COLLECTION, item._id, item.sku, "UPDATE", { before, after: item.toJSON() }, actor);
+    broadcast("INV_CHANGE", { collection: COLLECTION, id: String(item._id), newStock: item.stock });
 
     return res.json({ ok: true, data: item.toJSON() });
   } catch (err) {
@@ -139,8 +142,33 @@ router.patch("/:id/stock", param("id").isMongoId(), body("stock").isInt({ min: 0
     console.log(`[OPTICA][ARMAZONES] PATCH /${req.params.id}/stock → ${prevStock} → ${stock} por ${actor?.name || "Sistema"}`);
     await logMovement(COLLECTION, item._id, item.sku, "STOCK_UPDATE", { prevStock, newStock: stock }, actor);
 
+    broadcast("INV_CHANGE", {
+      collection: COLLECTION,
+      id: String(item._id),
+      prevStock,
+      newStock: stock,
+      delta: stock - prevStock,
+    });
+
     return res.json({ ok: true, data: item.toJSON() });
   } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ── POST /armazones/:id/sale — Venta atómica (decremento de stock) ──────────
+const { handleAtomicSale } = require("../utils/saleHelper");
+router.post("/:id/sale", param("id").isMongoId(), body("qty").optional().isInt({ min: 1 }), validate, async (req, res) => {
+  try {
+    const qty = req.body.qty || 1;
+    const actor = req.user;
+    const result = await handleAtomicSale(Armazon, COLLECTION, req.params.id, qty, actor);
+    
+    if (!result.ok) return res.status(result.status).json({ ok: false, error: result.message, current: result.current });
+    
+    return res.json({ ok: true, data: result.data });
+  } catch (err) {
+    console.error(`[OPTICA][${COLLECTION.toUpperCase()}] SALE error:`, err);
     return res.status(500).json({ ok: false, error: err.message });
   }
 });
@@ -160,6 +188,7 @@ router.delete("/:id", param("id").isMongoId(), validate, async (req, res) => {
 
     console.log(`[OPTICA][ARMAZONES] DELETE /${req.params.id} (soft) → SKU ${item.sku} por ${actor?.name || "Sistema"}`);
     await logMovement(COLLECTION, item._id, item.sku, "SOFT_DELETE", { sku: item.sku, marca: item.marca }, actor);
+    broadcast("INV_CHANGE", { collection: COLLECTION });
 
     return res.json({ ok: true, message: "Movido a papelera" });
   } catch (err) {
@@ -203,6 +232,7 @@ router.patch("/:id/restore", param("id").isMongoId(), validate, async (req, res)
 
     console.log(`[OPTICA][ARMAZONES] PATCH /${req.params.id}/restore → SKU ${item.sku} restaurado por ${actor?.name || "Sistema"}`);
     await logMovement(COLLECTION, item._id, item.sku, "RESTORE", { sku: item.sku }, actor);
+    broadcast("INV_CHANGE", { collection: COLLECTION });
 
     return res.json({ ok: true, data: item.toJSON(), message: "Restaurado correctamente" });
   } catch (err) {

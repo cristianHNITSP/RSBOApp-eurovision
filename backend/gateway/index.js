@@ -143,6 +143,10 @@ const proxyRequest = (serviceUrl) => async (req, res) => {
     const targetUrl = `${serviceUrl}${req.originalUrl}`;
     console.log(`🔁 Proxying ${req.method} ${req.originalUrl} -> ${targetUrl}`);
 
+    if (req.method === "POST" || req.method === "PATCH" || req.method === "PUT") {
+      console.log("📦 Payload Body:", JSON.stringify(req.body, null, 2));
+    }
+
     // 📥 Log de cookies recibidas del cliente
     console.log("📥 Cookies recibidas del navegador:", req.headers.cookie || "(none)");
 

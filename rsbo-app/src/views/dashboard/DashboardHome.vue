@@ -81,7 +81,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onActivated, toRef, reactive } from 'vue'
+import { ref, computed, onMounted, onActivated, toRef, reactive, onUnmounted } from 'vue'
 import DynamicTabs from '@/components/DynamicTabs.vue'
 import DashboardHero from '@/components/dashboard/DashboardHero.vue'
 import DashboardTabOptica from '@/components/dashboard/DashboardTabOptica.vue'
@@ -167,8 +167,44 @@ async function loadOptica() {
   } catch { /* silently fail */ } finally { optica.loading = false }
 }
 
-onMounted(() => { loadStats(); loadPendingDevols(); loadCorrectionLogs(); if (canSeeInventory.value) loadOptica() })
-onActivated(() => { loadStats(); loadPendingDevols(); loadCorrectionLogs(); if (canSeeInventory.value) loadOptica() })
+// ── Real-time Refresh (WS) ───────────────────────────────────────────────────
+let _wsRefreshTimer = null
+function debouncedRefresh() {
+  clearTimeout(_wsRefreshTimer)
+  _wsRefreshTimer = setTimeout(() => loadStats(true), 2000)
+}
+
+function onLabWs(e) {
+  const type = e?.detail?.type
+  const relevantTypes = [
+    'LAB_ORDER_CREATE', 'LAB_ORDER_CANCEL', 'LAB_ORDER_SCAN', 
+    'LAB_ORDER_RESET', 'LAB_ORDER_CLOSE', 'STOCK_ALERT', 
+    'INVENTORY_CHUNK_SAVED'
+  ]
+  if (relevantTypes.includes(type)) {
+    debouncedRefresh()
+  }
+}
+
+onMounted(() => { 
+  loadStats(); 
+  loadPendingDevols(); 
+  loadCorrectionLogs(); 
+  if (canSeeInventory.value) loadOptica();
+  window.addEventListener('lab:ws', onLabWs);
+})
+
+onActivated(() => { 
+  loadStats(); 
+  loadPendingDevols(); 
+  loadCorrectionLogs(); 
+  if (canSeeInventory.value) loadOptica();
+})
+
+onUnmounted(() => {
+  window.removeEventListener('lab:ws', onLabWs)
+  clearTimeout(_wsRefreshTimer)
+})
 
 // ── Entorno ───────────────────────────────────────────────────────────────────
 const environmentLabel = computed(() => {

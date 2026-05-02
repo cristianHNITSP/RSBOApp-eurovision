@@ -27,6 +27,12 @@ const MatrixSphCyl     = require("../models/matrix/MatrixSphCyl");
 const MatrixBifocal    = require("../models/matrix/MatrixBifocal");
 const MatrixProgresivo = require("../models/matrix/MatrixProgresivo");
 
+// Modelos de Lentes de Contacto (CL)
+const CLMatrixBase       = require("../models/contactlenses/CLMatrixEsferico");
+const CLMatrixColorido   = require("../models/contactlenses/CLMatrixColorido");
+const CLMatrixTorico     = require("../models/contactlenses/CLMatrixTorico");
+const CLMatrixMultifocal = require("../models/contactlenses/CLMatrixMultifocal");
+
 // Cooldown corto: si la ruta ya disparo hace <60s, el hook lo omite.
 // Si es una creacion/seed (nadie notifico antes), pasa sin cooldown.
 const HOOK_COOLDOWN_MS = 60 * 1000; // 1 minuto
@@ -37,6 +43,11 @@ function registerStockAlertHooks() {
     MatrixSphCyl.schema,
     MatrixBifocal.schema,
     MatrixProgresivo.schema,
+    // CL Models
+    CLMatrixBase.schema,
+    CLMatrixColorido.schema,
+    CLMatrixTorico.schema,
+    CLMatrixMultifocal.schema,
   ];
 
   for (const schema of schemas) {

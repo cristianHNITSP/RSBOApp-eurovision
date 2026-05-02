@@ -20,6 +20,7 @@ async function applyChunkBase(models, sheet, rows, actor) {
   );
 
   const updateData = {};
+  const conflicts = [];
   let updated = 0;
 
   for (const row of rows) {
@@ -44,6 +45,11 @@ async function applyChunkBase(models, sheet, rows, actor) {
     if (existed && prev === existencias && current.sku && (existencias === 0 || current.codebar))
       continue;
 
+    if (row.baseline != null && Number(row.baseline) !== prev) {
+      conflicts.push({ key: k, expected: Number(row.baseline), actual: prev, attempted: existencias });
+      continue;
+    }
+
     current.existencias = existencias;
     if (!current.sku) current.sku = makeSku(sheet._id, "BASE", { base });
     if (existencias > 0 && !current.codebar) current.codebar = makeCodebar(sheet._id, "BASE", { base });
@@ -59,7 +65,7 @@ async function applyChunkBase(models, sheet, rows, actor) {
   if (updated > 0) {
     await MatrixBase.updateOne({ sheet: sheet._id }, { $set: updateData });
   }
-  return { updated };
+  return { updated, conflicts };
 }
 
 async function applyChunkSphCyl(models, sheet, rows, actor) {
@@ -72,6 +78,7 @@ async function applyChunkSphCyl(models, sheet, rows, actor) {
   );
 
   const updateData = {};
+  const conflicts = [];
   let updated = 0;
 
   for (const row of rows) {
@@ -98,6 +105,11 @@ async function applyChunkSphCyl(models, sheet, rows, actor) {
     if (existed && prev === existencias && current.sku && (existencias === 0 || current.codebar))
       continue;
 
+    if (row.baseline != null && Number(row.baseline) !== prev) {
+      conflicts.push({ key: k, expected: Number(row.baseline), actual: prev, attempted: existencias });
+      continue;
+    }
+
     current.existencias = existencias;
     if (!current.sku) current.sku = makeSku(sheet._id, "SPH_CYL", { sph, cyl });
     if (existencias > 0 && !current.codebar) current.codebar = makeCodebar(sheet._id, "SPH_CYL", { sph, cyl });
@@ -113,7 +125,7 @@ async function applyChunkSphCyl(models, sheet, rows, actor) {
   if (updated > 0) {
     await MatrixSphCyl.updateOne({ sheet: sheet._id }, { $set: updateData });
   }
-  return { updated };
+  return { updated, conflicts };
 }
 
 async function applyChunkBifocal(models, sheet, rows, actor) {
@@ -126,6 +138,7 @@ async function applyChunkBifocal(models, sheet, rows, actor) {
   );
 
   const updateData = {};
+  const conflicts = [];
   let updated = 0;
 
   for (const row of rows) {
@@ -151,6 +164,11 @@ async function applyChunkBifocal(models, sheet, rows, actor) {
 
     if (prev === existencias && eyeNode.sku && (existencias === 0 || eyeNode.codebar)) continue;
 
+    if (row.baseline != null && Number(row.baseline) !== prev) {
+      conflicts.push({ key: `${k}|${eye}`, expected: Number(row.baseline), actual: prev, attempted: existencias });
+      continue;
+    }
+
     eyeNode.existencias = existencias;
     if (!eyeNode.sku)
       eyeNode.sku = makeSku(sheet._id, "SPH_ADD", { sph, add, eye, base_izq, base_der });
@@ -170,7 +188,7 @@ async function applyChunkBifocal(models, sheet, rows, actor) {
   if (updated > 0) {
     await MatrixBifocal.updateOne({ sheet: sheet._id }, { $set: updateData });
   }
-  return { updated };
+  return { updated, conflicts };
 }
 
 async function applyChunkProgresivo(models, sheet, rows, actor) {
@@ -183,6 +201,7 @@ async function applyChunkProgresivo(models, sheet, rows, actor) {
   );
 
   const updateData = {};
+  const conflicts = [];
   let updated = 0;
 
   for (const row of rows) {
@@ -207,6 +226,11 @@ async function applyChunkProgresivo(models, sheet, rows, actor) {
 
     if (prev === existencias && eyeNode.sku && (existencias === 0 || eyeNode.codebar)) continue;
 
+    if (row.baseline != null && Number(row.baseline) !== prev) {
+      conflicts.push({ key: `${k}|${eye}`, expected: Number(row.baseline), actual: prev, attempted: existencias });
+      continue;
+    }
+
     eyeNode.existencias = existencias;
     if (!eyeNode.sku)
       eyeNode.sku = makeSku(sheet._id, "BASE_ADD", { add, eye, base_izq, base_der });
@@ -226,7 +250,7 @@ async function applyChunkProgresivo(models, sheet, rows, actor) {
   if (updated > 0) {
     await MatrixProgresivo.updateOne({ sheet: sheet._id }, { $set: updateData });
   }
-  return { updated };
+  return { updated, conflicts };
 }
 
 async function applyChunkTorico(models, sheet, rows, actor) {
@@ -239,6 +263,7 @@ async function applyChunkTorico(models, sheet, rows, actor) {
   );
 
   const updateData = {};
+  const conflicts = [];
   let updated = 0;
   for (const row of rows) {
     const sph = to2(row.sph);
@@ -265,6 +290,11 @@ async function applyChunkTorico(models, sheet, rows, actor) {
     if (existed && prev === existencias && current.sku && (existencias === 0 || current.codebar))
       continue;
 
+    if (row.baseline != null && Number(row.baseline) !== prev) {
+      conflicts.push({ key: k, expected: Number(row.baseline), actual: prev, attempted: existencias });
+      continue;
+    }
+
     current.existencias = existencias;
     if (!current.sku) current.sku = makeSku(sheet._id, "SPH_CYL_AXIS", { sph, cyl, axis });
     if (existencias > 0 && !current.codebar) current.codebar = makeCodebar(sheet._id, "SPH_CYL_AXIS", { sph, cyl, axis });
@@ -281,7 +311,7 @@ async function applyChunkTorico(models, sheet, rows, actor) {
     // Actualización atómica quirúrgica en lugar de doc.save()
     await MatrixTorico.updateOne({ sheet: sheet._id }, { $set: updateData });
   }
-  return { updated };
+  return { updated, conflicts };
 }
 
 module.exports = {

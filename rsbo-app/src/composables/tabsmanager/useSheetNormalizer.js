@@ -22,12 +22,20 @@ export const displayTratamiento = (sheet) => {
 export const tipoHuman = (t) => {
   if (!t) return "N/A";
   const map = {
+    // Legacy / Frontend keys
     monofocal: "Monofocal",
     bifocal: "Bifocal",
     progresivo: "Progresivo",
-    base: "Base (Stock)"
+    base: "Base (Stock)",
+    
+    // Backend matrix types
+    BASE: "Base (Stock)",
+    SPH_CYL: "Monofocal",
+    SPH_ADD: "Bifocal / Progresivo",
+    BASE_ADD: "Base con Adición"
   };
-  return map[t] || String(t).charAt(0).toUpperCase() + String(t).slice(1);
+  const key = String(t).toLowerCase() === t.toLowerCase() ? t : t; // just to be safe
+  return map[t] || map[t.toLowerCase()] || String(t).charAt(0).toUpperCase() + String(t).slice(1).toLowerCase();
 };
 
 export const normalizeSheet = (s) => {

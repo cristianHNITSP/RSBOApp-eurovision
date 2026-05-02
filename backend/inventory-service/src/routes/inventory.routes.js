@@ -141,16 +141,23 @@ router.get("/",
     const q = encodeURIComponent(req.query.q || "");
     const f = req.query.focusId || "";
     const d = req.query.includeDeleted || "false";
-    return `inv:inventory:sheets:${p}:${l}:${q}:${f}:${d}`;
+    const od = req.query.onlyDeleted || "false";
+    return `inv:inventory:sheets:${p}:${l}:${q}:${f}:${d}:${od}`;
   }, 30),
   async (req, res) => {
   try {
     const includeDeleted = String(req.query.includeDeleted) === "true";
+    const onlyDeleted = String(req.query.onlyDeleted) === "true";
     const q = String(req.query.q || "").trim();
     const focusId = String(req.query.focusId || "").trim();
     const limit = Math.min(Math.max(parseInt(req.query.limit) || 6, 1), 50);
 
-    const dbQuery = includeDeleted ? {} : { isDeleted: { $ne: true } };
+    let dbQuery = {};
+    if (onlyDeleted) {
+      dbQuery = { isDeleted: true };
+    } else if (!includeDeleted) {
+      dbQuery = { isDeleted: { $ne: true } };
+    }
 
     if (q) {
       const rx = new RegExp(escapeRegExp(q), "i");
@@ -186,9 +193,13 @@ router.get("/",
       if (idx >= 0) page = Math.floor(idx / limit) + 1;
     }
     page = Math.min(page, totalPages);
-    const skip = (page - 1) * limit;
+    
+    const sheets = await InventorySheet.find(dbQuery)
+      .sort(SORT)
+      .skip((page - 1) * limit)
+      .limit(limit);
 
-    const sheets = await InventorySheet.find(dbQuery).sort(SORT).skip(skip).limit(limit);
+    console.log(`[INV][API] listSheets | query: ${JSON.stringify(dbQuery)} | found: ${sheets.length}/${total}`);
 
     // backfill SKU for this page only
     for (const s of sheets) {
@@ -401,7 +412,7 @@ router.post(
         });
       }
 
-      invalidatePattern("inv:inventory:sheets:*");
+      invalidatePattern("inv:*sheets:*");
       cacheDel(KEYS.stats());
 
       res.status(201).json({
@@ -433,7 +444,8 @@ router.get(
     try {
       const sheet = await InventorySheet.findById(req.params.sheetId);
       if (!sheet) return res.status(404).json({ ok: false, message: "Sheet no existe" });
-      if (sheet.isDeleted) return res.status(410).json({ ok: false, message: "Sheet eliminada (soft-delete)" });
+      
+      if (sheet.isDeleted) return res.status(410).json({ ok: false, message: "Esta planilla se encuentra en la papelera." });
 
       if (!sheet.sku) {
         try {
@@ -584,7 +596,11 @@ router.patch(
         tratamientos: sheet.tratamientos || []
       };
 
-      if (isDef(req.body.nombre) || isDef(req.body.name)) sheet.nombre = (req.body.nombre ?? req.body.name).trim();
+      if (isDef(req.body.nombre) || isDef(req.body.name)) {
+        const raw = (req.body.nombre ?? req.body.name).trim();
+        // Saneamiento básico: eliminar etiquetas <script> y similares
+        sheet.nombre = raw.replace(/<[^>]*>?/gm, '');
+      }
       if (isDef(req.body.tratamientos)) sheet.tratamientos = req.body.tratamientos;
       if (Object.prototype.hasOwnProperty.call(req.body, "tratamiento"))
         sheet.tratamiento = String(req.body.tratamiento || "").trim() || null;
@@ -637,8 +653,12 @@ router.patch(
 
       if (req.body.meta && typeof req.body.meta === "object") {
         sheet.meta = sheet.meta && typeof sheet.meta === "object" ? sheet.meta : {};
-        if (isDef(req.body.meta.observaciones)) sheet.meta.observaciones = String(req.body.meta.observaciones || "");
-        if (isDef(req.body.meta.notas)) sheet.meta.notas = String(req.body.meta.notas || "");
+        if (isDef(req.body.meta.observaciones)) {
+          sheet.meta.observaciones = String(req.body.meta.observaciones || "").replace(/<[^>]*>?/gm, '');
+        }
+        if (isDef(req.body.meta.notas)) {
+          sheet.meta.notas = String(req.body.meta.notas || "").replace(/<[^>]*>?/gm, '');
+        }
         if (req.body.meta.ranges && typeof req.body.meta.ranges === "object") sheet.meta.ranges = req.body.meta.ranges;
         sheet.markModified("meta");
       }
@@ -780,6 +800,10 @@ router.patch(
         actor
       });
 
+      await invalidatePattern("inv:*");
+      await invalidatePattern("cl:*");
+      await cacheDel(KEYS.stats());
+
       return res.json({
         ok: true,
         message: "Hoja enviada a papelera",
@@ -822,9 +846,11 @@ router.delete(
         actor
       });
 
-      invalidatePattern(KEYS.sheetPattern(req.params.sheetId));
-      invalidatePattern("inv:inventory:sheets:*");
-      cacheDel(KEYS.stats());
+      const sheetId = sheet._id.toString();
+      await cacheDel(KEYS.sheetMeta(sheetId));
+      await invalidatePattern("inv:*");
+      await invalidatePattern(`inv:sheet:${sheetId}:*`);
+      await cacheDel(KEYS.stats());
       res.json({ ok: true, message: "Hoja eliminada (soft-delete)" });
     } catch (err) {
       console.error("DELETE /sheets/:sheetId error:", err);
@@ -859,6 +885,12 @@ router.patch(
         actor
       });
 
+      const sheetId = sheet._id.toString();
+      await cacheDel(KEYS.sheetMeta(sheetId));
+      await invalidatePattern("inv:*");
+      await invalidatePattern(`inv:sheet:${sheetId}:*`);
+      await cacheDel(KEYS.stats());
+
       res.json({
         ok: true,
         data: {
@@ -870,6 +902,39 @@ router.patch(
     } catch (err) {
       console.error("PATCH /sheets/:sheetId/restore error:", err);
       res.status(500).json({ ok: false, message: "Error al restaurar hoja" });
+    }
+  }
+);
+
+router.delete(
+  "/sheets/:sheetId/purge",
+  param("sheetId").isMongoId(),
+  body("actor").optional().isObject(),
+  handleValidation,
+  async (req, res) => {
+    try {
+      const sheet = await InventorySheet.findById(req.params.sheetId);
+      if (!sheet) return res.status(404).json({ ok: false, message: "Sheet no existe" });
+      if (!sheet.isDeleted) return res.status(400).json({ ok: false, message: "Solo se pueden eliminar permanentemente hojas que ya están en papelera" });
+
+      // Eliminar matrices asociadas
+      const modelsArr = [MatrixBase, MatrixSphCyl, MatrixBifocal, MatrixProgresivo];
+      for (const M of modelsArr) {
+        await M.deleteMany({ sheet: sheet._id });
+      }
+
+      await sheet.deleteOne();
+
+      const sheetId = sheet._id.toString();
+      await cacheDel(KEYS.sheetMeta(sheetId));
+      await invalidatePattern("inv:*");
+      await invalidatePattern(`inv:sheet:${sheetId}:*`);
+      await cacheDel(KEYS.stats());
+
+      res.json({ ok: true, message: "Hoja eliminada permanentemente" });
+    } catch (err) {
+      console.error("DELETE /sheets/:sheetId/purge error:", err);
+      res.status(500).json({ ok: false, message: "Error al purgar hoja" });
     }
   }
 );
@@ -1255,11 +1320,13 @@ router.post(
         axisExtendError = e?.message || String(e);
       }
 
+      const conflicts = Array.isArray(result.conflicts) ? result.conflicts : [];
+
       await InventoryChangeLog.create({
         sheet: sheet._id,
         tipo_matriz: sheet.tipo_matriz,
         type: "CHUNK_SAVE",
-        details: { upserted: result.updated, rowsCount: rows.length, axisExtended, axisExtendError },
+        details: { upserted: result.updated, rowsCount: rows.length, conflictsCount: conflicts.length, axisExtended, axisExtendError },
         actor
       });
 
@@ -1270,12 +1337,25 @@ router.post(
       });
 
       // Invalidate cache for this sheet + stats
-      invalidatePattern(KEYS.sheetPattern(req.params.sheetId));
-      cacheDel(KEYS.stats());
-      cacheDel(KEYS.sheetsList("inventory"));
+      await invalidatePattern("inv:*");
+      await cacheDel(KEYS.stats());
+      await invalidatePattern("inv:*sheets:*");
 
       // Notificar a otras pestañas del mismo sheet que el inventario cambió
-      broadcast("INVENTORY_CHUNK_SAVED", { sheetIds: [req.params.sheetId] });
+      if (result.updated > 0) {
+        broadcast("INVENTORY_CHUNK_SAVED", { sheetIds: [req.params.sheetId] });
+      }
+
+      if (conflicts.length > 0) {
+        return res.status(409).json({
+          ok: false,
+          message: "Conflicto: el stock cambió mientras editabas. Algunas celdas no se aplicaron.",
+          conflicts,
+          appliedCount: result.updated,
+          axisExtended,
+          axisExtendError,
+        });
+      }
 
       return res.json({ ok: true, data: { upserted: result.updated, axisExtended, axisExtendError } });
     } catch (err) {

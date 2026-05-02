@@ -90,3 +90,14 @@ desktop.ini
 .temp/
 .tmp/
 CLAUDE.md
+rsbo-app/vulnerability_test.cjs
+rsbo-app/stress_test.cjs
+rsbo-app/security_audit.cjs
+rsbo-app/concurrency_audit.cjs
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/

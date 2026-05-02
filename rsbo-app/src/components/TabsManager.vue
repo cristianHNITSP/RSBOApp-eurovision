@@ -12,7 +12,9 @@
       :loading-prior="loadingPrior"
       :prior-count="priorCount"
       :api-type="apiType"
+      :actor="actor"
       @tab-click="handleTabClick"
+      @open-template="openTemplate"
       @open-actions="openActions"
       @load-more="$emit('load-more')"
       @load-prior="$emit('load-prior')"
@@ -141,7 +143,7 @@ import {
   numForEdit
 } from "../composables/tabsmanager/useDateHelpers";
 
-import { ref, computed, watch, nextTick, onMounted, reactive } from "vue";
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount, reactive } from "vue";
 import { useSheetApi } from "@/composables/api/useSheetApi";
 import { labToast } from "@/composables/shared/useLabToast.js";
 import { useWorkspaceTabs } from "@/composables/tabsmanager/useWorkspaceTabs";
@@ -178,7 +180,8 @@ const {
   reorderTabs, 
   setActiveTab: setActiveTabStore,
   closeTab: closeTabStore,
-  togglePinTab
+  togglePinTab,
+  removeRecentTemplate
 } = useWorkspaceTabs(props.apiType);
 
 const mountedTabIds = reactive(new Set());
@@ -194,6 +197,12 @@ watch(activeIdStore, (id) => {
 }, { immediate: true });
 
 const closeTab = (id) => {
+  const tab = activeTabs.value.find(t => t.id === id);
+  if (tab?.isPinned) {
+    labToast.info("Desfija la pestaña para poder cerrarla.");
+    return;
+  }
+
   closeTabStore(id);
   mountedTabIds.delete(id);
 };
@@ -213,7 +222,43 @@ onMounted(() => {
   if (props.activeId && props.activeId !== activeIdStore.value) {
     activeIdStore.value = props.activeId;
   }
+  window.addEventListener("sheet-deleted-externally", handleExternalDelete);
+  window.addEventListener("recent-template-cleanup", handleRecentCleanup);
 });
+
+onBeforeUnmount(() => {
+  window.removeEventListener("sheet-deleted-externally", handleExternalDelete);
+  window.removeEventListener("recent-template-cleanup", handleRecentCleanup);
+});
+
+const handleExternalDelete = (e) => {
+  const { sheetId } = e.detail;
+  
+  // Bloqueo de colisión: si YO estoy borrando esta planilla, ignoro el evento externo
+  // para evitar cerrar la pestaña prematuramente y causar errores de estado
+  if (deleting.value && selectedSheet.value?.id === sheetId) {
+    console.log(`[TabsManager] Ignorando evento externo de borrado para ${sheetId} (borrado local en curso)`);
+    return;
+  }
+
+  const idx = activeTabs.value.findIndex(t => t.id === sheetId);
+  if (idx >= 0) {
+    console.log(`[TabsManager] Closing tab ${sheetId} because it was deleted externally.`);
+    closeTab(sheetId);
+    removeRecentTemplate(sheetId);
+    if (activeIdStore.value === sheetId) {
+      emit("update:active", "nueva");
+    }
+  } else {
+    // Si no está abierta como pestaña, igual la quitamos de recientes
+    removeRecentTemplate(sheetId);
+  }
+};
+
+const handleRecentCleanup = (e) => {
+  const { sheetId } = e.detail;
+  removeRecentTemplate(sheetId);
+};
 
 watch(() => props.activeId, (newId) => {
   if (newId && newId !== activeIdStore.value) {
@@ -332,10 +377,6 @@ const handleInternalTabClick = (id) => {
   activeInternalTab.value = id;
   internalTabHistory.set(activeIdStore.value, id); // persistir elección por sheet
   emit("update:internal", id);
-  
-  // Feedback sutil del cambio de vista
-  const lbl = id.toLowerCase().includes('neg') ? 'Negativos (-)' : id.toLowerCase().includes('pos') ? 'Positivos (+)' : id;
-  labToast.info(`Vista: ${lbl}`, 1500);
 };
 
 /* ===================== Helpers ===================== */
@@ -742,6 +783,12 @@ const resetTrashStatus = () => {
 const softDelete = async () => {
   if (!selectedSheet.value || deleting.value) return;
 
+  // Bloqueo preventivo: no se puede eliminar si está fijada
+  if (selectedSheet.value.isPinned) {
+    labToast.warning("No se puede eliminar una planilla fijada. Desfíjala primero para poder enviarla a la papelera.");
+    return;
+  }
+
   deleting.value = true;
   trashStatus.value = "saving";
   trashStatusMessage.value = "Enviando a papelera…";
@@ -755,7 +802,15 @@ const softDelete = async () => {
     const updated = data?.data?.sheet || data?.data || null;
 
     const idx = activeTabs.value.findIndex((s) => s.id === id);
-    if (idx >= 0) activeTabs.value.splice(idx, 1);
+    if (idx >= 0) {
+      // Unpin if necessary to allow closure
+      if (activeTabs.value[idx].isPinned) {
+        togglePinTab(id);
+      }
+      closeTabStore(id);
+      // Eliminar de recientes local inmediatamente
+      await removeRecentTemplate(id);
+    }
 
     trashStatus.value = "saved";
     trashStatusMessage.value = "Enviada a papelera";
@@ -770,7 +825,8 @@ const softDelete = async () => {
   } catch (e) {
     console.error("[INV][UI] trash error:", e?.response?.data || e);
     trashStatus.value = "error";
-    trashStatusMessage.value = errMsg(e, "No se pudo enviar a papelera");
+    trashStatusMessage.value = "No se pudo enviar a la papelera.";
+    labToast.warning(trashStatusMessage.value);
     setTimeout(() => resetTrashStatus(), 2400);
   } finally {
     deleting.value = false;

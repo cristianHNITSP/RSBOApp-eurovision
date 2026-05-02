@@ -13,8 +13,11 @@
       <div class="media-content">
         <div class="content mb-0">
           <h4 class="action-title is-size-5 mb-1">Eliminar planilla</h4>
-          <p class="action-desc is-size-7">
+          <p v-if="!isPinned" class="action-desc is-size-7">
             Esta acción es irreversible. Se eliminarán todos los inventarios asociados.
+          </p>
+          <p v-else class="has-text-warning-dark has-text-weight-bold is-size-7 mt-2">
+            <i class="fas fa-info-circle"></i> No se puede eliminar una planilla fijada. Desfíjala primero desde la barra de pestañas.
           </p>
         </div>
 
@@ -69,7 +72,8 @@ import { ref } from "vue";
 
 defineProps({
   loading: { type: Boolean, default: false },
-  disabled: { type: Boolean, default: false }
+  disabled: { type: Boolean, default: false },
+  isPinned: { type: Boolean, default: false }
 });
 
 defineEmits(["confirm"]);

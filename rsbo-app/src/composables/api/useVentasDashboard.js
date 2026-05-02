@@ -17,7 +17,8 @@ export function useVentasDashboard(getUser) {
   const route  = useRoute();
   const router = useRouter();
 
-  // reactive() auto-unwraps nested Refs so template bindings receive plain values.
+  // Usamos reactive() para que las propiedades se "desenvuelvan" (unwrap) automáticamente,
+  // permitiendo que los componentes hijos reciban valores planos y no Refs en sus props.
   const strategies = reactive({
     'bases-micas':     useBasesMicasVentas(getUser),
     'optica':          useOpticaVentas(getUser),
@@ -25,7 +26,11 @@ export function useVentasDashboard(getUser) {
   });
 
   const activeTab = computed({
-    get: () => route.params.category || 'bases-micas',
+    get: () => {
+      const k = route.params.category;
+      const valid = VENTAS_TABS.map(t => t.key);
+      return valid.includes(k) ? k : 'bases-micas';
+    },
     set: (key) => {
       // If the name is defined in router, use it. Otherwise fallback.
       router.replace({ 

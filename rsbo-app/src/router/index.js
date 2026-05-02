@@ -1,6 +1,7 @@
 // src/router/index.js
 import { createRouter, createWebHistory } from "vue-router";
 import { sendRequest } from "../api/axios";
+import { initLabSocket } from "../composables/shared/useLabSocket.js";
 
 const routes = [
   {
@@ -162,6 +163,7 @@ router.beforeEach(async (to, from, next) => {
         window.location.href = "/admin/sso";
         return;
       }
+      initLabSocket();
       return next({ name: "home" });
     } catch {
       return next();
@@ -183,6 +185,7 @@ router.beforeEach(async (to, from, next) => {
       return;
     }
 
+    initLabSocket();
     return next();
   } catch (err) {
     const status = err?.response?.status;

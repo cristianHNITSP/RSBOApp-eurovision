@@ -45,8 +45,6 @@ export function useGridKeyboardShortcuts({
              event.preventDefault();
              if (dirty.value) {
                  onSave();
-             } else {
-                 labToast.info('No hay cambios pendientes.');
              }
         }
         return;
@@ -57,8 +55,6 @@ export function useGridKeyboardShortcuts({
         event.preventDefault(); // Evitar guardar página
         if (dirty.value) {
           onSave();
-        } else {
-          labToast.info('No hay cambios pendientes.');
         }
       } else if (key === 'z') {
         if (!event.shiftKey) {

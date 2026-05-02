@@ -40,6 +40,11 @@
           <div v-if="planilla.id === 'nueva'" class="tab-sentinel tab-menu-manager-wrapper">
             <TemplateMenuManager :api-type="apiType" />
           </div>
+
+          <!-- Papelera (Insertado tras el catálogo) -->
+          <div v-if="planilla.id === 'nueva'" class="tab-sentinel tab-menu-manager-wrapper ml-1">
+            <TrashMenuManager :api-type="apiType" :actor="actor" @restored="$emit('open-template', $event)" />
+          </div>
         </template>
       </div>
 
@@ -105,6 +110,7 @@
 import { ref, onMounted, onBeforeUnmount, watch, nextTick } from "vue";
 import Sortable from "sortablejs";
 import TemplateMenuManager from "./TemplateMenuManager.vue";
+import TrashMenuManager from "./TrashMenuManager.vue";
 
 const props = defineProps({
   sheets:       { type: Array,   required: true },
@@ -115,10 +121,11 @@ const props = defineProps({
   loadingMore:  { type: Boolean, default: false },
   loadingPrior: { type: Boolean, default: false },
   priorCount:   { type: Number,  default: 0 },
-  apiType:      { type: String,  default: "inventory" }
+  apiType:      { type: String,  default: "inventory" },
+  actor:        { type: Object,  default: null }
 });
 
-const emit = defineEmits(["tab-click", "open-actions", "load-more", "load-prior", "reorder", "close-tab", "toggle-pin"]);
+const emit = defineEmits(["tab-click", "open-actions", "load-more", "load-prior", "reorder", "close-tab", "toggle-pin", "open-template"]);
 
 const tabsContainer  = ref(null);
 const sortableZone   = ref(null);

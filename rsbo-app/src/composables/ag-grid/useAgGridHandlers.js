@@ -40,8 +40,27 @@ export function useAgGridHandlers({
       suppressNextWsRefresh();
       postMessage({ type: "ROWS_CHANGED" });
     } catch (e) {
-      console.error("[AgGridHandlers] Error saveChunk:", e?.response?.data || e);
-      ackErr(ack, msgFromErr(e, "Error al guardar cambios"), statusFromErr(e));
+      const status = statusFromErr(e);
+      const data = e?.response?.data;
+
+      if (status === 409 && Array.isArray(data?.conflicts)) {
+        const n = data.conflicts.length;
+        const applied = data.appliedCount ?? 0;
+        labToast.danger(
+          `${n} celda(s) cambiaron mientras editabas y no se aplicaron. ${applied} sí se guardaron. Recargando...`,
+          5000
+        );
+        pendingChanges.value.clear();
+        dirty.value = false;
+        gridHistory.clear();
+        unsavedGuard.clearStorage();
+        await loadAll();
+        ackErr(ack, data?.message || "Conflicto de stock", status);
+        return;
+      }
+
+      console.error("[AgGridHandlers] Error saveChunk:", data || e);
+      ackErr(ack, msgFromErr(e, "Error al guardar cambios"), status);
     } finally {
       saving.value = false;
     }

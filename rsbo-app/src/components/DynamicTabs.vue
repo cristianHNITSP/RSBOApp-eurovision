@@ -91,7 +91,7 @@ function select(tab) {
 
     <!-- ── Content with directional slide transition ── -->
     <div class="dyn-tabs__content">
-      <transition :name="slideDir" mode="out-in">
+      <transition :name="slideDir">
         <div :key="modelValue" class="dyn-tab-panel">
           <slot :name="String(modelValue)" />
         </div>
@@ -267,12 +267,12 @@ function select(tab) {
 }
 
 .slide-ltr-enter-from {
-  transform: translateX(28px);
+  transform: scale(1.02);
   opacity: 0;
 }
 
 .slide-ltr-leave-to {
-  transform: translateX(-28px);
+  transform: scale(0.98);
   opacity: 0;
 }
 
@@ -284,12 +284,12 @@ function select(tab) {
 }
 
 .slide-rtl-enter-from {
-  transform: translateX(-28px);
+  transform: scale(1.02);
   opacity: 0;
 }
 
 .slide-rtl-leave-to {
-  transform: translateX(28px);
+  transform: scale(0.98);
   opacity: 0;
 }
 

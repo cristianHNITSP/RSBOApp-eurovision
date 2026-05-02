@@ -6,8 +6,12 @@ const { body, param, validationResult } = require("express-validator");
 const LenteContacto   = require("../models/LenteContacto");
 const { logMovement } = require("../utils/logHelper");
 const { sanitizeMiddleware } = require("../utils/sanitizer");
+const { protect }          = require("../utils/auth");
+const { broadcast }   = require("../ws");
+const { handleAtomicSale } = require("../utils/saleHelper");
 
 const COLLECTION = "lentes";
+router.use(protect());
 const TEXT_FIELDS = ["sku", "marca", "nombre", "tipo", "color", "descripcion"];
 
 const validate = (req, res, next) => {
@@ -69,13 +73,15 @@ router.get("/:id", param("id").isMongoId(), validate, async (req, res) => {
 // POST /
 router.post("/", bodyRules, sanitizeMiddleware(TEXT_FIELDS), validate, async (req, res) => {
   try {
-    const { actor, ...fields } = req.body;
+    const fields = req.body;
+    const actor = req.user;
     const exists = await LenteContacto.findOne({ sku: fields.sku });
     if (exists) return res.status(409).json({ ok: false, error: `SKU "${fields.sku}" ya existe` });
 
     const item = await LenteContacto.create(fields);
     console.log(`[OPTICA][LENTES] POST / → Creado SKU ${item.sku} por ${actor?.name || "Sistema"}`);
     await logMovement(COLLECTION, item._id, item.sku, "CREATE", { fields }, actor);
+    broadcast("INV_CHANGE", { collection: COLLECTION });
     return res.status(201).json({ ok: true, data: item.toJSON() });
   } catch (err) {
     console.error("[OPTICA][LENTES] POST / error:", err);
@@ -86,7 +92,8 @@ router.post("/", bodyRules, sanitizeMiddleware(TEXT_FIELDS), validate, async (re
 // PUT /:id
 router.put("/:id", param("id").isMongoId(), bodyRules, sanitizeMiddleware(TEXT_FIELDS), validate, async (req, res) => {
   try {
-    const { actor, ...fields } = req.body;
+    const fields = req.body;
+    const actor = req.user;
     const item = await LenteContacto.findById(req.params.id);
     if (!item) return res.status(404).json({ ok: false, error: "No encontrado" });
     if (item.isDeleted) return res.status(410).json({ ok: false, error: "Elemento en papelera" });
@@ -99,6 +106,7 @@ router.put("/:id", param("id").isMongoId(), bodyRules, sanitizeMiddleware(TEXT_F
     await item.save();
     console.log(`[OPTICA][LENTES] PUT /${req.params.id} → SKU ${item.sku} por ${actor?.name || "Sistema"}`);
     await logMovement(COLLECTION, item._id, item.sku, "UPDATE", { before, after: item.toJSON() }, actor);
+    broadcast("INV_CHANGE", { collection: COLLECTION, id: String(item._id), newStock: item.stock });
     return res.json({ ok: true, data: item.toJSON() });
   } catch (err) {
     return res.status(500).json({ ok: false, error: err.message });
@@ -108,7 +116,8 @@ router.put("/:id", param("id").isMongoId(), bodyRules, sanitizeMiddleware(TEXT_F
 // PATCH /:id/stock
 router.patch("/:id/stock", param("id").isMongoId(), body("stock").isInt({ min: 0 }), validate, async (req, res) => {
   try {
-    const { stock, actor } = req.body;
+    const { stock } = req.body;
+    const actor = req.user;
     const item = await LenteContacto.findById(req.params.id);
     if (!item) return res.status(404).json({ ok: false, error: "No encontrado" });
     if (item.isDeleted) return res.status(410).json({ ok: false, error: "Elemento en papelera" });
@@ -116,8 +125,29 @@ router.patch("/:id/stock", param("id").isMongoId(), body("stock").isInt({ min: 0
     item.stock = stock;
     await item.save();
     await logMovement(COLLECTION, item._id, item.sku, "STOCK_UPDATE", { prevStock, newStock: stock }, actor);
+    broadcast("INV_CHANGE", {
+      collection: COLLECTION,
+      id: String(item._id),
+      prevStock,
+      newStock: stock,
+      delta: stock - prevStock,
+    });
     return res.json({ ok: true, data: item.toJSON() });
   } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ── POST /lentes/:id/sale — Venta atómica ───────────────────────────────────
+router.post("/:id/sale", param("id").isMongoId(), body("qty").optional().isInt({ min: 1 }), validate, async (req, res) => {
+  try {
+    const qty = req.body.qty || 1;
+    const actor = req.user;
+    const result = await handleAtomicSale(LenteContacto, COLLECTION, req.params.id, qty, actor);
+    if (!result.ok) return res.status(result.status).json({ ok: false, error: result.message, current: result.current });
+    return res.json({ ok: true, data: result.data });
+  } catch (err) {
+    console.error(`[OPTICA][${COLLECTION.toUpperCase()}] SALE error:`, err);
     return res.status(500).json({ ok: false, error: err.message });
   }
 });
@@ -125,7 +155,7 @@ router.patch("/:id/stock", param("id").isMongoId(), body("stock").isInt({ min: 0
 // DELETE /:id — soft
 router.delete("/:id", param("id").isMongoId(), validate, async (req, res) => {
   try {
-    const actor = req.body?.actor || {};
+    const actor = req.user;
     const item  = await LenteContacto.findById(req.params.id);
     if (!item) return res.status(404).json({ ok: false, error: "No encontrado" });
     if (item.isDeleted) return res.status(410).json({ ok: false, error: "Ya está en papelera" });
@@ -135,6 +165,7 @@ router.delete("/:id", param("id").isMongoId(), validate, async (req, res) => {
     await item.save();
     console.log(`[OPTICA][LENTES] DELETE /${req.params.id} (soft) → SKU ${item.sku}`);
     await logMovement(COLLECTION, item._id, item.sku, "SOFT_DELETE", { sku: item.sku }, actor);
+    broadcast("INV_CHANGE", { collection: COLLECTION });
     return res.json({ ok: true, message: "Movido a papelera" });
   } catch (err) {
     return res.status(500).json({ ok: false, error: err.message });
@@ -144,7 +175,7 @@ router.delete("/:id", param("id").isMongoId(), validate, async (req, res) => {
 // DELETE /:id/hard
 router.delete("/:id/hard", param("id").isMongoId(), validate, async (req, res) => {
   try {
-    const actor = req.body?.actor || {};
+    const actor = req.user;
     const item  = await LenteContacto.findById(req.params.id);
     if (!item) return res.status(404).json({ ok: false, error: "No encontrado" });
     const snapshot = { sku: item.sku, marca: item.marca, nombre: item.nombre };
@@ -160,7 +191,7 @@ router.delete("/:id/hard", param("id").isMongoId(), validate, async (req, res) =
 // PATCH /:id/restore
 router.patch("/:id/restore", param("id").isMongoId(), validate, async (req, res) => {
   try {
-    const actor = req.body?.actor || {};
+    const actor = req.user;
     const item  = await LenteContacto.findById(req.params.id);
     if (!item) return res.status(404).json({ ok: false, error: "No encontrado" });
     if (!item.isDeleted) return res.status(400).json({ ok: false, error: "No está en papelera" });
@@ -170,6 +201,7 @@ router.patch("/:id/restore", param("id").isMongoId(), validate, async (req, res)
     await item.save();
     console.log(`[OPTICA][LENTES] PATCH /${req.params.id}/restore → SKU ${item.sku} restaurado`);
     await logMovement(COLLECTION, item._id, item.sku, "RESTORE", { sku: item.sku }, actor);
+    broadcast("INV_CHANGE", { collection: COLLECTION });
     return res.json({ ok: true, data: item.toJSON(), message: "Restaurado correctamente" });
   } catch (err) {
     return res.status(500).json({ ok: false, error: err.message });

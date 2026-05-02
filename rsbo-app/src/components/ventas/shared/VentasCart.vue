@@ -21,8 +21,8 @@
     <div class="panel__body">
       <b-field label="Cliente *" class="mb-3">
         <b-autocomplete
-          :value="cartCliente"
-          @input="$emit('update:cartCliente', $event)"
+          :model-value="cartCliente"
+          @update:model-value="$emit('update:cartCliente', $event)"
           :data="clienteSuggestions"
           field="nombre"
           placeholder="Buscar cliente o escribir nombre…"
@@ -51,8 +51,8 @@
 
       <b-field label="Notas" class="mb-3">
         <b-input
-          :value="cartNote"
-          @input="$emit('update:cartNote', $event)"
+          :model-value="cartNote"
+          @update:model-value="$emit('update:cartNote', $event)"
           placeholder="Observaciones (opcional)"
           icon="sticky-note"
         />
@@ -67,8 +67,8 @@
           <div class="column">
             <b-field label="Nombre(s)" class="mb-2">
               <b-input 
-                :value="cartClienteNombres" 
-                @input="$emit('update:cartClienteNombres', $event)" 
+                :model-value="cartClienteNombres" 
+                @update:model-value="$emit('update:cartClienteNombres', $event)" 
                 placeholder="Nombre(s)" size="is-small" 
               />
             </b-field>
@@ -76,8 +76,8 @@
           <div class="column">
             <b-field label="Apellidos" class="mb-2">
               <b-input 
-                :value="cartClienteApellidos" 
-                @input="$emit('update:cartClienteApellidos', $event)" 
+                :model-value="cartClienteApellidos" 
+                @update:model-value="$emit('update:cartClienteApellidos', $event)" 
                 placeholder="Apellidos" size="is-small" 
               />
             </b-field>
@@ -87,8 +87,8 @@
           <div class="column">
             <b-field label="Empresa" class="mb-0">
               <b-input 
-                :value="cartClienteEmpresa" 
-                @input="$emit('update:cartClienteEmpresa', $event)" 
+                :model-value="cartClienteEmpresa" 
+                @update:model-value="$emit('update:cartClienteEmpresa', $event)" 
                 placeholder="Empresa" size="is-small" icon="building" 
               />
             </b-field>
@@ -96,8 +96,8 @@
           <div class="column">
             <b-field label="Contacto" class="mb-0">
               <b-input 
-                :value="cartClienteContacto" 
-                @input="$emit('update:cartClienteContacto', $event)" 
+                :model-value="cartClienteContacto" 
+                @update:model-value="$emit('update:cartClienteContacto', $event)" 
                 placeholder="Tel / Email" size="is-small" icon="phone" 
               />
             </b-field>
@@ -112,8 +112,8 @@
           <b-checkbox
             v-for="op in PAGO_OPCIONES"
             :key="op.value"
-            :value="cartPago"
-            @input="$emit('update:cartPago', $event)"
+            :model-value="cartPago"
+            @update:model-value="$emit('update:cartPago', $event)"
             :native-value="op.value"
             size="is-small"
           >
@@ -132,11 +132,11 @@
       </div>
 
       <!-- Items del carrito -->
-      <div v-else class="order-lines">
+      <transition-group v-else name="cart-item-anim" tag="div" class="cart__items">
         <div
           v-for="ci in cartItems"
           :key="ci.key"
-          class="order-line"
+          class="cart-item"
         >
           <div class="order-line__top">
             <div>
@@ -176,20 +176,22 @@
             <span class="stock-hint">stock: {{ ci.row.existencias }}</span>
           </div>
         </div>
-      </div>
+      </transition-group>
 
       <hr class="soft-hr" />
 
       <!-- Total -->
-      <div class="ventas-cart-summary">
-        <span class="muted">Total piezas:</span>
-        <span class="ventas-cart-summary__val">{{ cartTotal }}</span>
-      </div>
-      <div v-if="cartTotalMonto > 0" class="ventas-cart-summary mt-1">
-        <span class="muted">Total:</span>
-        <span class="ventas-cart-summary__val" style="font-size:1.05rem">
-          ${{ cartTotalMonto.toFixed(2) }} MXN
-        </span>
+      <div class="cart__summary liquid-glass">
+        <div class="ventas-cart-summary">
+          <span class="muted">Total piezas:</span>
+          <span class="ventas-cart-summary__val">{{ cartTotal }}</span>
+        </div>
+        <div v-if="cartTotalMonto > 0" class="ventas-cart-summary mt-1">
+          <span class="muted">Total:</span>
+          <span class="ventas-cart-summary__val" style="font-size:1.05rem">
+            ${{ cartTotalMonto.toFixed(2) }} MXN
+          </span>
+        </div>
       </div>
 
       <b-button
@@ -198,7 +200,7 @@
         expanded
         :loading="loadingSale"
         :disabled="!cartItems.length || !cartCliente.trim()"
-        class="mt-3"
+        class="mt-3 premium-btn"
         @click="$emit('checkout')"
       >
         {{ kind === 'lab' ? 'Enviar a Laboratorio' : 'Cobrar y Entregar' }}

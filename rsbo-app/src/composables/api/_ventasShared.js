@@ -15,6 +15,7 @@
 export const normTxt = (s) =>
   String(s || "")
     .trim()
+    .replace(/<[^>]*>?/gm, "") // Eliminar etiquetas HTML
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();

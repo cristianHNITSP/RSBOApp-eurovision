@@ -76,7 +76,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onActivated, toRef } from 'vue'
+import { ref, computed, onMounted, onActivated, toRef, onUnmounted } from 'vue'
 import DynamicTabs from '@/components/DynamicTabs.vue'
 
 import AnaliticasKpiGrid from '@/components/dashboard/AnaliticasKpiGrid.vue'
@@ -118,8 +118,35 @@ const AN_TABS = computed(() => {
   return tabs
 })
 
-onMounted(() => { loadStats() })
+// ── Real-time Refresh (WS) ───────────────────────────────────────────────────
+let _wsRefreshTimer = null
+function debouncedRefresh() {
+  clearTimeout(_wsRefreshTimer)
+  _wsRefreshTimer = setTimeout(() => loadStats(true), 2000)
+}
+
+function onLabWs(e) {
+  const type = e?.detail?.type
+  const relevantTypes = [
+    'LAB_ORDER_CREATE', 'LAB_ORDER_CANCEL', 'LAB_ORDER_SCAN', 
+    'LAB_ORDER_RESET', 'LAB_ORDER_CLOSE', 'STOCK_ALERT', 
+    'INVENTORY_CHUNK_SAVED'
+  ]
+  if (relevantTypes.includes(type)) {
+    debouncedRefresh()
+  }
+}
+
+onMounted(() => { 
+  loadStats();
+  window.addEventListener('lab:ws', onLabWs);
+})
 onActivated(() => { loadStats() })
+
+onUnmounted(() => {
+  window.removeEventListener('lab:ws', onLabWs)
+  clearTimeout(_wsRefreshTimer)
+})
 
 // ── Role meta ──
 const roleMeta = {

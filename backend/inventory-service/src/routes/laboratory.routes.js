@@ -11,6 +11,7 @@ const MatrixBifocal = require("../models/matrix/MatrixBifocal");
 const MatrixProgresivo = require("../models/matrix/MatrixProgresivo");
 const LaboratoryOrder = require("../models/laboratory/LaboratoryOrder");
 const LaboratoryEvent = require("../models/laboratory/LaboratoryEvent");
+const { protect } = require("../utils/auth");
 
 const { notifyPendingOrders, notifyNewOrder, notifyCorrection } = require("../services/labNotification.service");
 const { actorFromBody, sanitizeString } = require("../inventory/utils/normalize");
@@ -190,6 +191,8 @@ async function applyEntryToInventory(sheet, loc, qty, actor) {
 // ============================================================================
 // ROUTES
 // ============================================================================
+
+router.use(protect());
 
 router.get("/events", handleValidation, async (req, res) => {
   try {

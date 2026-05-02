@@ -14,7 +14,7 @@
 "use strict";
 
 const router = require("express").Router();
-const jwt    = require("jsonwebtoken");
+const { protect } = require("../utils/auth");
 
 const Devolution      = require("../models/Devolution");
 const LaboratoryOrder = require("../models/laboratory/LaboratoryOrder");
@@ -35,25 +35,7 @@ const ROLES_CREATE  = ["root", "eurovision", "supervisor", "ventas"];
 const ROLES_ADMIN   = ["root", "eurovision"];
 
 // ─── Auth middleware ──────────────────────────────────────────────────────────
-function requireAuth(allowedRoles) {
-  return (req, res, next) => {
-    try {
-      const token =
-        req.cookies?.auth_token ||
-        (req.headers.authorization || "").replace("Bearer ", "");
-      if (!token) return res.status(401).json({ ok: false, error: "No autenticado" });
-
-      const payload = jwt.verify(token, JWT_SECRET);
-      if (allowedRoles && !allowedRoles.includes(payload.roleName)) {
-        return res.status(403).json({ ok: false, error: "Sin permisos para esta acción" });
-      }
-      req.user = payload;
-      next();
-    } catch {
-      res.status(401).json({ ok: false, error: "Token inválido o expirado" });
-    }
-  };
-}
+const requireAuth = (allowedRoles) => protect(allowedRoles);
 
 // ─── Generador de folio ───────────────────────────────────────────────────────
 async function generateFolio() {

@@ -13,33 +13,20 @@
  */
 
 const router = require('express').Router();
-const jwt    = require('jsonwebtoken');
+const { protect } = require('../utils/auth');
+
 const CatalogBase      = require('../models/CatalogBase');
 const CatalogTreatment = require('../models/CatalogTreatment');
 const InventorySheet   = require('../models/InventorySheet');
 const ContactLensesSheet = require('../models/ContactLensesSheet');
 
-const JWT_SECRET    = process.env.JWT_SECRET || 'dev_secret';
 const ADMIN_ROLES   = ['root', 'eurovision'];
 
 // ── Auth middleware (only for write operations) ──────────────────────────────
-function requireAdmin(req, res, next) {
-  try {
-    const token = req.cookies?.auth_token || (req.headers.authorization || '').replace('Bearer ', '');
-    if (!token) return res.status(401).json({ error: 'No autenticado' });
-    const payload = jwt.verify(token, JWT_SECRET);
-    if (!ADMIN_ROLES.includes(payload.roleName)) {
-      return res.status(403).json({ error: 'Acceso restringido a administradores' });
-    }
-    req.user = payload;
-    next();
-  } catch {
-    res.status(401).json({ error: 'Token inválido o expirado' });
-  }
-}
+const requireAdmin = protect(ADMIN_ROLES);
 
 // ── GET /api/catalog ─────────────────────────────────────────────────────────
-router.get('/', async (_req, res) => {
+router.get('/', protect(), async (_req, res) => {
   try {
     const [bases, treatments] = await Promise.all([
       CatalogBase.find({ activo: true }).sort({ orden: 1 }).lean(),
@@ -53,7 +40,7 @@ router.get('/', async (_req, res) => {
 });
 
 // ── GET /api/catalog/bases ───────────────────────────────────────────────────
-router.get('/bases', async (_req, res) => {
+router.get('/bases', protect(), async (_req, res) => {
   try {
     const bases = await CatalogBase.find({ activo: true }).sort({ orden: 1 }).lean();
     res.json({ ok: true, data: bases });
@@ -63,7 +50,7 @@ router.get('/bases', async (_req, res) => {
 });
 
 // ── GET /api/catalog/treatments ──────────────────────────────────────────────
-router.get('/treatments', async (_req, res) => {
+router.get('/treatments', protect(), async (_req, res) => {
   try {
     const treatments = await CatalogTreatment.find({ activo: true }).sort({ orden: 1 }).lean();
     res.json({ ok: true, data: treatments });
@@ -73,7 +60,7 @@ router.get('/treatments', async (_req, res) => {
 });
 
 // ── GET /api/catalog/vendors ─────────────────────────────────────────────────
-router.get('/vendors', async (_req, res) => {
+router.get('/vendors', protect(), async (_req, res) => {
   try {
     const [invProv, invMarca, clProv, clMarca] = await Promise.all([
       InventorySheet.distinct('proveedor.name', { 'proveedor.name': { $ne: null, $ne: '' } }),

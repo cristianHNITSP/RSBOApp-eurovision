@@ -12,6 +12,7 @@
 
 const router = require("express").Router();
 const { cacheMiddleware, KEYS } = require("../services/redis");
+const { protect } = require("../utils/auth");
 
 const InventorySheet    = require("../models/InventorySheet");
 const MatrixBase        = require("../models/matrix/MatrixBase");
@@ -79,7 +80,7 @@ function aggregateCells(doc, tipo) {
 
 // ─── GET /api/stats/dashboard ────────────────────────────────────────────────
 
-router.get("/dashboard", cacheMiddleware(KEYS.stats, 45), async (_req, res) => {
+router.get("/dashboard", protect(), cacheMiddleware(KEYS.stats, 45), async (_req, res) => {
   try {
     const today = todayStart();
     const d30   = daysAgo(30);

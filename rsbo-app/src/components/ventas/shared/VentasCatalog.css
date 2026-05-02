@@ -1,21 +1,44 @@
-/* ── Table ── */
-.nice-table :deep(.table) { border-radius: 14px; overflow: hidden; }
+.nice-table :deep(.table) { 
+  border-radius: 18px; 
+  overflow: hidden; 
+  background: transparent;
+  border: none;
+}
+
 .nice-table :deep(.table thead th) {
-  background: var(--c-primary-alpha);
+  background: linear-gradient(180deg, var(--c-primary-alpha), rgba(144, 111, 225, 0.05));
+  backdrop-filter: blur(8px);
   color: var(--text-primary);
   font-weight: 1000;
   border: none;
+  padding: 1.15rem 0.85rem;
+  border-bottom: 1px solid var(--border);
 }
-.nice-table :deep(.table td) { vertical-align: middle; }
+
+.nice-table :deep(.table tbody tr) {
+  transition: all var(--transition-base);
+}
+
+.nice-table :deep(.table tbody tr:hover) {
+  background: var(--c-primary-alpha) !important;
+  box-shadow: inset 4px 0 0 var(--c-primary);
+}
+
+.nice-table :deep(.table td) { 
+  vertical-align: middle; 
+  border-bottom: 1px solid var(--border-light);
+  padding: 0.85rem 0.75rem;
+}
 
 .qty-pill {
   display: inline-flex;
-  min-width: 48px;
+  min-width: 52px;
   justify-content: center;
-  border-radius: 999px;
-  padding: 0.25rem 0.6rem;
-  font-weight: 1000;
+  border-radius: 12px;
+  padding: 0.35rem 0.75rem;
+  font-weight: 950;
   border: 1px solid var(--border);
+  transition: all 0.2s ease;
 }
 .qty-pill--ok   { background: var(--c-success-alpha); border-color: var(--c-success-alpha); }
 .qty-pill--zero { background: var(--c-danger-alpha);  border-color: var(--c-danger-alpha); }

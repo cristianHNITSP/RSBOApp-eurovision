@@ -110,7 +110,7 @@
                 </div>
                 <div v-if="e.micaSummary" class="log-card__mica-summary">
                   <span v-for="(qty, type) in e.micaSummary" :key="type" class="mica-chip">
-                    {{ type }}: {{ qty }}
+                    {{ lab.getMicaTypeName(type) }}: {{ qty }}
                   </span>
                 </div>
               </div>

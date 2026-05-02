@@ -61,6 +61,8 @@ router.put("/pinned", authMiddleware, csrfProtection, async (req, res) => {
 router.patch("/recent", authMiddleware, csrfProtection, async (req, res) => {
   try {
     const { template, context = "inventory" } = req.body;
+    console.log(`[preferences.routes] PATCH /recent | context: ${context} | templateId: ${template?.id}`);
+    
     if (!template?.id) return res.status(400).json({ ok: false, message: "Template ID required" });
 
     let prefs = await UserWorkspacePreferences.findOne({ userId: req.user.id, context });
@@ -68,27 +70,39 @@ router.patch("/recent", authMiddleware, csrfProtection, async (req, res) => {
       prefs = new UserWorkspacePreferences({ userId: req.user.id, context, recent_templates: [] });
     }
 
-    // Update LRU logic
-    const idx = prefs.recent_templates.findIndex(t => t.id === template.id);
-    if (idx !== -1) prefs.recent_templates.splice(idx, 1);
-    
-    prefs.recent_templates.unshift({
+    const newEntry = {
       id: template.id,
       name: template.name,
       sku: template.sku,
       tipo_matriz: template.tipo_matriz,
       lastModified: new Date()
-    });
+    };
 
-    // Limit to 20
-    if (prefs.recent_templates.length > 20) {
-      prefs.recent_templates.pop();
-    }
+    // 1. Remove existing to maintain LRU (atomic)
+    await UserWorkspacePreferences.updateOne(
+      { userId: req.user.id, context },
+      { $pull: { recent_templates: { id: template.id } } }
+    );
 
-    await prefs.save();
-    res.json({ ok: true, data: prefs });
+    // 2. Add to front and slice to limit (atomic)
+    const updatedPrefs = await UserWorkspacePreferences.findOneAndUpdate(
+      { userId: req.user.id, context },
+      { 
+        $push: { 
+          recent_templates: { 
+            $each: [newEntry], 
+            $position: 0, 
+            $slice: 20 
+          } 
+        } 
+      },
+      { new: true, upsert: true }
+    );
+
+    console.log(`[preferences.routes] PATCH /recent success | total recents: ${updatedPrefs.recent_templates.length}`);
+    res.json({ ok: true, data: updatedPrefs });
   } catch (error) {
-    console.error("[preferences.routes] Error:", error);
+    console.error("[preferences.routes] PATCH /recent Error:", error);
     res.status(500).json({ ok: false, message: error.message });
   }
 });
@@ -172,10 +186,6 @@ router.post("/open-tabs", authMiddleware, csrfProtection, async (req, res) => {
     const { tab, context = "inventory" } = req.body;
     if (!tab?.id) return res.status(400).json({ ok: false, message: "tab.id is required" });
 
-    const prefs = await UserWorkspacePreferences.findOne({ userId: req.user.id, context });
-    const target = prefs || new UserWorkspacePreferences({ userId: req.user.id, context, open_tabs: [] });
-
-    const idx = target.open_tabs.findIndex((t) => t.id === tab.id);
     const next = {
       id: tab.id,
       name: tab.name,
@@ -186,13 +196,22 @@ router.post("/open-tabs", authMiddleware, csrfProtection, async (req, res) => {
       pinned_at: tab.pinned_at ? new Date(tab.pinned_at) : (tab.is_pinned ? new Date() : null)
     };
 
-    if (idx !== -1) target.open_tabs[idx] = { ...target.open_tabs[idx], ...next };
-    else target.open_tabs.push(next);
+    // 1. Remove existing if any (atomic)
+    await UserWorkspacePreferences.updateOne(
+      { userId: req.user.id, context },
+      { $pull: { open_tabs: { id: tab.id } } }
+    );
 
-    await target.save();
-    res.json({ ok: true, data: target });
+    // 2. Add new/updated entry (atomic)
+    const updatedPrefs = await UserWorkspacePreferences.findOneAndUpdate(
+      { userId: req.user.id, context },
+      { $push: { open_tabs: next } },
+      { new: true, upsert: true }
+    );
+
+    res.json({ ok: true, data: updatedPrefs });
   } catch (error) {
-    console.error("[preferences.routes] Error:", error);
+    console.error("[preferences.routes] POST /open-tabs Error:", error);
     res.status(500).json({ ok: false, message: error.message });
   }
 });

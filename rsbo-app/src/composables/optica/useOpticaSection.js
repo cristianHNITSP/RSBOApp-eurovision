@@ -1,4 +1,4 @@
-import { reactive, ref } from "vue";
+import { reactive, ref, onMounted, onBeforeUnmount } from "vue";
 import { labToast } from "@/composables/shared/useLabToast.js";
 
 const _lastLoadedAt = ref(0);
@@ -35,9 +35,9 @@ export function useOpticaSection(SVC) {
   /**
    * Carga una sección específica.
    */
-  async function load(key) {
+  async function load(key, silent = false) {
     const s = sec[key];
-    s.loading = true;
+    if (!silent) s.loading = true;
     s.selected = null;
     try {
       const res = s.showTrash
@@ -86,6 +86,52 @@ export function useOpticaSection(SVC) {
     sec[key].showTrash = !sec[key].showTrash;
     load(key);
   }
+
+  // ── WebSocket Listener ──
+  const WS_REFRESH_TYPES = new Set([
+    "INVENTORY_CHUNK_SAVED",
+    "INV_CHANGE",
+  ]);
+
+  let _wsTimer = null;
+  function _onWs(e) {
+    const type = e?.detail?.type;
+    if (!WS_REFRESH_TYPES.has(type)) return;
+    
+    const payload = e?.detail?.payload || {};
+    const col = payload.collection;
+    
+    console.log(`[WS][OPTICA-INV] Event: ${type}`, payload);
+
+    if (type === "INV_CHANGE" && payload.id && typeof payload.newStock === "number") {
+      const itemId = String(payload.id);
+      const item = sec[col]?.items.find(i => String(i._id || i.id || "") === itemId);
+      
+      if (item) {
+        console.log(`[WS][OPTICA-INV] Surgical update: ${itemId} -> ${payload.newStock}`);
+        item.stock = payload.newStock;
+        return;
+      }
+    }
+
+    if (col && !sec[col]) return;
+
+    clearTimeout(_wsTimer);
+    _wsTimer = setTimeout(() => {
+      console.log(`[WS][OPTICA-INV] Fallback reload: ${col || 'all'}`);
+      if (col) load(col, true);
+      else loadAll({ force: true });
+    }, 1500);
+  }
+
+  onMounted(() => {
+    window.addEventListener("lab:ws", _onWs);
+  });
+
+  onBeforeUnmount(() => {
+    window.removeEventListener("lab:ws", _onWs);
+    clearTimeout(_wsTimer);
+  });
 
   return {
     sec,

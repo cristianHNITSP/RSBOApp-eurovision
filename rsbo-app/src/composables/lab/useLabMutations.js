@@ -130,9 +130,11 @@ export function useLabMutations({ getUser, sheets, items, orders, events, notify
   }
 
   async function scanAndDispatch() {
+    if (loadingScan.value) return;
     const order = orders.selectedOrder.value;
     if (!order?.id) return;
-    const cb = String(scanCode.value || "").trim();
+    // Sanitización: Solo dejar caracteres alfanuméricos
+    const cb = String(scanCode.value || "").trim().replace(/[^a-zA-Z0-9]/g, "");
     if (!cb) return;
 
     loadingScan.value = true;

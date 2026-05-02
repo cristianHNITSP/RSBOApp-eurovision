@@ -254,8 +254,9 @@ function markChanged(data, field, newValue, _oldValue) {
   const prev = pendingChanges.value.get(key);
   const oldVal = _oldValue ?? prev?.existencias ?? 0;
   const newVal = Number(newValue ?? 0);
+  const baseline = prev?.baseline ?? Number(oldVal ?? 0);
 
-  pendingChanges.value.set(key, { sph: s, cyl: -cDisp, axis: deg, existencias: newVal });
+  pendingChanges.value.set(key, { sph: s, cyl: -cDisp, axis: deg, existencias: newVal, baseline });
   dirty.value = true;
 
   if (!gridHistory.isApplying.value) {
@@ -549,7 +550,9 @@ function applyGridHistoryOp(op) {
     const node = gridApi.value?.getRowNode(String(sph));
     if (node) { node.setData({ ...cached }); gridApi.value?.refreshCells({ rowNodes: [node], force: true }); }
   }
-  pendingChanges.value.set(op.key, { sph, cyl: -Number(cylDispStr), axis: Number(degStr), existencias: value });
+  const prev = pendingChanges.value.get(op.key);
+  const baseline = prev?.baseline ?? Number(op.oldValue ?? 0);
+  pendingChanges.value.set(op.key, { sph, cyl: -Number(cylDispStr), axis: Number(degStr), existencias: value, baseline });
   dirty.value = pendingChanges.value.size > 0;
 }
 const handleGridUndo = () => applyGridHistoryOp(gridHistory.undo());

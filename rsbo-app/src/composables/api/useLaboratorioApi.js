@@ -74,9 +74,6 @@ export function useLaboratorioApi(getUser) {
     initLabSocket();
     await Promise.all([sheets.loadSheets(), orders.loadOrders(), events.loadEvents()]);
     await items.loadItems();
-    if (orders.selectedOrderId.value) {
-      await events.loadOrderEvents(orders.selectedOrderId.value);
-    }
     window.addEventListener("lab:ws", _onWsEvent);
   });
 

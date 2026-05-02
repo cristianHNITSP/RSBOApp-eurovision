@@ -6,12 +6,12 @@ const { body, param, validationResult, oneOf } = require("express-validator");
 // Models — se usan los MISMOS nombres de variable que inventory.routes
 // para reutilizar todos los servicios (seed, chunkApply, etc.) sin cambios
 const ContactLensesSheet = require("../models/ContactLensesSheet");
-const InventoryChangeLog  = require("../models/InventoryChangeLog");
-const MatrixBase           = require("../models/contactlenses/CLMatrixEsferico");
-const MatrixSphCyl         = require("../models/contactlenses/CLMatrixColorido");
-const MatrixBifocal        = require("../models/contactlenses/CLMatrixTorico");      // legacy SPH_ADD (unused for CL now)
-const MatrixTorico         = require("../models/contactlenses/CLMatrixTorico");      // SPH_CYL_AXIS
-const MatrixProgresivo     = require("../models/contactlenses/CLMatrixMultifocal");
+const InventoryChangeLog = require("../models/InventoryChangeLog");
+const MatrixBase = require("../models/contactlenses/CLMatrixEsferico");
+const MatrixSphCyl = require("../models/contactlenses/CLMatrixColorido");
+const MatrixBifocal = require("../models/contactlenses/CLMatrixTorico");      // legacy SPH_ADD (unused for CL now)
+const MatrixTorico = require("../models/contactlenses/CLMatrixTorico");      // SPH_CYL_AXIS
+const MatrixProgresivo = require("../models/contactlenses/CLMatrixMultifocal");
 
 // Inventory modules (100% reutilizables, sin cambios)
 const PHYSICAL_LIMITS = require("../inventory/constants/physicalLimits");
@@ -34,6 +34,7 @@ const {
   applyChunkTorico
 } = require("../inventory/services/chunkApply.service");
 const { maybeExtendMetaRangesFromRows } = require("../inventory/services/metaRangesExtend.service");
+const { broadcast } = require("../ws");
 const { cacheMiddleware, invalidatePattern, cacheDel, KEYS } = require("../services/redis");
 
 // ===================== DEBUG =====================
@@ -131,86 +132,93 @@ router.get("/",
     const q = encodeURIComponent(req.query.q || "");
     const f = req.query.focusId || "";
     const d = req.query.includeDeleted || "false";
-    return `inv:contactlenses:sheets:${p}:${l}:${q}:${f}:${d}`;
+    const od = req.query.onlyDeleted || "false";
+    return `inv:contactlenses:sheets:${p}:${l}:${q}:${f}:${d}:${od}`;
   }, 30),
   async (req, res) => {
-  try {
-    const includeDeleted = String(req.query.includeDeleted) === "true";
-    const q = String(req.query.q || "").trim();
-    const focusId = String(req.query.focusId || "").trim();
-    const limit = Math.min(Math.max(parseInt(req.query.limit) || 6, 1), 50);
+    try {
+      const includeDeleted = String(req.query.includeDeleted) === "true";
+      const onlyDeleted = String(req.query.onlyDeleted) === "true";
+      const q = String(req.query.q || "").trim();
+      const focusId = String(req.query.focusId || "").trim();
+      const limit = Math.min(Math.max(parseInt(req.query.limit) || 6, 1), 50);
 
-    const dbQuery = includeDeleted ? {} : { isDeleted: { $ne: true } };
+      let dbQuery = {};
+      if (onlyDeleted) {
+        dbQuery = { isDeleted: true };
+      } else if (!includeDeleted) {
+        dbQuery = { isDeleted: { $ne: true } };
+      }
 
-    if (q) {
-      const rx = new RegExp(escapeRegExp(q), "i");
-      dbQuery.$or = [
-        { sku: rx },
-        { nombre: rx },
-        { material: rx },
-        { baseKey: rx },
-        { tratamientos: rx },
-        { tratamiento: rx },
-        { variante: rx },
-        { numFactura: rx },
-        { loteProducto: rx },
-        { "proveedor.name": rx },
-        { "marca.name": rx }
-      ];
-    }
+      if (q) {
+        const rx = new RegExp(escapeRegExp(q), "i");
+        dbQuery.$or = [
+          { sku: rx },
+          { nombre: rx },
+          { material: rx },
+          { baseKey: rx },
+          { tratamientos: rx },
+          { tratamiento: rx },
+          { variante: rx },
+          { numFactura: rx },
+          { loteProducto: rx },
+          { "proveedor.name": rx },
+          { "marca.name": rx }
+        ];
+      }
 
-    if (req.query.sku) dbQuery.sku = String(req.query.sku).trim().toUpperCase();
+      if (req.query.sku) dbQuery.sku = String(req.query.sku).trim().toUpperCase();
 
-    const SORT = { updatedAt: -1, createdAt: -1 };
-    const total = await ContactLensesSheet.countDocuments(dbQuery);
-    const totalPages = Math.max(Math.ceil(total / limit), 1);
+      const SORT = { updatedAt: -1, createdAt: -1 };
+      const total = await ContactLensesSheet.countDocuments(dbQuery);
+      const totalPages = Math.max(Math.ceil(total / limit), 1);
 
-    // When focusId provided, find which page contains that sheet
-    let page = Math.max(parseInt(req.query.page) || 1, 1);
-    if (focusId) {
-      const allIds = await ContactLensesSheet.find(dbQuery).sort(SORT).select("_id").lean();
-      const idx = allIds.findIndex((d) => String(d._id) === focusId);
-      if (idx >= 0) page = Math.floor(idx / limit) + 1;
-    }
-    page = Math.min(page, totalPages);
-    const skip = (page - 1) * limit;
+      // When focusId provided, find which page contains that sheet
+      let page = Math.max(parseInt(req.query.page) || 1, 1);
+      if (focusId) {
+        const allIds = await ContactLensesSheet.find(dbQuery).sort(SORT).select("_id").lean();
+        const idx = allIds.findIndex((d) => String(d._id) === focusId);
+        if (idx >= 0) page = Math.floor(idx / limit) + 1;
+      }
+      page = Math.min(page, totalPages);
+      const skip = (page - 1) * limit;
 
-    const sheets = await ContactLensesSheet.find(dbQuery).sort(SORT).skip(skip).limit(limit);
+      const sheets = await ContactLensesSheet.find(dbQuery).sort(SORT).skip(skip).limit(limit);
 
-    for (const s of sheets) {
-      if (!s.sku) {
-        try {
-          await ensureSheetSku(ContactLensesSheet, s);
-        } catch (e) {
-          console.warn("SKU backfill fail:", s?._id, e?.message || e);
+      for (const s of sheets) {
+        if (!s.sku) {
+          try {
+            await ensureSheetSku(ContactLensesSheet, s);
+          } catch (e) {
+            console.warn("SKU backfill fail:", s?._id, e?.message || e);
+          }
         }
       }
-    }
 
-    if (DEBUG_INVENTORY) {
-      const sample = sheets.slice(0, 2).map((s) => {
-        const o = s.toObject();
-        return { _id: String(o._id), keys: Object.keys(o), purchase: pickPurchase(o) };
+      if (DEBUG_INVENTORY) {
+        const sample = sheets.slice(0, 2).map((s) => {
+          const o = s.toObject();
+          return { _id: String(o._id), keys: Object.keys(o), purchase: pickPurchase(o) };
+        });
+        console.log("[CL][GET /contactlenses] sample sheets:", sample);
+      }
+
+      const data = sheets.map((s) => ({
+        ...s.toObject(),
+        tabs: buildTabsForTipo(s),
+        physicalLimits: PHYSICAL_LIMITS
+      }));
+
+      res.json({
+        ok: true,
+        data,
+        meta: { total, page, limit, totalPages, hasMore: page < totalPages, hasPrior: page > 1 }
       });
-      console.log("[CL][GET /contactlenses] sample sheets:", sample);
+    } catch (err) {
+      console.error("GET /contactlenses error:", err);
+      res.status(500).json({ ok: false, message: "Error al listar hojas de lentes de contacto" });
     }
-
-    const data = sheets.map((s) => ({
-      ...s.toObject(),
-      tabs: buildTabsForTipo(s),
-      physicalLimits: PHYSICAL_LIMITS
-    }));
-
-    res.json({
-      ok: true,
-      data,
-      meta: { total, page, limit, totalPages, hasMore: page < totalPages, hasPrior: page > 1 }
-    });
-  } catch (err) {
-    console.error("GET /contactlenses error:", err);
-    res.status(500).json({ ok: false, message: "Error al listar hojas de lentes de contacto" });
-  }
-});
+  });
 
 router.post(
   "/sheets",
@@ -355,8 +363,8 @@ router.post(
         });
       }
 
-      invalidatePattern("inv:contactlenses:sheets:*");
-      cacheDel(KEYS.stats());
+      await invalidatePattern("inv:*sheets:*");
+      await cacheDel(KEYS.stats());
 
       res.status(201).json({
         ok: true,
@@ -383,7 +391,8 @@ router.get(
     try {
       const sheet = await ContactLensesSheet.findById(req.params.sheetId);
       if (!sheet) return res.status(404).json({ ok: false, message: "Sheet no existe" });
-      if (sheet.isDeleted) return res.status(410).json({ ok: false, message: "Sheet eliminada (soft-delete)" });
+
+      if (sheet.isDeleted) return res.status(410).json({ ok: false, message: "Esta planilla se encuentra en la papelera." });
 
       if (!sheet.sku) {
         try {
@@ -664,6 +673,11 @@ router.patch(
         actor
       });
 
+      await cacheDel(KEYS.sheetMeta(req.params.sheetId));
+      await invalidatePattern("inv:*");
+      await invalidatePattern("inv:*sheets:*");
+      await cacheDel(KEYS.stats());
+
       return res.json({
         ok: true,
         message: "Hoja enviada a papelera",
@@ -702,9 +716,11 @@ router.delete(
         actor
       });
 
-      invalidatePattern(KEYS.sheetPattern(req.params.sheetId));
-      invalidatePattern("inv:contactlenses:sheets:*");
-      cacheDel(KEYS.stats());
+      const sheetId = sheet._id.toString();
+      await cacheDel(KEYS.sheetMeta(sheetId));
+      await invalidatePattern("inv:*");
+      await invalidatePattern(`inv:sheet:${sheetId}:*`);
+      await cacheDel(KEYS.stats());
       res.json({ ok: true, message: "Hoja eliminada (soft-delete)" });
     } catch (err) {
       console.error("DELETE /contactlenses/sheets/:sheetId error:", err);
@@ -739,6 +755,11 @@ router.patch(
         actor
       });
 
+      await cacheDel(KEYS.sheetMeta(req.params.sheetId));
+      await invalidatePattern("inv:*");
+      await invalidatePattern("inv:*sheets:*");
+      await cacheDel(KEYS.stats());
+
       res.json({
         ok: true,
         data: { sheet, tabs: buildTabsForTipo(sheet), physicalLimits: PHYSICAL_LIMITS }
@@ -746,6 +767,39 @@ router.patch(
     } catch (err) {
       console.error("PATCH /contactlenses/sheets/:sheetId/restore error:", err);
       res.status(500).json({ ok: false, message: "Error al restaurar hoja" });
+    }
+  }
+);
+
+router.delete(
+  "/sheets/:sheetId/purge",
+  param("sheetId").isMongoId(),
+  body("actor").optional().isObject(),
+  handleValidation,
+  async (req, res) => {
+    try {
+      const sheet = await ContactLensesSheet.findById(req.params.sheetId);
+      if (!sheet) return res.status(404).json({ ok: false, message: "Sheet no existe" });
+      if (!sheet.isDeleted) return res.status(400).json({ ok: false, message: "Solo se pueden eliminar permanentemente hojas que ya están en papelera" });
+
+      // Eliminar matrices asociadas
+      const modelsArr = [MatrixBase, MatrixSphCyl, MatrixBifocal, MatrixTorico, MatrixProgresivo];
+      for (const M of modelsArr) {
+        await M.deleteMany({ sheet: sheet._id });
+      }
+
+      await sheet.deleteOne();
+
+      const sheetId = sheet._id.toString();
+      await cacheDel(KEYS.sheetMeta(sheetId));
+      await invalidatePattern("inv:*");
+      await invalidatePattern(`inv:sheet:${sheetId}:*`);
+      await cacheDel(KEYS.stats());
+
+      res.json({ ok: true, message: "Hoja eliminada permanentemente" });
+    } catch (err) {
+      console.error("DELETE /contactlenses/sheets/:sheetId/purge error:", err);
+      res.status(500).json({ ok: false, message: "Error al purgar hoja" });
     }
   }
 );
@@ -1201,14 +1255,142 @@ router.post(
       });
 
       // Invalidate cache for this sheet + stats
-      invalidatePattern(KEYS.sheetPattern(req.params.sheetId));
-      cacheDel(KEYS.stats());
-      invalidatePattern("inv:contactlenses:sheets:*");
+      await invalidatePattern("inv:*");
+      await cacheDel(KEYS.stats());
+      await invalidatePattern("inv:*sheets:*");
+
+      // 🔊 NOTIFICAR POR WEBSOCKET (Para que las tablas se actualicen solas)
+      if (result.updated > 0) {
+        broadcast("INVENTORY_CHUNK_SAVED", { sheetId: req.params.sheetId });
+      }
 
       return res.json({ ok: true, data: { upserted: result.updated, axisExtended, axisExtendError } });
     } catch (err) {
       console.error("POST /contactlenses/sheets/:sheetId/chunk error:", err);
       res.status(500).json({ ok: false, message: "Error al guardar chunk" });
+    }
+  }
+);
+
+
+/* ======================= VENTA DIRECTA (Sin Laboratorio) ======================= */
+
+/**
+ * Helper para localizar una celda por codebar en matrices de LC
+ */
+async function resolveCLCodebar(sheet, codebar) {
+  const modelsMap = {
+    "BASE": require("../models/contactlenses/CLMatrixEsferico"),
+    "SPH_CYL": require("../models/contactlenses/CLMatrixColorido"),
+    "SPH_CYL_AXIS": require("../models/contactlenses/CLMatrixTorico"),
+    "BASE_ADD": require("../models/contactlenses/CLMatrixMultifocal")
+  };
+  const Model = modelsMap[sheet.tipo_matriz];
+  if (!Model) return null;
+
+  const doc = await Model.findOne({ sheet: sheet._id });
+  if (!doc) return null;
+
+  const cb = String(codebar || "").trim();
+  for (const [key, cell] of (doc.cells.entries ? Array.from(doc.cells.entries()) : Object.entries(doc.cells))) {
+    if (!cell) continue;
+    
+    // 1. Caso plano (Base, Colorido, Tórico)
+    if (String(cell.codebar || "") === cb) {
+      return { key, cell, eye: null };
+    }
+    
+    // 2. Caso anidado (Multifocal)
+    if (cell.OD && String(cell.OD.codebar || "") === cb) {
+      return { key, cell: cell.OD, eye: "OD" };
+    }
+    if (cell.OI && String(cell.OI.codebar || "") === cb) {
+      return { key, cell: cell.OI, eye: "OI" };
+    }
+  }
+  return null;
+}
+
+router.post(
+  "/sheets/:sheetId/sale",
+  param("sheetId").isMongoId(),
+  body("codebar").isString().trim().notEmpty(),
+  body("qty").optional().isInt({ min: 1 }),
+  body("actor").optional().isObject(),
+  handleValidation,
+  async (req, res) => {
+    const actor = actorFromBody(req) || { userId: null, name: "system" };
+    try {
+      const sheet = await ContactLensesSheet.findById(req.params.sheetId);
+      if (!sheet || sheet.isDeleted) return res.status(404).json({ ok: false, message: "Sheet no encontrada" });
+
+      const loc = await resolveCLCodebar(sheet, req.body.codebar);
+      if (!loc) return res.status(404).json({ ok: false, message: "Código de barras no encontrado en esta planilla" });
+
+      const qty = Math.abs(Number(req.body.qty || 1));
+      if (Number(loc.cell.existencias || 0) < qty) {
+        return res.status(409).json({ ok: false, message: "Stock insuficiente", current: loc.cell.existencias });
+      }
+
+      // Descontar stock
+      const modelsMap = {
+        "BASE": require("../models/contactlenses/CLMatrixEsferico"),
+        "SPH_CYL": require("../models/contactlenses/CLMatrixColorido"),
+        "SPH_CYL_AXIS": require("../models/contactlenses/CLMatrixTorico"),
+        "BASE_ADD": require("../models/contactlenses/CLMatrixMultifocal")
+      };
+      const Model = modelsMap[sheet.tipo_matriz];
+
+      const field = loc.eye ? `cells.${loc.key}.${loc.eye}.existencias` : `cells.${loc.key}.existencias`;
+      const updated = await Model.findOneAndUpdate(
+        { sheet: sheet._id, [field]: { $gte: qty } },
+        {
+          $inc: { [field]: -qty },
+          $set: { [`cells.${loc.key}.updatedBy`]: actor }
+        },
+        { new: true }
+      );
+
+      if (!updated) return res.status(409).json({ ok: false, message: "Error al actualizar stock (posible cambio simultáneo)" });
+
+      // Log de movimiento
+      await InventoryChangeLog.create({
+        sheet: sheet._id,
+        tipo_matriz: sheet.tipo_matriz,
+        type: "SALE_DIRECT_LC",
+        details: {
+          codebar: req.body.codebar,
+          qty,
+          before: loc.cell.existencias,
+          after: loc.cell.existencias - qty,
+          matrixKey: loc.key
+        },
+        actor
+      });
+
+      // Invalidar caché
+      await invalidatePattern(`inv:sheet:${sheet._id}:*`);
+
+      // 🔊 NOTIFICAR POR WEBSOCKET (Para que las tablas se actualicen solas)
+      broadcast("INV_CHANGE", {
+        sheetId: String(sheet._id),
+        type: "sale",
+        codebar: req.body.codebar,
+        qty,
+        newStock: loc.cell.existencias - qty
+      });
+
+      res.json({
+        ok: true,
+        message: "Venta registrada y stock actualizado",
+        data: {
+          before: loc.cell.existencias,
+          after: loc.cell.existencias - qty
+        }
+      });
+    } catch (e) {
+      console.error("POST /contactlenses/sale error:", e);
+      res.status(500).json({ ok: false, message: "Error interno" });
     }
   }
 );

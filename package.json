@@ -1,0 +1,22 @@
+{
+  "name": "rsboapp-eurovision",
+  "version": "2.2.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cristianHNITSP/RSBOApp-eurovision.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/cristianHNITSP/RSBOApp-eurovision/issues"
+  },
+  "homepage": "https://github.com/cristianHNITSP/RSBOApp-eurovision#readme",
+  "devDependencies": {
+    "@types/node": "^25.6.0"
+  }
+}

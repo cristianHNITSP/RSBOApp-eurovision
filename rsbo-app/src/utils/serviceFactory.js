@@ -147,6 +147,11 @@ export function createSheetService(base, tag) {
     }
   }
 
+  function purgeSheet(sheetId, actor) {
+    if (DEV) console.log(`${T} purgeSheet`, sheetId, actor);
+    return api.delete(`${base}/sheets/${sheetId}/purge`, { data: { actor } });
+  }
+
   return {
     listSheets,
     createSheet,
@@ -155,6 +160,7 @@ export function createSheetService(base, tag) {
     moveSheetToTrash,
     updateSheet,
     restoreSheet,
+    purgeSheet,
     reseedSheet,
     fetchItems,
     saveChunk

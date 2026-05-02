@@ -4,8 +4,8 @@
     <div class="order-summary mb-3">
       <div class="order-summary__row">
         <span class="mono font-bold">{{ order.folio }}</span>
-        <span class="tag is-light" :class="lab.statusTagClass(order.status)">
-          {{ lab.statusHuman(order.status) }}
+        <span class="tag is-light" :class="lab?.statusTagClass?.(order.status)">
+          {{ lab?.statusHuman?.(order.status) || order.status }}
         </span>
       </div>
       <div class="order-summary__meta">
@@ -14,7 +14,7 @@
         <div>
           <i class="fas fa-glasses mr-1"></i>
           {{ order.lines?.length || 0 }} mica(s) ·
-          {{ lab.orderPickedCount(order) }}/{{ lab.orderTotalCount(order) }} surtidas
+          {{ lab?.orderPickedCount?.(order) || 0 }}/{{ lab?.orderTotalCount?.(order) || 0 }} surtidas
         </div>
       </div>
     </div>
@@ -53,7 +53,7 @@
           <div class="edit-line" v-for="el in editState.lines" :key="el.lineId">
             <div class="edit-line__info">
               <div class="edit-line__title">
-                {{ lab.lineHuman(el, lab.sheetById(el.lineSheetId || order.sheetId)) }}
+                {{ lab?.lineHuman?.(el, lab?.sheetById?.(el.lineSheetId || order.sheetId)) || el.codebar }}
               </div>
               <div class="edit-line__meta">
                 <span class="mica-type-tag-sm">{{ el.micaType || "—" }}</span>
@@ -153,23 +153,23 @@
           size="is-small"
           type="is-ghost"
           icon-left="sync"
-          :loading="lab.loadingOrderHistory.value"
-          @click="lab.loadOrderHistory(order.id)"
+          :loading="lab.loadingOrderHistory?.value"
+          @click="lab.loadOrderHistory?.(order.id)"
         />
       </div>
 
-      <div v-if="lab.loadingOrderHistory.value" class="history-loading">
+      <div v-if="lab.loadingOrderHistory?.value" class="history-loading">
         <b-loading :is-full-page="false" :active="true" />
         <div class="spacer-sm"></div>
       </div>
 
-      <div v-else-if="!lab.orderHistory.value.length" class="history-empty">
+      <div v-else-if="!lab.orderHistory?.value?.length" class="history-empty">
         <i class="fas fa-inbox mr-1"></i> Sin registros aún.
       </div>
 
       <div v-else class="history-list">
         <div
-          v-for="ev in lab.orderHistory.value"
+          v-for="ev in (lab.orderHistory?.value || [])"
           :key="ev._id"
           class="history-item"
           :class="historyClass(ev.type)"
@@ -304,8 +304,12 @@ async function saveEdit() {
 // Historial helpers
 function historyLabel(type) {
   const map = {
+    ORDER_CREATE: "Creación de pedido",
     ORDER_EDIT: "Edición de pedido",
     ORDER_CANCEL: "Cancelación de pedido",
+    ORDER_CLOSE: "Pedido cerrado y facturado",
+    ORDER_RESET: "Reinicio de proceso",
+    EXIT_SCAN: "Mica surtida (escaneo)",
     CORRECTION_REQUEST: "Solicitud de corrección"
   };
   return map[type] || type;
@@ -313,8 +317,12 @@ function historyLabel(type) {
 
 function historyIcon(type) {
   const map = {
+    ORDER_CREATE: "fas fa-plus-circle",
     ORDER_EDIT: "fas fa-pen",
     ORDER_CANCEL: "fas fa-ban",
+    ORDER_CLOSE: "fas fa-check-double",
+    ORDER_RESET: "fas fa-undo",
+    EXIT_SCAN: "fas fa-barcode",
     CORRECTION_REQUEST: "fas fa-exclamation-triangle"
   };
   return map[type] || "fas fa-circle";

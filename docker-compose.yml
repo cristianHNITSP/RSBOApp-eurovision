@@ -180,6 +180,7 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${OPTICA_DB}?authSource=admin"
+      GATEWAY_WS_URL: "ws://gateway:3000/ws-internal"
     depends_on:
       - mongo
     expose:

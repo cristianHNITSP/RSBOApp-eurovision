@@ -47,9 +47,11 @@
       <!-- Scanner -->
       <b-field label="Código (EAN-13)" class="mb-2">
         <b-input
+          ref="barcodeInput"
           v-model="lab.scanCode.value"
           placeholder="Escanea o escribe el código…"
           icon="barcode"
+          autofocus
           @keyup.enter="lab.scanAndDispatch"
         />
       </b-field>
@@ -146,7 +148,7 @@
 </template>
 
 <script setup>
-import { inject } from "vue";
+import { inject, ref, watch, nextTick } from "vue";
 import OrderLineItem from "./OrderLineItem.vue";
 import "./OrderDetail.css";
 
@@ -158,4 +160,22 @@ const emit = defineEmits(["ask-reset", "ask-close"]);
 
 const lab = inject("lab");
 if (!lab) throw new Error("OrderDetail necesita provide('lab', ...)");
+
+const barcodeInput = ref(null);
+
+// Escenario A: Auto-enviar si se detecta un EAN-13 válido (soluciona escáneres sin tecla Enter)
+watch(() => lab.scanCode.value, (newVal) => {
+  if (lab.isEan13(newVal)) {
+    lab.scanAndDispatch();
+  }
+});
+
+// Escenario B: Recuperar el foco automáticamente después de procesar un escaneo
+watch(() => lab.loadingScan.value, (loading) => {
+  if (!loading) {
+    nextTick(() => {
+      barcodeInput.value?.focus();
+    });
+  }
+});
 </script>

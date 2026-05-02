@@ -92,11 +92,18 @@
           </div>
         </b-table-column>
 
+        <b-table-column field="precioVenta" label="PRECIO" width="100" v-slot="{ row }">
+          <span v-if="row.precioVenta" class="mono has-text-weight-bold">
+            ${{ row.precioVenta.toFixed(2) }}
+          </span>
+        </b-table-column>
+
         <b-table-column label="" width="120" v-slot="{ row }">
           <b-button
-            size="is-small"
             type="is-primary"
+            size="is-small"
             icon-left="plus"
+            class="premium-btn"
             :disabled="row.existencias < 1"
             @click="$emit('add-to-cart', row)"
           >

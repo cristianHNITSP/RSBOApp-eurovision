@@ -42,9 +42,9 @@
           </div>
 
           <div v-else-if="!lab.filteredOrders.value.length" class="empty">
-            <i class="fas fa-check-circle empty__icon icon--entry"></i>
-            <p class="empty__title">Sin pedidos</p>
-            <p class="empty__text">No hay pedidos con el filtro actual.</p>
+            <i class="fas fa-search empty__icon muted"></i>
+            <p class="empty__title">Sin resultados</p>
+            <p class="empty__text">{{ emptyMessage }}</p>
           </div>
 
           <CorrectionList
@@ -141,4 +141,12 @@ async function executeCancel(motivo) {
   }
   confirmId.value = "";
 }
+
+const emptyMessage = computed(() => {
+  const f = lab.orderStatusFilter.value;
+  if (f === "open") return "No hay pedidos pendientes o en proceso.";
+  if (f === "cerrado") return "No se encontraron pedidos cerrados.";
+  if (f === "cancelado") return "No hay registros de pedidos cancelados.";
+  return "No hay ningún pedido registrado en el sistema.";
+});
 </script>

@@ -24,6 +24,12 @@ const MatrixSphCyl     = require("../models/matrix/MatrixSphCyl");
 const MatrixBifocal    = require("../models/matrix/MatrixBifocal");
 const MatrixProgresivo = require("../models/matrix/MatrixProgresivo");
 
+// Modelos de Lentes de Contacto (CL)
+const CLMatrixBase       = require("../models/contactlenses/CLMatrixEsferico");
+const CLMatrixColorido   = require("../models/contactlenses/CLMatrixColorido");
+const CLMatrixTorico     = require("../models/contactlenses/CLMatrixTorico");
+const CLMatrixMultifocal = require("../models/contactlenses/CLMatrixMultifocal");
+
 // ============================================================================
 // SECCION 1 — Clasificacion (funciones puras, sin I/O)
 // ============================================================================
@@ -71,8 +77,9 @@ function cellLabel(tipoMatriz, cellKey, eye) {
     let label;
     switch (tipoMatriz) {
       case "BASE":     label = `Base ${fmt(p[0])}`; break;
-      case "SPH_CYL":  label = `SPH ${fmt(p[0])} / CYL ${fmt(p[1])}`; break;
-      case "SPH_ADD":  label = `SPH ${fmt(p[0])} / Add ${fmt(p[1])}`; break;
+      case "SPH_CYL":  label = `SPH ${fmt(p[0])} | CYL ${fmt(p[1])}`; break;
+      case "SPH_CYL_AXIS": label = `SPH ${fmt(p[0])} | CYL ${fmt(p[1])} | AXIS ${p[2]}°`; break;
+      case "SPH_ADD":  label = `SPH ${fmt(p[0])} | Add ${fmt(p[1])}`; break;
       case "BASE_ADD": label = `Base ${fmt(p[0])}/${fmt(p[1])} Add ${fmt(p[2])}`; break;
       default:         label = cellKey;
     }
@@ -85,7 +92,18 @@ function sheetLabel(sheet) {
     .filter(Boolean).join(" | ").trim() || String(sheet._id);
 }
 
-function getMatrixModel(tipoMatriz) {
+function getMatrixModel(tipoMatriz, isContactLens = false) {
+  if (isContactLens) {
+    switch (tipoMatriz) {
+      case "BASE":           return CLMatrixBase;
+      case "SPH_CYL":        return CLMatrixColorido;
+      case "SPH_CYL_AXIS":   return CLMatrixTorico;
+      case "SPH_ADD":        return CLMatrixTorico;
+      case "BASE_ADD":       return CLMatrixMultifocal;
+      default:               return null;
+    }
+  }
+
   switch (tipoMatriz) {
     case "BASE":     return MatrixBase;
     case "SPH_CYL":  return MatrixSphCyl;
@@ -117,134 +135,139 @@ async function upsertSheetAlertNotification(sheet, opts = {}) {
 
   try {
     const today    = todayStr();
-    const groupKey = `stock_alert:${sheet._id}`;
-
-    // Leer la matriz y recolectar celdas con alerta
-    const Model = getMatrixModel(sheet.tipo_matriz);
+    const isCL  = sheet.isContactLens || !!sheet.curvaBase || !!sheet.diametro || sheet.tipo_matriz === 'SPH_CYL_AXIS';
+    const Model = getMatrixModel(sheet.tipo_matriz, isCL);
     if (!Model) return;
 
     const doc = await Model.findOne({ sheet: sheet._id }).lean();
     if (!doc?.cells) return;
 
-    const alertCells = [];
+    const allAlertCells = [];
 
     for (const [key, cell] of Object.entries(doc.cells)) {
       if (!cell) continue;
 
-      if (sheet.tipo_matriz === "BASE" || sheet.tipo_matriz === "SPH_CYL") {
+      const isFlat = cell.existencias !== undefined;
+
+      if (isFlat) {
         const existencias = Number(cell.existencias ?? 0);
         const distance    = computeDistance(sheet.tipo_matriz, key);
         const level       = classifyStock(existencias, distance);
         if (level === "CRITICO" || level === "BAJO") {
-          alertCells.push({
+          allAlertCells.push({
             cellKey:     key,
             eye:         null,
             label:       cellLabel(sheet.tipo_matriz, key, null),
             level,
             existencias,
+            // Extraer el eje y asegurar que sea un entero limpio (sin .00)
+            axis: sheet.tipo_matriz === 'SPH_CYL_AXIS' ? String(parseInt(String(key).split('|')[2] || 0)) : null
           });
         }
       } else {
         for (const eye of ["OD", "OI"]) {
-          if (cell[eye] === undefined) continue;
+          if (cell[eye] === undefined || cell[eye] === null) continue;
           const existencias = Number(cell[eye]?.existencias ?? 0);
           const distance    = computeDistance(sheet.tipo_matriz, key);
           const level       = classifyStock(existencias, distance);
           if (level === "CRITICO" || level === "BAJO") {
-            alertCells.push({
+            allAlertCells.push({
               cellKey:     key,
               eye,
               label:       cellLabel(sheet.tipo_matriz, key, eye),
               level,
               existencias,
+              axis: null
             });
           }
         }
       }
     }
 
-    // Sin alertas → eliminar notificacion de hoy y limpiar legado
-    if (alertCells.length === 0) {
+    // ── ESTRATEGIA DE NOTIFICACIÓN ──────────────────────────────────────────
+    const groupKey = `stock_alert:${sheet._id}`;
+    
+    if (allAlertCells.length === 0) {
       await notifClient.deleteByGroup({ groupKey, date: today });
-      await notifClient.deleteByGroup({ groupKeyPattern: `^stock_(critico|bajo):${sheet._id}:` });
+      // Limpiar también posibles remanentes del sistema de ejes anterior
+      await notifClient.deleteByGroup({ groupKeyPattern: `^stock_alert:${sheet._id}:` });
       return;
     }
 
-    // Ordenar: CRITICO primero
-    alertCells.sort((a, b) => {
-      if (a.level === "CRITICO" && b.level !== "CRITICO") return -1;
-      if (b.level === "CRITICO" && a.level !== "CRITICO") return 1;
-      return 0;
-    });
-
-    const critCount = alertCells.filter((c) => c.level === "CRITICO").length;
-    const lowCount  = alertCells.filter((c) => c.level === "BAJO").length;
-    const sLabel    = sheetLabel(sheet);
-    const hasCrit   = critCount > 0;
-
-    const title = hasCrit
-      ? `STOCK CRÍTICO | ${sLabel}`
-      : `STOCK BAJO | ${sLabel}`;
-
-    const parts = [];
-    if (critCount > 0) parts.push(`${critCount} combinacion${critCount > 1 ? "es" : ""} en estado CRITICO`);
-    if (lowCount  > 0) parts.push(`${lowCount} combinacion${lowCount > 1 ? "es" : ""} con stock bajo`);
-
-    const message = `[Planilla: ${sLabel}] | ${parts.join(" | ")}. Revisa el detalle para ver las combinaciones afectadas.`;
-
-    const metadata = {
-      type:       "stock_alert",
-      sheetId:    String(sheet._id),
-      sheetLabel: sLabel,
-      cells:      alertCells,
-      critCount,
-      lowCount,
-    };
-
-    const payload = {
-      groupKey,
-      date:          today,
-      title,
-      message:       message.slice(0, 2000),
-      metadata,
-      type:          hasCrit ? "danger" : "warning",
-      priority:      hasCrit ? "critical" : "high",
-      targetRoles:   TARGET_ROLES,
-      isGlobal:      false,
-      respectCooldown,
-      cooldownMs:    COOLDOWN_MS,
-    };
-
-    if (opts.useRedis) {
-      const { getClient, isReady } = require("./redis");
-      if (isReady()) {
-        try {
-          getClient().publish("stock:alerts", JSON.stringify(payload));
-        } catch (e) {
-          console.warn("[STOCK_ALERT] Redis publish error:", e?.message);
-        }
-      } else {
-        // Fallback to HTTP
-        await notifClient.upsertDaily(payload);
-      }
-    } else {
-      // Delegar persistencia al notification-service (HTTP)
-      await notifClient.upsertDaily(payload);
+    // Estructurar alertas por eje para que el frontend pueda navegar
+    const alertsByAxis = {};
+    if (sheet.tipo_matriz === 'SPH_CYL_AXIS') {
+      allAlertCells.forEach(cell => {
+        if (!alertsByAxis[cell.axis]) alertsByAxis[cell.axis] = [];
+        alertsByAxis[cell.axis].push(cell);
+      });
     }
 
-    // WS broadcast del evento de dominio (independiente de la notificacion)
-    try {
-      require("../ws").broadcast("STOCK_ALERT", {
-        sheetId:  String(sheet._id),
-        sLabel,
-        critCount,
-        lowCount,
-        total:    alertCells.length,
-      });
-    } catch { /* WS opcional */ }
-
+    await _sendAggregatedNotification(sheet, allAlertCells, groupKey, today, { ...opts, alertsByAxis });
   } catch (e) {
     console.warn("[STOCK_ALERT] upsertSheetAlertNotification error:", e?.message);
+  }
+}
+
+/**
+ * Helper interno para construir y enviar el payload final.
+ */
+async function _sendAggregatedNotification(sheet, alertCells, groupKey, today, opts = {}) {
+  const { respectCooldown = false, alertsByAxis = null } = opts;
+
+  // Ordenar: CRITICO primero
+  alertCells.sort((a, b) => {
+    if (a.level === "CRITICO" && b.level !== "CRITICO") return -1;
+    if (b.level === "CRITICO" && a.level !== "CRITICO") return 1;
+    return 0;
+  });
+
+  const critCount = alertCells.filter((c) => c.level === "CRITICO").length;
+  const lowCount  = alertCells.filter((c) => c.level === "BAJO").length;
+  const sLabel    = sheetLabel(sheet);
+  const hasCrit   = critCount > 0;
+
+  const title = hasCrit
+    ? `STOCK CRÍTICO | ${sLabel}`
+    : `STOCK BAJO | ${sLabel}`;
+
+  const parts = [];
+  if (critCount > 0) parts.push(`${critCount} combinacion${critCount > 1 ? "es" : ""} CRÍTICA${critCount > 1 ? "S" : ""}`);
+  if (lowCount  > 0) parts.push(`${lowCount} con stock bajo`);
+
+  const message = `[Planilla: ${sLabel}] | ${parts.join(" | ")}. Revisa el detalle para navegar por grados.`;
+
+  const metadata = {
+    type:       "stock_alert",
+    sheetId:    String(sheet._id),
+    sheetLabel: sLabel,
+    cells:      alertCells,
+    alertsByAxis, // Agrupación para navegación en frontend
+    critCount,
+    lowCount,
+  };
+
+  const payload = {
+    groupKey,
+    date:          today,
+    title,
+    message:       message.slice(0, 2000),
+    metadata,
+    type:          hasCrit ? "danger" : "warning",
+    priority:      hasCrit ? "critical" : "high",
+    targetRoles:   ["eurovision"],
+    isGlobal:      false,
+    respectCooldown,
+    cooldownMs:    5 * 60 * 60 * 1000,
+  };
+
+  if (opts.useRedis) {
+    const { getClient, isReady } = require("./redis");
+    if (isReady()) {
+      try { getClient().publish("stock:alerts", JSON.stringify(payload)); } catch {}
+    } else { await notifClient.upsertDaily(payload); }
+  } else {
+    await notifClient.upsertDaily(payload);
   }
 }
 
@@ -274,13 +297,23 @@ async function checkSheetAlerts(sheet, opts = {}) {
 async function sweepAllSheets(opts = { respectCooldown: true }) {
   try {
     const InventorySheet = require("../models/InventorySheet");
-    const sheets = await InventorySheet.find({ isDeleted: { $ne: true } }).lean();
+    const ContactLensesSheet = require("../models/ContactLensesSheet");
 
-    for (const sheet of sheets) {
+    const [invSheets, clSheets] = await Promise.all([
+      InventorySheet.find({ isDeleted: { $ne: true } }).lean(),
+      ContactLensesSheet.find({ isDeleted: { $ne: true } }).lean()
+    ]);
+
+    const allSheets = [
+      ...invSheets.map(s => ({ ...s, isContactLens: false })),
+      ...clSheets.map(s => ({ ...s, isContactLens: true }))
+    ];
+
+    for (const sheet of allSheets) {
       await upsertSheetAlertNotification(sheet, opts);
     }
 
-    console.log(`[STOCK_ALERT] Sweep completo: ${sheets.length} planilla(s).`);
+    console.log(`[STOCK_ALERT] Sweep completo: ${invSheets.length} micas y ${clSheets.length} lentes de contacto.`);
   } catch (e) {
     console.error("[STOCK_ALERT] sweepAllSheets error:", e?.message);
   }
@@ -310,9 +343,18 @@ async function cleanupLegacyPerCellNotifications() {
 async function checkSheetById(sheetId, opts = {}) {
   try {
     const InventorySheet = require("../models/InventorySheet");
-    const sheet = await InventorySheet.findById(sheetId).lean();
+    const ContactLensesSheet = require("../models/ContactLensesSheet");
+
+    let sheet = await InventorySheet.findById(sheetId).lean();
+    let isCL = false;
+
+    if (!sheet) {
+      sheet = await ContactLensesSheet.findById(sheetId).lean();
+      isCL = true;
+    }
+
     if (!sheet || sheet.isDeleted) return;
-    await upsertSheetAlertNotification(sheet, opts);
+    await upsertSheetAlertNotification({ ...sheet, isContactLens: isCL }, opts);
   } catch (e) {
     console.warn("[STOCK_ALERT] checkSheetById error:", e?.message);
   }

@@ -90,4 +90,10 @@ app.use((err, _req, res, _next) => {
 
 app.listen(PORT, HOST, () => {
   console.log(`🚀 Optica Service corriendo en http://${HOST}:${PORT}`);
+  try {
+    const ws = require("./ws");
+    ws.connect();
+  } catch (e) {
+    console.warn("[WS] No se pudo iniciar broadcast WS:", e?.message);
+  }
 });

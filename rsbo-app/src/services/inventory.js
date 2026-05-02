@@ -12,6 +12,7 @@ export const deleteSheet       = _svc.deleteSheet;
 export const moveSheetToTrash  = _svc.moveSheetToTrash;
 export const updateSheet       = _svc.updateSheet;
 export const restoreSheet      = _svc.restoreSheet;
+export const purgeSheet        = _svc.purgeSheet;
 export const reseedSheet       = _svc.reseedSheet;
 export const fetchItems        = _svc.fetchItems;
 export const saveChunk         = _svc.saveChunk;

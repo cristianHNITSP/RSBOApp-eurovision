@@ -76,8 +76,12 @@
               :message="metaStatusMessage" :glow="metaGlow" :can-save="canSaveMeta" @save="$emit('save-meta')" />
 
             <!-- DELETE -->
-            <ActionDelete :loading="deleting" :disabled="renaming || savingVendor || savingPurchase || savingMeta"
-              @confirm="$emit('confirm-delete')" />
+            <ActionDelete 
+              :loading="deleting" 
+              :disabled="renaming || savingVendor || savingPurchase || savingMeta || (sheet && sheet.isPinned)"
+              :is-pinned="sheet && sheet.isPinned"
+              @confirm="$emit('confirm-delete')" 
+            />
           </div>
         </section>
 

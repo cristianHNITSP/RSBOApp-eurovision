@@ -7,8 +7,15 @@
   padding: 0.75rem;
 }
 
-.order-line--history { cursor: pointer; transition: background 120ms ease; }
-.order-line--history:hover { background: var(--c-primary-alpha); }
+.order-line--history { 
+  cursor: pointer; 
+  transition: all var(--transition-base); 
+}
+.order-line--history:hover { 
+  background: var(--c-primary-alpha);
+  border-color: var(--c-primary-alpha);
+  box-shadow: var(--shadow-sm);
+}
 
 .order-line__top    { display: flex; justify-content: space-between; gap: 0.75rem; }
 .order-line__title  { font-weight: 950; color: var(--text-primary); }

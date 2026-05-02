@@ -68,6 +68,13 @@ function makeCollectionService(col) {
         .catch((err) => { logErr(`${tag}[API] updateStock ERROR`, err); throw err; });
     },
 
+    /** Registra una venta (decremento atómico) */
+    registerSale(id, qty = 1) {
+      return api
+        .post(`${BASE}/${col}/${id}/sale`, { qty })
+        .catch((err) => { logErr(`${tag}[API] registerSale ERROR`, err); throw err; });
+    },
+
     /** Soft-delete: mueve a papelera */
     softDelete(id, actor = {}) {
       console.log(`${tag}[API] softDelete ${id}`);

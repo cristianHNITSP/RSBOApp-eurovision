@@ -10,6 +10,7 @@ const MatrixBase = require("../models/matrix/MatrixBase");
 const MatrixSphCyl = require("../models/matrix/MatrixSphCyl");
 const MatrixBifocal = require("../models/matrix/MatrixBifocal");
 const MatrixProgresivo = require("../models/matrix/MatrixProgresivo");
+const { protect } = require("../utils/auth");
 
 // Inventory modules
 const PHYSICAL_LIMITS = require("../inventory/constants/physicalLimits");
@@ -79,6 +80,9 @@ router.use((req, res, next) => {
 
   next();
 });
+
+// Proteger todas las rutas: requiere sesión activa
+router.use(protect());
 
 // Helpers router-level
 const handleValidation = (req, res, next) => {

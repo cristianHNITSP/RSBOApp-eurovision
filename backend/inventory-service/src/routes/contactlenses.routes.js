@@ -12,6 +12,7 @@ const MatrixSphCyl = require("../models/contactlenses/CLMatrixColorido");
 const MatrixBifocal = require("../models/contactlenses/CLMatrixTorico");      // legacy SPH_ADD (unused for CL now)
 const MatrixTorico = require("../models/contactlenses/CLMatrixTorico");      // SPH_CYL_AXIS
 const MatrixProgresivo = require("../models/contactlenses/CLMatrixMultifocal");
+const { protect } = require("../utils/auth");
 
 // Inventory modules (100% reutilizables, sin cambios)
 const PHYSICAL_LIMITS = require("../inventory/constants/physicalLimits");
@@ -76,6 +77,9 @@ router.use((req, res, next) => {
   });
   next();
 });
+
+// Proteger todas las rutas: requiere sesión activa
+router.use(protect());
 
 const handleValidation = (req, res, next) => {
   const errors = validationResult(req);

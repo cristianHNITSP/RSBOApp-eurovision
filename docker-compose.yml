@@ -136,6 +136,9 @@ services:
     expose:
       - "3000"
     restart: unless-stopped
+    volumes:
+      - ./backend/auth-service:/app
+      - /app/node_modules
     networks:
       - rsbo-net
     profiles: ["prod", "dev"]
@@ -163,6 +166,9 @@ services:
     expose:
       - "3000"
     restart: unless-stopped
+    volumes:
+      - ./backend/inventory-service:/app
+      - /app/node_modules
     networks:
       - rsbo-net
     profiles: ["prod", "dev"]
@@ -186,6 +192,9 @@ services:
     expose:
       - "3000"
     restart: unless-stopped
+    volumes:
+      - ./backend/optica-service:/app
+      - /app/node_modules
     networks:
       - rsbo-net
     profiles: ["prod", "dev"]
@@ -212,6 +221,9 @@ services:
     expose:
       - "3000"
     restart: unless-stopped
+    volumes:
+      - ./backend/notification-service:/app
+      - /app/node_modules
     networks:
       - rsbo-net
     profiles: ["prod", "dev"]

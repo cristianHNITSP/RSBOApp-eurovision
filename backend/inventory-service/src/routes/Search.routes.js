@@ -20,7 +20,7 @@
 
 const express      = require('express');
 const router       = express.Router();
-//const authMiddleware = require('../middlewares/auth.middleware');
+const { protect }  = require('../utils/auth');
 const InventorySheet     = require('../models/InventorySheet');
 const ContactLensesSheet = require('../models/ContactLensesSheet');
 const LaboratoryOrder    = require('../models/laboratory/LaboratoryOrder');
@@ -85,8 +85,7 @@ function normalize(str) {
 }
 
 // ── GET /api/search ──────────────────────────────────────────────────────────
-router.get('/'//, authMiddleware
-    , async (req, res) => {
+router.get('/', protect(), async (req, res) => {
   try {
     const q     = String(req.query.q || '').trim();
     const limit = Math.min(parseInt(req.query.limit, 10) || 8, 20);

@@ -1,0 +1,282 @@
+[
+  {
+    "user": "root@optica.com",
+    "role": "root",
+    "loginStatus": 200,
+    "endpoints": [
+      {
+        "name": "Check Session",
+        "path": "/access/check-session",
+        "status": 200,
+        "hasData": true,
+        "dataSummary": "FAIL"
+      },
+      {
+        "name": "Inventory Sheets",
+        "path": "/inventory",
+        "status": 500,
+        "hasData": true,
+        "dataSummary": "connect ECONNREFUSED 172.18.0.7:3000"
+      },
+      {
+        "name": "Contact Lenses",
+        "path": "/contactlenses",
+        "status": 500,
+        "hasData": true,
+        "dataSummary": "connect ECONNREFUSED 172.18.0.7:3000"
+      },
+      {
+        "name": "Optica Armazones",
+        "path": "/optica/armazones",
+        "status": 200,
+        "hasData": true,
+        "dataSummary": "OK"
+      },
+      {
+        "name": "Lab Orders",
+        "path": "/laboratory/orders",
+        "status": 500,
+        "hasData": true,
+        "dataSummary": "connect ECONNREFUSED 172.18.0.7:3000"
+      },
+      {
+        "name": "Profile",
+        "path": "/users/me",
+        "status": 200,
+        "hasData": true,
+        "dataSummary": "Object"
+      },
+      {
+        "name": "Notifications",
+        "path": "/notification/count",
+        "status": 200,
+        "hasData": true,
+        "dataSummary": "FAIL"
+      }
+    ]
+  },
+  {
+    "user": "eurovision@optica.com",
+    "role": "eurovision",
+    "loginStatus": 200,
+    "endpoints": [
+      {
+        "name": "Check Session",
+        "path": "/access/check-session",
+        "status": 200,
+        "hasData": true,
+        "dataSummary": "FAIL"
+      },
+      {
+        "name": "Inventory Sheets",
+        "path": "/inventory",
+        "status": 500,
+        "hasData": true,
+        "dataSummary": "connect ECONNREFUSED 172.18.0.7:3000"
+      },
+      {
+        "name": "Contact Lenses",
+        "path": "/contactlenses",
+        "status": 500,
+        "hasData": true,
+        "dataSummary": "connect ECONNREFUSED 172.18.0.7:3000"
+      },
+      {
+        "name": "Optica Armazones",
+        "path": "/optica/armazones",
+        "status": 200,
+        "hasData": true,
+        "dataSummary": "OK"
+      },
+      {
+        "name": "Lab Orders",
+        "path": "/laboratory/orders",
+        "status": 500,
+        "hasData": true,
+        "dataSummary": "connect ECONNREFUSED 172.18.0.7:3000"
+      },
+      {
+        "name": "Profile",
+        "path": "/users/me",
+        "status": 200,
+        "hasData": true,
+        "dataSummary": "Object"
+      },
+      {
+        "name": "Notifications",
+        "path": "/notification/count",
+        "status": 200,
+        "hasData": true,
+        "dataSummary": "FAIL"
+      }
+    ]
+  },
+  {
+    "user": "supervisor@optica.com",
+    "role": "supervisor",
+    "loginStatus": 200,
+    "endpoints": [
+      {
+        "name": "Check Session",
+        "path": "/access/check-session",
+        "status": 200,
+        "hasData": true,
+        "dataSummary": "FAIL"
+      },
+      {
+        "name": "Inventory Sheets",
+        "path": "/inventory",
+        "status": 500,
+        "hasData": true,
+        "dataSummary": "connect ECONNREFUSED 172.18.0.7:3000"
+      },
+      {
+        "name": "Contact Lenses",
+        "path": "/contactlenses",
+        "status": 500,
+        "hasData": true,
+        "dataSummary": "connect ECONNREFUSED 172.18.0.7:3000"
+      },
+      {
+        "name": "Optica Armazones",
+        "path": "/optica/armazones",
+        "status": 200,
+        "hasData": true,
+        "dataSummary": "OK"
+      },
+      {
+        "name": "Lab Orders",
+        "path": "/laboratory/orders",
+        "status": 500,
+        "hasData": true,
+        "dataSummary": "connect ECONNREFUSED 172.18.0.7:3000"
+      },
+      {
+        "name": "Profile",
+        "path": "/users/me",
+        "status": 200,
+        "hasData": true,
+        "dataSummary": "Object"
+      },
+      {
+        "name": "Notifications",
+        "path": "/notification/count",
+        "status": 200,
+        "hasData": true,
+        "dataSummary": "FAIL"
+      }
+    ]
+  },
+  {
+    "user": "ventas@optica.com",
+    "role": "ventas",
+    "loginStatus": 200,
+    "endpoints": [
+      {
+        "name": "Check Session",
+        "path": "/access/check-session",
+        "status": 200,
+        "hasData": true,
+        "dataSummary": "FAIL"
+      },
+      {
+        "name": "Inventory Sheets",
+        "path": "/inventory",
+        "status": 500,
+        "hasData": true,
+        "dataSummary": "connect ECONNREFUSED 172.18.0.7:3000"
+      },
+      {
+        "name": "Contact Lenses",
+        "path": "/contactlenses",
+        "status": 500,
+        "hasData": true,
+        "dataSummary": "connect ECONNREFUSED 172.18.0.7:3000"
+      },
+      {
+        "name": "Optica Armazones",
+        "path": "/optica/armazones",
+        "status": 200,
+        "hasData": true,
+        "dataSummary": "OK"
+      },
+      {
+        "name": "Lab Orders",
+        "path": "/laboratory/orders",
+        "status": 500,
+        "hasData": true,
+        "dataSummary": "connect ECONNREFUSED 172.18.0.7:3000"
+      },
+      {
+        "name": "Profile",
+        "path": "/users/me",
+        "status": 200,
+        "hasData": true,
+        "dataSummary": "Object"
+      },
+      {
+        "name": "Notifications",
+        "path": "/notification/count",
+        "status": 200,
+        "hasData": true,
+        "dataSummary": "FAIL"
+      }
+    ]
+  },
+  {
+    "user": "laboratorio@optica.com",
+    "role": "laboratorio",
+    "loginStatus": 200,
+    "endpoints": [
+      {
+        "name": "Check Session",
+        "path": "/access/check-session",
+        "status": 200,
+        "hasData": true,
+        "dataSummary": "FAIL"
+      },
+      {
+        "name": "Inventory Sheets",
+        "path": "/inventory",
+        "status": 200,
+        "hasData": true,
+        "dataSummary": "OK"
+      },
+      {
+        "name": "Contact Lenses",
+        "path": "/contactlenses",
+        "status": 200,
+        "hasData": true,
+        "dataSummary": "OK"
+      },
+      {
+        "name": "Optica Armazones",
+        "path": "/optica/armazones",
+        "status": 200,
+        "hasData": true,
+        "dataSummary": "OK"
+      },
+      {
+        "name": "Lab Orders",
+        "path": "/laboratory/orders",
+        "status": 200,
+        "hasData": true,
+        "dataSummary": "OK"
+      },
+      {
+        "name": "Profile",
+        "path": "/users/me",
+        "status": 200,
+        "hasData": true,
+        "dataSummary": "Object"
+      },
+      {
+        "name": "Notifications",
+        "path": "/notification/count",
+        "status": 200,
+        "hasData": true,
+        "dataSummary": "FAIL"
+      }
+    ]
+  }
+]

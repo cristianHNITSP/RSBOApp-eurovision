@@ -64,8 +64,9 @@ const DevolutionSchema = new mongoose.Schema(
     },
 
     // Acciones de reposición
-    restoreStock:  { type: Boolean, default: false }, // marcar si se reingresa stock
-    stockRestored: { type: Boolean, default: false },
+    restoreStock:    { type: Boolean, default: false }, // marcar si se reingresa stock
+    stockRestored:   { type: Boolean, default: false },
+    mermasProcessed: { type: Boolean, default: false }, // items dañados ya convertidos en MermaLog (idempotencia)
 
     // Notas internas
     notes: { type: String, default: "", trim: true },

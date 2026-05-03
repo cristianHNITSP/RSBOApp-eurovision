@@ -137,6 +137,9 @@ app.use("/api/stats", statsRoutes);
 const devolutionsRoutes = require("./routes/devolutions.routes");
 app.use("/api/devolutions", devolutionsRoutes);
 
+const mermaRoutes = require("./routes/merma.routes");
+app.use("/api/mermas", mermaRoutes);
+
 // si tu API usa prefijo /api:
 // app.use("/api/laboratory", laboratoryRoutes);
 

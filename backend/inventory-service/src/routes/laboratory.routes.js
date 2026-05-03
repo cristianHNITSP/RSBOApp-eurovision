@@ -14,6 +14,8 @@ const LaboratoryEvent = require("../models/laboratory/LaboratoryEvent");
 const { protect } = require("../utils/auth");
 
 const { notifyPendingOrders, notifyNewOrder, notifyCorrection } = require("../services/labNotification.service");
+const laboratoryService = require("../services/laboratory.service");
+const stockService = require("../services/stock.service");
 const { actorFromBody, sanitizeString } = require("../inventory/utils/normalize");
 const { denormNum, parseKey } = require("../inventory/utils/keys");
 const { broadcast } = require("../ws");
@@ -182,51 +184,8 @@ async function resolveCodebarLocation(sheet, codebar) {
   return null;
 }
 
-async function applyDeltaToInventory(sheet, loc, qtySigned, actor, reasonType) {
-  const Model = getMatrixModel(sheet.tipo_matriz);
-  if (!Model) throw new Error(`tipo_matriz no soportado: ${sheet.tipo_matriz}`);
-  const q = Number(qtySigned || 0);
-  const key = String(loc.matrixKey);
-  const isDirect = (sheet.tipo_matriz === "BASE" || sheet.tipo_matriz === "SPH_CYL");
-  const fieldPath = isDirect ? `cells.${key}.existencias` : `cells.${key}.${loc.eye}.existencias`;
-  const query = { sheet: sheet._id };
-  if (q < 0) query[fieldPath] = { $gte: Math.abs(q) };
+// helpers de stock eliminados — ahora se usa stockService.mutateMatrixCell
 
-  try {
-    const updatedDoc = await Model.findOneAndUpdate(query, {
-      $inc: { [fieldPath]: q },
-      $set: { [`cells.${key}.updatedBy`]: actor }
-    }, { new: true }).lean();
-
-    if (!updatedDoc) return { ok: false, reason: q < 0 ? "NO_STOCK" : "FAILED" };
-
-    const cellData = updatedDoc.cells[key] || updatedDoc.cells;
-    const after = isDirect ? (cellData?.existencias || 0) : (cellData?.[loc.eye]?.existencias || 0);
-    const before = after - q;
-
-    setImmediate(async () => {
-      try {
-        await InventoryChangeLog.create({
-          sheet: sheet._id, tipo_matriz: sheet.tipo_matriz, type: reasonType,
-          details: { codebar: String(loc?.codebar || ""), qty: q, before, after, matrixKey: key, eye: loc.eye || null },
-          actor
-        });
-        const { checkCellAlert } = require("../services/stockAlert.service");
-        checkCellAlert(sheet, sheet.tipo_matriz, key, after, isDirect ? null : (loc.eye || null));
-      } catch (e) { if (DEBUG_LAB) console.warn("[LAB] Log fail:", e.message); }
-    });
-
-    return { ok: true, before, after };
-  } catch (e) { console.error(e); throw e; }
-}
-
-async function applyExitToInventory(sheet, loc, qty, actor) {
-  return applyDeltaToInventory(sheet, loc, -Math.abs(Number(qty || 0)), actor, "LAB_EXIT");
-}
-
-async function applyEntryToInventory(sheet, loc, qty, actor) {
-  return applyDeltaToInventory(sheet, loc, Math.abs(Number(qty || 0)), actor, "LAB_ENTRY");
-}
 
 // ============================================================================
 // ROUTES
@@ -323,8 +282,20 @@ router.post("/orders/:orderId/scan", param("orderId").isMongoId(), handleValidat
     if (!line) return res.status(404).json({ ok: false, message: `El código ${req.body.codebar} no pertenece a este pedido.` });
 
     const sheet = await InventorySheet.findById(line.sheet);
-    const inv = await applyExitToInventory(sheet, line, req.body.qty || 1, actor);
-    if (!inv.ok) return res.status(409).json({ ok: false, reason: inv.reason });
+    try {
+      await stockService.mutateMatrixCell({
+        sheet,
+        matrixKey: line.matrixKey,
+        eye:       line.eye || null,
+        delta:     -Math.abs(Number(req.body.qty || 1)),
+        type:      "LAB_EXIT",
+        actor,
+        codebar:   line.codebar
+      });
+    } catch (e) {
+      if (e.code === "INSUFFICIENT_STOCK") return res.status(409).json({ ok: false, reason: "NO_STOCK" });
+      throw e;
+    }
 
     // 🚀 ATOMIC UPDATE: Previene que escaneos simultáneos del mismo pedido se pisen entre sí
     const updatedOrder = await LaboratoryOrder.findOneAndUpdate(
@@ -342,13 +313,16 @@ router.post("/orders/:orderId/scan", param("orderId").isMongoId(), handleValidat
   } catch (e) { res.status(500).json({ ok: false }); }
 });
 
-router.post("/orders/:orderId/close", param("orderId").isMongoId(), async (req, res) => {
+router.post("/orders/:orderId/close", param("orderId").isMongoId(), handleValidation, async (req, res) => {
   try {
-    const order = await LaboratoryOrder.findByIdAndUpdate(req.params.orderId, { status: "cerrado", closedAt: new Date(), closedBy: actorFromBody(req) }, { new: true });
-    broadcast("LAB_ORDER_CLOSE", { orderId: order._id, folio: order.folio });
+    const actor = actorFromBody(req) || { userId: null, name: "system" };
+    const { order, alreadyClosed } = await laboratoryService.closeOrder(req.params.orderId, actor);
     setImmediate(() => notifyPendingOrders());
-    res.json({ ok: true, data: order });
-  } catch (e) { res.status(500).json({ ok: false }); }
+    res.json({ ok: true, data: order, alreadyClosed });
+  } catch (e) {
+    const status = e?.status || 500;
+    res.status(status).json({ ok: false, code: e?.code || "ERROR", error: e?.message || "Error al cerrar pedido" });
+  }
 });
 
 router.post("/orders/:orderId/reset", param("orderId").isMongoId(), async (req, res) => {
@@ -361,7 +335,17 @@ router.post("/orders/:orderId/reset", param("orderId").isMongoId(), async (req, 
     for (const line of order.lines) {
       if (line.picked > 0) {
         const sheet = await InventorySheet.findById(line.sheet);
-        if (sheet) await applyEntryToInventory(sheet, line, line.picked, actor);
+        if (sheet) {
+          await stockService.mutateMatrixCell({
+            sheet,
+            matrixKey: line.matrixKey,
+            eye:       line.eye || null,
+            delta:     line.picked,
+            type:      "LAB_ENTRY",
+            actor,
+            codebar:   line.codebar
+          });
+        }
         line.picked = 0;
       }
     }
@@ -386,7 +370,17 @@ router.post("/orders/:orderId/cancel", param("orderId").isMongoId(), async (req,
     for (const line of order.lines) {
       if (line.picked > 0) {
         const sheet = await InventorySheet.findById(line.sheet);
-        if (sheet) await applyEntryToInventory(sheet, line, line.picked, actor);
+        if (sheet) {
+          await stockService.mutateMatrixCell({
+            sheet,
+            matrixKey: line.matrixKey,
+            eye:       line.eye || null,
+            delta:     line.picked,
+            type:      "LAB_ENTRY",
+            actor,
+            codebar:   line.codebar
+          });
+        }
       }
     }
 

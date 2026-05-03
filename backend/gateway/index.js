@@ -249,6 +249,7 @@ app.use("/api/search", proxyRequest(SERVICES.inventory));
 app.use("/api/contactlenses", proxyRequest(SERVICES.inventory));
 app.use("/api/stats", proxyRequest(SERVICES.inventory));
 app.use("/api/devolutions", proxyRequest(SERVICES.inventory));
+app.use("/api/mermas", proxyRequest(SERVICES.inventory));
 app.use("/api/optica", proxyRequest(SERVICES.optica));
 app.use("/api/notification", proxyRequest(SERVICES.notification));
 

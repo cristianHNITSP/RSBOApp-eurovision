@@ -92,6 +92,12 @@ const routes = [
         meta: { requiresAuth: true, breadcrumb: "Devoluciones" },
       },
       {
+        path: "mermas",
+        name: "mermas",
+        component: () => import("../views/mermas/Mermas.vue"),
+        meta: { requiresAuth: true, breadcrumb: "Ventas / Mermas" },
+      },
+      {
         path: "ayuda",
         name: "Ayuda",
         component: () => import("../views/Ayuda.vue"),

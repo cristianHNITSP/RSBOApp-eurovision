@@ -112,6 +112,7 @@ export default {
             { label: "Óptica", icon: "eye", path: "/l/ventas/optica" },
             { label: "Lentes de Contacto", icon: "circle", path: "/l/ventas/lentes-contacto" },
             { label: "Historial", icon: "history", path: "/l/ventas/historial" },
+            { label: "Mermas", icon: "trash-can", path: "/l/mermas" },
           ],
         },
         { label: "Devoluciones", icon: "rotate-left", path: "/l/devoluciones" },

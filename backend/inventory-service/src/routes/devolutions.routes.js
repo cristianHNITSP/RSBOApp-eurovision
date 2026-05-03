@@ -24,6 +24,9 @@ const MatrixBase      = require("../models/matrix/MatrixBase");
 const MatrixSphCyl    = require("../models/matrix/MatrixSphCyl");
 const MatrixBifocal   = require("../models/matrix/MatrixBifocal");
 const MatrixProgresivo = require("../models/matrix/MatrixProgresivo");
+const devolutionService = require("../services/devolution.service");
+const stockService = require("../services/stock.service");
+const { generateFolio } = require("../utils/folio");
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret";
 const DEBUG_DEV  = String(process.env.DEBUG_DEV || "") === "1";
@@ -37,13 +40,8 @@ const ROLES_ADMIN   = ["root", "eurovision"];
 // ─── Auth middleware ──────────────────────────────────────────────────────────
 const requireAuth = (allowedRoles) => protect(allowedRoles);
 
-// ─── Generador de folio ───────────────────────────────────────────────────────
-async function generateFolio() {
-  const count = await Devolution.countDocuments();
-  const pad   = String(count + 1).padStart(5, "0");
-  const year  = new Date().getFullYear();
-  return `DEV-${year}-${pad}`;
-}
+// generateFolio local eliminado — ahora se usa ../utils/folio.js
+
 
 // ─── Helpers de inventario (replicados de laboratory.routes.js) ───────────────
 const getMatrixModel = (tipo) => {
@@ -98,77 +96,8 @@ async function resolveCodebarLocation(sheet, codebar) {
   return null;
 }
 
-/**
- * Aplica un delta (+qty para reingreso) a una celda de inventario.
- */
-async function applyStockEntry(sheet, loc, qty, actor) {
-  const Model = getMatrixModel(sheet.tipo_matriz);
-  if (!Model) throw new Error(`tipo_matriz no soportado: ${sheet.tipo_matriz}`);
+// Helpers de stock eliminados — ahora se usa stockService.mutateMatrixCell
 
-  const doc = await Model.findOne({ sheet: sheet._id });
-  if (!doc) throw new Error("Matriz no encontrada");
-
-  doc.set("cells", doc.cells || new Map());
-
-  const key  = String(loc.matrixKey);
-  const cell = doc.cells.get(key);
-  if (!cell) throw new Error(`Celda ${key} no encontrada en matriz`);
-
-  const q = Math.abs(Number(qty || 0));
-  if (!Number.isFinite(q) || q === 0) throw new Error("qty inválido");
-
-  let before = 0, after = 0;
-
-  if (sheet.tipo_matriz === "BASE" || sheet.tipo_matriz === "SPH_CYL") {
-    before = Number(cell.existencias || 0);
-    after  = before + q;
-    cell.existencias = after;
-    cell.updatedBy   = actor;
-    doc.cells.set(key, cell);
-  } else {
-    const eye = loc.eye;
-    if (eye !== "OD" && eye !== "OI") throw new Error("eye requerido (OD/OI)");
-    cell[eye] = cell[eye] || {};
-    before = Number(cell[eye].existencias || 0);
-    after  = before + q;
-    cell[eye].existencias = after;
-    cell.updatedBy = actor;
-    doc.cells.set(key, cell);
-  }
-
-  doc.markModified("cells");
-  await doc.save();
-
-  try {
-    await InventoryChangeLog.create({
-      sheet:       sheet._id,
-      tipo_matriz: sheet.tipo_matriz,
-      type:        "DEV_ENTRY",
-      details: {
-        codebar:   String(loc?.codebar || ""),
-        qty:       q,
-        before,
-        after,
-        matrixKey: key,
-        eye:       loc.eye || null,
-      },
-      actor,
-    });
-  } catch (e) {
-    if (DEBUG_DEV) console.warn("[DEV] InventoryChangeLog fail:", e?.message || e);
-  }
-
-  // Stock alert no bloqueante
-  setImmediate(() => {
-    try {
-      const { checkCellAlert } = require("../services/stockAlert.service");
-      const eyeArg = (sheet.tipo_matriz === "BASE" || sheet.tipo_matriz === "SPH_CYL") ? null : (loc.eye || null);
-      checkCellAlert(sheet, sheet.tipo_matriz, key, after, eyeArg);
-    } catch (_) {}
-  });
-
-  return { ok: true, before, after };
-}
 
 /**
  * Cuando se aprueba/procesa una devolución con restoreStock=true,
@@ -213,7 +142,15 @@ async function restoreInventoryStock(dev, actor) {
     }
 
     try {
-      await applyStockEntry(sheetDoc, loc, item.qty, actor);
+      await stockService.mutateMatrixCell({
+        sheet:       sheetDoc,
+        matrixKey:   loc.matrixKey,
+        eye:         loc.eye || null,
+        delta:       Math.abs(Number(item.qty || 0)),
+        type:        "DEV_ENTRY",
+        actor,
+        codebar:     item.codebar
+      });
     } catch (e) {
       errors.push({ codebar: item.codebar, error: e.message });
       if (DEBUG_DEV) console.warn("[DEV] restoreStock error:", e.message);
@@ -361,7 +298,7 @@ router.post("/", requireAuth(ROLES_CREATE), async (req, res) => {
       })
     );
 
-    const folio = await generateFolio();
+    const folio = await generateFolio("DEV", Devolution);
 
     const dev = await Devolution.create({
       folio,
@@ -412,6 +349,13 @@ router.patch("/:id/status", requireAuth(ROLES_MANAGER), async (req, res) => {
       stockErrors = await restoreInventoryStock(dev, actor) || [];
     }
 
+    // Convertir items dañados/defectuosos en mermas al aprobar o procesar
+    let mermasGenerated = { ok: [], errors: [] };
+    if ((status === "aprobada" || status === "procesada") && !dev.mermasProcessed) {
+      mermasGenerated = await devolutionService.processDamagedAsMermas(dev, actor);
+      dev.mermasProcessed = true;
+    }
+
     dev.status      = status;
     dev.processedBy = actor;
     dev.processedAt = new Date();
@@ -424,9 +368,27 @@ router.patch("/:id/status", requireAuth(ROLES_MANAGER), async (req, res) => {
       ok: true,
       data: dev,
       ...(stockErrors.length > 0 && { stockWarnings: stockErrors }),
+      ...(mermasGenerated.ok.length > 0 && { mermasGenerated: mermasGenerated.ok }),
+      ...(mermasGenerated.errors.length > 0 && { mermaErrors: mermasGenerated.errors }),
     });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ─── PUT /api/devolutions/:id ─────────────────────────────────────────────────
+// Edita una devolución (solo en estados pendiente o en_revision).
+router.put("/:id", requireAuth(ROLES_MANAGER), async (req, res) => {
+  try {
+    const actor = {
+      userId: req.user?.userId || req.user?.id || null,
+      name:   req.user?.name   || null,
+    };
+    const updated = await devolutionService.updateDevolution(req.params.id, req.body, actor);
+    res.json({ ok: true, data: updated });
+  } catch (e) {
+    const status = e?.status || 500;
+    res.status(status).json({ ok: false, code: e?.code || "ERROR", error: e?.message || "Error al actualizar devolución" });
   }
 });
 

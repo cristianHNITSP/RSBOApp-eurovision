@@ -341,6 +341,14 @@ function _onLabWs(e) {
     // Solo si queremos feedback global de escaneos
   } else if (type === "LAB_ORDER_CANCEL") {
     labToast.warning(`🚫 Pedido cancelado: ${e.detail.payload?.folio}`);
+  } else if (type === "LAB_ORDER_CLOSED_TX") {
+    labToast.success(`✅ Lote cerrado: ${e.detail.payload?.folio}`);
+  } else if (type === "MERMA_CREATED") {
+    labToast.warning(`🗑️ Merma registrada: ${e.detail.payload?.folio} (${e.detail.payload?.origin})`);
+    window.dispatchEvent(new CustomEvent("mermas:refresh"));
+  } else if (type === "DEVOLUTION_UPDATED") {
+    labToast.info(`✏️ Devolución actualizada: ${e.detail.payload?.folio}`);
+    window.dispatchEvent(new CustomEvent("devoluciones:refresh"));
   }
 }
 

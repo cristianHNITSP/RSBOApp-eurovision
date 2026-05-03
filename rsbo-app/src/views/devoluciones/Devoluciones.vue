@@ -246,6 +246,9 @@
                     <button class="act-btn act-review" @click="quickAction(dev, 'en_revision')" title="Poner en revisión">
                       <i class="fas fa-magnifying-glass"></i> En revisión
                     </button>
+                    <button class="act-btn act-detail" @click="openEdit(dev)" title="Editar devolución">
+                      <i class="fas fa-pen"></i> Editar
+                    </button>
                     <button class="act-btn act-reject" @click="openReject(dev)" title="Rechazar">
                       <i class="fas fa-xmark"></i> Rechazar
                     </button>
@@ -253,6 +256,9 @@
                   <template v-if="dev.status === 'en_revision'">
                     <button class="act-btn act-approve" @click="quickAction(dev, 'aprobada')" title="Aprobar">
                       <i class="fas fa-check"></i> Aprobar
+                    </button>
+                    <button class="act-btn act-detail" @click="openEdit(dev)" title="Editar devolución">
+                      <i class="fas fa-pen"></i> Editar
                     </button>
                     <button class="act-btn act-reject" @click="openReject(dev)" title="Rechazar">
                       <i class="fas fa-xmark"></i> Rechazar
@@ -510,11 +516,18 @@
       </div>
     </b-modal>
 
+    <!-- ══ MODAL: EDITAR DEVOLUCIÓN ══ -->
+    <DevolutionEditModal
+      v-model="editOpen"
+      :devolution="editTarget"
+      @saved="onEditSaved"
+    />
+
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, toRef } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount, toRef } from "vue";
 import {
   fetchDevolutions,
   fetchDevolutionStats,
@@ -523,6 +536,7 @@ import {
 } from "@/services/devolutions.js";
 import { useDashboardStats } from "@/composables/api/useDashboardStats.js";
 import { labToast } from "@/composables/shared/useLabToast.js";
+import DevolutionEditModal from "@/components/devoluciones/DevolutionEditModal.vue";
 
 // ── Props (DashboardLayout pasa :user a todos los hijos) ─────────────────────
 const props = defineProps({ user: Object, loading: Boolean });
@@ -546,6 +560,8 @@ const currentPage  = ref(1);
 
 const detailDev    = ref(null);
 const detailOpen   = ref(false);
+const editTarget   = ref(null);
+const editOpen     = ref(false);
 const actionNotes  = ref("");
 const rejectTarget = ref(null);
 const rejectOpen   = ref(false);
@@ -755,6 +771,23 @@ function openDetail(dev) {
   actionNotes.value = "";
 }
 
+function openEdit(dev) {
+  if (!["pendiente", "en_revision"].includes(dev?.status)) {
+    labToast.warning("Solo editable en pendiente o en_revision");
+    return;
+  }
+  editTarget.value = dev;
+  editOpen.value   = true;
+}
+
+function onEditSaved(updated) {
+  if (updated) {
+    const idx = items.value.findIndex(d => String(d._id) === String(updated._id));
+    if (idx >= 0) items.value[idx] = updated;
+  }
+  labToast.success("Devolución actualizada");
+}
+
 // ── Crear devolución ─────────────────────────────────────────────────────────
 function openCreate() {
   form.value  = defaultForm();
@@ -794,7 +827,14 @@ async function submitCreate() {
 }
 
 // ── Init ─────────────────────────────────────────────────────────────────────
-onMounted(load);
+function _onDevolucionesRefresh() { load(); }
+onMounted(() => {
+  load();
+  window.addEventListener("devoluciones:refresh", _onDevolucionesRefresh);
+});
+onBeforeUnmount(() => {
+  window.removeEventListener("devoluciones:refresh", _onDevolucionesRefresh);
+});
 </script>
 
 <!-- Glass token vars (no scoped) -->

@@ -62,7 +62,28 @@ const LaboratoryOrderSchema = new mongoose.Schema(
     createdBy: { type: ActorSchema, default: () => ({}) },
     updatedBy: { type: ActorSchema, default: () => ({}) },
     closedBy: { type: ActorSchema, default: () => ({}) },
-    closedAt: { type: Date, default: null }
+    closedAt: { type: Date, default: null },
+
+    // Snapshot inmutable creado en el cierre del lote (idempotencia + auditoría)
+    closeSnapshot: {
+      type: new mongoose.Schema({
+        txId:         { type: String, default: null },     // uuid del cierre, idempotencia
+        closedBy:     { type: ActorSchema, default: () => ({}) },
+        closedAt:     { type: Date, default: null },
+        totalsByLine: { type: [new mongoose.Schema({
+          lineId:  { type: String, required: true },
+          qty:     { type: Number, default: 0 },
+          picked:  { type: Number, default: 0 },
+          mermada: { type: Number, default: 0 },
+        }, { _id: false })], default: [] },
+        totals:       { type: new mongoose.Schema({
+          qty:     { type: Number, default: 0 },
+          picked:  { type: Number, default: 0 },
+          mermada: { type: Number, default: 0 },
+        }, { _id: false }), default: () => ({}) },
+      }, { _id: false }),
+      default: null
+    }
   },
   { timestamps: true }
 );

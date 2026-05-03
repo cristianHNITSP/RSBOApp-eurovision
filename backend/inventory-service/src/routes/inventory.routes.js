@@ -22,6 +22,7 @@ const { to2, isDef, isMultipleOfStep } = require("../inventory/utils/numbers");
 const { clampRange } = require("../inventory/utils/ranges");
 const { parseKey, denormNum, keySphCyl, normalizeCylConvention } = require("../inventory/utils/keys");
 const { makeSku, makeCodebar } = require("../inventory/utils/barcode");
+const { isFlatMatrix } = require("../utils/matrix");
 
 // Services
 const { broadcast } = require("../ws");
@@ -504,6 +505,66 @@ router.get("/sheets/by-sku/:sku", async (req, res) => {
     res.status(500).json({ ok: false, message: "Error al buscar por SKU" });
   }
 });
+
+/**
+ * Resuelve un codebar buscando en todas las matrices de hojas activas.
+ * GET /api/inventory/resolve/:codebar
+ */
+router.get("/resolve/:codebar", async (req, res) => {
+  try {
+    const cb = String(req.params.codebar || "").trim();
+    if (!cb) return res.status(400).json({ ok: false, message: "Codebar requerido" });
+
+    const sheets = await InventorySheet.find({ isDeleted: { $ne: true } }).lean();
+    
+    for (const sheet of sheets) {
+      const Model = models[getMatrixModelName(sheet.tipo_matriz)];
+      if (!Model) continue;
+
+      const doc = await Model.findOne({ sheet: sheet._id }).lean();
+      if (!doc) continue;
+
+      for (const [key, cell] of Object.entries(doc.cells || {})) {
+        if (isFlatMatrix(sheet.tipo_matriz)) {
+          if (cell.codebar === cb) {
+            return res.json({
+              ok: true,
+              data: {
+                sheet,
+                matrixKey: key,
+                eye: null,
+                item: cell
+              }
+            });
+          }
+        } else {
+          // Per eye
+          if (cell.OD?.codebar === cb) {
+            return res.json({ ok: true, data: { sheet, matrixKey: key, eye: "OD", item: cell.OD } });
+          }
+          if (cell.OI?.codebar === cb) {
+            return res.json({ ok: true, data: { sheet, matrixKey: key, eye: "OI", item: cell.OI } });
+          }
+        }
+      }
+    }
+
+    res.status(404).json({ ok: false, message: "Item no encontrado" });
+  } catch (err) {
+    console.error("GET /resolve/:codebar error:", err);
+    res.status(500).json({ ok: false, message: "Error al resolver código" });
+  }
+});
+
+function getMatrixModelName(tipo) {
+  switch (tipo) {
+    case "BASE":     return "MatrixBase";
+    case "SPH_CYL":  return "MatrixSphCyl";
+    case "SPH_ADD":  return "MatrixBifocal";
+    case "BASE_ADD": return "MatrixProgresivo";
+    default:         return null;
+  }
+}
 
 // ======================= PATCH SHEET =======================
 

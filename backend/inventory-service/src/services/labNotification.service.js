@@ -150,7 +150,7 @@ async function notifyNewOrder(order) {
       message:     message.slice(0, 2000),
       metadata,
       type:        "info",
-      priority:    "medium",
+      priority:    "high",
       targetRoles: TARGET_ROLES,
       isGlobal:    false,
     });

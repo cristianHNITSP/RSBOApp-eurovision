@@ -46,14 +46,9 @@ export function useLabOrders() {
         // Prefer selecting an open order by default
         const firstOpen = mapped.find(o => o.status === "pendiente" || o.status === "parcial");
         
-        if (!selectedOrderId.value) {
-          if (firstOpen) selectedOrderId.value = firstOpen.id;
-          else if (mapped.length) selectedOrderId.value = mapped[0].id;
-        } else {
-          // If the selected order is no longer in the list (e.g. deleted), pick a new one
-          if (!mapped.find((x) => x.id === selectedOrderId.value) && mapped.length) {
-            selectedOrderId.value = firstOpen ? firstOpen.id : mapped[0].id;
-          }
+        // Ensure selection remains valid, otherwise clear it
+        if (selectedOrderId.value && !mapped.find((x) => x.id === selectedOrderId.value)) {
+          selectedOrderId.value = "";
         }
         loadOrderCounts();
       } catch (e) {

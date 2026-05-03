@@ -46,20 +46,24 @@ export const normalizeOrder = (o) => {
     sheetId,
     createdAtShort: fmtShort(o?.createdAt),
     updatedAtShort: fmtShort(o?.updatedAt),
-    lines: lines.map((l, i) => ({
-      ...l,
-      id: String(l?.lineId ?? l?.id ?? `line_${i}`),
-      lineId: String(l?.lineId ?? l?.id ?? `line_${i}`),
-      qty: Number(l?.qty || 0),
-      picked: Number(l?.picked || 0),
-      codebar: String(l?.codebar || ""),
-      params: l?.params || {},
-      eye: l?.eye ?? null,
-      tipoMatriz: l?.tipo_matriz || null,
-      micaType: l?.micaType || getMicaTypeName(l?.tipo_matriz),
-      sheetNombre: l?.sheetNombre || "",
-      lineSheetId: l?.sheet ? String(l.sheet) : null
-    }))
+    lines: lines.map((l, i) => {
+      const params = l?.params || {};
+      return {
+        ...l,
+        ...params, // Aplanar parámetros (base, sph, cyl, add, etc.) para visualización
+        id: String(l?.lineId ?? l?.id ?? `line_${i}`),
+        lineId: String(l?.lineId ?? l?.id ?? `line_${i}`),
+        qty: Number(l?.qty || 0),
+        picked: Number(l?.picked || 0),
+        codebar: String(l?.codebar || ""),
+        params,
+        eye: l?.eye ?? null,
+        tipoMatriz: l?.tipo_matriz || null,
+        micaType: l?.micaType || getMicaTypeName(l?.tipo_matriz),
+        sheetNombre: l?.sheetNombre || "",
+        lineSheetId: l?.sheet ? String(l.sheet) : null
+      };
+    })
   };
 };
 

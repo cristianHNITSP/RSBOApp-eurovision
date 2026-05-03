@@ -27,7 +27,12 @@
           <span>{{ lab.orderProgressPct(order) }}%</span>
         </div>
 
-        <div v-if="lab.isOrderComplete(order)" class="complete-badge mt-2">
+        <div v-if="order.status === 'cerrado'" class="complete-badge complete-badge--closed mt-2">
+          <i class="fas fa-lock mr-2"></i>
+          Este pedido ha sido cerrado y no admite más cambios.
+        </div>
+
+        <div v-else-if="lab.isOrderComplete(order)" class="complete-badge mt-2">
           <i class="fas fa-check-circle mr-2"></i>
           ¡Pedido completado! Listo para cerrar.
         </div>
@@ -102,7 +107,7 @@
             expanded
             icon-left="redo"
             :loading="lab.loadingReset.value"
-            :disabled="!order"
+            :disabled="!order || order.status === 'cerrado' || order.status === 'cancelado'"
             @click="$emit('ask-reset')"
           >
             Reiniciar surtido
@@ -113,7 +118,7 @@
             type="is-primary"
             expanded
             icon-left="lock"
-            :disabled="!order || !lab.isOrderComplete(order)"
+            :disabled="!order || !lab.isOrderComplete(order) || order.status === 'cerrado'"
             :loading="lab.loadingCloseOrder.value"
             @click="$emit('ask-close')"
           >
@@ -126,7 +131,7 @@
             expanded
             outlined
             icon-left="exclamation-triangle"
-            :disabled="!order"
+            :disabled="!order || order.status === 'cerrado' || order.status === 'cancelado'"
             @click="lab.correctionOpen.value = true"
           >
             Solicitar corrección

@@ -113,9 +113,7 @@ export function useLabMutations({ getUser, sheets, items, orders, events, notify
       const { data } = await createOrderService(payload);
       const order = normalizeOrder(data?.data);
       await Promise.all([orders.loadOrders(), events.loadEvents()]);
-      orders.selectedOrderId.value = order.id;
-      mode.value = "surtir";
-      if (order.sheetId) sheets.selectedSheetId.value = order.sheetId;
+      // No auto-selecting. User chooses from the list.
       draftLines.value = [];
       draftCliente.value = "";
       draftNote.value = "";
@@ -133,6 +131,10 @@ export function useLabMutations({ getUser, sheets, items, orders, events, notify
     if (loadingScan.value) return;
     const order = orders.selectedOrder.value;
     if (!order?.id) return;
+    if (order.status === "cerrado" || order.status === "cancelado") {
+      notify("No se puede surtir un pedido cerrado o cancelado", "is-warning");
+      return;
+    }
     // Sanitización: Solo dejar caracteres alfanuméricos
     const cb = String(scanCode.value || "").trim().replace(/[^a-zA-Z0-9]/g, "");
     if (!cb) return;
@@ -185,6 +187,10 @@ export function useLabMutations({ getUser, sheets, items, orders, events, notify
   async function resetPickedForSelectedOrder() {
     const order = orders.selectedOrder.value;
     if (!order?.id) return;
+    if (order.status === "cerrado" || order.status === "cancelado") {
+      notify("No se puede reiniciar el surtido de un pedido cerrado", "is-warning");
+      return;
+    }
     loadingReset.value = true;
     try {
       const { data } = await resetOrderService(order.id, actorRef());

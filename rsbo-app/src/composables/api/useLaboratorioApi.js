@@ -68,6 +68,9 @@ export function useLaboratorioApi(getUser) {
     events.loadOrderEvents(id);
     const o = orders.ordersDB.value.find((x) => x.id === id);
     if (o && mode.value === "surtir" && o.sheetId) sheets.selectedSheetId.value = o.sheetId;
+
+    // Limpiar buffer del escáner al cambiar de pedido para evitar conflictos
+    if (mutations.scanCode) mutations.scanCode.value = "";
   });
 
   onMounted(async () => {

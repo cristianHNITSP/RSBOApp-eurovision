@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { fetchNotifications, pinNotification, dismissNotifApi as apiDismissNotification } from '@/services/notifications.js';
+import { updateDevolutionStatus } from '@/services/devolutions.js';
 
 import { labToast } from '@/composables/shared/useLabToast.js';
 
@@ -43,6 +44,29 @@ async function loadNotifications() {
     labToast.warning('Error al cargar notificaciones');
   } finally {
     isHistoryLoading.value = false;
+  }
+}
+
+function canShowDetail(notif) {
+  return !!(notif.metadata && (
+    notif.metadata.type === 'stock_alert' ||
+    notif.metadata.type === 'pending_orders' ||
+    notif.metadata.type === 'new_order' ||
+    notif.metadata.type === 'correction' ||
+    notif.metadata.type === 'dev_approval'
+  ));
+}
+
+async function handleDevAction(devId, folio, action) {
+  try {
+    const status = action === 'approve' ? 'aprobada' : 'rechazada';
+    await updateDevolutionStatus(devId, status, `Acción rápida desde historial de notificaciones`);
+    labToast.success(`Devolución ${folio} ${action === 'approve' ? 'aprobada' : 'rechazada'}`);
+    
+    // Manual local update if needed, but easier to just reload or let user know
+    loadNotifications();
+  } catch (e) {
+    labToast.danger(e?.response?.data?.error || "Error al procesar acción");
   }
 }
 
@@ -236,7 +260,7 @@ onMounted(() => {
                   <b-tag v-else-if="notif.type === 'warning'" type="is-warning" class="has-text-weight-bold mr-2">ATENCIÓN</b-tag>
 
                   <b-button 
-                    v-if="notif.metadata?.cells?.length"
+                    v-if="canShowDetail(notif)"
                     type="is-primary" 
                     is-light 
                     rounded 
@@ -253,42 +277,72 @@ onMounted(() => {
                 <transition name="fade">
                   <div v-if="expandedIds.has(notif._id)" class="notif-detail-panel mt-3 p-0 bg-light rounded shadow-inner overflow-hidden">
                     
-                    <!-- Navigator for Toric (By Axis) -->
-                    <div v-if="hasAxisData(notif)" class="axis-navigator p-3 border-bottom-light bg-white">
-                      <p class="is-size-7 has-text-weight-bold mb-2 has-text-grey">NAVEGAR POR GRADOS (EJE):</p>
-                      <div class="axis-pills d-flex flex-wrap gap-2">
-                        <button 
-                          v-for="axisLabel in getAxes(notif)" 
-                          :key="axisLabel"
-                          class="axis-pill"
-                          :class="{ 'active': (selectedAxisMap[notif._id] || getAxes(notif)[0]) === axisLabel }"
-                          @click="selectAxis(notif._id, axisLabel)"
-                        >
-                          {{ axisLabel }}°
-                          <span class="count-badge">{{ getAlertsForAxis(notif, axisLabel).length }}</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    <!-- Cells List with Internal Scroll -->
-                    <div class="cells-list-container" style="max-height: 400px; overflow-y: auto;">
-                      <div class="p-3">
-                        <div 
-                          v-for="(cell, cidx) in getCurrentAlerts(notif)" 
-                          :key="cidx" 
-                          class="cell-item d-flex is-align-items-center py-2 border-bottom-light"
-                        >
-                          <b-tag :type="cell.level === 'CRITICO' ? 'is-danger' : 'is-warning'" size="is-small" class="mr-3 has-text-weight-bold">
-                            {{ cell.level }}
-                          </b-tag>
-                          <span class="is-size-7 has-text-weight-semibold is-flex-grow-1">{{ cell.label }}</span>
-                          <span class="is-size-7 has-text-weight-bold">{{ cell.existencias }} pzas</span>
+                    <!-- DETALLE: Alerta de stock -->
+                    <template v-if="notif.metadata.type === 'stock_alert'">
+                      <div v-if="hasAxisData(notif)" class="axis-navigator p-3 border-bottom-light bg-white">
+                        <p class="is-size-7 has-text-weight-bold mb-2 has-text-grey">NAVEGAR POR GRADOS (EJE):</p>
+                        <div class="axis-pills d-flex flex-wrap gap-2">
+                          <button 
+                            v-for="axisLabel in getAxes(notif)" 
+                            :key="axisLabel"
+                            class="axis-pill"
+                            :class="{ 'active': (selectedAxisMap[notif._id] || getAxes(notif)[0]) === axisLabel }"
+                            @click="selectAxis(notif._id, axisLabel)"
+                          >
+                            {{ axisLabel }}°
+                            <span class="count-badge">{{ getAlertsForAxis(notif, axisLabel).length }}</span>
+                          </button>
                         </div>
                       </div>
-                    </div>
+
+                      <div class="cells-list-container" style="max-height: 400px; overflow-y: auto;">
+                        <div class="p-3">
+                          <div 
+                            v-for="(cell, cidx) in getCurrentAlerts(notif)" 
+                            :key="cidx" 
+                            class="cell-item d-flex is-align-items-center py-2 border-bottom-light"
+                          >
+                            <b-tag :type="cell.level === 'CRITICO' ? 'is-danger' : 'is-warning'" size="is-small" class="mr-3 has-text-weight-bold">
+                              {{ cell.level }}
+                            </b-tag>
+                            <span class="is-size-7 has-text-weight-semibold is-flex-grow-1">{{ cell.label }}</span>
+                            <span class="is-size-7 has-text-weight-bold">{{ cell.existencias }} pzas</span>
+                          </div>
+                        </div>
+                      </div>
+                    </template>
+
+                    <!-- DETALLE: Devoluciones pendientes agrupadas -->
+                    <template v-else-if="notif.metadata.type === 'dev_approval'">
+                      <div class="p-3 bg-white border-bottom-light">
+                        <p class="is-size-7 has-text-weight-bold has-text-grey">DEVOLUCIONES ESPERANDO REVISIÓN:</p>
+                      </div>
+                      <div class="cells-list-container" style="max-height: 400px; overflow-y: auto;">
+                        <div class="p-0">
+                          <div v-for="dev in notif.metadata.devolutions" :key="dev.id" 
+                               class="p-3 border-bottom-light bg-white is-flex is-justify-content-space-between is-align-items-center">
+                            <div>
+                              <div class="is-flex is-align-items-center">
+                                <span class="has-text-weight-bold is-size-6 mr-2">{{ dev.folio }}</span>
+                                <b-tag type="is-light" size="is-small">{{ dev.reason }}</b-tag>
+                              </div>
+                              <p class="is-size-7 has-text-grey">{{ dev.cliente }} · {{ dev.itemsCount }} ítem(s)</p>
+                            </div>
+                            <div class="buttons are-small">
+                              <b-button type="is-success" icon-left="check" @click="handleDevAction(dev.id, dev.folio, 'approve')">
+                                Aprobar
+                              </b-button>
+                              <b-button type="is-danger" icon-left="times" @click="handleDevAction(dev.id, dev.folio, 'reject')">
+                                Rechazar
+                              </b-button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </template>
 
                     <div class="p-2 has-text-centered border-top-light bg-white">
-                      <p class="is-size-7 has-text-grey-light">Mostrando {{ getCurrentAlerts(notif).length }} combinaciones</p>
+                      <p class="is-size-7 has-text-grey-light">Detalle de notificación</p>
                     </div>
 
                   </div>
@@ -318,17 +372,18 @@ onMounted(() => {
 
 <style scoped>
 .notifications-container {
-  background: white;
-  border-radius: 0.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.75rem;
 }
 
 .shadow-premium {
-  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-lg);
 }
 
 .notif-detail-panel {
-  background-color: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background-color: var(--bg-muted);
+  border: 1px solid var(--border-subtle);
 }
 
 .shadow-inner {
@@ -341,8 +396,8 @@ onMounted(() => {
 }
 
 .axis-pill {
-  border: 1px solid #cbd5e1;
-  background: white;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface);
   padding: 0.4rem 0.75rem;
   border-radius: 2rem;
   font-size: 0.75rem;
@@ -351,7 +406,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   transition: all 0.2s ease;
-  color: #475569;
+  color: var(--text-secondary);
 }
 
 .axis-pill:hover {
@@ -378,7 +433,7 @@ onMounted(() => {
 }
 
 .border-bottom-light {
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .cell-item:last-child {
@@ -422,7 +477,7 @@ onMounted(() => {
 }
 
 .notif-content-body {
-  border-bottom: 1px solid #edf2f7;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .notif-row-container:last-child .notif-content-body {

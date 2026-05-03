@@ -98,6 +98,16 @@ const routes = [
         meta: { requiresAuth: true, breadcrumb: "Ventas / Mermas" },
       },
       {
+        path: "encargos",
+        name: "encargos",
+        component: () => import("../views/backorders/BackOrders.vue"),
+        meta: {
+          requiresAuth: true,
+          breadcrumb: "Encargos",
+          allowedRoles: ["root", "eurovision", "supervisor", "ventas"],
+        },
+      },
+      {
         path: "ayuda",
         name: "Ayuda",
         component: () => import("../views/Ayuda.vue"),
@@ -189,6 +199,17 @@ router.beforeEach(async (to, from, next) => {
     if (data?.user?.roleName === "root") {
       window.location.href = "/admin/sso";
       return;
+    }
+
+    // Validación granular por rol según meta.allowedRoles
+    const matched = to.matched.find((r) => Array.isArray(r.meta?.allowedRoles));
+    if (matched) {
+      const role = String(data?.user?.roleName || "").toLowerCase();
+      const allowed = matched.meta.allowedRoles.map((r) => String(r).toLowerCase());
+      if (!allowed.includes(role)) {
+        console.warn(`[Router] Rol "${role}" no autorizado para ${to.fullPath}`);
+        return next({ name: "home" });
+      }
     }
 
     initLabSocket();

@@ -1746,3 +1746,37 @@ button.dropdown-item:hover {
 .premium-btn:active:not([disabled]) {
   filter: brightness(0.9);
 }
+
+/* ============================================================
+   UI ANIMATIONS
+   ============================================================ */
+
+.animate-fade-in {
+  animation: fadeIn 0.28s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.animate-slide-down {
+  animation: slideDown 0.22s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes fadeIn {
+  from { 
+    opacity: 0; 
+    transform: translateY(8px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+@keyframes slideDown {
+  from { 
+    opacity: 0; 
+    transform: translateY(-12px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}

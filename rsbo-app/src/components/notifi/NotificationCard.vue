@@ -1,11 +1,9 @@
 <script setup>
 import { ref, computed } from 'vue';
+import { updateDevolutionStatus } from "@/services/devolutions.js";
+import { labToast } from "@/composables/shared/useLabToast.js";
 
 const props = defineProps({
-  notif: {
-    type: Object,
-    required: true
-  },
   notif: {
     type: Object,
     required: true
@@ -58,9 +56,29 @@ const hasDetail = computed(() => {
     props.notif.metadata.type === 'stock_alert' ||
     props.notif.metadata.type === 'pending_orders' ||
     props.notif.metadata.type === 'new_order' ||
-    props.notif.metadata.type === 'correction'
+    props.notif.metadata.type === 'correction' ||
+    props.notif.metadata.type === 'dev_approval'
   ));
 });
+
+async function handleDevAction(devId, folio, action) {
+  try {
+    const status = action === 'approve' ? 'aprobada' : 'rechazada';
+    await updateDevolutionStatus(devId, status, `Acción rápida desde notificación`);
+    labToast.success(`Devolución ${folio} ${action === 'approve' ? 'aprobada' : 'rechazada'}`);
+    
+    // Remove the devolution from the local list if possible, or just let the next refresh handle it.
+    // For now, we'll just show the success toast.
+    if (props.notif.metadata?.devolutions) {
+      props.notif.metadata.devolutions = props.notif.metadata.devolutions.filter(d => d.id !== devId);
+      if (props.notif.metadata.devolutions.length === 0) {
+        emit('dismiss', props.notif);
+      }
+    }
+  } catch (e) {
+    labToast.danger(e?.response?.data?.error || "Error al procesar acción");
+  }
+}
 
 function hasAxisData(notif) {
   const cells = notif.metadata?.cells || [];
@@ -317,6 +335,33 @@ function closeMobileMenu() {
                 <b-icon pack="fas" icon="user" size="is-small" />{{ notif.metadata.actor }}
               </span>
             </div>
+          </template>
+          
+          <!-- DETALLE: Devoluciones pendientes agrupadas -->
+          <template v-else-if="notif.metadata.type === 'dev_approval'">
+            <div class="detail-header">
+              <span class="detail-header__label">Pendientes de revisión</span>
+              <span class="level-badge level-badge--bajo">{{ notif.metadata.devolutions.length }} activas</span>
+            </div>
+            <ul class="order-list">
+              <li v-for="dev in notif.metadata.devolutions" :key="dev.id" class="order-item">
+                <div class="order-item__head" style="justify-content: space-between;">
+                  <div>
+                    <span class="order-folio">{{ dev.folio }}</span>
+                    <span class="order-client">{{ dev.cliente }}</span>
+                  </div>
+                  <div class="buttons are-small">
+                    <b-button type="is-success is-light" icon-left="check" @click.stop="handleDevAction(dev.id, dev.folio, 'approve')">
+                      Aprobar
+                    </b-button>
+                    <b-button type="is-danger is-light" icon-left="times" @click.stop="handleDevAction(dev.id, dev.folio, 'reject')">
+                      Rechazar
+                    </b-button>
+                  </div>
+                </div>
+                <p class="notif-message-note">{{ dev.reason }} · {{ dev.itemsCount }} ítem(s)</p>
+              </li>
+            </ul>
           </template>
 
         </div>

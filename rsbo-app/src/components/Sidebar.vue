@@ -86,6 +86,9 @@ export default {
     menuItems() {
       const count = this.pendingOrders;
       const labBadge = count > 0 ? String(count) : null;
+      // Roles efectivos en frontend (root va al panel admin, no llega aquí)
+      const userRole = this.user?.role?.name || this.user?.role || this.user?.roleName || "";
+      const canSeeBackOrders = ["root", "eurovision", "supervisor", "ventas"].includes(String(userRole).toLowerCase());
       return [
         { group: "Principal" },
         { label: "Dashboard", icon: "tachometer-alt", path: "/l/home" },
@@ -116,6 +119,7 @@ export default {
           ],
         },
         { label: "Devoluciones", icon: "rotate-left", path: "/l/devoluciones" },
+        ...(canSeeBackOrders ? [{ label: "Encargos", icon: "clipboard-list", path: "/l/encargos" }] : []),
         { group: "Otros" },
         { label: "Ajustes", icon: "cog", path: "/l/config.panel" },
         { label: "Ayuda", icon: "question-circle", path: "/l/Ayuda" },

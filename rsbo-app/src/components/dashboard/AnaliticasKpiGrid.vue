@@ -119,7 +119,7 @@
             <div class="an-kpi-ico" style="background:rgba(236,72,153,.16);color:#ec4899"><i class="fas fa-rotate-left"></i></div>
             <div>
               <div class="an-kpi-lbl">Devoluciones pend.</div>
-              <div class="an-kpi-num" :style="{ color: (s?.devolucionesPendientes ?? 0) > 0 ? '#f59e0b' : '#10b981' }" v-if="!isLoading">{{ s?.devolucionesPendientes ?? 0 }}</div>
+              <div class="an-kpi-num" :style="{ color: ((s?.devolucionesPendientes ?? 0) + (s?.devolucionesEnRevision ?? 0)) > 0 ? '#f59e0b' : '#10b981' }" v-if="!isLoading">{{ (s?.devolucionesPendientes ?? 0) + (s?.devolucionesEnRevision ?? 0) }}</div>
               <b-skeleton v-else :width="50" :height="26" animated />
               <div class="an-kpi-cap">En espera de revisión</div>
             </div>

@@ -9,6 +9,7 @@ import {
   equiposService
 } from "@/services/optica";
 import { createOrder } from "@/services/laboratorio";
+import { createOpticaSale } from "@/services/opticaSales";
 import { 
   normTxt, 
   getActor 
@@ -257,34 +258,35 @@ export function useOpticaVentas(getUser) {
     loadingSale.value = true;
     const actor = getActor(getUser);
     try {
-      // 🚀 VENTA DIRECTA: Descontamos stock de cada producto en su respectiva colección (Atómico)
-      for (const ci of cartItems.value) {
-        const colId = ci.key.split("::")[0];
-        const col = COLLECTIONS.find(c => c.id === colId);
-        if (col && col.service && col.service.registerSale) {
-          await col.service.registerSale(ci.row._id, ci.qty);
-        }
-      }
-
-      // Generamos un folio ficticio para el recibo
-      const fakeOrder = {
-        _id: `SALE-OPT-${Date.now()}`,
-        folio: `VTA-OPT-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${Math.random().toString(36).slice(2,5).toUpperCase()}`,
+      // 🚀 VENTA DIRECTA: Persistimos la venta y descontamos stock en una sola llamada al backend
+      const salePayload = {
         cliente: clienteVal,
-        totalMonto: cartTotalMonto.value,
-        createdAt: new Date(),
-        status: 'completado'
+        clientePhone: cartNote.value, // Usando nota como teléfono temporalmente si no hay campo específico
+        total: cartTotalMonto.value,
+        items: cartItems.value.map(ci => ({
+          collection: ci.key.split("::")[0],
+          documentId: ci.row._id,
+          sku: ci.row.sku,
+          description: ci.title,
+          qty: ci.qty,
+          precio: ci.precio
+        }))
       };
 
+      const saleResult = await createOpticaSale(salePayload);
+      const saleData = saleResult.data;
+
       lastVoucher.value = {
-        ...fakeOrder,
-        id: fakeOrder._id,
-        fecha: fakeOrder.createdAt,
+        ...saleData,
+        id: saleData._id,
+        fecha: saleData.createdAt,
         lineas: cartItems.value,
         totalPiezas: cartTotal.value,
         actor: actor?.name || "Usuario",
-        ventaFolio: fakeOrder.folio
+        ventaFolio: saleData.folio
       };
+      const fakeOrder = saleData; // Para mantener compatibilidad con el retorno original
+
       voucherOpen.value = true;
       clearCart();
       labToast.success(`Venta de óptica registrada correctamente`);

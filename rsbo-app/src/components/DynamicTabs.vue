@@ -259,37 +259,40 @@ function select(tab) {
    LTR  = going forward  (new tab index > old) → slide in from right
    RTL  = going backward (new tab index < old) → slide in from left
    ════════════════════════════════════════════════════════════ */
-/* --- Forward: enter from right, leave to left --- */
 .slide-ltr-enter-active,
-.slide-ltr-leave-active {
-  transition: transform 260ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
-    opacity 200ms ease;
-}
-
-.slide-ltr-enter-from {
-  transform: scale(1.02);
-  opacity: 0;
-}
-
-.slide-ltr-leave-to {
-  transform: scale(0.98);
-  opacity: 0;
-}
-
-/* --- Backward: enter from left, leave to right --- */
+.slide-ltr-leave-active,
 .slide-rtl-enter-active,
 .slide-rtl-leave-active {
-  transition: transform 260ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
-    opacity 200ms ease;
+  transition: transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 250ms ease;
 }
 
-.slide-rtl-enter-from {
-  transform: scale(1.02);
+/* Evitar saltos verticales posicionando el elemento que sale */
+.slide-ltr-leave-active,
+.slide-rtl-leave-active {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+}
+
+/* --- Forward: enter from right (30px), leave to left (-30px) --- */
+.slide-ltr-enter-from {
+  transform: translate3d(30px, 0, 0);
+  opacity: 0;
+}
+.slide-ltr-leave-to {
+  transform: translate3d(-30px, 0, 0);
   opacity: 0;
 }
 
+/* --- Backward: enter from left (-30px), leave to right (30px) --- */
+.slide-rtl-enter-from {
+  transform: translate3d(-30px, 0, 0);
+  opacity: 0;
+}
 .slide-rtl-leave-to {
-  transform: scale(0.98);
+  transform: translate3d(30px, 0, 0);
   opacity: 0;
 }
 

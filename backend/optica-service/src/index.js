@@ -80,6 +80,7 @@ app.use("/api/optica/accesorios", require("./routes/accesorios.routes"));
 app.use("/api/optica/estuches",   require("./routes/estuches.routes"));
 app.use("/api/optica/equipos",    require("./routes/equipos.routes"));
 app.use("/api/optica/logs",       require("./routes/logs.routes"));
+app.use("/api/optica/sales",      require("./routes/sales.routes"));
 
 // ── Manejo de errores ─────────────────────────────────────────────────────────
 app.use((err, _req, res, _next) => {

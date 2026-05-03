@@ -26,8 +26,11 @@ const MatrixBifocal   = require("../models/matrix/MatrixBifocal");
 const MatrixProgresivo = require("../models/matrix/MatrixProgresivo");
 const devolutionService = require("../services/devolution.service");
 const stockService = require("../services/stock.service");
+const notifClient = require("../services/notifClient");
 const { generateFolio } = require("../utils/folio");
+const axios = require("axios");
 
+const OPTICA_SERVICE_URL = process.env.OPTICA_SERVICE_URL || "http://optica-service:3000";
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret";
 const DEBUG_DEV  = String(process.env.DEBUG_DEV || "") === "1";
 
@@ -115,7 +118,7 @@ async function restoreInventoryStock(dev, actor) {
     let sheetDoc = null;
     let loc      = null;
 
-    // Caso 1: item ya tiene sheet + matrixKey resuelto
+    // Caso 1: item ya tiene sheet + matrixKey resuelto (LAB)
     if (item.sheet && item.matrixKey) {
       sheetDoc = await InventorySheet.findById(item.sheet).lean();
       if (sheetDoc) {
@@ -123,8 +126,9 @@ async function restoreInventoryStock(dev, actor) {
       }
     }
 
-    // Caso 2: solo tiene codebar, intentar buscar en todas las hojas activas
-    if (!loc && item.codebar) {
+    // Caso 2: Es un ítem de Óptica (VNT) - Detectado por falta de sheet/matrixKey pero presencia de codebar/sku
+    if (!sheetDoc && item.codebar) {
+      // Intentamos ver si es de laboratorio buscando en hojas
       const sheets = await InventorySheet.find({ isDeleted: { $ne: true } }).lean();
       for (const s of sheets) {
         const found = await resolveCodebarLocation(s, item.codebar);
@@ -132,6 +136,48 @@ async function restoreInventoryStock(dev, actor) {
           sheetDoc = s;
           loc      = { ...found, codebar: item.codebar };
           break;
+        }
+      }
+
+      // Si después de buscar en hojas NO se encontró, es probable que sea de ÓPTICA
+      if (!sheetDoc) {
+        console.log(`[DEV] Item ${item.codebar} not found in lab sheets, checking Optica...`);
+        try {
+          // Intentamos restaurar en óptica (si falla o no existe, simplemente registramos el error)
+          // El optica-service tiene endpoints PATCH /:id/stock, pero necesitamos saber el ID o usar SKU
+          // Como no tenemos el ID aquí directamente, podemos usar una ruta de búsqueda por SKU
+          // O mejor, el optica-service debería tener un endpoint genérico de "reingreso"
+          
+          // Por simplicidad en este MVP, usaremos el endpoint de stock si tenemos la info
+          // En un sistema real, el objeto 'item' de la devolución debería tener 'opticaId' y 'collection'
+          
+          // Intentaremos restaurar en la colección más probable (armazones, lentes, etc.)
+          const INTERNAL_TOKEN = process.env.INTERNAL_SERVICE_TOKEN;
+          const collections = ["armazones", "lentes", "soluciones", "accesorios"];
+          let restored = false;
+          for (const col of collections) {
+            // Usamos el token interno para comunicación entre servicios
+            const headers = { "x-service-token": INTERNAL_TOKEN };
+            const findRes = await axios.get(`${OPTICA_SERVICE_URL}/api/optica/${col}`, { 
+              params: { q: item.codebar },
+              headers 
+            });
+            const target = findRes.data.data.find(it => it.sku === item.codebar);
+            if (target) {
+              const newStock = (target.stock || 0) + Math.abs(Number(item.qty || 0));
+              await axios.patch(`${OPTICA_SERVICE_URL}/api/optica/${col}/${target._id}/stock`, 
+                { stock: newStock },
+                { headers }
+              );
+              console.log(`[DEV] Successfully restored stock for ${item.codebar} in optica/${col}`);
+              restored = true;
+              break;
+            }
+          }
+          
+          if (restored) continue; // Éxito en óptica, saltamos al siguiente ítem
+        } catch (optErr) {
+          console.warn("[DEV] optica restore fail:", optErr.message);
         }
       }
     }
@@ -153,7 +199,7 @@ async function restoreInventoryStock(dev, actor) {
       });
     } catch (e) {
       errors.push({ codebar: item.codebar, error: e.message });
-      if (DEBUG_DEV) console.warn("[DEV] restoreStock error:", e.message);
+      console.warn("[DEV] restoreStock error:", e.message);
     }
   }
 
@@ -219,7 +265,13 @@ router.get("/", requireAuth(ROLES_VIEW), async (req, res) => {
     const search = req.query.q;
 
     const filter = {};
-    if (status && status !== "all") filter.status = status;
+    if (status && status !== "all") {
+      if (status.includes(",")) {
+        filter.status = { $in: status.split(",") };
+      } else {
+        filter.status = status;
+      }
+    }
     if (search) {
       filter.$or = [
         { folio: { $regex: search, $options: "i" } },
@@ -319,6 +371,11 @@ router.post("/", requireAuth(ROLES_CREATE), async (req, res) => {
     });
 
     res.status(201).json({ ok: true, data: dev });
+
+    // Notificar a supervisores/admin (agrupado)
+    setImmediate(() => {
+      devolutionService.notifyPendingApprovals();
+    });
   } catch (e) {
     console.error("POST /devolutions error:", e);
     res.status(400).json({ ok: false, error: e.message });
@@ -371,6 +428,28 @@ router.patch("/:id/status", requireAuth(ROLES_MANAGER), async (req, res) => {
       ...(mermasGenerated.ok.length > 0 && { mermasGenerated: mermasGenerated.ok }),
       ...(mermasGenerated.errors.length > 0 && { mermaErrors: mermasGenerated.errors }),
     });
+
+    // Notificar cambio de estado
+    let notifTitle = "Actualización de Devolución";
+    let notifPriority = "low";
+    if (status === "aprobada") { notifTitle = "✅ Devolución Aprobada"; notifPriority = "medium"; }
+    if (status === "rechazada") { notifTitle = "❌ Devolución Rechazada"; notifPriority = "high"; }
+    if (status === "procesada") { notifTitle = "📦 Devolución Procesada"; notifPriority = "low"; }
+
+    notifClient.upsertDaily({
+      groupKey: `dev-status-${dev.folio}`,
+      type: "inventory_alert",
+      priority: notifPriority,
+      title: notifTitle,
+      message: `La devolución ${dev.folio} ha cambiado a estado: ${status.toUpperCase()}.`,
+      targetRoles: ["supervisor", "root", "eurovision", "ventas"],
+      metadata: { devolutionId: dev._id, folio: dev.folio, status }
+    });
+
+    // Actualizar notificación agrupada de pendientes
+    setImmediate(() => {
+      devolutionService.notifyPendingApprovals();
+    });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
@@ -386,6 +465,11 @@ router.put("/:id", requireAuth(ROLES_MANAGER), async (req, res) => {
     };
     const updated = await devolutionService.updateDevolution(req.params.id, req.body, actor);
     res.json({ ok: true, data: updated });
+
+    // Actualizar notificación agrupada de pendientes
+    setImmediate(() => {
+      devolutionService.notifyPendingApprovals();
+    });
   } catch (e) {
     const status = e?.status || 500;
     res.status(status).json({ ok: false, code: e?.code || "ERROR", error: e?.message || "Error al actualizar devolución" });

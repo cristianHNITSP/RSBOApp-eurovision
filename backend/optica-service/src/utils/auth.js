@@ -6,6 +6,13 @@ const jwt = require("jsonwebtoken");
  */
 const protect = (allowedRoles = []) => (req, res, next) => {
   const token = req.cookies?.auth_token;
+  const serviceToken = req.headers["x-service-token"];
+
+  // Soporte para comunicación entre servicios (usando INTERNAL_SERVICE_TOKEN)
+  if (serviceToken && serviceToken === process.env.INTERNAL_SERVICE_TOKEN) {
+    req.user = { userId: "system", name: "Sistema", roleName: "root" };
+    return next();
+  }
 
   if (!token) {
     return res.status(401).json({ ok: false, error: "No autorizado | Sesión no encontrada" });

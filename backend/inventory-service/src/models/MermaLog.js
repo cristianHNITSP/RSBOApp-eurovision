@@ -36,14 +36,14 @@ const MermaLogSchema = new mongoose.Schema(
     devolution:       { type: mongoose.Schema.Types.ObjectId, ref: "Devolution", default: null, index: true },
     ventaFolio:       { type: String, default: null, index: true },
 
-    // Localización del stock afectado
-    sheet:       { type: mongoose.Schema.Types.ObjectId, ref: "InventorySheet", required: true, index: true },
+    // Localización del stock afectado (Opcional para productos de Óptica)
+    sheet:       { type: mongoose.Schema.Types.ObjectId, ref: "InventorySheet", required: false, index: true },
     tipo_matriz: {
       type: String,
-      enum: ["BASE", "SPH_CYL", "SPH_CYL_AXIS", "SPH_ADD", "BASE_ADD"],
-      required: true,
+      enum: ["BASE", "SPH_CYL", "SPH_CYL_AXIS", "SPH_ADD", "BASE_ADD", null],
+      required: false,
     },
-    matrixKey: { type: String, required: true },
+    matrixKey: { type: String, required: false },
     eye:       { type: String, enum: ["OD", "OI", null], default: null },
     codebar:   { type: String, default: null },
 

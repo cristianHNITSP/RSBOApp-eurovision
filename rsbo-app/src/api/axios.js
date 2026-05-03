@@ -193,4 +193,5 @@ export async function sendRequest(config) {
   return request;
 }
 
+export { api as apiClient };
 export default api;

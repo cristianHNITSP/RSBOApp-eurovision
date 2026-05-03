@@ -23,7 +23,7 @@ const OpticaChangeLogSchema = new mongoose.Schema(
     type: {
       type: String,
       required: true,
-      enum: ["CREATE", "UPDATE", "STOCK_UPDATE", "SOFT_DELETE", "HARD_DELETE", "RESTORE"],
+      enum: ["CREATE", "UPDATE", "STOCK_UPDATE", "SOFT_DELETE", "HARD_DELETE", "RESTORE", "SALE", "RETURN"],
     },
     details: { type: mongoose.Schema.Types.Mixed, default: {} },
     actor: {

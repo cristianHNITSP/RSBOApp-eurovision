@@ -4,6 +4,7 @@ const mongoose = require("mongoose");
 const Devolution = require("../models/Devolution");
 const InventorySheet = require("../models/InventorySheet");
 const mermaService = require("./merma.service");
+const notifClient = require("./notifClient");
 
 let _ws;
 function ws() {
@@ -145,6 +146,7 @@ async function processDamagedAsMermas(dev, actor) {
         reason:     "DEFECTO",
         notes:      `Auto-merma desde devolución ${dev.folio}`,
         actor,
+        skipMutation: true, // Crucial: la pieza ya está "fuera" de stock, solo documentamos la pérdida.
       });
       ok.push(merma.folio);
     } catch (e) {
@@ -154,9 +156,60 @@ async function processDamagedAsMermas(dev, actor) {
   return { ok, errors };
 }
 
+/**
+ * Notifica las devoluciones que requieren atención (aprobación/rechazo).
+ * Agrupa todas las pendientes en una sola notificación diaria.
+ */
+async function notifyPendingApprovals() {
+  try {
+    const pending = await Devolution.find({
+      status: { $in: ["pendiente", "en_revision"] }
+    }).sort({ createdAt: -1 }).lean();
+
+    const groupKey = "dev_pending_approvals";
+    const today    = new Date().toISOString().slice(0, 10);
+
+    if (pending.length === 0) {
+      // Si no hay pendientes, intentamos borrar la notificación agrupada de hoy
+      await notifClient.deleteByGroup({ groupKey, date: today });
+      return;
+    }
+
+    const count = pending.length;
+    const title = `⚠️ ${count} Devolución${count > 1 ? 'es' : ''} pendiente${count > 1 ? 's' : ''}`;
+    const message = `Hay ${count} solicitud${count > 1 ? 'es' : ''} de devolución esperando revisión. Revisa el detalle para aprobar o rechazar directamente.`;
+    
+    console.log(`[DEV_SERVICE] Notificación agrupada enviada: ${count} pendientes`);
+    await notifClient.upsertDaily({
+      groupKey,
+      date:        today,
+      title,
+      message,
+      type:        "warning",
+      priority:    "high",
+      targetRoles: ["supervisor", "root", "eurovision"],
+      metadata: {
+        type: "dev_approval",
+        count,
+        devolutions: pending.map(d => ({
+          id:     String(d._id),
+          folio:  d.folio,
+          cliente: d.cliente,
+          reason:  d.reason,
+          fecha:   d.createdAt,
+          itemsCount: (d.items || []).length
+        }))
+      }
+    });
+  } catch (e) {
+    console.error("[DEV_SERVICE] notifyPendingApprovals error:", e.message);
+  }
+}
+
 module.exports = {
   DevolutionError,
   EDITABLE_STATES,
   updateDevolution,
   processDamagedAsMermas,
+  notifyPendingApprovals,
 };

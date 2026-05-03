@@ -1,70 +1,80 @@
 <template>
-  <div class="view-hero">
-    <UserBanner
-      ref="bannerRef"
-      :user="selectedUser"
-      :fallback-avatar="FALLBACK_AVATAR"
-      :permission-catalog="permissionsCatalog"
-      :loading="usersLoading"
-      @avatar-picked="onAvatarPicked"
-      @open-create="openCreate"
-      @reload="loadUsers"
-      @edit="openEdit"
-      @change-password="openPassword"
-      @soft-delete="confirmSoftDelete"
-      @restore="confirmRestore"
-    />
-  </div>
+  <div class="view-usuarios-root">
+    <div class="view-hero">
+      <UserBanner
+        ref="bannerRef"
+        :user="selectedUser"
+        :fallback-avatar="FALLBACK_AVATAR"
+        :permission-catalog="permissionsCatalog"
+        :loading="usersLoading"
+        @avatar-picked="onAvatarPicked"
+        @open-create="openCreate"
+        @reload="loadUsers"
+        @edit="openEdit"
+        @change-password="openPassword"
+        @soft-delete="confirmSoftDelete"
+        @restore="confirmRestore"
+      />
+    </div>
 
-  <section class="view-main">
-    <UsuariosHeader :stats="stats" :roles="roles" />
+    <section class="view-main">
+      <UsuariosHeader :stats="stats" :roles="roles" />
 
-    <UsuariosFilters
-      v-model:search-query="searchQuery"
-      v-model:role-filter="roleFilter"
-      v-model:status-filter="statusFilter"
+      <UsuariosFilters
+        v-model:search-query="searchQuery"
+        v-model:role-filter="roleFilter"
+        v-model:status-filter="statusFilter"
+        :roles="roles"
+        :is-mobile="isMobile"
+      />
+
+      <UsuariosTable
+        :users="users"
+        :total="total"
+        :per-page="perPage"
+        :current-page="currentPage"
+        :loading="usersLoading"
+        :selected-user="selectedUser"
+        :fallback-avatar="FALLBACK_AVATAR"
+        @page-change="onPageChange"
+        @sort="onSort"
+        @row-click="selectRow"
+        @avatar-picked="onAvatarPicked"
+        @update:selected-user="selectedUser = $event"
+      />
+    </section>
+
+    <UserEditModal
+      v-model="editOpen"
+      :user="editUser"
       :roles="roles"
-      :is-mobile="isMobile"
+      :saving="saving"
+      @save="saveEdit"
     />
-
-    <UsuariosTable
-      :users="users"
-      :total="total"
-      :per-page="perPage"
-      :current-page="currentPage"
-      :loading="usersLoading"
-      :selected-user="selectedUser"
-      :fallback-avatar="FALLBACK_AVATAR"
-      @page-change="onPageChange"
-      @sort="onSort"
-      @row-click="selectRow"
-      @avatar-picked="onAvatarPicked"
-      @update:selected-user="selectedUser = $event"
+    <UserPasswordModal
+      v-model="passOpen"
+      :user="passUser"
+      :saving="saving"
+      @save="savePassword"
+      @toast="toast"
     />
-  </section>
-
-  <UserEditModal
-    v-model="editOpen"
-    :user="editUser"
-    :roles="roles"
-    :saving="saving"
-    @save="saveEdit"
-  />
-  <UserPasswordModal
-    v-model="passOpen"
-    :user="passUser"
-    :saving="saving"
-    @save="savePassword"
-    @toast="toast"
-  />
-  <UserCreateModal
-    v-model="createOpen"
-    :roles="roles"
-    :saving="saving"
-    :fallback-avatar="FALLBACK_AVATAR"
-    @save="createUser"
-    @toast="toast"
-  />
+    <b-modal
+      v-model="createOpen"
+      has-modal-card
+      trap-focus
+      :destroy-on-hide="true"
+      aria-role="dialog"
+      aria-modal
+    >
+      <UserCreateModal
+        :roles="roles"
+        :saving="saving"
+        :fallback-avatar="FALLBACK_AVATAR"
+        @save="createUser"
+        @toast="toast"
+      />
+    </b-modal>
+  </div>
 </template>
 
 

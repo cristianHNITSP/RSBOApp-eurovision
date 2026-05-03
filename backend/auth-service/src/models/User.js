@@ -17,7 +17,16 @@ const tokenSchema = new mongoose.Schema({
 const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
-    email: { type: String, required: true, unique: true, lowercase: true },
+    username: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+      minlength: 3,
+      maxlength: 32,
+      match: /^[a-z0-9_.-]+$/,
+    },
     password: { type: String, required: true, select: false },
     role: { type: mongoose.Schema.Types.ObjectId, ref: "Role", required: true },
 
@@ -36,7 +45,7 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-userSchema.index({ email: 1 });
+userSchema.index({ username: 1 });
 userSchema.index({ deletedAt: 1 });
 userSchema.index({ isActive: 1 });
 

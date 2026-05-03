@@ -23,9 +23,9 @@
       </div>
 
       <div class="banner-info-item">
-        <span class="banner-info-label">Correo</span>
+        <span class="banner-info-label">Usuario</span>
         <div class="banner-info-value">
-          <span class="selected-user-banner__email">{{ user.email }}</span>
+          <span class="selected-user-banner__email">{{ user.username }}</span>
         </div>
       </div>
 

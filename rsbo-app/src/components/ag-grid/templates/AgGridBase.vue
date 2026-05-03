@@ -173,7 +173,7 @@ const { stockRowClassRules, stockCellClassRules } = useStockRules(sheetMeta);
 const effectiveActor = computed(() => {
   const src = props.actor || (typeof window !== "undefined" ? window.__currentUser : null) || null;
   if (!src) return null;
-  return { userId: src.userId || src.id || src._id || null, name: src.name || src.email || "Usuario" };
+  return { userId: src.userId || src.id || src._id || null, name: src.name || src.username || "Usuario" };
 });
 
 const totalRows = computed(() => baseAxis.value.length);

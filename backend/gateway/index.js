@@ -150,6 +150,33 @@ const proxyRequest = (serviceUrl) => async (req, res) => {
     // 📥 Log de cookies recibidas del cliente
     console.log("📥 Cookies recibidas del navegador:", req.headers.cookie || "(none)");
 
+    // Headers a omitir (o que axios/el microservicio deben manejar)
+    const headersToOmit = new Set([
+      "host",
+      "connection",
+      "content-length",
+      "expect",
+      "keep-alive",
+      "proxy-authenticate",
+      "proxy-authorization",
+      "te",
+      "trailer",
+      "transfer-encoding",
+      "upgrade",
+    ]);
+
+    const forwardedHeaders = {};
+    for (const [key, value] of Object.entries(req.headers)) {
+      if (!headersToOmit.has(key.toLowerCase())) {
+        forwardedHeaders[key] = value;
+      }
+    }
+
+    // Asegurar cookie solo si existe
+    if (req.headers.cookie) {
+      forwardedHeaders.cookie = req.headers.cookie;
+    }
+
     // GET / DELETE / HEAD no llevan body — si se reenvían con Content-Type: application/json
     // y sin body, el JSON parser del microservicio lanza SyntaxError → 400.
     const noBody = new Set(["GET", "DELETE", "HEAD", "OPTIONS"]);
@@ -159,17 +186,11 @@ const proxyRequest = (serviceUrl) => async (req, res) => {
       method: req.method,
       url: targetUrl,
       ...(isNoBody ? {} : { data: req.body }),
-      // Importante: forward de headers + cookies
-      headers: {
-        ...req.headers,
-        host:             undefined, // evita conflictos
-        cookie:           req.headers.cookie || "",
-        // Elimina headers de cuerpo para métodos sin body
-        ...(isNoBody ? { "content-type": undefined, "content-length": undefined } : {}),
-      },
+      headers: forwardedHeaders,
       // ✅ NO hacer throw por 401/403/etc; queremos devolver tal cual al cliente
       validateStatus: () => true,
-      // Nota: withCredentials en axios aplica más en browser; aquí sirve para consistencia
+      // timeout de 10s para evitar hangs
+      timeout: 10000,
       withCredentials: true,
     });
 

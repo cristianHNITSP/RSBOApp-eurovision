@@ -16,8 +16,6 @@ const { protect } = require("../utils/auth");
 const { notifyPendingOrders, notifyNewOrder, notifyCorrection } = require("../services/labNotification.service");
 const { actorFromBody, sanitizeString } = require("../inventory/utils/normalize");
 const { denormNum, parseKey } = require("../inventory/utils/keys");
-
-const DEBUG_LAB = String(process.env.DEBUG_LAB || "") === "1";
 const { broadcast } = require("../ws");
 const { invalidatePattern, KEYS } = require("../services/redis");
 
@@ -65,6 +63,48 @@ function eyeLabel(e) {
   if (s === "OI" || s === "OS" || s === "L") return "Ojo Izquierdo";
   return e;
 }
+
+/**
+ * GET /api/laboratory/clients
+ * Busca clientes únicos en las órdenes de laboratorio para autocompletado.
+ */
+router.get("/clients", protect(), async (req, res) => {
+  try {
+    const q = String(req.query.q || "").trim();
+    if (!q || q.length < 2) return res.json({ ok: true, data: [] });
+
+    const regex = new RegExp(escapeRx(q), "i");
+
+    const clients = await LaboratoryOrder.aggregate([
+      { $match: { 
+          $or: [
+            { cliente: regex },
+            { clienteDisplay: regex },
+            { clienteNombres: regex },
+            { clienteApellidos: regex }
+          ]
+      } },
+      { $sort: { createdAt: -1 } },
+      { $group: {
+          _id: "$cliente", 
+          nombre: { $first: "$cliente" },
+          display: { $first: "$clienteDisplay" },
+          nombres: { $first: "$clienteNombres" },
+          apellidos: { $first: "$clienteApellidos" },
+          empresa: { $first: "$clienteEmpresa" },
+          contacto: { $first: "$clienteContacto" },
+          nota: { $first: "$note" },
+          pedidos: { $sum: 1 }
+      } },
+      { $limit: 10 }
+    ]);
+
+    res.json({ ok: true, data: clients });
+  } catch (e) {
+    console.error("Error buscando clientes:", e);
+    res.status(500).json({ ok: false });
+  }
+});
 
 function lineTitle(tipo, params, eye, codebar) {
   const p = params || {};
@@ -240,8 +280,33 @@ router.post("/orders", [
       lines.push({ lineId: new mongoose.Types.ObjectId().toString(), codebar: l.codebar, sku: loc.sku, sheet: sheet._id, tipo_matriz: sheet.tipo_matriz, matrixKey: loc.matrixKey, eye: loc.eye, params: loc.params, qty: l.qty, picked: 0, precio: l.precio, micaType: micaTypeName(sheet.tipo_matriz), sheetNombre: sheet.nombre });
     }
 
-    const order = await LaboratoryOrder.create({ folio, sheet: sheet._id, cliente: req.body.cliente, totalMonto: req.body.totalMonto, status: "pendiente", lines, createdBy: actor, updatedBy: actor });
+    const order = await LaboratoryOrder.create({
+      folio,
+      sheet: sheet._id,
+      cliente: req.body.cliente,
+      clienteNombres: req.body.clienteNombres || "",
+      clienteApellidos: req.body.clienteApellidos || "",
+      clienteEmpresa: req.body.clienteEmpresa || "",
+      clienteContacto: req.body.clienteContacto || "",
+      clienteDisplay: [req.body.clienteNombres, req.body.clienteApellidos].filter(Boolean).join(" ") || req.body.cliente,
+      note: req.body.note || "",
+      pago: req.body.pago || [],
+      totalMonto: req.body.totalMonto,
+      status: "pendiente",
+      lines,
+      createdBy: actor,
+      updatedBy: actor
+    });
     broadcast("LAB_ORDER_CREATE", { orderId: order._id, folio, cliente: order.cliente });
+    
+    // 🔔 Notificaciones asíncronas (en paralelo para mayor velocidad)
+    setImmediate(async () => {
+      await Promise.all([
+        notifyNewOrder(order),
+        notifyPendingOrders()
+      ]).catch(e => console.warn("[LAB] Notif Error:", e.message));
+    });
+
     return res.status(201).json({ ok: true, data: order });
   } catch (e) { console.error(e); res.status(500).json({ ok: false }); }
 });
@@ -250,9 +315,14 @@ router.post("/orders/:orderId/scan", param("orderId").isMongoId(), handleValidat
   const actor = actorFromBody(req) || { userId: null, name: "system" };
   try {
     const order = await LaboratoryOrder.findById(req.params.orderId);
-    if (!order) return res.status(404).json({ ok: false });
+    if (!order) return res.status(404).json({ ok: false, message: "Pedido no encontrado" });
+
+    if (order.status === "cerrado" || order.status === "cancelado") {
+      return res.status(400).json({ ok: false, message: "No se puede surtir un pedido que ya está cerrado o cancelado." });
+    }
+
     const line = order.lines.find(l => l.codebar === req.body.codebar);
-    if (!line) return res.status(404).json({ ok: false });
+    if (!line) return res.status(404).json({ ok: false, message: `El código ${req.body.codebar} no pertenece a este pedido.` });
 
     const sheet = await InventorySheet.findById(line.sheet);
     const inv = await applyExitToInventory(sheet, line, req.body.qty || 1, actor);
@@ -269,6 +339,7 @@ router.post("/orders/:orderId/scan", param("orderId").isMongoId(), handleValidat
     );
 
     broadcast("LAB_ORDER_SCAN", { orderId: updatedOrder._id, folio: updatedOrder.folio });
+    setImmediate(() => notifyPendingOrders());
     res.json({ ok: true, data: updatedOrder });
   } catch (e) { res.status(500).json({ ok: false }); }
 });
@@ -277,6 +348,7 @@ router.post("/orders/:orderId/close", param("orderId").isMongoId(), async (req, 
   try {
     const order = await LaboratoryOrder.findByIdAndUpdate(req.params.orderId, { status: "cerrado", closedAt: new Date(), closedBy: actorFromBody(req) }, { new: true });
     broadcast("LAB_ORDER_CLOSE", { orderId: order._id, folio: order.folio });
+    setImmediate(() => notifyPendingOrders());
     res.json({ ok: true, data: order });
   } catch (e) { res.status(500).json({ ok: false }); }
 });
@@ -301,6 +373,7 @@ router.post("/orders/:orderId/reset", param("orderId").isMongoId(), async (req, 
     await order.save();
 
     broadcast("LAB_ORDER_RESET", { orderId: order._id, folio: order.folio });
+    setImmediate(() => notifyPendingOrders());
     res.json({ ok: true, data: order });
   } catch (e) { console.error(e); res.status(500).json({ ok: false }); }
 });
@@ -324,6 +397,7 @@ router.post("/orders/:orderId/cancel", param("orderId").isMongoId(), async (req,
     await order.save();
 
     broadcast("LAB_ORDER_CANCEL", { orderId: order._id, folio: order.folio });
+    setImmediate(() => notifyPendingOrders());
     res.json({ ok: true, data: order });
   } catch (e) { console.error(e); res.status(500).json({ ok: false }); }
 });

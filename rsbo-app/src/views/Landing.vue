@@ -135,7 +135,7 @@
                         <b-button type="is-light" size="is-small" icon-left="user" @click="openLogin">
                           Acceder
                         </b-button>
-                        <span class="is-size-7 has-text-grey">Sugerencia: activa “Recordar correo” para entrar más
+                        <span class="is-size-7 has-text-grey">Sugerencia: activa “Recordar usuario” para entrar más
                           rápido.</span>
                       </div>
                     </div>
@@ -334,9 +334,9 @@
             </span>
           </div>
 
-          <b-field label="Correo electrónico" label-position="on-border">
-            <b-input ref="emailInput" v-model="credentials.username" type="email" autocomplete="email" icon="envelope"
-              placeholder="tu.correo@empresa.com" @keyup.enter="loginUser" />
+          <b-field label="Nombre de usuario" label-position="on-border">
+            <b-input ref="emailInput" v-model="credentials.username" type="text" autocomplete="username" icon="user"
+              placeholder="Tú usuario" @keyup.enter="loginUser" />
           </b-field>
 
           <b-field label="Contraseña" label-position="on-border">
@@ -347,7 +347,7 @@
 
           <div class="login-tools">
             <b-checkbox v-model="rememberUsername" size="is-small">
-              Recordar correo
+              Recordar usuario
             </b-checkbox>
 
             <button class="button is-text is-small" type="button" @click="showPassword = !showPassword">

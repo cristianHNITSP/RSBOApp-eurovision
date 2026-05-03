@@ -53,10 +53,10 @@
         </div>
       </b-table-column>
 
-      <b-table-column field="email" label="Correo" sortable v-slot="props">
+      <b-table-column field="username" label="Usuario" sortable v-slot="props">
         <span class="tag is-light is-size-7 has-text-grey-dark">
-          <b-icon icon="envelope" size="is-small" class="mr-1 has-text-grey-dark" />
-          {{ props.row.email }}
+          <b-icon icon="at" size="is-small" class="mr-1 has-text-grey-dark" />
+          {{ props.row.username }}
         </span>
       </b-table-column>
 

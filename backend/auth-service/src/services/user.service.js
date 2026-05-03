@@ -14,9 +14,9 @@ function sanitizeStr(v) {
   return DOMPurify.sanitize(String(v || ""), { ALLOWED_TAGS: [] }).trim();
 }
 
-function isValidEmail(email) {
-  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return re.test(String(email).toLowerCase());
+const USERNAME_REGEX = /^[a-z0-9_.-]{3,32}$/;
+function isValidUsername(username) {
+  return USERNAME_REGEX.test(String(username || "").toLowerCase());
 }
 
 function escapeRegex(s) {
@@ -38,7 +38,7 @@ async function getMe(userId) {
   return {
     id: user._id,
     name: user.name,
-    email: user.email,
+    username: user.username,
     role: user.role
       ? {
           id: user.role._id,
@@ -91,10 +91,10 @@ async function listUsers(query) {
 
   if (q) {
     const rx = new RegExp(escapeRegex(q), "i");
-    filter.$or = [{ name: rx }, { email: rx }];
+    filter.$or = [{ name: rx }, { username: rx }];
   }
 
-  const allowedSort = new Set(["name", "email", "createdAt", "lastLogin"]);
+  const allowedSort = new Set(["name", "username", "createdAt", "lastLogin"]);
   const sort = allowedSort.has(sortBy) ? { [sortBy]: sortDir } : { name: 1 };
 
   const rootExclude = rootRoleId ? { role: { $ne: rootRoleId } } : {};
@@ -137,9 +137,9 @@ async function createUser(data) {
     throw error;
   }
 
-  const email = sanitizeStr(data.email).toLowerCase();
-  if (!isValidEmail(email)) {
-    const error = new Error("Formato de correo electrónico inválido");
+  const username = sanitizeStr(data.username).toLowerCase();
+  if (!isValidUsername(username)) {
+    const error = new Error("Nombre de usuario inválido (3-32 caracteres: letras, números, punto, guion o guion bajo)");
     error.statusCode = 400;
     throw error;
   }
@@ -169,9 +169,9 @@ async function createUser(data) {
     throw error;
   }
 
-  const exists = await User.findOne({ email }).select("_id").lean();
+  const exists = await User.findOne({ username }).select("_id").lean();
   if (exists) {
-    const error = new Error("Ese correo ya está registrado");
+    const error = new Error("Ese nombre de usuario ya está registrado");
     error.statusCode = 400;
     throw error;
   }
@@ -181,7 +181,7 @@ async function createUser(data) {
 
   const user = await User.create({
     name,
-    email,
+    username,
     password,
     role: role._id,
     isActive,
@@ -201,9 +201,9 @@ async function updateUser(userId, data) {
     throw error;
   }
 
-  const email = data.email !== undefined ? sanitizeStr(data.email).toLowerCase() : undefined;
-  if (email !== undefined && !isValidEmail(email)) {
-    const error = new Error("Formato de correo electrónico inválido");
+  const username = data.username !== undefined ? sanitizeStr(data.username).toLowerCase() : undefined;
+  if (username !== undefined && !isValidUsername(username)) {
+    const error = new Error("Nombre de usuario inválido (3-32 caracteres: letras, números, punto, guion o guion bajo)");
     error.statusCode = 400;
     throw error;
   }
@@ -243,7 +243,17 @@ async function updateUser(userId, data) {
   }
 
   if (name !== undefined) user.name = name;
-  if (email !== undefined) user.email = email;
+  if (username !== undefined) {
+    if (String(user.username) !== username) {
+      const exists = await User.findOne({ username, _id: { $ne: user._id } }).select("_id").lean();
+      if (exists) {
+        const error = new Error("Ese nombre de usuario ya está registrado");
+        error.statusCode = 400;
+        throw error;
+      }
+    }
+    user.username = username;
+  }
 
   // ✅ si está en papelera, jamás permitir activo
   if (isActive !== undefined) user.isActive = user.deletedAt ? false : isActive;

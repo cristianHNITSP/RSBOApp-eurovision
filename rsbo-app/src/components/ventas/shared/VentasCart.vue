@@ -7,13 +7,8 @@
           <span class="panel__badge">{{ cartItems.length }}</span>
         </h2>
       </div>
-      <b-button
-        v-if="cartItems.length"
-        size="is-small"
-        type="is-light"
-        icon-left="trash"
-        @click="$emit('ask-clear-cart')"
-      >
+      <b-button v-if="cartItems.length" size="is-small" type="is-light" icon-left="trash"
+        @click="$emit('ask-clear-cart')">
         Limpiar
       </b-button>
     </div>
@@ -22,23 +17,30 @@
       <b-field label="Cliente *" class="mb-3">
         <b-autocomplete
           :model-value="cartCliente"
-          @update:model-value="$emit('update:cartCliente', $event)"
-          :data="clienteSuggestions"
+          @update:model-value="onTyping"
+          :data="suggestions"
           field="nombre"
           placeholder="Buscar cliente o escribir nombre…"
           icon="user"
-          :open-on-focus="true"
-          :keep-first="false"
           :clearable="true"
-          @select="$emit('select-cliente', $event)"
+          :loading="isSearching"
+          :keep-first="false"
+          :open-on-focus="true"
+          @select="onSelect"
         >
           <template #default="{ option }">
             <div class="cliente-opt">
               <div class="cliente-opt__info">
-                <span class="cliente-opt__name">{{ option.nombre }}</span>
-                <span v-if="option.nota" class="cliente-opt__note">{{ option.nota }}</span>
+                <span class="cliente-opt__name">{{ option.display || option.nombre }}</span>
+                <div class="cliente-opt__details" v-if="option.empresa || option.contacto">
+                  <span v-if="option.empresa" class="cliente-opt__detail">
+                    <i class="fas fa-building mr-1"></i>{{ option.empresa }}
+                  </span>
+                  <span v-if="option.contacto" class="cliente-opt__detail ml-3">
+                    <i class="fas fa-phone mr-1"></i>{{ option.contacto }}
+                  </span>
+                </div>
               </div>
-              <span class="cliente-opt__badge">{{ option.pedidos }} pedido{{ option.pedidos > 1 ? 's' : '' }}</span>
             </div>
           </template>
           <template #empty>
@@ -66,19 +68,21 @@
         <div class="columns is-mobile is-variable is-2 mb-0">
           <div class="column">
             <b-field label="Nombre(s)" class="mb-2">
-              <b-input 
-                :model-value="cartClienteNombres" 
-                @update:model-value="$emit('update:cartClienteNombres', $event)" 
-                placeholder="Nombre(s)" size="is-small" 
+              <b-input
+                :model-value="cartClienteNombres"
+                @update:model-value="$emit('update:cartClienteNombres', $event)"
+                placeholder="Nombre(s)"
+                size="is-small"
               />
             </b-field>
           </div>
           <div class="column">
             <b-field label="Apellidos" class="mb-2">
-              <b-input 
-                :model-value="cartClienteApellidos" 
-                @update:model-value="$emit('update:cartClienteApellidos', $event)" 
-                placeholder="Apellidos" size="is-small" 
+              <b-input
+                :model-value="cartClienteApellidos"
+                @update:model-value="$emit('update:cartClienteApellidos', $event)"
+                placeholder="Apellidos"
+                size="is-small"
               />
             </b-field>
           </div>
@@ -86,19 +90,23 @@
         <div class="columns is-mobile is-variable is-2 mb-0">
           <div class="column">
             <b-field label="Empresa" class="mb-0">
-              <b-input 
-                :model-value="cartClienteEmpresa" 
-                @update:model-value="$emit('update:cartClienteEmpresa', $event)" 
-                placeholder="Empresa" size="is-small" icon="building" 
+              <b-input
+                :model-value="cartClienteEmpresa"
+                @update:model-value="$emit('update:cartClienteEmpresa', $event)"
+                placeholder="Empresa"
+                size="is-small"
+                icon="building"
               />
             </b-field>
           </div>
           <div class="column">
             <b-field label="Contacto" class="mb-0">
-              <b-input 
-                :model-value="cartClienteContacto" 
-                @update:model-value="$emit('update:cartClienteContacto', $event)" 
-                placeholder="Tel / Email" size="is-small" icon="phone" 
+              <b-input
+                :model-value="cartClienteContacto"
+                @update:model-value="$emit('update:cartClienteContacto', $event)"
+                placeholder="Tel / Email"
+                size="is-small"
+                icon="phone"
               />
             </b-field>
           </div>
@@ -124,20 +132,15 @@
 
       <hr class="soft-hr" />
 
-      <!-- Carrito vacío -->
+      <!-- Items del carrito -->
       <div v-if="!cartItems.length" class="empty empty--mini">
         <i class="fas fa-shopping-cart empty__icon"></i>
         <p class="empty__title">Carrito vacío</p>
         <p class="empty__text">Agrega productos desde el catálogo.</p>
       </div>
 
-      <!-- Items del carrito -->
       <transition-group v-else name="cart-item-anim" tag="div" class="cart__items">
-        <div
-          v-for="ci in cartItems"
-          :key="ci.key"
-          class="cart-item"
-        >
+        <div v-for="ci in cartItems" :key="ci.key" class="cart-item">
           <div class="order-line__top">
             <div>
               <div class="order-line__title">{{ ci.title }}</div>
@@ -210,7 +213,10 @@
 </template>
 
 <script setup>
-defineProps({
+import { ref } from 'vue';
+import { searchClients } from "@/services/laboratorio";
+
+const props = defineProps({
   kind: { type: String, default: 'direct', validator: v => ['lab', 'direct'].includes(v) },
   cartItems: { type: Array, default: () => [] },
   cartCliente: { type: String, default: "" },
@@ -220,20 +226,12 @@ defineProps({
   cartClienteEmpresa: { type: String, default: "" },
   cartClienteContacto: { type: String, default: "" },
   cartPago: { type: Array, default: () => [] },
-  clienteSuggestions: { type: Array, default: () => [] },
   cartTotal: { type: Number, default: 0 },
   cartTotalMonto: { type: Number, default: 0 },
   loadingSale: { type: Boolean, default: false }
 });
 
-const PAGO_OPCIONES = [
-  { value: "trans",   label: "Transferencia (TRANS)" },
-  { value: "efec",    label: "Efectivo (EFEC)" },
-  { value: "credito", label: "Crédito" },
-  { value: "tarjeta", label: "Tarjeta C|D" },
-];
-
-defineEmits([
+const emit = defineEmits([
   "update:cartCliente",
   "update:cartNote",
   "update:cartClienteNombres",
@@ -248,6 +246,45 @@ defineEmits([
   "inc-cart-qty",
   "checkout"
 ]);
+
+const PAGO_OPCIONES = [
+  { value: "trans",   label: "Transferencia (TRANS)" },
+  { value: "efec",    label: "Efectivo (EFEC)" },
+  { value: "credito", label: "Crédito" },
+  { value: "tarjeta", label: "Tarjeta C|D" },
+];
+
+const suggestions = ref([]);
+const isSearching = ref(false);
+
+async function onTyping(text) {
+  emit('update:cartCliente', text);
+  if (!text || text.length < 2) {
+    suggestions.value = [];
+    return;
+  }
+  
+  isSearching.value = true;
+  try {
+    const res = await searchClients(text);
+    suggestions.value = res.data?.data || [];
+  } catch (e) {
+    console.error("Search failed:", e);
+  } finally {
+    isSearching.value = false;
+  }
+}
+
+function onSelect(client) {
+  if (!client) return;
+  emit('update:cartClienteNombres', client.nombres || "");
+  emit('update:cartClienteApellidos', client.apellidos || "");
+  emit('update:cartClienteEmpresa', client.empresa || "");
+  emit('update:cartClienteContacto', client.contacto || "");
+  if (client.nota) emit('update:cartNote', client.nota);
+  emit('update:cartCliente', client.nombre || "");
+  emit('select-cliente', client);
+}
 </script>
 
 <style src="./VentasCart.css" scoped></style>

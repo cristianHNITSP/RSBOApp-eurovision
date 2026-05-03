@@ -141,8 +141,9 @@ export function useLabMutations({ getUser, sheets, items, orders, events, notify
     try {
       const { data } = await scanOrderService(order.id, { codebar: cb, qty: 1, actor: actorRef() });
       const updated = normalizeOrder(data?.data);
-      const idx = orders.ordersDB.value.findIndex((x) => x.id === updated.id);
-      if (idx >= 0) orders.ordersDB.value[idx] = updated;
+      
+      orders.updateOrderInLocalDB(updated);
+
       if (updated.sheetId) sheets.selectedSheetId.value = updated.sheetId;
       await Promise.all([items.loadItems(updated.sheetId), events.loadEvents()]);
       scanCode.value = "";
@@ -163,6 +164,14 @@ export function useLabMutations({ getUser, sheets, items, orders, events, notify
     try {
       const { data } = await closeOrderService(order.id, actorRef());
       const updated = normalizeOrder(data?.data);
+
+      orders.updateOrderInLocalDB(updated);
+
+      // If we are only showing open orders, we should clear the selection so loadOrders picks the next one
+      if (orders.orderStatusFilter.value === "open") {
+        orders.selectedOrderId.value = "";
+      }
+
       await Promise.all([orders.loadOrders(), events.loadEvents()]);
       notify(`Pedido ${updated.folio} cerrado correctamente.`, "is-success");
     } catch (e) {
@@ -178,7 +187,10 @@ export function useLabMutations({ getUser, sheets, items, orders, events, notify
     if (!order?.id) return;
     loadingReset.value = true;
     try {
-      await resetOrderService(order.id, actorRef());
+      const { data } = await resetOrderService(order.id, actorRef());
+      const updated = normalizeOrder(data?.data);
+      orders.updateOrderInLocalDB(updated);
+      
       await Promise.all([orders.loadOrders(), items.loadItems(), events.loadEvents()]);
       notify(`Surtido del pedido ${order.folio} reiniciado.`, "is-info");
     } catch (e) {
@@ -193,7 +205,14 @@ export function useLabMutations({ getUser, sheets, items, orders, events, notify
     if (!order?.id) return;
     loadingCancelOrder.value = true;
     try {
-      await cancelOrderService(order.id, actorRef());
+      const { data } = await cancelOrderService(order.id, actorRef());
+      const updated = normalizeOrder(data?.data);
+      orders.updateOrderInLocalDB(updated);
+
+      if (orders.orderStatusFilter.value === "open") {
+        orders.selectedOrderId.value = "";
+      }
+
       await Promise.all([orders.loadOrders(), events.loadEvents()]);
       notify(`Pedido ${order.folio} cancelado.`, "is-info");
     } catch (e) {
@@ -227,8 +246,10 @@ export function useLabMutations({ getUser, sheets, items, orders, events, notify
     loadingEditOrder.value = true;
     try {
       const { data } = await updateOrderService(orderId, { ...patch, actor: actorRef() });
+      const updated = normalizeOrder(data?.data);
+      orders.updateOrderInLocalDB(updated);
       notify("Pedido actualizado.", "is-success");
-      return normalizeOrder(data?.data);
+      return updated;
     } catch (e) {
       notify("Error al actualizar pedido", "is-danger");
       throw e;

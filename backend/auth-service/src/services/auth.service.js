@@ -10,8 +10,8 @@ function makeError(statusCode, message) {
   return err;
 }
 
-function sanitizeEmail(email) {
-  return DOMPurify.sanitize(String(email || ""), { ALLOWED_TAGS: [] }).trim().toLowerCase();
+function sanitizeUsername(username) {
+  return DOMPurify.sanitize(String(username || ""), { ALLOWED_TAGS: [] }).trim().toLowerCase();
 }
 
 function sanitizeHeader(val) {
@@ -55,13 +55,13 @@ function parseDeviceName(ua) {
   return { browser, os, deviceName: `${browser} en ${os}` };
 }
 
-async function login({ email, password, ip, userAgent }) {
-  const cleanEmail = sanitizeEmail(email);
+async function login({ username, password, ip, userAgent }) {
+  const cleanUsername = sanitizeUsername(username);
   const cleanPassword = normalizePassword(password);
 
   // Trae flags necesarios para bloquear login + password/tokens para validar y sesión
-  const user = await User.findOne({ email: cleanEmail })
-    .select("+password +tokens +isActive +deletedAt +role +email +name")
+  const user = await User.findOne({ username: cleanUsername })
+    .select("+password +tokens +isActive +deletedAt +role +username +name")
     .populate("role", "name");
 
   if (!user) throw makeError(401, "Usuario o contraseña incorrectos");
@@ -83,7 +83,7 @@ async function login({ email, password, ip, userAgent }) {
   const token = jwt.sign(
     {
       id: user._id,
-      email: user.email,
+      username: user.username,
       role: user.role?._id?.toString() ?? user.role?.toString(),
       roleName: user.role?.name ?? null,
     },
@@ -136,7 +136,7 @@ function buildSessionPayload(decodedUser) {
     message: "Sesión válida",
     user: {
       id:       decodedUser.id,
-      email:    decodedUser.email,
+      username: decodedUser.username,
       role:     decodedUser.role,
       roleName: decodedUser.roleName ?? null,
     },
@@ -162,7 +162,7 @@ async function renewTokenIfNeeded(userId, currentToken) {
 
   // Emitir nuevo token con 7 h frescas
   const newToken = jwt.sign(
-    { id: decoded.id, email: decoded.email, role: decoded.role, roleName: decoded.roleName },
+    { id: decoded.id, username: decoded.username, role: decoded.role, roleName: decoded.roleName },
     process.env.JWT_SECRET,
     { expiresIn: "7h" }
   );

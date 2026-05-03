@@ -164,8 +164,8 @@
               </span>
             </div>
             <div class="sec-stat">
-              <span class="sec-stat__label">Correo</span>
-              <span class="sec-stat__val mono">{{ user?.email || '—' }}</span>
+              <span class="sec-stat__label">Usuario</span>
+              <span class="sec-stat__val mono">{{ user?.username || '—' }}</span>
             </div>
           </div>
         </div>

@@ -24,7 +24,9 @@
         <hr class="my-3" />
 
         <b-field label="Nombre"><b-input v-model="form.name" /></b-field>
-        <b-field label="Correo"><b-input v-model="form.email" type="email" /></b-field>
+        <b-field label="Usuario" :type="usernameType" :message="usernameMsg">
+          <b-input v-model="form.username" type="text" autocomplete="username" placeholder="ej. juan.perez" />
+        </b-field>
         <b-field label="Teléfono"><b-input v-model="form.phone" /></b-field>
         <b-field label="Biografía"><b-input v-model="form.bio" type="textarea" /></b-field>
         <b-field label="Rol del usuario">
@@ -64,10 +66,12 @@
 </template>
 
 <script setup>
-import { reactive, watch } from 'vue'
+import { reactive, watch, computed } from 'vue'
 import AvatarPicker from '@/components/AvatarPicker.vue'
 import { formatRoleLabel } from '@/utils/roleHelpers.js'
 import { generateSecurePassword } from '@/utils/generatePassword.js'
+
+const USERNAME_REGEX = /^[a-z0-9_.-]{3,32}$/
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -78,12 +82,23 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'save', 'toast'])
 
-const form = reactive({ name: '', email: '', phone: '', bio: '', avatar: '', role: null, isActive: true, password: '' })
+const form = reactive({ name: '', username: '', phone: '', bio: '', avatar: '', role: null, isActive: true, password: '' })
+
+const usernameType = computed(() => {
+  if (!form.username) return ''
+  return USERNAME_REGEX.test(form.username.trim().toLowerCase()) ? 'is-success' : 'is-danger'
+})
+const usernameMsg = computed(() => {
+  if (!form.username) return ''
+  return USERNAME_REGEX.test(form.username.trim().toLowerCase())
+    ? ''
+    : '3-32 caracteres: minúsculas, números, punto, guion o guion bajo.'
+})
 
 // Reset + set initial password + default role when modal opens
 watch(() => props.modelValue, (open) => {
   if (!open) return
-  Object.assign(form, { name: '', email: '', phone: '', bio: '', avatar: '', isActive: true, password: generateSecurePassword(16) })
+  Object.assign(form, { name: '', username: '', phone: '', bio: '', avatar: '', isActive: true, password: generateSecurePassword(16) })
   form.role = props.roles?.[0]?._id || null
 })
 

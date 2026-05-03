@@ -9,7 +9,7 @@ export const login = async ({ username, password }) => {
   try {
     const res = await api.post(
       "/access/login",
-      { email: username, password },
+      { username, password },
       { withCredentials: true } // IMPORTANTE: cookies httpOnly
     );
     return res.data;

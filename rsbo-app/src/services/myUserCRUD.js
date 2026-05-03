@@ -15,7 +15,7 @@ export const userService = {
 
   // Actualizar perfil de usuario con validaciones
   async updateProfile(userId, userData) {
-    const { name, email } = userData || {};
+    const { name } = userData || {};
 
     // Validaciones
     if (!validators.isNameValid(name)) {
@@ -23,10 +23,6 @@ export const userService = {
         success: false,
         message: "Nombre inválido. Solo letras y espacios, mínimo 2 caracteres.",
       };
-    }
-
-    if (!validators.isEmailValid(email)) {
-      return { success: false, message: "Correo electrónico inválido." };
     }
 
     try {
@@ -73,9 +69,9 @@ export const userService = {
 
 // Validadores reutilizables
 export const validators = {
-  isEmailValid(email) {
-    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return regex.test(String(email || "").trim());
+  isUsernameValid(username) {
+    const regex = /^[a-z0-9_.-]{3,32}$/;
+    return regex.test(String(username || "").trim().toLowerCase());
   },
 
   isNameValid(name) {

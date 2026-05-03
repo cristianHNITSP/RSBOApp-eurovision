@@ -8,8 +8,8 @@
       </header>
 
       <section class="modal-card-body">
-        <p class="mb-2"><b>Nombre de usuario:</b> <strong>{{ user?.name }}</strong></p>
-        <p class="mb-2"><b>Correo:</b> <strong>{{ user?.email }}</strong></p>
+        <p class="mb-2"><b>Nombre:</b> <strong>{{ user?.name }}</strong></p>
+        <p class="mb-2"><b>Usuario:</b> <strong>{{ user?.username }}</strong></p>
         <b-field label="Nueva contraseña">
           <b-input v-model="password" type="password" password-reveal />
         </b-field>

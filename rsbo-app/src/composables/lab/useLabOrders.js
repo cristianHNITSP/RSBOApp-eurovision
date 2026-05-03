@@ -33,7 +33,8 @@ export function useLabOrders() {
         const params = {
           status: "all",
           q: String(orderQuery.value || "").trim() || undefined,
-          limit: 200
+          limit: 200,
+          _t: Date.now() // Cache buster
         };
         const { data } = await listOrders(params);
         const arr = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
@@ -41,9 +42,19 @@ export function useLabOrders() {
         updatePendingCount(arr.filter((o) => o.status === "pendiente" || o.status === "parcial").length);
         mapped.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
         ordersDB.value = mapped;
-        if (!selectedOrderId.value && mapped.length) selectedOrderId.value = mapped[0].id;
-        if (selectedOrderId.value && !mapped.find((x) => x.id === selectedOrderId.value) && mapped.length)
-          selectedOrderId.value = mapped[0].id;
+
+        // Prefer selecting an open order by default
+        const firstOpen = mapped.find(o => o.status === "pendiente" || o.status === "parcial");
+        
+        if (!selectedOrderId.value) {
+          if (firstOpen) selectedOrderId.value = firstOpen.id;
+          else if (mapped.length) selectedOrderId.value = mapped[0].id;
+        } else {
+          // If the selected order is no longer in the list (e.g. deleted), pick a new one
+          if (!mapped.find((x) => x.id === selectedOrderId.value) && mapped.length) {
+            selectedOrderId.value = firstOpen ? firstOpen.id : mapped[0].id;
+          }
+        }
         loadOrderCounts();
       } catch (e) {
         console.error("[LAB] loadOrders", e?.response?.data || e);
@@ -54,6 +65,18 @@ export function useLabOrders() {
       }
     })();
     return _inFlight.orders;
+  }
+
+  function updateOrderInLocalDB(updated) {
+    if (!updated?.id) return;
+    const idx = ordersDB.value.findIndex((x) => x.id === updated.id);
+    if (idx >= 0) {
+      ordersDB.value[idx] = updated;
+    } else {
+      ordersDB.value.unshift(updated);
+    }
+    // Refresh badge
+    updatePendingCount(ordersDB.value.filter((o) => o.status === "pendiente" || o.status === "parcial").length);
   }
 
   async function loadOrderCounts() {
@@ -82,6 +105,7 @@ export function useLabOrders() {
     filteredOrders,
     loadOrders,
     loadOrderCounts,
+    updateOrderInLocalDB,
     statusHuman,
     statusTagClass,
     orderTotalCount,

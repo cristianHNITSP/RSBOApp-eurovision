@@ -126,7 +126,7 @@ async function seed() {
     // 3️⃣  Usuarios iniciales (idempotente)
     const USERS_DATA = [
       {
-        email: 'root@optica.com',
+        username: 'root',
         name: 'Root — Administrador del Sistema',
         password: 'root1234',
         role: roleRefs['root'],
@@ -137,7 +137,7 @@ async function seed() {
         },
       },
       {
-        email: 'eurovision@optica.com',
+        username: 'eurovision',
         name: 'Encargado Eurovisión',
         password: 'euro1234',
         role: roleRefs['eurovision'],
@@ -148,7 +148,7 @@ async function seed() {
         },
       },
       {
-        email: 'supervisor@optica.com',
+        username: 'supervisor',
         name: 'Supervisor Eurovisión',
         password: 'super1234',
         role: roleRefs['supervisor'],
@@ -159,7 +159,7 @@ async function seed() {
         },
       },
       {
-        email: 'ventas@optica.com',
+        username: 'ventas',
         name: 'Personal de Ventas',
         password: 'ventas1234',
         role: roleRefs['ventas'],
@@ -170,7 +170,7 @@ async function seed() {
         },
       },
       {
-        email: 'laboratorio@optica.com',
+        username: 'laboratorio',
         name: 'Técnico de Laboratorio',
         password: 'lab1234',
         role: roleRefs['laboratorio'],
@@ -183,12 +183,12 @@ async function seed() {
     ];
 
     for (const u of USERS_DATA) {
-      const existing = await User.findOne({ email: u.email });
+      const existing = await User.findOne({ username: u.username });
       if (!existing) {
         const hashedPassword = await bcrypt.hash(u.password, 10);
         await User.create({
           name: u.name,
-          email: u.email,
+          username: u.username,
           password: hashedPassword,
           role: u.role,
           tokens: [],
@@ -197,19 +197,19 @@ async function seed() {
           deletedAt: null,
           profile: u.profile,
         });
-        console.log(`✅ Usuario "${u.email}" creado`);
+        console.log(`✅ Usuario "${u.username}" creado`);
       } else {
-        console.log(`ℹ️  Usuario "${u.email}" ya existe — omitido`);
+        console.log(`ℹ️  Usuario "${u.username}" ya existe — omitido`);
       }
     }
 
     console.log('\n🎉 Seed completado con éxito 🎉');
     console.log('\nCredenciales iniciales:');
-    console.log('  root@optica.com         / root1234');
-    console.log('  eurovision@optica.com   / euro1234');
-    console.log('  supervisor@optica.com   / super1234');
-    console.log('  ventas@optica.com       / ventas1234');
-    console.log('  laboratorio@optica.com  / lab1234');
+    console.log('  root         / root1234');
+    console.log('  eurovision   / euro1234');
+    console.log('  supervisor   / super1234');
+    console.log('  ventas       / ventas1234');
+    console.log('  laboratorio  / lab1234');
   } catch (err) {
     console.error('❌ Error en el seed:', err);
   } finally {

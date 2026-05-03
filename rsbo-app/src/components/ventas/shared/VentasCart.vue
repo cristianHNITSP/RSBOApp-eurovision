@@ -177,6 +177,16 @@
               ${{ ci.precio.toFixed(2) }} MXN
             </span>
             <span class="stock-hint">stock: {{ ci.row.existencias }}</span>
+            <MermaButton
+              v-if="ci.row?.matrixKey && ci.sheet?.id"
+              :prefill="mermaPrefillFor(ci)"
+              :max-qty="Number(ci.row.existencias) || 0"
+              size="is-small"
+              type="is-warning is-light"
+              icon-left="trash-can"
+              label="Merma"
+              @created="$emit('merma:created', $event)"
+            />
           </div>
         </div>
       </transition-group>
@@ -215,6 +225,26 @@
 <script setup>
 import { ref } from 'vue';
 import { searchClients } from "@/services/laboratorio";
+import MermaButton from "@/components/mermas/MermaButton.vue";
+
+function mermaPrefillFor(ci) {
+  return {
+    origin: "VENTAS",
+    sheet:     ci.sheet?.id || ci.sheetId,
+    matrixKey: ci.row?.matrixKey,
+    eye:       ci.row?.eye || null,
+    codebar:   ci.row?.codebar || null,
+    params: {
+      sph:      ci.row?.sph      ?? null,
+      cyl:      ci.row?.cyl      ?? null,
+      add:      ci.row?.add      ?? null,
+      base:     ci.row?.base     ?? null,
+      base_izq: ci.row?.base_izq ?? null,
+      base_der: ci.row?.base_der ?? null,
+      eye:      ci.row?.eye      ?? null,
+    },
+  };
+}
 
 const props = defineProps({
   kind: { type: String, default: 'direct', validator: v => ['lab', 'direct'].includes(v) },

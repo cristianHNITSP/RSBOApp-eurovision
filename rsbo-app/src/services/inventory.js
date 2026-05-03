@@ -85,3 +85,13 @@ export async function getGlobalVendors() {
     throw err;
   }
 }
+
+export async function resolveCodebar(codebar) {
+  try {
+    const res = await api.get(`/inventory/resolve/${codebar}`);
+    return res.data;
+  } catch (err) {
+    console.error("[INV][API] resolveCodebar ERROR", err);
+    throw err;
+  }
+}

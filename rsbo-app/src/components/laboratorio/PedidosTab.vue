@@ -281,10 +281,16 @@
           </p>
         </section>
         <footer class="modal-card-foot" style="gap: 0.5rem">
-          <b-button type="is-primary" icon-left="lock" @click="doClose">
+          <b-button 
+            type="is-primary" 
+            icon-left="lock" 
+            :loading="lab.loadingCloseOrder.value"
+            :disabled="lab.loadingCloseOrder.value"
+            @click="doClose"
+          >
             Sí, cerrar
           </b-button>
-          <b-button @click="confirmCloseOpen = false">Cancelar</b-button>
+          <b-button :disabled="lab.loadingCloseOrder.value" @click="confirmCloseOpen = false">Cancelar</b-button>
         </footer>
       </div>
     </b-modal>

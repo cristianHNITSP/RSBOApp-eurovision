@@ -225,7 +225,9 @@ async function upsertDaily({ groupKey, date, title, message, metadata, type, pri
     existing.title    = title;
     existing.message  = message;
     existing.metadata = metadata ?? existing.metadata;
-    existing.count    = (existing.count || 1) + 1;
+    // No incrementamos count automáticamente si es una notificación de estado agrupada
+    // a menos que el llamador lo pida explícitamente (ej. nuevas alertas)
+    existing.count    = 1; 
     if (type)     existing.type     = type;
     
     // Solo escalar prioridad hacia arriba si tiene pins activos

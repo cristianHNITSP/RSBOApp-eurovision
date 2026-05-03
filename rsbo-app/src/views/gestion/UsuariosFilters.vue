@@ -7,7 +7,7 @@
           @update:model-value="$emit('update:searchQuery', $event)"
           :size="isMobile ? '' : 'is-small'"
           icon="search"
-          placeholder="Buscar por nombre o correo…"
+          placeholder="Buscar por nombre o usuario…"
           expanded
         />
       </b-field>

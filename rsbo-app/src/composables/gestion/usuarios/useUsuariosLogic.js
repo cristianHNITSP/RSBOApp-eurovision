@@ -276,7 +276,7 @@ export function useUsuariosLogic() {
   }
 
   async function createUser(data) {
-    if (!data.name || !data.email || !data.role) return toast("Nombre, correo y rol son obligatorios", "is-warning");
+    if (!data.name || !data.username || !data.role) return toast("Nombre, usuario y rol son obligatorios", "is-warning");
     if (!data.password || data.password.length < 10) return toast("Contraseña recomendada mínimo 10 caracteres", "is-warning");
     saving.value = true;
     try {

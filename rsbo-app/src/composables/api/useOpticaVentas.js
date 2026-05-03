@@ -282,7 +282,8 @@ export function useOpticaVentas(getUser) {
         fecha: fakeOrder.createdAt,
         lineas: cartItems.value,
         totalPiezas: cartTotal.value,
-        actor: actor?.name || "Usuario"
+        actor: actor?.name || "Usuario",
+        ventaFolio: fakeOrder.folio
       };
       voucherOpen.value = true;
       clearCart();

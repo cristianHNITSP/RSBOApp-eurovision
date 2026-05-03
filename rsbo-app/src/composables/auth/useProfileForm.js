@@ -12,16 +12,15 @@ export function useProfileForm(userId) {
   const {
     loading, success, message, errors, isEditing,
     startLoading, finishLoading, toggleEditing, clearFieldError
-  } = useFormState({ name: '', email: '', phone: '', bio: '' });
+  } = useFormState({ name: '', phone: '', bio: '' });
 
-  const form = reactive({ name: '', email: '', phone: '', avatar: '', bio: '' });
+  const form = reactive({ name: '', phone: '', avatar: '', bio: '' });
   const _original = reactive({});
 
   function init(user) {
     if (!user) return;
     const data = {
       name:   user.name  || '',
-      email:  user.email || '',
       phone:  user.phone || '',
       bio:    user.bio   || '',
       avatar: user.avatar || '',
@@ -42,8 +41,6 @@ export function useProfileForm(userId) {
   function validate() {
     let ok = true;
     if (!form.name.trim()) { errors.name = 'El nombre completo es requerido'; ok = false; }
-    if (!form.email.trim()) { errors.email = 'El correo electrónico es requerido'; ok = false; }
-    else if (!/^\S+@\S+\.\S+$/.test(form.email)) { errors.email = 'El formato del correo es inválido'; ok = false; }
     return ok;
   }
 

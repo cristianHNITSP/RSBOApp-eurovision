@@ -90,14 +90,14 @@
 
             <div class="email-row">
               <p class="subtitle is-6 has-text-grey mt-1 mb-0">
-                {{ displayEmail }}
+                @{{ displayUsername }}
               </p>
 
               <button
                 class="button is-white is-small btn-icon"
                 type="button"
-                title="Copiar correo"
-                @click="copyEmail"
+                title="Copiar usuario"
+                @click="copyUsername"
               >
                 <span class="icon is-small"><i class="fas fa-copy"></i></span>
               </button>
@@ -301,19 +301,12 @@
             </div>
 
             <div class="column is-12">
-              <b-field
-                label="Correo electrónico"
-                :type="profileErrors.email ? 'is-danger' : ''"
-                :message="profileErrors.email"
-              >
+              <b-field label="Nombre de usuario">
                 <b-input
-                  type="email"
-                  placeholder="Tu correo"
-                  v-model="formData.email"
-                  :disabled="!isEditingProfile || loadingProfile || props.loading"
+                  :value="props.user?.username || ''"
                   expanded
-                  icon="envelope"
-                  @input="clearProfileError('email')"
+                  icon="at"
+                  disabled
                 />
               </b-field>
             </div>
@@ -423,8 +416,8 @@ const {
 } = usePasswordForm(userId);
 
 // ── Derived display values ──────────────────────────────────────────────────
-const displayName    = computed(() => props.user?.name  || "Error al cargar usuario.");
-const displayEmail   = computed(() => props.user?.email || "Error al cargar el correo.");
+const displayName     = computed(() => props.user?.name  || "Error al cargar usuario.");
+const displayUsername = computed(() => props.user?.username || "—");
 const roleName       = computed(() => props.user?.role?.name || "Sin rol asignado");
 const statusLabel    = computed(() => (props.user?.isActive ? "Activo" : "Inactivo"));
 const statusDotClass = computed(() => (props.user?.isActive ? "dot--ok" : "dot--bad"));
@@ -432,14 +425,14 @@ const avatarPlaceholder = computed(() => props.user?.avatar || formData.avatar |
 
 watch(() => props.user, (u) => { if (u) initProfile(u) }, { immediate: true });
 
-async function copyEmail() {
-  const email = String(props.user?.email || "").trim();
-  if (!email) return;
+async function copyUsername() {
+  const username = String(props.user?.username || "").trim();
+  if (!username) return;
   try {
-    await navigator.clipboard.writeText(email);
-    labToast.success("Correo copiado", 1800);
+    await navigator.clipboard.writeText(username);
+    labToast.success("Usuario copiado", 1800);
   } catch {
-    labToast.danger("No se pudo copiar el correo", 2200);
+    labToast.danger("No se pudo copiar el usuario", 2200);
   }
 }
 

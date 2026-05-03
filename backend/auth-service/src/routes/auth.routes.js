@@ -15,12 +15,12 @@ const DOMPurify = require('isomorphic-dompurify');
 // POST /api/access/login
 router.post('/login', async (req, res) => {
   try {
-    const email = req.body.email;
+    const username = req.body.username;
     const password = req.body.password;
 
     const ip        = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || null;
     const userAgent = req.headers['user-agent'] || null;
-    const { token, user } = await authService.login({ email, password, ip, userAgent });
+    const { token, user } = await authService.login({ username, password, ip, userAgent });
 
     // Setear cookie HttpOnly — 7 h sliding session
     res.cookie('auth_token', token, {

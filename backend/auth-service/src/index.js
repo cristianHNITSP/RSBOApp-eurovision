@@ -394,7 +394,7 @@ async function start() {
         try {
           const decoded = jwt.verify(password, process.env.JWT_SECRET);
           if (decoded.roleName !== "root") return null;
-          return { email: decoded.email, title: "Root" };
+          return { email: decoded.username, title: "Root" };
         } catch {
           return null;
         }

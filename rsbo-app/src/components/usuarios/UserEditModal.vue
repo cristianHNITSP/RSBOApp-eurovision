@@ -9,7 +9,7 @@
 
       <section class="modal-card-body">
         <b-field label="Nombre"><b-input v-model="form.name" /></b-field>
-        <b-field label="Correo"><b-input v-model="form.email" type="email" /></b-field>
+        <b-field label="Usuario"><b-input v-model="form.username" type="text" autocomplete="username" /></b-field>
         <b-field label="Teléfono"><b-input v-model="form.phone" /></b-field>
         <b-field label="Biografía"><b-input v-model="form.bio" type="textarea" /></b-field>
         <b-field label="Rol del usuario">
@@ -43,13 +43,13 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'save'])
 
-const form = reactive({ name: '', email: '', phone: '', bio: '', role: null, isActive: true })
+const form = reactive({ name: '', username: '', phone: '', bio: '', role: null, isActive: true })
 
 watch(() => props.user, (u) => {
   if (!u) return
   Object.assign(form, {
     name: u.name || '',
-    email: u.email || '',
+    username: u.username || '',
     phone: u.profile?.phone || '',
     bio: u.profile?.bio || '',
     role: typeof u.role === 'string' ? u.role : (u.role?._id || u.roleDoc?._id || null),

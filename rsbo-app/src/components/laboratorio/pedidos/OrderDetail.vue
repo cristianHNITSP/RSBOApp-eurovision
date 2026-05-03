@@ -45,13 +45,13 @@
       </div>
 
       <!-- Scanner -->
-      <b-field label="Código (EAN-13)" class="mb-2">
+      <b-field :label="order.status === 'cerrado' ? 'Pedido cerrado' : 'Código (EAN-13)'" class="mb-2">
         <b-input
           ref="barcodeInput"
           v-model="lab.scanCode.value"
-          placeholder="Escanea o escribe el código…"
+          :placeholder="order.status === 'cerrado' ? 'No se puede surtir un pedido cerrado' : 'Escanea o escribe el código…'"
           icon="barcode"
-          autofocus
+          :disabled="order.status === 'cerrado' || order.status === 'cancelado'"
           @keyup.enter="lab.scanAndDispatch"
         />
       </b-field>
@@ -63,7 +63,7 @@
             expanded
             icon-left="check"
             :loading="lab.loadingScan.value"
-            :disabled="!lab.scanCode.value || !order"
+            :disabled="!lab.scanCode.value || !order || order.status === 'cerrado' || order.status === 'cancelado'"
             @click="lab.scanAndDispatch"
           >
             Marcar salida
@@ -165,7 +165,7 @@ const barcodeInput = ref(null);
 
 // Escenario A: Auto-enviar si se detecta un EAN-13 válido (soluciona escáneres sin tecla Enter)
 watch(() => lab.scanCode.value, (newVal) => {
-  if (lab.isEan13(newVal)) {
+  if (lab.isEan13(newVal) && props.order?.status !== "cerrado" && props.order?.status !== "cancelado") {
     lab.scanAndDispatch();
   }
 });

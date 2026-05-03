@@ -37,8 +37,8 @@
               <i class="fas fa-clock"></i>
               Último acceso: <b>{{ lastLoginLabel }}</b>
             </span>
-            <span class="hm-item" v-if="user?.email">
-              <i class="fas fa-envelope"></i> {{ user.email }}
+            <span class="hm-item" v-if="user?.username">
+              <i class="fas fa-at"></i> {{ user.username }}
             </span>
           </div>
         </div>

@@ -36,7 +36,7 @@
               <div class="column is-4">
                 <VentasCart :kind="strategies[key].kind" :cart-items="strategies[key].cart.items"
                   :cart-total="strategies[key].cart.total" :cart-total-monto="strategies[key].cart.totalMonto"
-                  :loading-sale="strategies[key].cart.loadingSale" :cliente-suggestions="[]"
+                  :loading-sale="strategies[key].cart.loadingSale"
                   v-model:cartCliente="strategies[key].cartCliente" v-model:cartNote="strategies[key].cartNote"
                   v-model:cartClienteNombres="strategies[key].cartClienteNombres"
                   v-model:cartClienteApellidos="strategies[key].cartClienteApellidos"

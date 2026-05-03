@@ -56,3 +56,7 @@ export function getOrderHistory(orderId) {
     params: { orderId, type: "ORDER_EDIT,ORDER_CANCEL,CORRECTION_REQUEST", limit: 50 }
   });
 }
+
+export function searchClients(q) {
+  return api.get(`${BASE}/clients`, { params: { q } });
+}

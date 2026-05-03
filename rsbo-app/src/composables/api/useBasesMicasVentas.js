@@ -308,19 +308,14 @@ export function useBasesMicasVentas(getUser) {
         lineas: cartItems.value.map(ci => ({ ...ci, sheetNombre: ci.sheet.nombre })),
         totalPiezas: cartTotal.value,
         pagoDisplay,
-        actor: actor?.name || "Usuario"
+        actor: actor?.name || "Usuario",
+        labFolio: order.folio,
+        ventaFolio: order.folio.replace("LAB-", "VTA-"),
+        labStatus: order.status
       };
       voucherOpen.value = true;
       clearCart();
       labToast.success(`Pedido ${order?.folio || ""} enviado`);
-
-      createGroupedNotification({
-        groupKey: "pending_orders",
-        title: "Pedidos pendientes",
-        messageTemplate: "{count} pedido(s) pendiente(s) de atención",
-        type: "warning", priority: "medium",
-        targetRoles: ["laboratorio", "supervisor", "ventas"],
-      }).catch(() => {});
       
       return order;
     } catch (e) {

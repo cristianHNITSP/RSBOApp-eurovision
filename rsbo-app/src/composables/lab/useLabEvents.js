@@ -41,7 +41,8 @@ export function useLabEvents() {
         const { data } = await listEvents({
           type: "ORDER_CREATE,EXIT_SCAN,CORRECTION_REQUEST",
           limit: 600,
-          signal: _eventsAbort.signal
+          signal: _eventsAbort.signal,
+          _t: Date.now() // Cache buster
         });
 
         const all = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
@@ -82,6 +83,7 @@ export function useLabEvents() {
           type: "ORDER_CREATE,EXIT_SCAN,ORDER_EDIT,ORDER_CANCEL,CORRECTION_REQUEST",
           limit: 500,
           signal,
+          _t: Date.now() // Cache buster
         });
         const rows = Array.isArray(data?.data) ? data.data : [];
         

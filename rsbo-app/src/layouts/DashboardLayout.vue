@@ -126,8 +126,9 @@ import { useSidebarState } from "@/composables/ui/useSidebarState";
 import { useMotionEffects } from "@/composables/ui/useMotionEffects";
 import { useNotifications } from "@/composables/notifi/useNotificationsState";
 import { useAccessibility } from "@/composables/ui/useAccessibility";
-import { pendingOrdersCount } from "@/composables/ui/useOrdersBadge.js";
+import { useOrdersBadge, pendingOrdersCount } from "@/composables/ui/useOrdersBadge.js";
 import { fetchActiveCount } from "@/services/notifications.js";
+import { labToast } from "@/composables/shared/useLabToast.js";
 
 /* =========================
    Sidebar & motion
@@ -139,16 +140,17 @@ const { motionRef, animateSidebarShift } = useMotionEffects();
    Notificaciones
    ========================= */
 const { showPanel, openPanel, closePanel } = useNotifications();
+useOrdersBadge();
 const activeNotifications = ref(0);
 const bellRinging = ref(false);
-let _prevActive = 0;
+const _prevActive = ref(0);
 
 watch(activeNotifications, (newVal) => {
-  if (newVal > _prevActive) {
+  if (newVal > _prevActive.value) {
     bellRinging.value = true;
     setTimeout(() => { bellRinging.value = false; }, 800);
   }
-  _prevActive = newVal;
+  _prevActive.value = newVal;
 });
 
 /* =========================
@@ -330,6 +332,15 @@ function _onLabWs(e) {
   const type = e?.detail?.type;
   if (type === "NOTIFICATION_NEW" || type === "STOCK_ALERT") {
     refreshActiveCount();
+  }
+  
+  // Real-time feedback para eventos de laboratorio
+  if (type === "LAB_ORDER_CREATE") {
+    labToast.info(`📦 Nuevo pedido: ${e.detail.payload?.folio} de ${e.detail.payload?.cliente}`);
+  } else if (type === "LAB_ORDER_SCAN") {
+    // Solo si queremos feedback global de escaneos
+  } else if (type === "LAB_ORDER_CANCEL") {
+    labToast.warning(`🚫 Pedido cancelado: ${e.detail.payload?.folio}`);
   }
 }
 

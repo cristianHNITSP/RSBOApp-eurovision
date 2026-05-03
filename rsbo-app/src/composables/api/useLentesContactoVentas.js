@@ -319,7 +319,8 @@ export function useLentesContactoVentas(getUser) {
         fecha: fakeOrder.createdAt,
         lineas: cartItems.value.map(ci => ({ ...ci, sheetNombre: ci.sheet.nombre })),
         totalPiezas: cartTotal.value,
-        actor: actor?.name || "Usuario"
+        actor: actor?.name || "Usuario",
+        ventaFolio: fakeOrder.folio
       };
       voucherOpen.value = true;
       clearCart();

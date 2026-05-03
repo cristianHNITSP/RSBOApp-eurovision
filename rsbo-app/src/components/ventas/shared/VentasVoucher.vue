@@ -65,9 +65,9 @@
         <span class="ventas-voucher__label">Atendido por</span>
         <span class="ventas-voucher__val">{{ order.actor }}</span>
       </div>
-      <div v-if="order.ventaFolio" class="ventas-voucher__row">
+      <div v-if="order.ventaFolio || order.folio" class="ventas-voucher__row">
         <span class="ventas-voucher__label">Folio venta</span>
-        <span class="ventas-voucher__val mono">{{ order.ventaFolio }}</span>
+        <span class="ventas-voucher__val mono">{{ order.ventaFolio || order.folio }}</span>
       </div>
       <div v-if="order.labFolio" class="ventas-voucher__row">
         <span class="ventas-voucher__label">Folio lab</span>
@@ -79,7 +79,6 @@
     <div v-if="order.labFolio" class="ventas-voucher__lab-order">
       <i class="fas fa-flask ventas-voucher__lab-icon"></i>
       <div>
-        <div class="ventas-voucher__lab-folio mono">{{ order.labFolio }}</div>
         <div class="ventas-voucher__lab-status">
           <span
             v-if="order.labStatus"

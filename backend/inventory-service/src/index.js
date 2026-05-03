@@ -115,6 +115,9 @@ app.get("/health", (_req, res) => {
  * - /api/inventory: recursos de inventario y plantillas
  */
 
+const transactionsRoutes = require("./routes/transactions.routes");
+app.use("/api/inventory/transactions", transactionsRoutes);
+
 const inventoryRoutes = require("./routes/inventory.routes");
 app.use("/api/inventory", inventoryRoutes);
 
@@ -139,6 +142,8 @@ app.use("/api/devolutions", devolutionsRoutes);
 
 const mermaRoutes = require("./routes/merma.routes");
 app.use("/api/mermas", mermaRoutes);
+
+// Se movió a /api/inventory/transactions para consistencia global
 
 // si tu API usa prefijo /api:
 // app.use("/api/laboratory", laboratoryRoutes);

@@ -1,21 +1,23 @@
 <template>
-  <div class="view-hero">
-    <LabHero />
-  </div>
-
-  <section class="view-main">
-    <div class="glass">
-      <DynamicTabs v-model="activeMainTab" :tabs="LAB_TABS">
-        <template #pedidos><PedidosTab /></template>
-        <template #bandeja><BandejaTab /></template>
-        <template #catalogo><CatalogoTab /></template>
-        <template #correcciones><CorreccionesTab /></template>
-      </DynamicTabs>
+  <div class="view-laboratorio-root">
+    <div class="view-hero">
+      <LabHero />
     </div>
-  </section>
 
-  <BarcodeModal />
-  <CorrectionModal />
+    <section class="view-main">
+      <div class="glass">
+        <DynamicTabs v-model="activeMainTab" :tabs="LAB_TABS">
+          <template #pedidos><PedidosTab /></template>
+          <template #bandeja><BandejaTab /></template>
+          <template #catalogo><CatalogoTab /></template>
+          <template #correcciones><CorreccionesTab /></template>
+        </DynamicTabs>
+      </div>
+    </section>
+
+    <BarcodeModal />
+    <CorrectionModal />
+  </div>
 </template>
 
 

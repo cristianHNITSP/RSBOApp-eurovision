@@ -1,6 +1,7 @@
 <template>
-  <!-- Encabezado -->
-  <div class="view-hero">
+  <div class="ayuda-view-wrapper">
+    <!-- Encabezado -->
+    <div class="view-hero">
     <header class="help-header">
 
       <div class="help-title-block">
@@ -1208,7 +1209,8 @@
       </template>
 
     </DynamicTabs>
-  </section>
+    </section>
+  </div>
 </template>
 
 

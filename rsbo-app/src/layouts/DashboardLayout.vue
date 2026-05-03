@@ -90,8 +90,10 @@
 
         <!-- Body -->
         <section class="dashboard-body">
-          <router-view v-slot="{ Component }">
-            <component :is="Component" :user="user" :loading="loading" />
+          <router-view v-slot="{ Component, route }">
+            <transition name="page" mode="out-in">
+              <component :is="Component" :user="user" :loading="loading" :key="route.path" />
+            </transition>
           </router-view>
         </section>
 
@@ -349,6 +351,15 @@ function _onLabWs(e) {
   } else if (type === "DEVOLUTION_UPDATED") {
     labToast.info(`✏️ Devolución actualizada: ${e.detail.payload?.folio}`);
     window.dispatchEvent(new CustomEvent("devoluciones:refresh"));
+  } else if (type === "BACKORDER_CREATED") {
+    labToast.info(`📋 Nuevo encargo: ${e.detail.payload?.folio}`);
+    window.dispatchEvent(new CustomEvent("backorders:refresh"));
+  } else if (type === "BACKORDER_STATUS_CHANGED") {
+    labToast.info(`📋 Estado de encargo cambió: ${e.detail.payload?.folio} (${e.detail.payload?.to})`);
+    window.dispatchEvent(new CustomEvent("backorders:refresh"));
+  } else if (type === "BACKORDER_PAYMENT_ADDED") {
+    labToast.success(`💰 Pago registrado en encargo: ${e.detail.payload?.folio}`);
+    window.dispatchEvent(new CustomEvent("backorders:refresh"));
   }
 }
 

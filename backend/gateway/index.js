@@ -111,6 +111,7 @@ const SERVICES = {
   inventory: process.env.INVENTORY_SERVICE_URL,
   optica: process.env.OPTICA_SERVICE_URL,
   notification: process.env.NOTIFICATION_SERVICE_URL,
+  backorder: process.env.BACKORDER_SERVICE_URL,
 };
 
 // ✅ Helpers
@@ -252,6 +253,7 @@ app.use("/api/devolutions", proxyRequest(SERVICES.inventory));
 app.use("/api/mermas", proxyRequest(SERVICES.inventory));
 app.use("/api/optica", proxyRequest(SERVICES.optica));
 app.use("/api/notification", proxyRequest(SERVICES.notification));
+app.use("/api/backorders", proxyRequest(SERVICES.backorder));
 
 // 🔹 Ruta principal
 app.get("/", (_req, res) => res.send("🚀 RSBO Gateway funcionando"));

@@ -13,39 +13,39 @@
           <template v-for="key in CATEGORY_KEYS" #[key] :key="key">
             <transition name="fade-slide" mode="out-in" appear>
               <div class="columns is-multiline is-variable is-4" :key="activeTab">
-              <div class="column is-8">
-                <VentasCatalog v-bind="strategies[key].catalog"
-                  :filtered-items-length="strategies[key].catalog.filteredItems.length"
-                  v-model:selectedSheetId="strategies[key].selectedSheetId"
-                  v-model:itemQuery="strategies[key].itemQuery" v-model:stockFilter="strategies[key].stockFilter"
-                  v-model:catalogPage="strategies[key].catalogPage"
-                  :show-sheet-picker="key === 'bases-micas' || key === 'lentes-contacto' || key === 'optica'"
-                  :picker-placeholder="key === 'optica' ? 'Seleccionar colección...' : 'Buscar planilla...'"
-                  :picker-icon="key === 'optica' ? 'fa-tags' : (key === 'lentes-contacto' ? 'fa-circle' : 'fa-layer-group')"
-                  :code-label="key === 'optica' ? 'SKU' : 'código'" @add-to-cart="strategies[key].addToCart">
-                  <template v-if="key === 'lentes-contacto' && strategies[key].catalog.isToric" #extra-filters>
-                    <b-field label="Eje" class="mb-0 catalog-sheet-field">
-                      <SheetPickerInput v-model="strategies[key].catalog.selectedAxis"
-                        :sheet-title="(a) => a ? a.name : 'Todos los ejes'"
-                        :results="strategies[key].catalog.availableAxes" :search-fn="(q) => { }"
-                        placeholder="Filtrar por eje..." icon="fa-compass" />
-                    </b-field>
-                  </template>
-                </VentasCatalog>
-              </div>
-              <div class="column is-4">
-                <VentasCart :kind="strategies[key].kind" :cart-items="strategies[key].cart.items"
-                  :cart-total="strategies[key].cart.total" :cart-total-monto="strategies[key].cart.totalMonto"
-                  :loading-sale="strategies[key].cart.loadingSale"
-                  v-model:cartCliente="strategies[key].cartCliente" v-model:cartNote="strategies[key].cartNote"
-                  v-model:cartClienteNombres="strategies[key].cartClienteNombres"
-                  v-model:cartClienteApellidos="strategies[key].cartClienteApellidos"
-                  v-model:cartClienteEmpresa="strategies[key].cartClienteEmpresa"
-                  v-model:cartClienteContacto="strategies[key].cartClienteContacto"
-                  v-model:cartPago="strategies[key].cartPago" @checkout="strategies[key].registrarVenta"
-                  @remove-from-cart="strategies[key].removeFromCart" @inc-cart-qty="strategies[key].incCartQty"
-                  @dec-cart-qty="strategies[key].decCartQty" @ask-clear-cart="strategies[key].clearCart" />
-              </div>
+                <div class="column is-8">
+                  <VentasCatalog v-bind="strategies[key].catalog"
+                    :filtered-items-length="strategies[key].catalog.filteredItems.length"
+                    v-model:selectedSheetId="strategies[key].selectedSheetId"
+                    v-model:itemQuery="strategies[key].itemQuery" v-model:stockFilter="strategies[key].stockFilter"
+                    v-model:catalogPage="strategies[key].catalogPage"
+                    :show-sheet-picker="key === 'bases-micas' || key === 'lentes-contacto' || key === 'optica'"
+                    :picker-placeholder="key === 'optica' ? 'Seleccionar colección...' : 'Buscar planilla...'"
+                    :picker-icon="key === 'optica' ? 'fa-tags' : (key === 'lentes-contacto' ? 'fa-circle' : 'fa-layer-group')"
+                    :code-label="key === 'optica' ? 'SKU' : 'código'" @add-to-cart="strategies[key].addToCart">
+                    <template v-if="key === 'lentes-contacto' && strategies[key].catalog.isToric" #extra-filters>
+                      <b-field label="Eje" class="mb-0 catalog-sheet-field">
+                        <SheetPickerInput v-model="strategies[key].catalog.selectedAxis"
+                          :sheet-title="(a) => a ? a.name : 'Todos los ejes'"
+                          :results="strategies[key].catalog.availableAxes" :search-fn="(q) => { }"
+                          placeholder="Filtrar por eje..." icon="fa-compass" />
+                      </b-field>
+                    </template>
+                  </VentasCatalog>
+                </div>
+                <div class="column is-4">
+                  <VentasCart :kind="strategies[key].kind" :cart-items="strategies[key].cart.items"
+                    :cart-total="strategies[key].cart.total" :cart-total-monto="strategies[key].cart.totalMonto"
+                    :loading-sale="strategies[key].cart.loadingSale" v-model:cartCliente="strategies[key].cartCliente"
+                    v-model:cartNote="strategies[key].cartNote"
+                    v-model:cartClienteNombres="strategies[key].cartClienteNombres"
+                    v-model:cartClienteApellidos="strategies[key].cartClienteApellidos"
+                    v-model:cartClienteEmpresa="strategies[key].cartClienteEmpresa"
+                    v-model:cartClienteContacto="strategies[key].cartClienteContacto"
+                    v-model:cartPago="strategies[key].cartPago" @checkout="strategies[key].registrarVenta"
+                    @remove-from-cart="strategies[key].removeFromCart" @inc-cart-qty="strategies[key].incCartQty"
+                    @dec-cart-qty="strategies[key].decCartQty" @ask-clear-cart="strategies[key].clearCart" />
+                </div>
               </div>
             </transition>
           </template>
@@ -247,7 +247,8 @@ provide('ventas', { strategies, activeTab });
   z-index: 0;
 }
 
-.hero-glow--a, .hero-glow--b {
+.hero-glow--a,
+.hero-glow--b {
   position: absolute;
   width: 800px;
   height: 800px;
@@ -271,7 +272,12 @@ provide('ventas', { strategies, activeTab });
 }
 
 @keyframes float-glow {
-  0% { transform: translate(0, 0) scale(1); }
-  100% { transform: translate(100px, 50px) scale(1.1); }
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+
+  100% {
+    transform: translate(100px, 50px) scale(1.1);
+  }
 }
 </style>

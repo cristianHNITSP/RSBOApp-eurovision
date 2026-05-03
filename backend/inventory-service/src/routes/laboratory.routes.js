@@ -299,12 +299,10 @@ router.post("/orders", [
     });
     broadcast("LAB_ORDER_CREATE", { orderId: order._id, folio, cliente: order.cliente });
     
-    // 🔔 Notificaciones asíncronas (en paralelo para mayor velocidad)
-    setImmediate(async () => {
-      await Promise.all([
-        notifyNewOrder(order),
-        notifyPendingOrders()
-      ]).catch(e => console.warn("[LAB] Notif Error:", e.message));
+    // 🔔 Notificaciones asíncronas e independientes para máxima velocidad
+    setImmediate(() => {
+      notifyNewOrder(order).catch(e => console.warn("[LAB_NOTIF] Individual error:", e.message));
+      notifyPendingOrders().catch(e => console.warn("[LAB_NOTIF] Master error:", e.message));
     });
 
     return res.status(201).json({ ok: true, data: order });

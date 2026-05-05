@@ -28,8 +28,11 @@ function normalizePassword(password) {
   return String(password || "");
 }
 
-const SESSION_TTL_MS = 7 * 3600 * 1000;       // 7 horas
-const RENEW_THRESHOLD_MS = 5 * 3600 * 1000;   // renovar si quedan < 5 h
+const SESSION_TTL_HOURS = Number(process.env.SESSION_TTL_HOURS) || 8;
+const SESSION_RENEW_THRESHOLD_HOURS = Number(process.env.SESSION_RENEW_THRESHOLD_HOURS) || 6;
+const SESSION_TTL_MS = SESSION_TTL_HOURS * 3600 * 1000;
+const RENEW_THRESHOLD_MS = SESSION_RENEW_THRESHOLD_HOURS * 3600 * 1000;
+const JWT_EXPIRES_IN = `${SESSION_TTL_HOURS}h`;
 
 function parseDeviceName(ua) {
   const s = String(ua || '');
@@ -88,7 +91,7 @@ async function login({ username, password, ip, userAgent }) {
       roleName: user.role?.name ?? null,
     },
     process.env.JWT_SECRET,
-    { expiresIn: "7h" }
+    { expiresIn: JWT_EXPIRES_IN }
   );
 
   // Limpiar sesiones expiradas antes de agregar la nueva
@@ -164,7 +167,7 @@ async function renewTokenIfNeeded(userId, currentToken) {
   const newToken = jwt.sign(
     { id: decoded.id, username: decoded.username, role: decoded.role, roleName: decoded.roleName },
     process.env.JWT_SECRET,
-    { expiresIn: "7h" }
+    { expiresIn: JWT_EXPIRES_IN }
   );
 
   const user = await User.findById(userId).select("+tokens");
@@ -192,11 +195,35 @@ async function renewTokenIfNeeded(userId, currentToken) {
   return { renewed: true, newToken };
 }
 
+/**
+ * Lee el JWT actual y devuelve metadatos de expiración para el frontend.
+ * No renueva: solo informa.
+ */
+function getSessionInfo(currentToken) {
+  if (!currentToken) return null;
+  let decoded;
+  try {
+    decoded = jwt.verify(currentToken, process.env.JWT_SECRET);
+  } catch {
+    return null;
+  }
+  const expMs = decoded.exp * 1000;
+  return {
+    expiresAt: new Date(expMs).toISOString(),
+    renewsAt: new Date(expMs - RENEW_THRESHOLD_MS).toISOString(),
+    ttlSeconds: SESSION_TTL_HOURS * 3600,
+    renewThresholdSeconds: SESSION_RENEW_THRESHOLD_HOURS * 3600,
+  };
+}
+
 module.exports = {
   login,
   logout,
   buildSessionPayload,
   parseDeviceName,
   renewTokenIfNeeded,
+  getSessionInfo,
   SESSION_TTL_MS,
+  SESSION_TTL_HOURS,
+  SESSION_RENEW_THRESHOLD_HOURS,
 };

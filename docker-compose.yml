@@ -106,6 +106,7 @@ services:
       - inventory-service
       - optica-service
       - notification-service
+      - backorder-service
     expose:
       - "3000"                    # visible dentro de la red Docker
     ports:
@@ -127,6 +128,8 @@ services:
       - ./backend/auth-service/.env
     environment:
       NODE_ENV: ${NODE_ENV:-production}
+      SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-8}
+      SESSION_RENEW_THRESHOLD_HOURS: ${SESSION_RENEW_THRESHOLD_HOURS:-6}
       MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${AUTH_DB}?authSource=admin"
       INVENTORY_MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${INVENTORY_DB}?authSource=admin"
       NOTIFICATION_MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${NOTIFICATION_DB}?authSource=admin"
@@ -187,6 +190,7 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${OPTICA_DB}?authSource=admin"
       GATEWAY_WS_URL: "ws://gateway:3000/ws-internal"
+      INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN}"
     depends_on:
       - mongo
     expose:
@@ -194,6 +198,34 @@ services:
     restart: unless-stopped
     volumes:
       - ./backend/optica-service:/app
+      - /app/node_modules
+    networks:
+      - rsbo-net
+    profiles: ["prod", "dev"]
+
+  # =========================
+  # BACKORDER SERVICE
+  # =========================
+  backorder-service:
+    build:
+      context: ./backend/backorder-service
+    container_name: rsboapp-backorder
+    env_file:
+      - ./.env
+      - ./backend/backorder-service/.env
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${BACKORDER_DB}?authSource=admin"
+      GATEWAY_WS_URL: "ws://gateway:3000/ws-internal"
+      NOTIFICATION_SERVICE_URL: "http://notification-service:3000"
+      INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN}"
+    depends_on:
+      - mongo
+    expose:
+      - "3000"
+    restart: unless-stopped
+    volumes:
+      - ./backend/backorder-service:/app
       - /app/node_modules
     networks:
       - rsbo-net

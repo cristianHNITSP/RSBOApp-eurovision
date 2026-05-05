@@ -29,8 +29,15 @@ function validatePayload(p) {
   if (!p || typeof p !== "object") throw new MermaError("BAD_PAYLOAD", "payload requerido");
   if (!VALID_ORIGINS.has(p.origin)) throw new MermaError("BAD_ORIGIN", `origin inválido: ${p.origin}`);
   if (!VALID_REASONS.has(p.reason)) throw new MermaError("BAD_REASON", `reason inválido: ${p.reason}`);
-  if (!p.sheet) throw new MermaError("BAD_SHEET", "sheet requerido");
-  if (!p.matrixKey) throw new MermaError("BAD_KEY", "matrixKey requerido");
+  
+  // Si no hay sheet, debe haber al menos un sku/codebar para Óptica
+  if (!p.sheet) {
+    if (p.origin !== "VENTAS") throw new MermaError("BAD_SHEET", "sheet requerido para este origen");
+    if (!p.sku && !p.codebar) throw new MermaError("BAD_ITEM", "sku o codebar requerido para mermas de óptica");
+  } else {
+    if (!p.matrixKey) throw new MermaError("BAD_KEY", "matrixKey requerido");
+  }
+
   const qty = Number(p.qty);
   if (!Number.isFinite(qty) || qty < 1) throw new MermaError("BAD_QTY", "qty debe ser entero >= 1");
   if (p.origin === "LAB" && !p.laboratoryOrder) {
@@ -59,6 +66,7 @@ function validatePayload(p) {
  * @param {string|ObjectId} [payload.devolution]
  * @param {string} [payload.ventaFolio]
  * @param {{userId?:string,name?:string}} payload.actor
+ * @param {boolean} [payload.skipMutation=false] Si es true, crea el log sin alterar el stock físico.
  * @param {Object} [externalSession] Sesión Mongoose del caller (opcional).
  * @returns {Promise<Object>} El MermaLog creado.
  */
@@ -67,38 +75,57 @@ async function registerMerma(payload, externalSession = null) {
 
   const session = externalSession || null;
 
-  // Hidratar la hoja para obtener tipo_matriz
-  const sheetQ = InventorySheet.findById(payload.sheet);
-  if (session) sheetQ.session(session);
-  const sheet = await sheetQ;
-  if (!sheet) throw new MermaError("SHEET_NOT_FOUND", "Hoja de inventario no encontrada", 404);
+  // Hidratar la hoja si viene una
+  let sheet = null;
+  if (payload.sheet) {
+    const sheetQ = InventorySheet.findById(payload.sheet);
+    if (session) sheetQ.session(session);
+    sheet = await sheetQ;
+    if (!sheet) throw new MermaError("SHEET_NOT_FOUND", "Hoja de inventario no encontrada", 404);
+  }
 
   const actor = {
     userId: payload.actor?.userId || null,
     name:   payload.actor?.name   || null,
   };
 
-  // Mutación de stock (delta negativo). Si falla por stock insuficiente, propaga 409.
-  let stockBefore, stockAfter;
-  try {
-    const r = await mutateMatrixCell({
-      sheet,
-      matrixKey: payload.matrixKey,
-      eye:       payload.eye || null,
-      delta:     -Math.abs(Number(payload.qty)),
-      type:      "MERMA",
-      actor,
-      codebar:   payload.codebar || null,
-      details:   { origin: payload.origin, reason: payload.reason },
-      session,
-    });
-    stockBefore = r.stockBefore;
-    stockAfter  = r.stockAfter;
-  } catch (err) {
-    if (err instanceof StockError) {
-      throw new MermaError(err.code, err.message, err.status || 409);
+  // Mutación de stock (delta negativo). 
+  let stockBefore = 0, stockAfter = 0;
+  const skipMutation = Boolean(payload.skipMutation);
+
+  if (sheet) {
+    if (skipMutation) {
+      const matrix = await require("./stock.service")._getMatrixForSheet(sheet, session);
+      const cell = await require("./stock.service")._getCell(matrix, payload.matrixKey, payload.eye || null);
+      stockBefore = cell?.existencias || 0;
+      stockAfter  = stockBefore;
+    } else {
+      try {
+        const r = await mutateMatrixCell({
+          sheet,
+          matrixKey: payload.matrixKey,
+          eye:       payload.eye || null,
+          delta:     -Math.abs(Number(payload.qty)),
+          type:      "MERMA",
+          actor,
+          codebar:   payload.codebar || null,
+          details:   { origin: payload.origin, reason: payload.reason },
+          session,
+        });
+        stockBefore = r.stockBefore;
+        stockAfter  = r.stockAfter;
+      } catch (err) {
+        if (err instanceof StockError) {
+          throw new MermaError(err.code, err.message, err.status || 409);
+        }
+        throw err;
+      }
     }
-    throw err;
+  } else {
+    // Caso ÓPTICA: No mutamos stock físico aquí por ahora (se asume que se hace vía optica-service si se requiere)
+    // Pero guardamos el log para trazabilidad.
+    stockBefore = 0; 
+    stockAfter = 0;
   }
 
   // Crear MermaLog
@@ -110,9 +137,9 @@ async function registerMerma(payload, externalSession = null) {
     laboratoryLineId: payload.laboratoryLineId || null,
     devolution:       payload.devolution       || null,
     ventaFolio:       payload.ventaFolio       || null,
-    sheet:       sheet._id,
-    tipo_matriz: sheet.tipo_matriz,
-    matrixKey:   String(payload.matrixKey),
+    sheet:       sheet?._id || null,
+    tipo_matriz: sheet?.tipo_matriz || null,
+    matrixKey:   payload.matrixKey ? String(payload.matrixKey) : null,
     eye:         payload.eye || null,
     codebar:     payload.codebar || null,
     params:      payload.params || {},

@@ -1,5 +1,5 @@
 <template>
-
+  <div class="dashboard-home-view">
     <DashboardHero
       :environmentLabel="environmentLabel"
       :roleBannerStyle="roleBannerStyle"
@@ -77,7 +77,7 @@
         </template>
       </DynamicTabs>
     </section>
-  
+  </div>
 </template>
 
 <script setup>
@@ -122,7 +122,7 @@ const DASH_TABS = computed(() => {
     { key: 'resumen',      label: 'Resumen',       icon: 'chart-pie' },
     { key: 'operaciones',  label: 'Operaciones',   icon: 'flask-vial' },
   ]
-  if (canSeeDevolutions.value) tabs.push({ key: 'devoluciones', label: 'Devoluciones', icon: 'rotate-left', badge: s.value?.devolucionesPendientes || 0, badgeType: 'warning' })
+  if (canSeeDevolutions.value) tabs.push({ key: 'devoluciones', label: 'Devoluciones', icon: 'rotate-left', badge: (s.value?.devolucionesPendientes || 0) + (s.value?.devolucionesEnRevision || 0), badgeType: 'warning' })
   if (canSeeInventory.value)   tabs.push({ key: 'optica',       label: 'Optica',        icon: 'glasses' })
   if (isSupervisor.value || isRoot.value) tabs.push({ key: 'supervision', label: 'Supervision', icon: 'eye' })
   return tabs
@@ -255,7 +255,7 @@ async function loadPendingDevols() {
   if (!canManageDevolutions.value) return
   loadingDevols.value = true
   try {
-    const { data } = await fetchDevolutions({ limit: 4, page: 1, status: 'pendiente' })
+    const { data } = await fetchDevolutions({ limit: 4, page: 1, status: 'pendiente,en_revision' })
     if (data?.ok) pendingDevols.value = data.data
   } catch {} finally { loadingDevols.value = false }
 }
@@ -320,7 +320,7 @@ const allKpis = computed(() => [
   { key:'cerrados30d',    icon:'circle-check',         accent:'green',  title:'Cerrados (30d)',            caption:'Últimos 30 días',                          formattedValue: s.value?.ordersClosed30d ?? '—',           requiresOrders:true },
   { key:'scansToday',     icon:'barcode',              accent:'cyan',   title:'Escaneos hoy',             caption:'Salidas por escáner',                      formattedValue: s.value?.scansToday ?? '—',               requiresLab:true },
   { key:'serviceLevel',   icon:'gauge-high',           accent:'purple', title:'Nivel de servicio',        caption:'Sin correcciones (30d)',                    formattedValue: (s.value?.serviceLevel ?? 0) + '%',        requiresReports:true },
-  { key:'devPendientes',  icon:'rotate-left',          accent:'orange', title:'Devoluciones pendientes',  caption:'Esperando revisión',                       formattedValue: s.value?.devolucionesPendientes ?? '—',    requiresDevolutions:true, alert: (s.value?.devolucionesPendientes ?? 0) > 0 },
+  { key:'devPendientes',  icon:'rotate-left',          accent:'orange', title:'Devoluciones pendientes',  caption:'Esperando revisión',                       formattedValue: (s.value?.devolucionesPendientes ?? 0) + (s.value?.devolucionesEnRevision ?? 0),    requiresDevolutions:true, alert: ((s.value?.devolucionesPendientes ?? 0) + (s.value?.devolucionesEnRevision ?? 0)) > 0 },
   { key:'devTotal30d',    icon:'arrow-rotate-left',    accent:'purple', title:'Devoluciones (30d)',        caption:'Este período',                             formattedValue: s.value?.devolucionesTotal30d ?? '—',      requiresDevolutions:true },
   { key:'corrections7d',  icon:'wrench',               accent:'red',    title:'Correcciones (7d)',         caption:'Solicitudes activas',                      formattedValue: s.value?.corrections7d ?? '—',            requiresLab:true },
   { key:'cerradoHoy',     icon:'check',                accent:'green',  title:'Cerrados hoy',             caption:'Completados hoy',                          formattedValue: s.value?.ordersClosedToday ?? '—',        requiresOrders:true },

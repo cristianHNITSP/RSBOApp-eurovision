@@ -33,10 +33,37 @@
             </b-field>
           </b-field>
 
-          <!-- Selector de ítem si no viene pre-cargado -->
-          <b-field v-if="!form.sheet" label="Escanear producto o ingresar código identificador (SKU)" type="is-info">
+          <!-- MODO SELECCIÓN (VENTAS / LAB) -->
+          <div v-if="(form.origin === 'VENTAS' || form.origin === 'LAB') && !form.sheet && !originLocked" class="mb-4">
+            <TransactionSearch 
+              label="1. Buscar Venta o Pedido" 
+              @select="onTransactionSelected" 
+            />
+            
+            <TransactionItemPicker 
+              v-if="selectedTransaction"
+              class="mt-3 animate__animated animate__fadeIn"
+              :transaction-folio="selectedTransaction.folio"
+              :items="selectedTransaction.items"
+              :selected-id="selectedItem?.id"
+              @select="onItemPicked"
+            />
+
+            <div class="has-text-centered mt-3">
+              <button class="button is-ghost is-small" @click="useManualMode = true" v-if="!useManualMode">
+                O ingresar código manualmente
+              </button>
+            </div>
+          </div>
+
+          <!-- Selector de ítem Manual (Si no hay pre-cargado y no estamos en modo selección o se pidió manual) -->
+          <b-field v-if="!form.sheet && (form.origin === 'INVENTARIO' || useManualMode)" 
+            label="Escanear producto o ingresar código identificador (SKU)" type="is-info">
             <b-input v-model="searchCodebar" placeholder="Ejem: 1234567890" icon="barcode" :loading="resolving"
               @keyup.enter.native="handleResolve" />
+            <p class="help" v-if="useManualMode">
+              <a @click="useManualMode = false">Regresar a búsqueda por venta</a>
+            </p>
           </b-field>
 
           <div v-if="resolvedItem"
@@ -89,6 +116,8 @@
 import { reactive, ref, computed, watch } from "vue";
 import { createMerma } from "@/services/mermas";
 import { resolveCodebar } from "@/services/inventory";
+import TransactionSearch from "@/components/ui/TransactionSearch.vue";
+import TransactionItemPicker from "@/components/ui/TransactionItemPicker.vue";
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -103,9 +132,12 @@ const showSuccess = ref(false);
 const errorMsg = ref("");
 const searchCodebar = ref("");
 const resolvedItem = ref(null);
+const useManualMode = ref(false);
+const selectedTransaction = ref(null);
+const selectedItem = ref(null);
 
 const form = reactive({
-  origin: "INVENTARIO",
+  origin: "VENTAS",
   reason: "ROTURA",
   qty: 1,
   notes: "",
@@ -140,10 +172,13 @@ watch(() => props.modelValue, (open) => {
   searchCodebar.value = "";
   resolvedItem.value = null;
   showSuccess.value = false;
+  useManualMode.value = false;
+  selectedTransaction.value = null;
+  selectedItem.value = null;
   Object.assign(form, {
-    origin: props.prefill?.origin || "INVENTARIO",
+    origin: props.prefill?.origin || "VENTAS",
     reason: "ROTURA",
-    qty: 1,
+    qty: props.prefill?.qty || 1,
     notes: "",
     sheet: props.prefill?.sheet || null,
     matrixKey: props.prefill?.matrixKey || null,
@@ -177,6 +212,37 @@ async function handleResolve() {
   } finally {
     resolving.value = false;
   }
+}
+
+function onTransactionSelected(tx) {
+  selectedTransaction.value = tx;
+  selectedItem.value = null;
+}
+
+function onItemPicked(item) {
+  selectedItem.value = item;
+  
+  // Rellenar datos técnicos automáticamente
+  form.sheet = item.sheetId;
+  form.matrixKey = item.matrixKey;
+  form.eye = item.eye;
+  form.codebar = item.codebar;
+  form.params = item.params || {};
+  
+  if (selectedTransaction.value.type === 'LAB') {
+    form.laboratoryOrder = selectedTransaction.value.id;
+    form.laboratoryLineId = item.id;
+  } else {
+    form.ventaFolio = selectedTransaction.value.folio;
+  }
+
+  // Visual feedback
+  resolvedItem.value = {
+    sheet: { nombre: item.title },
+    matrixKey: item.matrixKey,
+    eye: item.eye,
+    item: { existencias: item.qty }
+  };
 }
 
 function close() {

@@ -67,7 +67,7 @@
           </div>
           <div class="hqs-sep" v-if="canSeeOrders && canSeeDevolutions"></div>
           <div class="hqs-item" v-if="canSeeDevolutions">
-            <div class="hqs-val">{{ stats?.devolucionesPendientes ?? '—' }}</div>
+            <div class="hqs-val">{{ (stats?.devolucionesPendientes ?? 0) + (stats?.devolucionesEnRevision ?? 0) }}</div>
             <div class="hqs-label">Devoluc.</div>
           </div>
         </div>

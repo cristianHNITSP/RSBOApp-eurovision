@@ -35,12 +35,17 @@
 }
 
 .notif-card:hover {
-  background: rgba(255, 255, 255, 0.95);
-  border-color: rgba(var(--c-primary-rgb, 59, 130, 246), 0.4);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  background: var(--surface-raised);
+  border-color: var(--c-primary-alpha);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   opacity: 1 !important;
   filter: none !important;
   z-index: 5;
+}
+
+[data-theme='dark'] .notif-card:hover {
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
 /* Estado No Leído: Brillo suave estilo iOS */
@@ -224,24 +229,22 @@
 
 /* ── Panel de Detalle (Efecto Bóveda / Vault) ──────────────────────────────── */
 .detail-panel {
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--bg-muted);
   backdrop-filter: blur(5px);
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--border-subtle);
   border-radius: 14px;
   padding: 0.65rem 0.75rem;
   margin: 0.25rem 0 0.75rem;
   box-shadow: 
-    inset 0 2px 8px rgba(0, 0, 0, 0.06),
-    0 1px 2px rgba(255, 255, 255, 0.5);
+    inset 0 2px 8px rgba(0, 0, 0, 0.06);
   overflow: hidden;
 }
 
 [data-theme='dark'] .detail-panel {
-  background: rgba(0, 0, 0, 0.25);
-  border-color: rgba(255, 255, 255, 0.05);
+  background: rgba(0, 0, 0, 0.35);
+  border-color: rgba(255, 255, 255, 0.08);
   box-shadow: 
-    inset 0 2px 12px rgba(0, 0, 0, 0.4),
-    0 1px 0 rgba(255, 255, 255, 0.05);
+    inset 0 2px 12px rgba(0, 0, 0, 0.5);
 }
 
 .notif-author,
@@ -406,14 +409,14 @@
 }
 
 .axis-pill-mini {
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-muted);
+  border: 1px solid var(--border-subtle);
   padding: 0.2rem 0.5rem;
   border-radius: 4px;
   font-size: 0.7rem;
   font-weight: 700;
   cursor: pointer;
-  color: #64748b;
+  color: var(--text-secondary);
   transition: all 0.2s;
 }
 
@@ -437,4 +440,125 @@
   color: #94a3b8;
   text-align: center;
   border-top: 1px solid rgba(0,0,0,0.05);
+}
+/* ── Devoluciones agrupadas (Grid Layout) ─────────────────────────────────── */
+.dev-grid-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.dev-grid-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.75rem;
+  padding: 0.65rem 0.5rem;
+  background: rgba(255, 255, 255, 0.4);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  border-radius: 12px;
+  transition: background 0.2s;
+}
+[data-theme='dark'] .dev-grid-item {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+.dev-grid-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.dev-grid-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.dev-grid-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  justify-content: flex-start;
+}
+
+.dev-type-tag {
+  font-size: 0.6rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  letter-spacing: 0.02em;
+}
+.type-lab { background: var(--c-primary-alpha); color: var(--c-primary); }
+.type-venta { background: var(--c-success-alpha); color: var(--c-success); }
+
+.dev-reason-text {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  line-height: 1.2;
+}
+
+.dev-requester-meta {
+  margin-top: 0.15rem;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+.dev-requester-meta .icon {
+  font-size: 0.6rem !important;
+  opacity: 0.8;
+}
+/* Detalle de items dentro de la grid */
+.dev-grid-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.25rem;
+}
+
+.dev-item-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.45rem;
+  background: var(--bg-muted);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.dic-cb {
+  font-family: monospace;
+  color: var(--c-primary);
+}
+
+.dic-qty {
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.dic-cond {
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  padding: 0 0.2rem;
+  border-radius: 3px;
+  opacity: 0.8;
+}
+
+.dic-cond.cond-bueno { background: var(--c-success-alpha); color: var(--c-success); }
+.dic-cond.cond-danado,
+.dic-cond.cond-defectuoso { background: var(--c-danger-alpha); color: var(--c-danger); }
+
+.dev-item-more {
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  font-weight: 700;
+  align-self: center;
 }

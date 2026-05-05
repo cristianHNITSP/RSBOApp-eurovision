@@ -441,3 +441,124 @@
   text-align: center;
   border-top: 1px solid rgba(0,0,0,0.05);
 }
+/* ── Devoluciones agrupadas (Grid Layout) ─────────────────────────────────── */
+.dev-grid-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.dev-grid-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.75rem;
+  padding: 0.65rem 0.5rem;
+  background: rgba(255, 255, 255, 0.4);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  border-radius: 12px;
+  transition: background 0.2s;
+}
+[data-theme='dark'] .dev-grid-item {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+.dev-grid-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.dev-grid-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.dev-grid-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  justify-content: flex-start;
+}
+
+.dev-type-tag {
+  font-size: 0.6rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  letter-spacing: 0.02em;
+}
+.type-lab { background: var(--c-primary-alpha); color: var(--c-primary); }
+.type-venta { background: var(--c-success-alpha); color: var(--c-success); }
+
+.dev-reason-text {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  line-height: 1.2;
+}
+
+.dev-requester-meta {
+  margin-top: 0.15rem;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+.dev-requester-meta .icon {
+  font-size: 0.6rem !important;
+  opacity: 0.8;
+}
+/* Detalle de items dentro de la grid */
+.dev-grid-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.25rem;
+}
+
+.dev-item-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.45rem;
+  background: var(--bg-muted);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.dic-cb {
+  font-family: monospace;
+  color: var(--c-primary);
+}
+
+.dic-qty {
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.dic-cond {
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  padding: 0 0.2rem;
+  border-radius: 3px;
+  opacity: 0.8;
+}
+
+.dic-cond.cond-bueno { background: var(--c-success-alpha); color: var(--c-success); }
+.dic-cond.cond-danado,
+.dic-cond.cond-defectuoso { background: var(--c-danger-alpha); color: var(--c-danger); }
+
+.dev-item-more {
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  font-weight: 700;
+  align-self: center;
+}

@@ -153,6 +153,9 @@ const SESSION_TTL_MS = 30_000; // 30 segundos
 window.addEventListener("auth:session-expired", () => {
   _sessionCache = null;
 });
+window.addEventListener("session:expired", () => {
+  _sessionCache = null;
+});
 
 // helper con deduplicación: si ya hay una sesión en vuelo no lanza otra
 async function checkSession(force = false) {

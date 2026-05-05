@@ -9,22 +9,6 @@
 !.env.example
 !.env.template
 *.env
-.env.local
-.env.development
-.env.development.local
-.env.test
-.env.test.local
-.env.production
-.env.production.local
-.env.staging
-
-# --- Secretos y claves ---
-*.pem
-*.key
-*.p12
-*.pfx
-*.crt
-*.cer
 secrets/
 secrets.json
 credentials.json
@@ -101,3 +85,4 @@ rsbo-app/concurrency_audit.cjs
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+deployment_configs/

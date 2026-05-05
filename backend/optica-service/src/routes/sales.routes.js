@@ -94,12 +94,22 @@ router.post("/", protect(), async (req, res) => {
 router.get("/search", protect(), async (req, res) => {
   try {
     const q = String(req.query.q || "").trim();
+    const { dateFrom, dateTo } = req.query;
+
+    const query = {};
+
+    // Filtro por fecha
+    if (dateFrom || dateTo) {
+      query.createdAt = {};
+      if (dateFrom) query.createdAt.$gte = new Date(dateFrom);
+      if (dateTo) query.createdAt.$lte = new Date(dateTo);
+    }
     
-    // Si no hay búsqueda, devolvemos las últimas 20 ventas por defecto (Historial)
+    // Si no hay búsqueda por texto, devolvemos las ventas por rango o las últimas 20
     if (!q) {
-      const sales = await Sale.find({})
+      const sales = await Sale.find(query)
         .sort({ createdAt: -1 })
-        .limit(20)
+        .limit(query.createdAt ? 1000 : 20)
         .lean();
       return res.json({ ok: true, data: sales });
     }

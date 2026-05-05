@@ -209,7 +209,7 @@
 /* ─── Page Transitions (Subtle & Modern) ─────────────────── */
 .page-enter-active,
 .page-leave-active {
-  transition: 
+  transition:
     transform 0.22s cubic-bezier(0.4, 0, 0.2, 1),
     opacity 0.18s linear;
 }

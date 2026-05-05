@@ -140,4 +140,22 @@ router.get('/check-session', authMiddleware, async (req, res) => {
   }
 });
 
+// GET /api/access/session-info
+// Endpoint ligero usado por el watcher del frontend para conocer la
+// expiración actual sin disparar la renovación (eso lo hace check-session).
+router.get('/session-info', authMiddleware, (req, res) => {
+  try {
+    const token = req.cookies?.auth_token;
+    const info = authService.getSessionInfo(token);
+    if (!info) {
+      return res.status(401).json({ error: 'INVALID_TOKEN', message: 'Sesión inválida' });
+    }
+    res.set('Cache-Control', 'no-store');
+    return res.json(info);
+  } catch (err) {
+    console.error('Error en session-info:', err);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
 module.exports = router;

@@ -2,884 +2,885 @@
   <div class="ayuda-view-wrapper">
     <!-- Encabezado -->
     <div class="view-hero">
-    <header class="help-header">
+      <header class="help-header">
 
-      <div class="help-title-block">
-        <span class="help-pill">
-          <b-icon :icon="ICONS.help" size="is-small" class="mr-1" />
-          Centro de ayuda
-        </span>
+        <div class="help-title-block">
+          <span class="help-pill">
+            <b-icon :icon="ICONS.help" size="is-small" class="mr-1" />
+            Centro de ayuda
+          </span>
 
-        <h2>Guía completa del sistema RSBO</h2>
-        <p>
-          Todo lo que necesitas saber para usar el sistema: inventario, ventas, laboratorio,
-          notificaciones y configuración de tu cuenta.
-        </p>
+          <h2>Guía completa del sistema RSBO</h2>
+          <p>
+            Todo lo que necesitas saber para usar el sistema: inventario, ventas, laboratorio,
+            notificaciones y configuración de tu cuenta.
+          </p>
 
-        <!-- Tarjetas rápidas -->
-        <div class="help-quick">
-          <div class="help-quick__card">
-            <div class="help-quick__icon">
-              <b-icon :icon="ICONS.save" size="is-small" />
+          <!-- Tarjetas rápidas -->
+          <div class="help-quick">
+            <div class="help-quick__card">
+              <div class="help-quick__icon">
+                <b-icon :icon="ICONS.save" size="is-small" />
+              </div>
+              <div>
+                <p class="help-quick__title">Siempre guarda</p>
+                <p class="help-quick__text">
+                  Si editas el inventario, siempre termina con <strong>Guardar cambios</strong>.
+                </p>
+              </div>
             </div>
-            <div>
-              <p class="help-quick__title">Siempre guarda</p>
-              <p class="help-quick__text">
-                Si editas el inventario, siempre termina con <strong>Guardar cambios</strong>.
-              </p>
-            </div>
-          </div>
 
-          <div class="help-quick__card">
-            <div class="help-quick__icon">
-              <b-icon :icon="ICONS.bell" size="is-small" />
+            <div class="help-quick__card">
+              <div class="help-quick__icon">
+                <b-icon :icon="ICONS.bell" size="is-small" />
+              </div>
+              <div>
+                <p class="help-quick__title">Notificaciones</p>
+                <p class="help-quick__text">
+                  El ícono de campana en la barra lateral te avisa de pedidos y eventos nuevos.
+                </p>
+              </div>
             </div>
-            <div>
-              <p class="help-quick__title">Notificaciones</p>
-              <p class="help-quick__text">
-                El ícono de campana en la barra lateral te avisa de pedidos y eventos nuevos.
-              </p>
-            </div>
-          </div>
 
-          <div class="help-quick__card">
-            <div class="help-quick__icon">
-              <b-icon :icon="ICONS.refresh" size="is-small" />
-            </div>
-            <div>
-              <p class="help-quick__title">¿Algo raro?</p>
-              <p class="help-quick__text">
-                Presiona <strong>Actualizar</strong> o <strong>Recargar</strong> para traer la información más reciente.
-              </p>
+            <div class="help-quick__card">
+              <div class="help-quick__icon">
+                <b-icon :icon="ICONS.refresh" size="is-small" />
+              </div>
+              <div>
+                <p class="help-quick__title">¿Algo raro?</p>
+                <p class="help-quick__text">
+                  Presiona <strong>Actualizar</strong> o <strong>Recargar</strong> para traer la información más
+                  reciente.
+                </p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div class="help-meta">
-        <p class="help-meta-line">
-          <b-icon :icon="ICONS.user" size="is-small" class="mr-1" />
-          <strong>{{ displayRole }}</strong>
-        </p>
-        <p v-if="appVersion" class="help-meta-line">
-          <b-icon :icon="ICONS.version" size="is-small" class="mr-1" />
-          Versión: <strong>{{ appVersion }}</strong>
-        </p>
-      </div>
-    </header>
-  </div>
-
-  <section class="view-main">
-    <!-- Buscador -->
-
-    <div class="help-search">
-      <b-field label="Buscar en la ayuda" label-position="on-border" custom-class="help-search-label">
-        <b-input ref="searchInputRef" :value="search"
-          placeholder='Ej: "guardar", "pedido", "laboratorio", "notificación", "contraseña"...' :icon="ICONS.search"
-          size="is-small" @input="onSearchInput" @update:modelValue="onSearchInput" @keyup.esc="clearSearch" />
-      </b-field>
-
-      <div v-if="search.trim() && quickMatches.length" class="help-results">
-        <div class="help-results__title">
-          <b-icon :icon="ICONS.results" size="is-small" class="mr-1" />
-          Resultados sugeridos
+        <div class="help-meta">
+          <p class="help-meta-line">
+            <b-icon :icon="ICONS.user" size="is-small" class="mr-1" />
+            <strong>{{ displayRole }}</strong>
+          </p>
+          <p v-if="appVersion" class="help-meta-line">
+            <b-icon :icon="ICONS.version" size="is-small" class="mr-1" />
+            Versión: <strong>{{ appVersion }}</strong>
+          </p>
         </div>
-        <div class="help-results__chips">
-          <button v-for="m in quickMatches" :key="m.id" class="help-index__chip" type="button" @click="goTo(m.id)">
-            <b-icon :icon="m.icon" size="is-small" class="mr-1" />
-            {{ m.title }}
-            <span class="help-chip-tab-badge">{{ tabLabelForSection(m.id) }}</span>
-          </button>
-        </div>
-      </div>
-
-      <p class="help-search-hint">
-        Atajos: <strong>/</strong> enfoca la búsqueda · <strong>Esc</strong> limpia.
-      </p>
+      </header>
     </div>
 
-    <!-- Tabs principales -->
-    <DynamicTabs v-model="activeTab" :tabs="HELP_TABS">
+    <section class="view-main">
+      <!-- Buscador -->
 
-      <!-- ══ TAB 1: INICIO ════════════════════════════════════════════════════ -->
-      <template #inicio>
-        <div class="help-tab-content">
+      <div class="help-search">
+        <b-field label="Buscar en la ayuda" label-position="on-border" custom-class="help-search-label">
+          <b-input ref="searchInputRef" :value="search"
+            placeholder='Ej: "guardar", "pedido", "laboratorio", "notificación", "contraseña"...' :icon="ICONS.search"
+            size="is-small" @input="onSearchInput" @update:modelValue="onSearchInput" @keyup.esc="clearSearch" />
+        </b-field>
 
-          <!-- 1) Pantalla de inicio -->
-          <article id="sec_inicio" class="help-card help-anchor">
-            <header class="help-card-header">
-              <div class="help-card-title-block">
-                <b-icon :icon="ICONS.home" size="is-small" class="mr-2" />
-                <h3>Pantalla de inicio</h3>
-              </div>
-            </header>
-
-            <p class="help-text">
-              Al entrar al sistema verás el panel principal con un resumen del día: pedidos pendientes,
-              conteos de inventario y accesos rápidos a las secciones más usadas.
-            </p>
-
-            <div class="help-steps2">
-              <div class="help-step2">
-                <div class="help-step2__n"><b-icon :icon="ICONS.sidebar" size="is-small" /></div>
-                <div class="help-step2__body">
-                  <p class="help-step2__title">Barra lateral (menú)</p>
-                  <p class="help-step2__text">
-                    A la izquierda está el menú principal. Puedes colapsarlo con la flecha para tener
-                    más espacio de trabajo. En celular aparece con el botón de menú arriba.
-                  </p>
-                </div>
-              </div>
-              <div class="help-step2">
-                <div class="help-step2__n"><b-icon :icon="ICONS.search" size="is-small" /></div>
-                <div class="help-step2__body">
-                  <p class="help-step2__title">Búsqueda global</p>
-                  <p class="help-step2__text">
-                    El ícono de lupa en la barra superior abre una búsqueda rápida para navegar a
-                    cualquier sección sin usar el menú.
-                  </p>
-                </div>
-              </div>
-              <div class="help-step2">
-                <div class="help-step2__n"><b-icon :icon="ICONS.bell" size="is-small" /></div>
-                <div class="help-step2__body">
-                  <p class="help-step2__title">Notificaciones</p>
-                  <p class="help-step2__text">
-                    El ícono de campana muestra un número en rojo cuando hay avisos nuevos.
-                    Tócalo para ver el panel de notificaciones.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </article>
-
-          <!-- Notificaciones en tiempo real -->
-          <article id="sec_notificaciones" class="help-card help-anchor">
-            <header class="help-card-header">
-              <div class="help-card-title-block">
-                <b-icon :icon="ICONS.bell" size="is-small" class="mr-2" />
-                <h3>Notificaciones en tiempo real</h3>
-              </div>
-            </header>
-
-            <p class="help-text">
-              El sistema avisa automáticamente cuando hay pedidos nuevos, correcciones o eventos
-              importantes. No necesitas recargar la página.
-            </p>
-
-            <div class="help-steps2">
-              <div class="help-step2">
-                <div class="help-step2__n"><b-icon :icon="ICONS.bell" size="is-small" /></div>
-                <div class="help-step2__body">
-                  <p class="help-step2__title">Número de avisos sin leer</p>
-                  <p class="help-step2__text">
-                    El número que aparece junto a la campana indica cuántas notificaciones
-                    no has leído todavía. Toca la campana para verlas.
-                  </p>
-                </div>
-              </div>
-              <div class="help-step2">
-                <div class="help-step2__n"><b-icon :icon="ICONS.pin" size="is-small" /></div>
-                <div class="help-step2__body">
-                  <p class="help-step2__title">Fijar una notificación importante</p>
-                  <p class="help-step2__text">
-                    Toca la estrella de una notificación para fijarla. Las fijadas siempre
-                    aparecen arriba y no desaparecen aunque las marques como leídas.
-                  </p>
-                </div>
-              </div>
-              <div class="help-step2">
-                <div class="help-step2__n"><b-icon :icon="ICONS.check" size="is-small" /></div>
-                <div class="help-step2__body">
-                  <p class="help-step2__title">Marcar como leída o descartar</p>
-                  <p class="help-step2__text">
-                    El palomita marca la notificación como leída. La <strong>X</strong> la descarta
-                    (desaparece de tu vista). Ninguna acción borra la notificación para los demás.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div class="help-note">
-              <b-icon :icon="ICONS.info" size="is-small" class="mr-1" />
-              <span>
-                Los pedidos acumulados se agrupan en <strong>una sola notificación</strong> con el
-                conteo total, para que no se llene de avisos repetidos.
-              </span>
-            </div>
-          </article>
-
+        <div v-if="search.trim() && quickMatches.length" class="help-results">
+          <div class="help-results__title">
+            <b-icon :icon="ICONS.results" size="is-small" class="mr-1" />
+            Resultados sugeridos
+          </div>
+          <div class="help-results__chips">
+            <button v-for="m in quickMatches" :key="m.id" class="help-index__chip" type="button" @click="goTo(m.id)">
+              <b-icon :icon="m.icon" size="is-small" class="mr-1" />
+              {{ m.title }}
+              <span class="help-chip-tab-badge">{{ tabLabelForSection(m.id) }}</span>
+            </button>
+          </div>
         </div>
-      </template>
 
-      <!-- ══ TAB 2: INVENTARIO ════════════════════════════════════════════════ -->
-      <template #inventario>
-        <div class="help-tab-content">
+        <p class="help-search-hint">
+          Atajos: <strong>/</strong> enfoca la búsqueda · <strong>Esc</strong> limpia.
+        </p>
+      </div>
 
-          <article id="sec_inventario" class="help-card help-anchor">
-            <header class="help-card-header">
-              <div class="help-card-title-block">
-                <b-icon :icon="ICONS.inventory" size="is-small" class="mr-2" />
-                <h3>Inventario (Bases, Micas, Óptica y Lentes)</h3>
-              </div>
-            </header>
+      <!-- Tabs principales -->
+      <DynamicTabs v-model="activeTab" :tabs="HELP_TABS">
 
-            <p class="help-text">
-              En la sección <strong>Inventario</strong> puedes ver y editar las existencias de tus
-              productos. Hay tres áreas: Bases y Micas, Óptica y Lentes de Contacto.
-            </p>
+        <!-- ══ TAB 1: INICIO ════════════════════════════════════════════════════ -->
+        <template #inicio>
+          <div class="help-tab-content">
 
-            <div class="help-steps2">
-              <div class="help-step2">
-                <div class="help-step2__n">1</div>
-                <div class="help-step2__body">
-                  <p class="help-step2__title">Elige la planilla</p>
-                  <p class="help-step2__text">
-                    Las pestañas de arriba muestran cada planilla. La pestaña <strong>Agregar</strong>
-                    te permite crear una nueva planilla.
-                  </p>
+            <!-- 1) Pantalla de inicio -->
+            <article id="sec_inicio" class="help-card help-anchor">
+              <header class="help-card-header">
+                <div class="help-card-title-block">
+                  <b-icon :icon="ICONS.home" size="is-small" class="mr-2" />
+                  <h3>Pantalla de inicio</h3>
                 </div>
-              </div>
-              <div class="help-step2">
-                <div class="help-step2__n">2</div>
-                <div class="help-step2__body">
-                  <p class="help-step2__title">Edita una celda</p>
-                  <p class="help-step2__text">
-                    Toca o haz clic en cualquier celda del inventario, escribe el número y
-                    confirma con <strong>Enter</strong>. Puedes editar varias celdas antes de guardar.
-                  </p>
-                </div>
-              </div>
-              <div class="help-step2">
-                <div class="help-step2__n">3</div>
-                <div class="help-step2__body">
-                  <p class="help-step2__title">Guarda los cambios</p>
-                  <p class="help-step2__text">
-                    Cuando termines, presiona <strong>Guardar cambios</strong>. Si cierras la página
-                    sin guardar, los cambios se perderán.
-                  </p>
-                </div>
-              </div>
-            </div>
+              </header>
 
-            <div class="help-soft">
-              <div class="help-soft__title">
-                <b-icon :icon="ICONS.export" size="is-small" class="mr-1" />
-                Exportar y generar plantilla
-              </div>
-              <p class="help-soft__text">
-                <strong>Exportar</strong> descarga un archivo de Excel con lo que ves en pantalla.
-                <strong>Generar plantilla</strong> crea la estructura vacía de la planilla si todavía
-                no tiene datos. Úsalo solo cuando sea una planilla nueva.
+              <p class="help-text">
+                Al entrar al sistema verás el panel principal con un resumen del día: pedidos pendientes,
+                conteos de inventario y accesos rápidos a las secciones más usadas.
               </p>
-            </div>
 
-            <div class="help-note">
-              <b-icon :icon="ICONS.info" size="is-small" class="mr-1" />
-              <span>
-                En Bases y Micas puedes cambiar entre <strong>Vista Negativa</strong> y
-                <strong>Vista Positiva</strong>. Esto solo cambia lo que ves, no modifica el inventario.
-              </span>
-            </div>
-          </article>
-
-        </div>
-      </template>
-
-      <!-- ══ TAB 3: VENTAS & LABORATORIO ═════════════════════════════════════ -->
-      <template #ventas>
-        <div class="help-tab-content">
-
-          <!-- Ventas -->
-          <article id="sec_ventas" class="help-card help-anchor">
-            <header class="help-card-header">
-              <div class="help-card-title-block">
-                <b-icon :icon="ICONS.cart" size="is-small" class="mr-2" />
-                <h3>Crear un pedido de ventas</h3>
-              </div>
-            </header>
-
-            <p class="help-text">
-              Desde <strong>Ventas → Bases y Micas</strong> puedes armar un pedido para enviar
-              al laboratorio. El proceso es sencillo:
-            </p>
-
-            <div class="help-steps2">
-              <div class="help-step2">
-                <div class="help-step2__n">1</div>
-                <div class="help-step2__body">
-                  <p class="help-step2__title">Selecciona la planilla y busca el producto</p>
-                  <p class="help-step2__text">
-                    Elige la planilla del desplegable y usa el buscador para filtrar por graduación
-                    o código. Solo se muestran productos con stock disponible.
-                  </p>
+              <div class="help-steps2">
+                <div class="help-step2">
+                  <div class="help-step2__n"><b-icon :icon="ICONS.sidebar" size="is-small" /></div>
+                  <div class="help-step2__body">
+                    <p class="help-step2__title">Barra lateral (menú)</p>
+                    <p class="help-step2__text">
+                      A la izquierda está el menú principal. Puedes colapsarlo con la flecha para tener
+                      más espacio de trabajo. En celular aparece con el botón de menú arriba.
+                    </p>
+                  </div>
+                </div>
+                <div class="help-step2">
+                  <div class="help-step2__n"><b-icon :icon="ICONS.search" size="is-small" /></div>
+                  <div class="help-step2__body">
+                    <p class="help-step2__title">Búsqueda global</p>
+                    <p class="help-step2__text">
+                      El ícono de lupa en la barra superior abre una búsqueda rápida para navegar a
+                      cualquier sección sin usar el menú.
+                    </p>
+                  </div>
+                </div>
+                <div class="help-step2">
+                  <div class="help-step2__n"><b-icon :icon="ICONS.bell" size="is-small" /></div>
+                  <div class="help-step2__body">
+                    <p class="help-step2__title">Notificaciones</p>
+                    <p class="help-step2__text">
+                      El ícono de campana muestra un número en rojo cuando hay avisos nuevos.
+                      Tócalo para ver el panel de notificaciones.
+                    </p>
+                  </div>
                 </div>
               </div>
-              <div class="help-step2">
-                <div class="help-step2__n">2</div>
-                <div class="help-step2__body">
-                  <p class="help-step2__title">Agrega al carrito</p>
-                  <p class="help-step2__text">
-                    Pulsa el botón de cada producto para añadirlo. Puedes ajustar la cantidad
-                    con los botones <strong>+</strong> y <strong>−</strong> en el carrito.
-                  </p>
+            </article>
+
+            <!-- Notificaciones en tiempo real -->
+            <article id="sec_notificaciones" class="help-card help-anchor">
+              <header class="help-card-header">
+                <div class="help-card-title-block">
+                  <b-icon :icon="ICONS.bell" size="is-small" class="mr-2" />
+                  <h3>Notificaciones en tiempo real</h3>
                 </div>
-              </div>
-              <div class="help-step2">
-                <div class="help-step2__n">3</div>
-                <div class="help-step2__body">
-                  <p class="help-step2__title">Escribe el nombre del cliente y envía</p>
-                  <p class="help-step2__text">
-                    En el campo <strong>Cliente</strong> escribe el nombre. Opcionalmente agrega
-                    una nota. Luego presiona <strong>Enviar al laboratorio</strong> y confirma.
-                  </p>
-                </div>
-              </div>
-              <div class="help-step2">
-                <div class="help-step2__n">4</div>
-                <div class="help-step2__body">
-                  <p class="help-step2__title">Revisa el comprobante</p>
-                  <p class="help-step2__text">
-                    Aparecerá un comprobante con el folio del pedido. En la pestaña
-                    <strong>Historial</strong> puedes ver todos los pedidos enviados y su estado.
-                  </p>
-                </div>
-              </div>
-            </div>
+              </header>
 
-            <div class="help-note">
-              <b-icon :icon="ICONS.bell" size="is-small" class="mr-1" />
-              <span>
-                Al crear un pedido, el laboratorio recibe automáticamente una notificación. No
-                necesitas avisarles por otro medio.
-              </span>
-            </div>
-          </article>
-
-          <!-- Laboratorio -->
-          <article id="sec_laboratorio" class="help-card help-anchor">
-            <header class="help-card-header">
-              <div class="help-card-title-block">
-                <b-icon :icon="ICONS.lab" size="is-small" class="mr-2" />
-                <h3>Laboratorio (atender pedidos)</h3>
-              </div>
-            </header>
-
-            <p class="help-text">
-              La vista de <strong>Laboratorio</strong> es donde se atienden los pedidos que envía
-              ventas. El flujo normal es:
-            </p>
-
-            <div class="help-actions-grid">
-              <div class="help-action">
-                <div class="help-action__title">
-                  <b-icon :icon="ICONS.list" size="is-small" class="mr-1" />
-                  Ver pedidos pendientes
-                </div>
-                <p class="help-action__text">
-                  En la pestaña <strong>Pedidos</strong> verás todos los pedidos con estado
-                  <em>Pendiente</em> o <em>En proceso</em>. El número en rojo de la barra lateral
-                  muestra cuántos hay.
-                </p>
-              </div>
-
-              <div class="help-action">
-                <div class="help-action__title">
-                  <b-icon :icon="ICONS.scan" size="is-small" class="mr-1" />
-                  Escanear o marcar producto
-                </div>
-                <p class="help-action__text">
-                  Abre un pedido y escanea el código de barras de cada producto con el lector
-                  o escríbelo manualmente. El sistema descuenta del inventario automáticamente.
-                </p>
-              </div>
-
-              <div class="help-action">
-                <div class="help-action__title">
-                  <b-icon :icon="ICONS.check" size="is-small" class="mr-1" />
-                  Cerrar pedido
-                </div>
-                <p class="help-action__text">
-                  Cuando hayas surtido todos los productos, presiona <strong>Cerrar pedido</strong>.
-                  El estado cambia a <em>Surtido completo</em> y ventas puede verlo.
-                </p>
-              </div>
-
-              <div class="help-action">
-                <div class="help-action__title">
-                  <b-icon :icon="ICONS.correction" size="is-small" class="mr-1" />
-                  Enviar corrección
-                </div>
-                <p class="help-action__text">
-                  Si hay un problema con un pedido, usa <strong>Solicitar corrección</strong>
-                  para notificar al supervisor con los detalles. Solo el supervisor recibirá esa
-                  notificación.
-                </p>
-              </div>
-            </div>
-
-            <div class="help-soft">
-              <div class="help-soft__title">
-                <b-icon :icon="ICONS.history" size="is-small" class="mr-1" />
-                Pestaña Bandeja y Catálogo
-              </div>
-              <p class="help-soft__text">
-                <strong>Bandeja</strong> muestra el historial de todos los eventos registrados
-                (escaneos, cierres, etc.). <strong>Catálogo</strong> te permite consultar el
-                inventario actual sin salir del laboratorio.
+              <p class="help-text">
+                El sistema avisa automáticamente cuando hay pedidos nuevos, correcciones o eventos
+                importantes. No necesitas recargar la página.
               </p>
-            </div>
-          </article>
 
-        </div>
-      </template>
-
-      <!-- ══ TAB 4: NOMENCLATURAS ══════════════════════════════════════════════ -->
-      <template #nomenclaturas>
-        <div class="help-tab-content">
-
-          <!-- SKU -->
-          <article id="sec_sku" class="help-card help-anchor">
-            <header class="help-card-header">
-              <div class="help-card-title-block">
-                <b-icon :icon="ICONS.tags" size="is-small" class="mr-2" />
-                <h3>SKU (Código de planilla)</h3>
-              </div>
-              <b-tag type="is-primary is-light" size="is-small" rounded>Inventario</b-tag>
-            </header>
-
-            <p class="help-text">
-              El <strong>SKU</strong> es un código único que identifica cada planilla de inventario. Se genera
-              automáticamente al crear una planilla y resume sus características principales.
-            </p>
-
-            <div class="nomenclatura-example">
-              <div class="nomenclatura-example__code">JAP-TAI-BAS-POL-MON-BLN-A5F2</div>
-              <div class="nomenclatura-example__label">Ejemplo de SKU</div>
-            </div>
-
-            <div class="nomenclatura-breakdown">
-              <div class="nomenclatura-segment">
-                <span class="nomenclatura-segment__part">JAP</span>
-                <span class="nomenclatura-segment__desc">Proveedor (abreviatura, 3 letras)</span>
-              </div>
-              <span class="nomenclatura-sep">—</span>
-              <div class="nomenclatura-segment">
-                <span class="nomenclatura-segment__part">TAI</span>
-                <span class="nomenclatura-segment__desc">Marca (abreviatura, 3 letras)</span>
-              </div>
-              <span class="nomenclatura-sep">—</span>
-              <div class="nomenclatura-segment">
-                <span class="nomenclatura-segment__part">BAS</span>
-                <span class="nomenclatura-segment__desc">Tipo de matriz (ver sección Matrices)</span>
-              </div>
-              <span class="nomenclatura-sep">—</span>
-              <div class="nomenclatura-segment">
-                <span class="nomenclatura-segment__part">POL</span>
-                <span class="nomenclatura-segment__desc">Material (POL = Policarbonato, CR3 = CR-39)</span>
-              </div>
-              <span class="nomenclatura-sep">—</span>
-              <div class="nomenclatura-segment">
-                <span class="nomenclatura-segment__part">MON</span>
-                <span class="nomenclatura-segment__desc">Base / clave de la planilla</span>
-              </div>
-              <span class="nomenclatura-sep">—</span>
-              <div class="nomenclatura-segment">
-                <span class="nomenclatura-segment__part">BLN</span>
-                <span class="nomenclatura-segment__desc">Tratamiento (BLN = Blanco, AR = Antirreflejante)</span>
-              </div>
-              <span class="nomenclatura-sep">—</span>
-              <div class="nomenclatura-segment">
-                <span class="nomenclatura-segment__part">A5F2</span>
-                <span class="nomenclatura-segment__desc">Código aleatorio (evita duplicados)</span>
-              </div>
-            </div>
-
-            <div class="help-note">
-              <b-icon :icon="ICONS.info" size="is-small" class="mr-1" />
-              <span>
-                Las abreviaturas de proveedor y marca se generan tomando las primeras letras de cada
-                palabra. Si el nombre tiene varias palabras, se toma la primera letra de cada una.
-              </span>
-            </div>
-          </article>
-
-          <!-- Folios -->
-          <article id="sec_folios" class="help-card help-anchor">
-            <header class="help-card-header">
-              <div class="help-card-title-block">
-                <b-icon :icon="ICONS.hashtag" size="is-small" class="mr-2" />
-                <h3>Folios (Pedidos y Devoluciones)</h3>
-              </div>
-            </header>
-
-            <p class="help-text">
-              Cada pedido de laboratorio y cada devolución recibe un <strong>folio</strong> único que sirve
-              como referencia para rastrear el documento en todo el sistema.
-            </p>
-
-            <div class="nomenclatura-duo">
-              <div class="nomenclatura-duo__block">
-                <div class="nomenclatura-example">
-                  <div class="nomenclatura-example__code">LAB-20250328-A5F2</div>
-                  <div class="nomenclatura-example__label">Folio de laboratorio</div>
+              <div class="help-steps2">
+                <div class="help-step2">
+                  <div class="help-step2__n"><b-icon :icon="ICONS.bell" size="is-small" /></div>
+                  <div class="help-step2__body">
+                    <p class="help-step2__title">Número de avisos sin leer</p>
+                    <p class="help-step2__text">
+                      El número que aparece junto a la campana indica cuántas notificaciones
+                      no has leído todavía. Toca la campana para verlas.
+                    </p>
+                  </div>
                 </div>
-                <div class="nomenclatura-breakdown nomenclatura-breakdown--compact">
-                  <div class="nomenclatura-segment">
-                    <span class="nomenclatura-segment__part">LAB</span>
-                    <span class="nomenclatura-segment__desc">Prefijo fijo: pedido de laboratorio</span>
+                <div class="help-step2">
+                  <div class="help-step2__n"><b-icon :icon="ICONS.pin" size="is-small" /></div>
+                  <div class="help-step2__body">
+                    <p class="help-step2__title">Fijar una notificación importante</p>
+                    <p class="help-step2__text">
+                      Toca la estrella de una notificación para fijarla. Las fijadas siempre
+                      aparecen arriba y no desaparecen aunque las marques como leídas.
+                    </p>
                   </div>
-                  <div class="nomenclatura-segment">
-                    <span class="nomenclatura-segment__part">20250328</span>
-                    <span class="nomenclatura-segment__desc">Fecha: AAAA MM DD (28 marzo 2025)</span>
-                  </div>
-                  <div class="nomenclatura-segment">
-                    <span class="nomenclatura-segment__part">A5F2</span>
-                    <span class="nomenclatura-segment__desc">4 caracteres hexadecimales aleatorios</span>
+                </div>
+                <div class="help-step2">
+                  <div class="help-step2__n"><b-icon :icon="ICONS.check" size="is-small" /></div>
+                  <div class="help-step2__body">
+                    <p class="help-step2__title">Marcar como leída o descartar</p>
+                    <p class="help-step2__text">
+                      El palomita marca la notificación como leída. La <strong>X</strong> la descarta
+                      (desaparece de tu vista). Ninguna acción borra la notificación para los demás.
+                    </p>
                   </div>
                 </div>
               </div>
 
-              <div class="nomenclatura-duo__block">
-                <div class="nomenclatura-example">
-                  <div class="nomenclatura-example__code">DEV-2025-00001</div>
-                  <div class="nomenclatura-example__label">Folio de devolución</div>
-                </div>
-                <div class="nomenclatura-breakdown nomenclatura-breakdown--compact">
-                  <div class="nomenclatura-segment">
-                    <span class="nomenclatura-segment__part">DEV</span>
-                    <span class="nomenclatura-segment__desc">Prefijo fijo: devolución</span>
-                  </div>
-                  <div class="nomenclatura-segment">
-                    <span class="nomenclatura-segment__part">2025</span>
-                    <span class="nomenclatura-segment__desc">Año en curso</span>
-                  </div>
-                  <div class="nomenclatura-segment">
-                    <span class="nomenclatura-segment__part">00001</span>
-                    <span class="nomenclatura-segment__desc">Consecutivo (5 dígitos, se reinicia cada año)</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </article>
-
-          <!-- Código de barras -->
-          <article id="sec_codebar" class="help-card help-anchor">
-            <header class="help-card-header">
-              <div class="help-card-title-block">
-                <b-icon icon="barcode" size="is-small" class="mr-2" />
-                <h3>Código de barras (EAN-13)</h3>
-              </div>
-              <b-tag type="is-info is-light" size="is-small" rounded>13 dígitos</b-tag>
-            </header>
-
-            <p class="help-text">
-              Cada producto en el inventario tiene un código de barras en formato <strong>EAN-13</strong>
-              (estándar internacional de 13 dígitos). Se genera automáticamente a partir de la planilla
-              y las coordenadas ópticas del producto.
-            </p>
-
-            <div class="nomenclatura-example">
-              <div class="nomenclatura-example__code">2 7 9 0 1 2 3 4 5 6 7 8 9</div>
-              <div class="nomenclatura-example__label">Ejemplo de código EAN-13</div>
-            </div>
-
-            <div class="nomenclatura-breakdown nomenclatura-breakdown--compact">
-              <div class="nomenclatura-segment">
-                <span class="nomenclatura-segment__part">279</span>
-                <span class="nomenclatura-segment__desc">Prefijo interno fijo (identifica que es un producto
-                  RSBO)</span>
-              </div>
-              <div class="nomenclatura-segment">
-                <span class="nomenclatura-segment__part">012345678</span>
-                <span class="nomenclatura-segment__desc">9 dígitos generados a partir del ID de planilla + tipo de
-                  matriz + coordenadas ópticas</span>
-              </div>
-              <div class="nomenclatura-segment">
-                <span class="nomenclatura-segment__part">9</span>
-                <span class="nomenclatura-segment__desc">Dígito de control (verificación EAN-13)</span>
-              </div>
-            </div>
-
-            <div class="help-note">
-              <b-icon :icon="ICONS.info" size="is-small" class="mr-1" />
-              <span>
-                El código de barras se usa para <strong>escanear productos</strong> en el laboratorio.
-                Si un producto no tiene código asignado, no puede incluirse en un pedido.
-              </span>
-            </div>
-          </article>
-
-          <!-- Tipos de matriz -->
-          <article id="sec_matrices" class="help-card help-anchor">
-            <header class="help-card-header">
-              <div class="help-card-title-block">
-                <b-icon :icon="ICONS.glasses" size="is-small" class="mr-2" />
-                <h3>Tipos de matriz (tipo de lente)</h3>
-              </div>
-            </header>
-
-            <p class="help-text">
-              Cada planilla tiene un <strong>tipo de matriz</strong> que determina qué coordenadas ópticas
-              maneja y cómo se organiza la grilla de inventario.
-            </p>
-
-            <div class="nomenclatura-table">
-              <div class="nomenclatura-table__row nomenclatura-table__row--head">
-                <span>Clave</span>
-                <span>Tipo de lente</span>
-                <span>Coordenadas</span>
-              </div>
-              <div class="nomenclatura-table__row">
-                <span class="nomenclatura-segment__part">BASE</span>
-                <span>Monofocal (base)</span>
-                <span class="mono">base</span>
-              </div>
-              <div class="nomenclatura-table__row">
-                <span class="nomenclatura-segment__part">SPH_CYL</span>
-                <span>Monofocal esf. + cil.</span>
-                <span class="mono">sph, cyl</span>
-              </div>
-              <div class="nomenclatura-table__row">
-                <span class="nomenclatura-segment__part">SPH_ADD</span>
-                <span>Bifocal</span>
-                <span class="mono">sph, add, base_izq, base_der, eye</span>
-              </div>
-              <div class="nomenclatura-table__row">
-                <span class="nomenclatura-segment__part">BASE_ADD</span>
-                <span>Progresivo</span>
-                <span class="mono">base_izq, base_der, add, eye</span>
-              </div>
-              <div class="nomenclatura-table__row">
-                <span class="nomenclatura-segment__part">SPH_CYL_AXIS</span>
-                <span>Lente de contacto tórico</span>
-                <span class="mono">sph, cyl, axis</span>
-              </div>
-            </div>
-
-            <div class="help-soft">
-              <div class="help-soft__title">
-                <b-icon :icon="ICONS.eye" size="is-small" class="mr-1" />
-                Designación de ojo
-              </div>
-              <p class="help-soft__text">
-                En bifocales y progresivos, cada producto especifica el ojo:
-                <strong>OD</strong> = Ojo Derecho, <strong>OI</strong> = Ojo Izquierdo.
-                Las matrices tipo BASE y SPH_CYL no distinguen ojo.
-              </p>
-            </div>
-          </article>
-
-          <!-- Tratamientos -->
-          <article id="sec_tratamientos" class="help-card help-anchor">
-            <header class="help-card-header">
-              <div class="help-card-title-block">
-                <b-icon :icon="ICONS.palette2" size="is-small" class="mr-2" />
-                <h3>Claves de tratamiento</h3>
-              </div>
-            </header>
-
-            <p class="help-text">
-              Los tratamientos de lente se identifican con claves cortas que aparecen en el SKU y en los
-              filtros del catálogo.
-            </p>
-
-            <div class="nomenclatura-table">
-              <div class="nomenclatura-table__row nomenclatura-table__row--head">
-                <span>Clave</span>
-                <span>Tratamiento</span>
-                <span>Notas</span>
-              </div>
-              <div class="nomenclatura-table__row">
-                <span class="nomenclatura-segment__part">BCO</span>
-                <span>Blanco (sin tratamiento)</span>
-                <span class="muted">Todos los materiales</span>
-              </div>
-              <div class="nomenclatura-table__row">
-                <span class="nomenclatura-segment__part">AR</span>
-                <span>Antirreflejante</span>
-                <span class="muted">Todos excepto cristal</span>
-              </div>
-              <div class="nomenclatura-table__row">
-                <span class="nomenclatura-segment__part">ANTIBLE</span>
-                <span>Anti luz azul</span>
-                <span class="muted">Con o sin AR</span>
-              </div>
-              <div class="nomenclatura-table__row">
-                <span class="nomenclatura-segment__part">FOTO</span>
-                <span>Fotocromático</span>
-                <span class="muted">Con o sin AR</span>
-              </div>
-              <div class="nomenclatura-table__row">
-                <span class="nomenclatura-segment__part">FOTO_ANTIBLE</span>
-                <span>Fotocromático + Anti luz azul</span>
-                <span class="muted">Con o sin AR</span>
-              </div>
-              <div class="nomenclatura-table__row">
-                <span class="nomenclatura-segment__part">TRANSITIONS</span>
-                <span>Transitions (fotocromático marca)</span>
-                <span class="muted">Variantes: Gris, Café, Verde</span>
-              </div>
-              <div class="nomenclatura-table__row">
-                <span class="nomenclatura-segment__part">POLAR</span>
-                <span>Polarizado</span>
-                <span class="muted">Solo monofocal. Colores: Gris, Café, G15</span>
-              </div>
-              <div class="nomenclatura-table__row">
-                <span class="nomenclatura-segment__part">POLAR_ESPEJO</span>
-                <span>Polarizado + Espejado</span>
-                <span class="muted">Solo monofocal. 15 combinaciones de color</span>
-              </div>
-              <div class="nomenclatura-table__row">
-                <span class="nomenclatura-segment__part">CRISTAL_FOTO</span>
-                <span>Fotocromático (cristal)</span>
-                <span class="muted">Solo material Cristal</span>
-              </div>
-            </div>
-          </article>
-
-          <!-- Estados -->
-          <article id="sec_estados" class="help-card help-anchor">
-            <header class="help-card-header">
-              <div class="help-card-title-block">
-                <b-icon :icon="ICONS.list" size="is-small" class="mr-2" />
-                <h3>Estados del sistema</h3>
-              </div>
-            </header>
-
-            <p class="help-text">
-              Los pedidos y devoluciones pasan por diferentes estados. Aquí tienes lo que significa cada uno.
-            </p>
-
-            <div class="nomenclatura-duo">
-              <div class="nomenclatura-duo__block">
-                <p class="help-text"><strong>Pedidos de laboratorio</strong></p>
-                <div class="nomenclatura-status-list">
-                  <div class="nomenclatura-status">
-                    <span class="nomenclatura-status__dot nomenclatura-status__dot--pendiente"></span>
-                    <span><strong>pendiente</strong> — Pedido creado, sin atender</span>
-                  </div>
-                  <div class="nomenclatura-status">
-                    <span class="nomenclatura-status__dot nomenclatura-status__dot--parcial"></span>
-                    <span><strong>parcial</strong> — Algunos productos ya fueron surtidos</span>
-                  </div>
-                  <div class="nomenclatura-status">
-                    <span class="nomenclatura-status__dot nomenclatura-status__dot--cerrado"></span>
-                    <span><strong>cerrado</strong> — Todos los productos surtidos</span>
-                  </div>
-                  <div class="nomenclatura-status">
-                    <span class="nomenclatura-status__dot nomenclatura-status__dot--cancelado"></span>
-                    <span><strong>cancelado</strong> — Pedido cancelado (stock devuelto)</span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="nomenclatura-duo__block">
-                <p class="help-text"><strong>Devoluciones</strong></p>
-                <div class="nomenclatura-status-list">
-                  <div class="nomenclatura-status">
-                    <span class="nomenclatura-status__dot nomenclatura-status__dot--pendiente"></span>
-                    <span><strong>pendiente</strong> — Devolución registrada</span>
-                  </div>
-                  <div class="nomenclatura-status">
-                    <span class="nomenclatura-status__dot nomenclatura-status__dot--parcial"></span>
-                    <span><strong>en_revision</strong> — En revisión</span>
-                  </div>
-                  <div class="nomenclatura-status">
-                    <span class="nomenclatura-status__dot nomenclatura-status__dot--cerrado"></span>
-                    <span><strong>aprobada</strong> / <strong>procesada</strong> — Aceptada y procesada</span>
-                  </div>
-                  <div class="nomenclatura-status">
-                    <span class="nomenclatura-status__dot nomenclatura-status__dot--cancelado"></span>
-                    <span><strong>rechazada</strong> — Devolución rechazada</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="help-soft">
-              <div class="help-soft__title">
+              <div class="help-note">
                 <b-icon :icon="ICONS.info" size="is-small" class="mr-1" />
-                Condición de artículo devuelto
+                <span>
+                  Los pedidos acumulados se agrupan en <strong>una sola notificación</strong> con el
+                  conteo total, para que no se llene de avisos repetidos.
+                </span>
               </div>
-              <p class="help-soft__text">
-                Al registrar una devolución, cada artículo se clasifica como:
-                <strong>bueno</strong> (reutilizable),
-                <strong>dañado</strong> o
-                <strong>defectuoso</strong>.
+            </article>
+
+          </div>
+        </template>
+
+        <!-- ══ TAB 2: INVENTARIO ════════════════════════════════════════════════ -->
+        <template #inventario>
+          <div class="help-tab-content">
+
+            <article id="sec_inventario" class="help-card help-anchor">
+              <header class="help-card-header">
+                <div class="help-card-title-block">
+                  <b-icon :icon="ICONS.inventory" size="is-small" class="mr-2" />
+                  <h3>Inventario (Bases, Micas, Óptica y Lentes)</h3>
+                </div>
+              </header>
+
+              <p class="help-text">
+                En la sección <strong>Inventario</strong> puedes ver y editar las existencias de tus
+                productos. Hay tres áreas: Bases y Micas, Óptica y Lentes de Contacto.
               </p>
-            </div>
-          </article>
 
-          <!-- Coordenadas ópticas -->
-          <article id="sec_coordenadas" class="help-card help-anchor">
-            <header class="help-card-header">
-              <div class="help-card-title-block">
-                <b-icon :icon="ICONS.ruler" size="is-small" class="mr-2" />
-                <h3>Coordenadas ópticas y materiales</h3>
+              <div class="help-steps2">
+                <div class="help-step2">
+                  <div class="help-step2__n">1</div>
+                  <div class="help-step2__body">
+                    <p class="help-step2__title">Elige la planilla</p>
+                    <p class="help-step2__text">
+                      Las pestañas de arriba muestran cada planilla. La pestaña <strong>Agregar</strong>
+                      te permite crear una nueva planilla.
+                    </p>
+                  </div>
+                </div>
+                <div class="help-step2">
+                  <div class="help-step2__n">2</div>
+                  <div class="help-step2__body">
+                    <p class="help-step2__title">Edita una celda</p>
+                    <p class="help-step2__text">
+                      Toca o haz clic en cualquier celda del inventario, escribe el número y
+                      confirma con <strong>Enter</strong>. Puedes editar varias celdas antes de guardar.
+                    </p>
+                  </div>
+                </div>
+                <div class="help-step2">
+                  <div class="help-step2__n">3</div>
+                  <div class="help-step2__body">
+                    <p class="help-step2__title">Guarda los cambios</p>
+                    <p class="help-step2__text">
+                      Cuando termines, presiona <strong>Guardar cambios</strong>. Si cierras la página
+                      sin guardar, los cambios se perderán.
+                    </p>
+                  </div>
+                </div>
               </div>
-            </header>
 
-            <p class="help-text">
-              Los valores ópticos de cada producto se representan con abreviaturas estándar de optometría.
-            </p>
+              <div class="help-soft">
+                <div class="help-soft__title">
+                  <b-icon :icon="ICONS.export" size="is-small" class="mr-1" />
+                  Exportar y generar plantilla
+                </div>
+                <p class="help-soft__text">
+                  <strong>Exportar</strong> descarga un archivo de Excel con lo que ves en pantalla.
+                  <strong>Generar plantilla</strong> crea la estructura vacía de la planilla si todavía
+                  no tiene datos. Úsalo solo cuando sea una planilla nueva.
+                </p>
+              </div>
 
-            <div class="nomenclatura-table">
-              <div class="nomenclatura-table__row nomenclatura-table__row--head">
-                <span>Abreviatura</span>
-                <span>Significado</span>
-                <span>Rango típico</span>
+              <div class="help-note">
+                <b-icon :icon="ICONS.info" size="is-small" class="mr-1" />
+                <span>
+                  En Bases y Micas puedes cambiar entre <strong>Vista Negativa</strong> y
+                  <strong>Vista Positiva</strong>. Esto solo cambia lo que ves, no modifica el inventario.
+                </span>
               </div>
-              <div class="nomenclatura-table__row">
-                <span class="nomenclatura-segment__part">SPH</span>
-                <span>Esfera (poder esférico)</span>
-                <span class="mono">-20.00 a +20.00</span>
-              </div>
-              <div class="nomenclatura-table__row">
-                <span class="nomenclatura-segment__part">CYL</span>
-                <span>Cilindro (astigmatismo)</span>
-                <span class="mono">-6.00 a 0.00</span>
-              </div>
-              <div class="nomenclatura-table__row">
-                <span class="nomenclatura-segment__part">ADD</span>
-                <span>Adición (para lectura)</span>
-                <span class="mono">+0.50 a +4.00</span>
-              </div>
-              <div class="nomenclatura-table__row">
-                <span class="nomenclatura-segment__part">BASE</span>
-                <span>Curva base del lente</span>
-                <span class="mono">0.00 a 10.00</span>
-              </div>
-              <div class="nomenclatura-table__row">
-                <span class="nomenclatura-segment__part">AXIS</span>
-                <span>Eje del cilindro (grados)</span>
-                <span class="mono">0 a 180</span>
-              </div>
-              <div class="nomenclatura-table__row">
-                <span class="nomenclatura-segment__part">BI / BD</span>
-                <span>Base izquierda / Base derecha</span>
-                <span class="mono">Bifocales y progresivos</span>
-              </div>
-            </div>
+            </article>
 
-            <div class="help-soft">
-              <div class="help-soft__title">
-                <b-icon :icon="ICONS.glasses" size="is-small" class="mr-1" />
-                Materiales disponibles
-              </div>
-              <p class="help-soft__text">
-                <strong>CR-39</strong> (plástico estándar) ·
-                <strong>Policarbonato</strong> ·
-                <strong>1.56</strong> ·
-                <strong>1.61 MR-8</strong> ·
-                <strong>1.67</strong> ·
-                <strong>1.74</strong> (ultra delgado) ·
-                <strong>Cristal</strong> (vidrio).
-                El índice de refracción más alto = lente más delgado.
+          </div>
+        </template>
+
+        <!-- ══ TAB 3: VENTAS & LABORATORIO ═════════════════════════════════════ -->
+        <template #ventas>
+          <div class="help-tab-content">
+
+            <!-- Ventas -->
+            <article id="sec_ventas" class="help-card help-anchor">
+              <header class="help-card-header">
+                <div class="help-card-title-block">
+                  <b-icon :icon="ICONS.cart" size="is-small" class="mr-2" />
+                  <h3>Crear un pedido de ventas</h3>
+                </div>
+              </header>
+
+              <p class="help-text">
+                Desde <strong>Ventas → Bases y Micas</strong> puedes armar un pedido para enviar
+                al laboratorio. El proceso es sencillo:
               </p>
-            </div>
-            
-            <!-- 
+
+              <div class="help-steps2">
+                <div class="help-step2">
+                  <div class="help-step2__n">1</div>
+                  <div class="help-step2__body">
+                    <p class="help-step2__title">Selecciona la planilla y busca el producto</p>
+                    <p class="help-step2__text">
+                      Elige la planilla del desplegable y usa el buscador para filtrar por graduación
+                      o código. Solo se muestran productos con stock disponible.
+                    </p>
+                  </div>
+                </div>
+                <div class="help-step2">
+                  <div class="help-step2__n">2</div>
+                  <div class="help-step2__body">
+                    <p class="help-step2__title">Agrega al carrito</p>
+                    <p class="help-step2__text">
+                      Pulsa el botón de cada producto para añadirlo. Puedes ajustar la cantidad
+                      con los botones <strong>+</strong> y <strong>−</strong> en el carrito.
+                    </p>
+                  </div>
+                </div>
+                <div class="help-step2">
+                  <div class="help-step2__n">3</div>
+                  <div class="help-step2__body">
+                    <p class="help-step2__title">Escribe el nombre del cliente y envía</p>
+                    <p class="help-step2__text">
+                      En el campo <strong>Cliente</strong> escribe el nombre. Opcionalmente agrega
+                      una nota. Luego presiona <strong>Enviar al laboratorio</strong> y confirma.
+                    </p>
+                  </div>
+                </div>
+                <div class="help-step2">
+                  <div class="help-step2__n">4</div>
+                  <div class="help-step2__body">
+                    <p class="help-step2__title">Revisa el comprobante</p>
+                    <p class="help-step2__text">
+                      Aparecerá un comprobante con el folio del pedido. En la pestaña
+                      <strong>Historial</strong> puedes ver todos los pedidos enviados y su estado.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="help-note">
+                <b-icon :icon="ICONS.bell" size="is-small" class="mr-1" />
+                <span>
+                  Al crear un pedido, el laboratorio recibe automáticamente una notificación. No
+                  necesitas avisarles por otro medio.
+                </span>
+              </div>
+            </article>
+
+            <!-- Laboratorio -->
+            <article id="sec_laboratorio" class="help-card help-anchor">
+              <header class="help-card-header">
+                <div class="help-card-title-block">
+                  <b-icon :icon="ICONS.lab" size="is-small" class="mr-2" />
+                  <h3>Laboratorio (atender pedidos)</h3>
+                </div>
+              </header>
+
+              <p class="help-text">
+                La vista de <strong>Laboratorio</strong> es donde se atienden los pedidos que envía
+                ventas. El flujo normal es:
+              </p>
+
+              <div class="help-actions-grid">
+                <div class="help-action">
+                  <div class="help-action__title">
+                    <b-icon :icon="ICONS.list" size="is-small" class="mr-1" />
+                    Ver pedidos pendientes
+                  </div>
+                  <p class="help-action__text">
+                    En la pestaña <strong>Pedidos</strong> verás todos los pedidos con estado
+                    <em>Pendiente</em> o <em>En proceso</em>. El número en rojo de la barra lateral
+                    muestra cuántos hay.
+                  </p>
+                </div>
+
+                <div class="help-action">
+                  <div class="help-action__title">
+                    <b-icon :icon="ICONS.scan" size="is-small" class="mr-1" />
+                    Escanear o marcar producto
+                  </div>
+                  <p class="help-action__text">
+                    Abre un pedido y escanea el código de barras de cada producto con el lector
+                    o escríbelo manualmente. El sistema descuenta del inventario automáticamente.
+                  </p>
+                </div>
+
+                <div class="help-action">
+                  <div class="help-action__title">
+                    <b-icon :icon="ICONS.check" size="is-small" class="mr-1" />
+                    Cerrar pedido
+                  </div>
+                  <p class="help-action__text">
+                    Cuando hayas surtido todos los productos, presiona <strong>Cerrar pedido</strong>.
+                    El estado cambia a <em>Surtido completo</em> y ventas puede verlo.
+                  </p>
+                </div>
+
+                <div class="help-action">
+                  <div class="help-action__title">
+                    <b-icon :icon="ICONS.correction" size="is-small" class="mr-1" />
+                    Enviar corrección
+                  </div>
+                  <p class="help-action__text">
+                    Si hay un problema con un pedido, usa <strong>Solicitar corrección</strong>
+                    para notificar al supervisor con los detalles. Solo el supervisor recibirá esa
+                    notificación.
+                  </p>
+                </div>
+              </div>
+
+              <div class="help-soft">
+                <div class="help-soft__title">
+                  <b-icon :icon="ICONS.history" size="is-small" class="mr-1" />
+                  Pestaña Bandeja y Catálogo
+                </div>
+                <p class="help-soft__text">
+                  <strong>Bandeja</strong> muestra el historial de todos los eventos registrados
+                  (escaneos, cierres, etc.). <strong>Catálogo</strong> te permite consultar el
+                  inventario actual sin salir del laboratorio.
+                </p>
+              </div>
+            </article>
+
+          </div>
+        </template>
+
+        <!-- ══ TAB 4: NOMENCLATURAS ══════════════════════════════════════════════ -->
+        <template #nomenclaturas>
+          <div class="help-tab-content">
+
+            <!-- SKU -->
+            <article id="sec_sku" class="help-card help-anchor">
+              <header class="help-card-header">
+                <div class="help-card-title-block">
+                  <b-icon :icon="ICONS.tags" size="is-small" class="mr-2" />
+                  <h3>SKU (Código de planilla)</h3>
+                </div>
+                <b-tag type="is-primary is-light" size="is-small" rounded>Inventario</b-tag>
+              </header>
+
+              <p class="help-text">
+                El <strong>SKU</strong> es un código único que identifica cada planilla de inventario. Se genera
+                automáticamente al crear una planilla y resume sus características principales.
+              </p>
+
+              <div class="nomenclatura-example">
+                <div class="nomenclatura-example__code">JAP-TAI-BAS-POL-MON-BLN-A5F2</div>
+                <div class="nomenclatura-example__label">Ejemplo de SKU</div>
+              </div>
+
+              <div class="nomenclatura-breakdown">
+                <div class="nomenclatura-segment">
+                  <span class="nomenclatura-segment__part">JAP</span>
+                  <span class="nomenclatura-segment__desc">Proveedor (abreviatura, 3 letras)</span>
+                </div>
+                <span class="nomenclatura-sep">—</span>
+                <div class="nomenclatura-segment">
+                  <span class="nomenclatura-segment__part">TAI</span>
+                  <span class="nomenclatura-segment__desc">Marca (abreviatura, 3 letras)</span>
+                </div>
+                <span class="nomenclatura-sep">—</span>
+                <div class="nomenclatura-segment">
+                  <span class="nomenclatura-segment__part">BAS</span>
+                  <span class="nomenclatura-segment__desc">Tipo de matriz (ver sección Matrices)</span>
+                </div>
+                <span class="nomenclatura-sep">—</span>
+                <div class="nomenclatura-segment">
+                  <span class="nomenclatura-segment__part">POL</span>
+                  <span class="nomenclatura-segment__desc">Material (POL = Policarbonato, CR3 = CR-39)</span>
+                </div>
+                <span class="nomenclatura-sep">—</span>
+                <div class="nomenclatura-segment">
+                  <span class="nomenclatura-segment__part">MON</span>
+                  <span class="nomenclatura-segment__desc">Base / clave de la planilla</span>
+                </div>
+                <span class="nomenclatura-sep">—</span>
+                <div class="nomenclatura-segment">
+                  <span class="nomenclatura-segment__part">BLN</span>
+                  <span class="nomenclatura-segment__desc">Tratamiento (BLN = Blanco, AR = Antirreflejante)</span>
+                </div>
+                <span class="nomenclatura-sep">—</span>
+                <div class="nomenclatura-segment">
+                  <span class="nomenclatura-segment__part">A5F2</span>
+                  <span class="nomenclatura-segment__desc">Código aleatorio (evita duplicados)</span>
+                </div>
+              </div>
+
+              <div class="help-note">
+                <b-icon :icon="ICONS.info" size="is-small" class="mr-1" />
+                <span>
+                  Las abreviaturas de proveedor y marca se generan tomando las primeras letras de cada
+                  palabra. Si el nombre tiene varias palabras, se toma la primera letra de cada una.
+                </span>
+              </div>
+            </article>
+
+            <!-- Folios -->
+            <article id="sec_folios" class="help-card help-anchor">
+              <header class="help-card-header">
+                <div class="help-card-title-block">
+                  <b-icon :icon="ICONS.hashtag" size="is-small" class="mr-2" />
+                  <h3>Folios (Pedidos y Devoluciones)</h3>
+                </div>
+              </header>
+
+              <p class="help-text">
+                Cada pedido de laboratorio y cada devolución recibe un <strong>folio</strong> único que sirve
+                como referencia para rastrear el documento en todo el sistema.
+              </p>
+
+              <div class="nomenclatura-duo">
+                <div class="nomenclatura-duo__block">
+                  <div class="nomenclatura-example">
+                    <div class="nomenclatura-example__code">LAB-20250328-A5F2</div>
+                    <div class="nomenclatura-example__label">Folio de laboratorio</div>
+                  </div>
+                  <div class="nomenclatura-breakdown nomenclatura-breakdown--compact">
+                    <div class="nomenclatura-segment">
+                      <span class="nomenclatura-segment__part">LAB</span>
+                      <span class="nomenclatura-segment__desc">Prefijo fijo: pedido de laboratorio</span>
+                    </div>
+                    <div class="nomenclatura-segment">
+                      <span class="nomenclatura-segment__part">20250328</span>
+                      <span class="nomenclatura-segment__desc">Fecha: AAAA MM DD (28 marzo 2025)</span>
+                    </div>
+                    <div class="nomenclatura-segment">
+                      <span class="nomenclatura-segment__part">A5F2</span>
+                      <span class="nomenclatura-segment__desc">4 caracteres hexadecimales aleatorios</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="nomenclatura-duo__block">
+                  <div class="nomenclatura-example">
+                    <div class="nomenclatura-example__code">DEV-2025-00001</div>
+                    <div class="nomenclatura-example__label">Folio de devolución</div>
+                  </div>
+                  <div class="nomenclatura-breakdown nomenclatura-breakdown--compact">
+                    <div class="nomenclatura-segment">
+                      <span class="nomenclatura-segment__part">DEV</span>
+                      <span class="nomenclatura-segment__desc">Prefijo fijo: devolución</span>
+                    </div>
+                    <div class="nomenclatura-segment">
+                      <span class="nomenclatura-segment__part">2025</span>
+                      <span class="nomenclatura-segment__desc">Año en curso</span>
+                    </div>
+                    <div class="nomenclatura-segment">
+                      <span class="nomenclatura-segment__part">00001</span>
+                      <span class="nomenclatura-segment__desc">Consecutivo (5 dígitos, se reinicia cada año)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <!-- Código de barras -->
+            <article id="sec_codebar" class="help-card help-anchor">
+              <header class="help-card-header">
+                <div class="help-card-title-block">
+                  <b-icon icon="barcode" size="is-small" class="mr-2" />
+                  <h3>Código de barras (EAN-13)</h3>
+                </div>
+                <b-tag type="is-info is-light" size="is-small" rounded>13 dígitos</b-tag>
+              </header>
+
+              <p class="help-text">
+                Cada producto en el inventario tiene un código de barras en formato <strong>EAN-13</strong>
+                (estándar internacional de 13 dígitos). Se genera automáticamente a partir de la planilla
+                y las coordenadas ópticas del producto.
+              </p>
+
+              <div class="nomenclatura-example">
+                <div class="nomenclatura-example__code">2 7 9 0 1 2 3 4 5 6 7 8 9</div>
+                <div class="nomenclatura-example__label">Ejemplo de código EAN-13</div>
+              </div>
+
+              <div class="nomenclatura-breakdown nomenclatura-breakdown--compact">
+                <div class="nomenclatura-segment">
+                  <span class="nomenclatura-segment__part">279</span>
+                  <span class="nomenclatura-segment__desc">Prefijo interno fijo (identifica que es un producto
+                    RSBO)</span>
+                </div>
+                <div class="nomenclatura-segment">
+                  <span class="nomenclatura-segment__part">012345678</span>
+                  <span class="nomenclatura-segment__desc">9 dígitos generados a partir del ID de planilla + tipo de
+                    matriz + coordenadas ópticas</span>
+                </div>
+                <div class="nomenclatura-segment">
+                  <span class="nomenclatura-segment__part">9</span>
+                  <span class="nomenclatura-segment__desc">Dígito de control (verificación EAN-13)</span>
+                </div>
+              </div>
+
+              <div class="help-note">
+                <b-icon :icon="ICONS.info" size="is-small" class="mr-1" />
+                <span>
+                  El código de barras se usa para <strong>escanear productos</strong> en el laboratorio.
+                  Si un producto no tiene código asignado, no puede incluirse en un pedido.
+                </span>
+              </div>
+            </article>
+
+            <!-- Tipos de matriz -->
+            <article id="sec_matrices" class="help-card help-anchor">
+              <header class="help-card-header">
+                <div class="help-card-title-block">
+                  <b-icon :icon="ICONS.glasses" size="is-small" class="mr-2" />
+                  <h3>Tipos de matriz (tipo de lente)</h3>
+                </div>
+              </header>
+
+              <p class="help-text">
+                Cada planilla tiene un <strong>tipo de matriz</strong> que determina qué coordenadas ópticas
+                maneja y cómo se organiza la grilla de inventario.
+              </p>
+
+              <div class="nomenclatura-table">
+                <div class="nomenclatura-table__row nomenclatura-table__row--head">
+                  <span>Clave</span>
+                  <span>Tipo de lente</span>
+                  <span>Coordenadas</span>
+                </div>
+                <div class="nomenclatura-table__row">
+                  <span class="nomenclatura-segment__part">BASE</span>
+                  <span>Monofocal (base)</span>
+                  <span class="mono">base</span>
+                </div>
+                <div class="nomenclatura-table__row">
+                  <span class="nomenclatura-segment__part">SPH_CYL</span>
+                  <span>Monofocal esf. + cil.</span>
+                  <span class="mono">sph, cyl</span>
+                </div>
+                <div class="nomenclatura-table__row">
+                  <span class="nomenclatura-segment__part">SPH_ADD</span>
+                  <span>Bifocal</span>
+                  <span class="mono">sph, add, base_izq, base_der, eye</span>
+                </div>
+                <div class="nomenclatura-table__row">
+                  <span class="nomenclatura-segment__part">BASE_ADD</span>
+                  <span>Progresivo</span>
+                  <span class="mono">base_izq, base_der, add, eye</span>
+                </div>
+                <div class="nomenclatura-table__row">
+                  <span class="nomenclatura-segment__part">SPH_CYL_AXIS</span>
+                  <span>Lente de contacto tórico</span>
+                  <span class="mono">sph, cyl, axis</span>
+                </div>
+              </div>
+
+              <div class="help-soft">
+                <div class="help-soft__title">
+                  <b-icon :icon="ICONS.eye" size="is-small" class="mr-1" />
+                  Designación de ojo
+                </div>
+                <p class="help-soft__text">
+                  En bifocales y progresivos, cada producto especifica el ojo:
+                  <strong>OD</strong> = Ojo Derecho, <strong>OI</strong> = Ojo Izquierdo.
+                  Las matrices tipo BASE y SPH_CYL no distinguen ojo.
+                </p>
+              </div>
+            </article>
+
+            <!-- Tratamientos -->
+            <article id="sec_tratamientos" class="help-card help-anchor">
+              <header class="help-card-header">
+                <div class="help-card-title-block">
+                  <b-icon :icon="ICONS.palette2" size="is-small" class="mr-2" />
+                  <h3>Claves de tratamiento</h3>
+                </div>
+              </header>
+
+              <p class="help-text">
+                Los tratamientos de lente se identifican con claves cortas que aparecen en el SKU y en los
+                filtros del catálogo.
+              </p>
+
+              <div class="nomenclatura-table">
+                <div class="nomenclatura-table__row nomenclatura-table__row--head">
+                  <span>Clave</span>
+                  <span>Tratamiento</span>
+                  <span>Notas</span>
+                </div>
+                <div class="nomenclatura-table__row">
+                  <span class="nomenclatura-segment__part">BCO</span>
+                  <span>Blanco (sin tratamiento)</span>
+                  <span class="muted">Todos los materiales</span>
+                </div>
+                <div class="nomenclatura-table__row">
+                  <span class="nomenclatura-segment__part">AR</span>
+                  <span>Antirreflejante</span>
+                  <span class="muted">Todos excepto cristal</span>
+                </div>
+                <div class="nomenclatura-table__row">
+                  <span class="nomenclatura-segment__part">ANTIBLE</span>
+                  <span>Anti luz azul</span>
+                  <span class="muted">Con o sin AR</span>
+                </div>
+                <div class="nomenclatura-table__row">
+                  <span class="nomenclatura-segment__part">FOTO</span>
+                  <span>Fotocromático</span>
+                  <span class="muted">Con o sin AR</span>
+                </div>
+                <div class="nomenclatura-table__row">
+                  <span class="nomenclatura-segment__part">FOTO_ANTIBLE</span>
+                  <span>Fotocromático + Anti luz azul</span>
+                  <span class="muted">Con o sin AR</span>
+                </div>
+                <div class="nomenclatura-table__row">
+                  <span class="nomenclatura-segment__part">TRANSITIONS</span>
+                  <span>Transitions (fotocromático marca)</span>
+                  <span class="muted">Variantes: Gris, Café, Verde</span>
+                </div>
+                <div class="nomenclatura-table__row">
+                  <span class="nomenclatura-segment__part">POLAR</span>
+                  <span>Polarizado</span>
+                  <span class="muted">Solo monofocal. Colores: Gris, Café, G15</span>
+                </div>
+                <div class="nomenclatura-table__row">
+                  <span class="nomenclatura-segment__part">POLAR_ESPEJO</span>
+                  <span>Polarizado + Espejado</span>
+                  <span class="muted">Solo monofocal. 15 combinaciones de color</span>
+                </div>
+                <div class="nomenclatura-table__row">
+                  <span class="nomenclatura-segment__part">CRISTAL_FOTO</span>
+                  <span>Fotocromático (cristal)</span>
+                  <span class="muted">Solo material Cristal</span>
+                </div>
+              </div>
+            </article>
+
+            <!-- Estados -->
+            <article id="sec_estados" class="help-card help-anchor">
+              <header class="help-card-header">
+                <div class="help-card-title-block">
+                  <b-icon :icon="ICONS.list" size="is-small" class="mr-2" />
+                  <h3>Estados del sistema</h3>
+                </div>
+              </header>
+
+              <p class="help-text">
+                Los pedidos y devoluciones pasan por diferentes estados. Aquí tienes lo que significa cada uno.
+              </p>
+
+              <div class="nomenclatura-duo">
+                <div class="nomenclatura-duo__block">
+                  <p class="help-text"><strong>Pedidos de laboratorio</strong></p>
+                  <div class="nomenclatura-status-list">
+                    <div class="nomenclatura-status">
+                      <span class="nomenclatura-status__dot nomenclatura-status__dot--pendiente"></span>
+                      <span><strong>pendiente</strong> — Pedido creado, sin atender</span>
+                    </div>
+                    <div class="nomenclatura-status">
+                      <span class="nomenclatura-status__dot nomenclatura-status__dot--parcial"></span>
+                      <span><strong>parcial</strong> — Algunos productos ya fueron surtidos</span>
+                    </div>
+                    <div class="nomenclatura-status">
+                      <span class="nomenclatura-status__dot nomenclatura-status__dot--cerrado"></span>
+                      <span><strong>cerrado</strong> — Todos los productos surtidos</span>
+                    </div>
+                    <div class="nomenclatura-status">
+                      <span class="nomenclatura-status__dot nomenclatura-status__dot--cancelado"></span>
+                      <span><strong>cancelado</strong> — Pedido cancelado (stock devuelto)</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="nomenclatura-duo__block">
+                  <p class="help-text"><strong>Devoluciones</strong></p>
+                  <div class="nomenclatura-status-list">
+                    <div class="nomenclatura-status">
+                      <span class="nomenclatura-status__dot nomenclatura-status__dot--pendiente"></span>
+                      <span><strong>pendiente</strong> — Devolución registrada</span>
+                    </div>
+                    <div class="nomenclatura-status">
+                      <span class="nomenclatura-status__dot nomenclatura-status__dot--parcial"></span>
+                      <span><strong>en_revision</strong> — En revisión</span>
+                    </div>
+                    <div class="nomenclatura-status">
+                      <span class="nomenclatura-status__dot nomenclatura-status__dot--cerrado"></span>
+                      <span><strong>aprobada</strong> / <strong>procesada</strong> — Aceptada y procesada</span>
+                    </div>
+                    <div class="nomenclatura-status">
+                      <span class="nomenclatura-status__dot nomenclatura-status__dot--cancelado"></span>
+                      <span><strong>rechazada</strong> — Devolución rechazada</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="help-soft">
+                <div class="help-soft__title">
+                  <b-icon :icon="ICONS.info" size="is-small" class="mr-1" />
+                  Condición de artículo devuelto
+                </div>
+                <p class="help-soft__text">
+                  Al registrar una devolución, cada artículo se clasifica como:
+                  <strong>bueno</strong> (reutilizable),
+                  <strong>dañado</strong> o
+                  <strong>defectuoso</strong>.
+                </p>
+              </div>
+            </article>
+
+            <!-- Coordenadas ópticas -->
+            <article id="sec_coordenadas" class="help-card help-anchor">
+              <header class="help-card-header">
+                <div class="help-card-title-block">
+                  <b-icon :icon="ICONS.ruler" size="is-small" class="mr-2" />
+                  <h3>Coordenadas ópticas y materiales</h3>
+                </div>
+              </header>
+
+              <p class="help-text">
+                Los valores ópticos de cada producto se representan con abreviaturas estándar de optometría.
+              </p>
+
+              <div class="nomenclatura-table">
+                <div class="nomenclatura-table__row nomenclatura-table__row--head">
+                  <span>Abreviatura</span>
+                  <span>Significado</span>
+                  <span>Rango típico</span>
+                </div>
+                <div class="nomenclatura-table__row">
+                  <span class="nomenclatura-segment__part">SPH</span>
+                  <span>Esfera (poder esférico)</span>
+                  <span class="mono">-20.00 a +20.00</span>
+                </div>
+                <div class="nomenclatura-table__row">
+                  <span class="nomenclatura-segment__part">CYL</span>
+                  <span>Cilindro (astigmatismo)</span>
+                  <span class="mono">-6.00 a 0.00</span>
+                </div>
+                <div class="nomenclatura-table__row">
+                  <span class="nomenclatura-segment__part">ADD</span>
+                  <span>Adición (para lectura)</span>
+                  <span class="mono">+0.50 a +4.00</span>
+                </div>
+                <div class="nomenclatura-table__row">
+                  <span class="nomenclatura-segment__part">BASE</span>
+                  <span>Curva base del lente</span>
+                  <span class="mono">0.00 a 10.00</span>
+                </div>
+                <div class="nomenclatura-table__row">
+                  <span class="nomenclatura-segment__part">AXIS</span>
+                  <span>Eje del cilindro (grados)</span>
+                  <span class="mono">0 a 180</span>
+                </div>
+                <div class="nomenclatura-table__row">
+                  <span class="nomenclatura-segment__part">BI / BD</span>
+                  <span>Base izquierda / Base derecha</span>
+                  <span class="mono">Bifocales y progresivos</span>
+                </div>
+              </div>
+
+              <div class="help-soft">
+                <div class="help-soft__title">
+                  <b-icon :icon="ICONS.glasses" size="is-small" class="mr-1" />
+                  Materiales disponibles
+                </div>
+                <p class="help-soft__text">
+                  <strong>CR-39</strong> (plástico estándar) ·
+                  <strong>Policarbonato</strong> ·
+                  <strong>1.56</strong> ·
+                  <strong>1.61 MR-8</strong> ·
+                  <strong>1.67</strong> ·
+                  <strong>1.74</strong> (ultra delgado) ·
+                  <strong>Cristal</strong> (vidrio).
+                  El índice de refracción más alto = lente más delgado.
+                </p>
+              </div>
+
+              <!-- 
             <div class="help-note">
               <b-icon :icon="ICONS.info" size="is-small" class="mr-1" />
               <span>
@@ -890,330 +891,329 @@
               </span>
             </div>           
             -->
-          </article>
+            </article>
 
-        </div>
-      </template>
+          </div>
+        </template>
 
-      <!-- ══ TAB 5: MI CUENTA ══════════════════════════════════════════════════ -->
-      <template #cuenta>
-        <div class="help-tab-content">
+        <!-- ══ TAB 5: MI CUENTA ══════════════════════════════════════════════════ -->
+        <template #cuenta>
+          <div class="help-tab-content">
 
-          <!-- Configuración -->
-          <article id="sec_config" class="help-card help-anchor">
-            <header class="help-card-header">
-              <div class="help-card-title-block">
-                <b-icon :icon="ICONS.config" size="is-small" class="mr-2" />
-                <h3>Configuración de tu cuenta</h3>
-              </div>
-            </header>
-
-            <p class="help-text">
-              En <strong>Configuración</strong> (ícono de engranaje en el menú) encuentras tres secciones:
-            </p>
-
-            <div class="help-actions-grid">
-              <div class="help-action">
-                <div class="help-action__title">
-                  <b-icon :icon="ICONS.user" size="is-small" class="mr-1" />
-                  Mi perfil
+            <!-- Configuración -->
+            <article id="sec_config" class="help-card help-anchor">
+              <header class="help-card-header">
+                <div class="help-card-title-block">
+                  <b-icon :icon="ICONS.config" size="is-small" class="mr-2" />
+                  <h3>Configuración de tu cuenta</h3>
                 </div>
-                <p class="help-action__text">
-                  Cambia tu nombre, teléfono, descripción y foto de perfil. Presiona
-                  <strong>Editar</strong>, ajusta lo que necesites y luego <strong>Guardar perfil</strong>.
-                </p>
-              </div>
+              </header>
 
-              <div class="help-action">
-                <div class="help-action__title">
-                  <b-icon :icon="ICONS.palette" size="is-small" class="mr-1" />
-                  Preferencias
-                </div>
-                <p class="help-action__text">
-                  Activa el <strong>modo oscuro</strong>, ajusta el tamaño de texto, reduce animaciones
-                  o activa opciones de accesibilidad como alto contraste y fuente legible.
-                </p>
-              </div>
-
-              <div class="help-action">
-                <div class="help-action__title">
-                  <b-icon :icon="ICONS.shield" size="is-small" class="mr-1" />
-                  Seguridad — Sesiones activas
-                </div>
-                <p class="help-action__text">
-                  Aquí verás todos los dispositivos donde has iniciado sesión (navegador, hora, IP).
-                  Puedes cerrar cualquier sesión remota con un solo toque.
-                </p>
-              </div>
-
-              <div class="help-action">
-                <div class="help-action__title">
-                  <b-icon :icon="ICONS.key" size="is-small" class="mr-1" />
-                  Seguridad — Cambiar contraseña
-                </div>
-                <p class="help-action__text">
-                  Escribe tu contraseña actual, luego la nueva (mínimo 8 caracteres) y confírmala.
-                  Al guardar, todas tus sesiones se cierran y deberás entrar de nuevo.
-                </p>
-              </div>
-            </div>
-          </article>
-
-          <!-- Usuarios -->
-          <article id="sec_usuarios" class="help-card help-anchor">
-            <header class="help-card-header">
-              <div class="help-card-title-block">
-                <b-icon :icon="ICONS.users" size="is-small" class="mr-2" />
-                <h3>Gestión de usuarios</h3>
-              </div>
-              <b-tag type="is-warning is-light" size="is-small" rounded>Solo supervisores y admins</b-tag>
-            </header>
-
-            <div class="help-actions-grid">
-              <div class="help-action">
-                <div class="help-action__title">
-                  <b-icon :icon="ICONS.userPlus" size="is-small" class="mr-1" />
-                  Crear usuario
-                </div>
-                <p class="help-action__text">
-                  Pulsa <strong>Nuevo usuario</strong>, completa nombre, correo, rol y contraseña,
-                  luego presiona <strong>Crear</strong>.
-                </p>
-              </div>
-
-              <div class="help-action">
-                <div class="help-action__title">
-                  <b-icon :icon="ICONS.edit" size="is-small" class="mr-1" />
-                  Editar datos
-                </div>
-                <p class="help-action__text">
-                  Selecciona el usuario en la lista, presiona <strong>Editar</strong>, cambia lo
-                  necesario y guarda.
-                </p>
-              </div>
-
-              <div class="help-action">
-                <div class="help-action__title">
-                  <b-icon :icon="ICONS.key" size="is-small" class="mr-1" />
-                  Restablecer contraseña
-                </div>
-                <p class="help-action__text">
-                  Selecciona el usuario, entra a la sección <strong>Contraseña</strong>, escribe
-                  la nueva y presiona <strong>Actualizar</strong>.
-                </p>
-              </div>
-
-              <div class="help-action">
-                <div class="help-action__title">
-                  <b-icon :icon="ICONS.trash" size="is-small" class="mr-1" />
-                  Papelera y restaurar
-                </div>
-                <p class="help-action__text">
-                  Enviar a <strong>Papelera</strong> retira al usuario sin borrarlo definitivamente.
-                  En el filtro <em>Papelera</em> puedes <strong>Restaurar</strong> cuando sea necesario.
-                </p>
-              </div>
-            </div>
-
-            <div class="help-note">
-              <b-icon :icon="ICONS.shield" size="is-small" class="mr-1" />
-              <span>
-                El <strong>rol</strong> determina qué puede ver y hacer cada persona en el sistema.
-                Si alguien no puede acceder a algo, revisa que tenga el rol correcto.
-              </span>
-            </div>
-          </article>
-
-        </div>
-      </template>
-
-      <!-- ══ TAB 6: REFERENCIA RÁPIDA ════════════════════════════════════════ -->
-      <template #referencia>
-        <div class="help-tab-content">
-
-          <!-- Atajos de teclado -->
-          <article id="sec_atajos" class="help-card help-anchor">
-            <header class="help-card-header">
-              <div class="help-card-title-block">
-                <b-icon :icon="ICONS.keyboard" size="is-small" class="mr-2" />
-                <h3>Atajos de teclado</h3>
-              </div>
-            </header>
-
-            <p class="help-text">En computadora estos atajos aceleran el trabajo:</p>
-
-            <div class="help-split">
-              <div class="help-split__block">
-                <p class="help-text"><strong>En el inventario</strong></p>
-                <ul class="help-list">
-                  <li><strong>Ctrl + S</strong> — guardar cambios de la planilla</li>
-                  <li><strong>Ctrl + Z</strong> — deshacer última edición</li>
-                  <li><strong>Ctrl + Y</strong> — rehacer</li>
-                  <li><strong>Enter</strong> — confirmar valor en celda</li>
-                  <li><strong>Esc</strong> — cancelar edición de celda</li>
-                  <li><strong>Ctrl + C / V</strong> — copiar / pegar</li>
-                </ul>
-              </div>
-              <div class="help-split__block">
-                <p class="help-text"><strong>Navegación general</strong></p>
-                <ul class="help-list">
-                  <li><strong>/</strong> — enfocar búsqueda en esta página</li>
-                  <li><strong>Esc</strong> — cerrar paneles y modales</li>
-                </ul>
-                <p class="help-text mt-3"><strong>En la búsqueda global</strong></p>
-                <ul class="help-list">
-                  <li>Escribe el nombre de cualquier sección para navegar rápido</li>
-                </ul>
-              </div>
-            </div>
-
-            <div class="help-note">
-              <b-icon :icon="ICONS.info" size="is-small" class="mr-1" />
-              <span>En Mac usa <strong>Cmd</strong> en lugar de Ctrl.</span>
-            </div>
-          </article>
-
-          <!-- Solución rápida -->
-          <article id="sec_solucion" class="help-card help-anchor">
-            <header class="help-card-header">
-              <div class="help-card-title-block">
-                <b-icon :icon="ICONS.wrench" size="is-small" class="mr-2" />
-                <h3>Solución rápida</h3>
-              </div>
-            </header>
-
-            <div class="help-fixes">
-              <div class="help-fix">
-                <div class="help-fix__q">No se guardaron los cambios del inventario</div>
-                <div class="help-fix__a">
-                  Revisa que hayas presionado <strong>Guardar cambios</strong>. Luego usa
-                  <strong>Recargar</strong> para confirmar que se aplicaron.
-                </div>
-              </div>
-
-              <div class="help-fix">
-                <div class="help-fix__q">No veo las notificaciones aunque hay pedidos</div>
-                <div class="help-fix__a">
-                  Cierra y vuelve a abrir el panel de notificaciones. Si persiste, recarga la
-                  página. Las notificaciones llegan en tiempo real pero necesitas conexión activa.
-                </div>
-              </div>
-
-              <div class="help-fix">
-                <div class="help-fix__q">El pedido no aparece en el laboratorio</div>
-                <div class="help-fix__a">
-                  En la vista de Laboratorio presiona <strong>Actualizar</strong>. Los pedidos
-                  aparecen en segundos tras ser creados en ventas.
-                </div>
-              </div>
-
-              <div class="help-fix">
-                <div class="help-fix__q">No puedo escanear / el código no funciona</div>
-                <div class="help-fix__a">
-                  Verifica que el producto tenga código de barras asignado en el inventario.
-                  Si no tiene, el pedido no puede surtirse por ese método.
-                </div>
-              </div>
-
-              <div class="help-fix">
-                <div class="help-fix__q">El sistema me sacó de sesión solo</div>
-                <div class="help-fix__a">
-                  La sesión dura 8 horas. Si cambiaste tu contraseña o un administrador cerró
-                  tu sesión remotamente, deberás iniciar sesión de nuevo.
-                </div>
-              </div>
-
-              <div class="help-fix">
-                <div class="help-fix__q">No veo cierta sección del menú</div>
-                <div class="help-fix__a">
-                  Cada sección es visible según tu <strong>rol</strong>. Si necesitas acceso a
-                  algo, pide a un administrador que ajuste tu rol.
-                </div>
-              </div>
-            </div>
-          </article>
-
-          <!-- FAQ -->
-          <article id="sec_faq" class="help-card help-anchor">
-            <header class="help-card-header">
-              <div class="help-card-title-block">
-                <b-icon :icon="ICONS.faq" size="is-small" class="mr-2" />
-                <h3>Preguntas frecuentes</h3>
-              </div>
-            </header>
-
-            <div class="help-faq-list">
-              <template v-for="sec in filteredSections" :key="sec.id">
-                <div class="help-faq-section">
-                  <div class="help-faq-section__title">
-                    <b-icon :icon="sec.icon" size="is-small" class="mr-1" />
-                    <strong>{{ sec.title }}</strong>
-                    <span class="help-faq-section__count">{{ sec.items.length }}</span>
-                  </div>
-
-                  <b-collapse v-for="qa in sec.items" :key="qa.id" class="help-faq-item" animation="fade"
-                    :open="openMap[qa.id] ?? qa.openByDefault">
-                    <template #trigger="{ open }">
-                      <div class="help-faq-trigger">
-                        <span>{{ qa.q }}</span>
-                        <b-icon :icon="open ? ICONS.chevUp : ICONS.chevDown" size="is-small" />
-                      </div>
-                    </template>
-                    <div class="help-faq-body">
-                      <p v-for="(p, idx) in qa.a" :key="idx">{{ p }}</p>
-                      <div v-if="qa.tags?.length" class="help-tags">
-                        <span v-for="t in qa.tags" :key="t" class="help-tag">#{{ t }}</span>
-                      </div>
-                    </div>
-                  </b-collapse>
-                </div>
-              </template>
-
-              <p v-if="!hasAnyResults" class="help-no-results has-text-grey is-size-7">
-                No encontré resultados para <strong>"{{ search }}"</strong>.
-                Prueba: "guardar", "pedido", "notificación", "contraseña", "sesión".
+              <p class="help-text">
+                En <strong>Configuración</strong> (ícono de engranaje en el menú) encuentras tres secciones:
               </p>
-            </div>
-          </article>
 
-          <!-- Soporte -->
-          <article id="sec_soporte" class="help-card help-card--support help-anchor">
-            <header class="help-card-header">
-              <div class="help-card-title-block">
-                <b-icon :icon="ICONS.support" size="is-small" class="mr-2" />
-                <h3>Soporte</h3>
+              <div class="help-actions-grid">
+                <div class="help-action">
+                  <div class="help-action__title">
+                    <b-icon :icon="ICONS.user" size="is-small" class="mr-1" />
+                    Mi perfil
+                  </div>
+                  <p class="help-action__text">
+                    Cambia tu nombre, teléfono, descripción y foto de perfil. Presiona
+                    <strong>Editar</strong>, ajusta lo que necesites y luego <strong>Guardar perfil</strong>.
+                  </p>
+                </div>
+
+                <div class="help-action">
+                  <div class="help-action__title">
+                    <b-icon :icon="ICONS.palette" size="is-small" class="mr-1" />
+                    Preferencias
+                  </div>
+                  <p class="help-action__text">
+                    Activa el <strong>modo oscuro</strong>, ajusta el tamaño de texto, reduce animaciones
+                    o activa opciones de accesibilidad como alto contraste y fuente legible.
+                  </p>
+                </div>
+
+                <div class="help-action">
+                  <div class="help-action__title">
+                    <b-icon :icon="ICONS.shield" size="is-small" class="mr-1" />
+                    Seguridad — Sesiones activas
+                  </div>
+                  <p class="help-action__text">
+                    Aquí verás todos los dispositivos donde has iniciado sesión (navegador, hora, IP).
+                    Puedes cerrar cualquier sesión remota con un solo toque.
+                  </p>
+                </div>
+
+                <div class="help-action">
+                  <div class="help-action__title">
+                    <b-icon :icon="ICONS.key" size="is-small" class="mr-1" />
+                    Seguridad — Cambiar contraseña
+                  </div>
+                  <p class="help-action__text">
+                    Escribe tu contraseña actual, luego la nueva (mínimo 8 caracteres) y confírmala.
+                    Al guardar, todas tus sesiones se cierran y deberás entrar de nuevo.
+                  </p>
+                </div>
               </div>
-            </header>
+            </article>
 
-            <p class="help-text">
-              Si algo no funciona como se describe aquí, escríbenos. Para ayudarte más rápido incluye:
-            </p>
+            <!-- Usuarios -->
+            <article id="sec_usuarios" class="help-card help-anchor">
+              <header class="help-card-header">
+                <div class="help-card-title-block">
+                  <b-icon :icon="ICONS.users" size="is-small" class="mr-2" />
+                  <h3>Gestión de usuarios</h3>
+                </div>
+                <b-tag type="is-warning is-light" size="is-small" rounded>Solo supervisores y admins</b-tag>
+              </header>
 
-            <ul class="help-list">
-              <li>Qué estabas haciendo (pasos cortos: "entré a ventas, elegí una planilla, presioné Enviar y...").</li>
-              <li>Nombre del pedido, folio o planilla (si aplica).</li>
-              <li>Una captura de pantalla del error (si puedes).</li>
-              <li>Hora aproximada en que ocurrió.</li>
-            </ul>
+              <div class="help-actions-grid">
+                <div class="help-action">
+                  <div class="help-action__title">
+                    <b-icon :icon="ICONS.userPlus" size="is-small" class="mr-1" />
+                    Crear usuario
+                  </div>
+                  <p class="help-action__text">
+                    Pulsa <strong>Nuevo usuario</strong>, completa nombre, correo, rol y contraseña,
+                    luego presiona <strong>Crear</strong>.
+                  </p>
+                </div>
 
-            <div class="help-contact">
-              <div class="help-contact__chip">
-                <b-icon :icon="ICONS.mail" size="is-small" class="mr-1" />
-                <span>Correo de soporte</span>
+                <div class="help-action">
+                  <div class="help-action__title">
+                    <b-icon :icon="ICONS.edit" size="is-small" class="mr-1" />
+                    Editar datos
+                  </div>
+                  <p class="help-action__text">
+                    Selecciona el usuario en la lista, presiona <strong>Editar</strong>, cambia lo
+                    necesario y guarda.
+                  </p>
+                </div>
+
+                <div class="help-action">
+                  <div class="help-action__title">
+                    <b-icon :icon="ICONS.key" size="is-small" class="mr-1" />
+                    Restablecer contraseña
+                  </div>
+                  <p class="help-action__text">
+                    Selecciona el usuario, entra a la sección <strong>Contraseña</strong>, escribe
+                    la nueva y presiona <strong>Actualizar</strong>.
+                  </p>
+                </div>
+
+                <div class="help-action">
+                  <div class="help-action__title">
+                    <b-icon :icon="ICONS.trash" size="is-small" class="mr-1" />
+                    Papelera y restaurar
+                  </div>
+                  <p class="help-action__text">
+                    Enviar a <strong>Papelera</strong> retira al usuario sin borrarlo definitivamente.
+                    En el filtro <em>Papelera</em> puedes <strong>Restaurar</strong> cuando sea necesario.
+                  </p>
+                </div>
               </div>
-              <p class="help-contact__email">soporte.rsbo@icloud.com</p>
-            </div>
-          </article>
 
-        </div>
-      </template>
+              <div class="help-note">
+                <b-icon :icon="ICONS.shield" size="is-small" class="mr-1" />
+                <span>
+                  El <strong>rol</strong> determina qué puede ver y hacer cada persona en el sistema.
+                  Si alguien no puede acceder a algo, revisa que tenga el rol correcto.
+                </span>
+              </div>
+            </article>
 
-    </DynamicTabs>
+          </div>
+        </template>
+
+        <!-- ══ TAB 6: REFERENCIA RÁPIDA ════════════════════════════════════════ -->
+        <template #referencia>
+          <div class="help-tab-content">
+
+            <!-- Atajos de teclado -->
+            <article id="sec_atajos" class="help-card help-anchor">
+              <header class="help-card-header">
+                <div class="help-card-title-block">
+                  <b-icon :icon="ICONS.keyboard" size="is-small" class="mr-2" />
+                  <h3>Atajos de teclado</h3>
+                </div>
+              </header>
+
+              <p class="help-text">En computadora estos atajos aceleran el trabajo:</p>
+
+              <div class="help-split">
+                <div class="help-split__block">
+                  <p class="help-text"><strong>En el inventario</strong></p>
+                  <ul class="help-list">
+                    <li><strong>Ctrl + S</strong> — guardar cambios de la planilla</li>
+                    <li><strong>Ctrl + Z</strong> — deshacer última edición</li>
+                    <li><strong>Ctrl + Y</strong> — rehacer</li>
+                    <li><strong>Enter</strong> — confirmar valor en celda</li>
+                    <li><strong>Esc</strong> — cancelar edición de celda</li>
+                    <li><strong>Ctrl + C / V</strong> — copiar / pegar</li>
+                  </ul>
+                </div>
+                <div class="help-split__block">
+                  <p class="help-text"><strong>Navegación general</strong></p>
+                  <ul class="help-list">
+                    <li><strong>/</strong> — enfocar búsqueda en esta página</li>
+                    <li><strong>Esc</strong> — cerrar paneles y modales</li>
+                  </ul>
+                  <p class="help-text mt-3"><strong>En la búsqueda global</strong></p>
+                  <ul class="help-list">
+                    <li>Escribe el nombre de cualquier sección para navegar rápido</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="help-note">
+                <b-icon :icon="ICONS.info" size="is-small" class="mr-1" />
+                <span>En Mac usa <strong>Cmd</strong> en lugar de Ctrl.</span>
+              </div>
+            </article>
+
+            <!-- Solución rápida -->
+            <article id="sec_solucion" class="help-card help-anchor">
+              <header class="help-card-header">
+                <div class="help-card-title-block">
+                  <b-icon :icon="ICONS.wrench" size="is-small" class="mr-2" />
+                  <h3>Solución rápida</h3>
+                </div>
+              </header>
+
+              <div class="help-fixes">
+                <div class="help-fix">
+                  <div class="help-fix__q">No se guardaron los cambios del inventario</div>
+                  <div class="help-fix__a">
+                    Revisa que hayas presionado <strong>Guardar cambios</strong>. Luego usa
+                    <strong>Recargar</strong> para confirmar que se aplicaron.
+                  </div>
+                </div>
+
+                <div class="help-fix">
+                  <div class="help-fix__q">No veo las notificaciones aunque hay pedidos</div>
+                  <div class="help-fix__a">
+                    Cierra y vuelve a abrir el panel de notificaciones. Si persiste, recarga la
+                    página. Las notificaciones llegan en tiempo real pero necesitas conexión activa.
+                  </div>
+                </div>
+
+                <div class="help-fix">
+                  <div class="help-fix__q">El pedido no aparece en el laboratorio</div>
+                  <div class="help-fix__a">
+                    En la vista de Laboratorio presiona <strong>Actualizar</strong>. Los pedidos
+                    aparecen en segundos tras ser creados en ventas.
+                  </div>
+                </div>
+
+                <div class="help-fix">
+                  <div class="help-fix__q">No puedo escanear / el código no funciona</div>
+                  <div class="help-fix__a">
+                    Verifica que el producto tenga código de barras asignado en el inventario.
+                    Si no tiene, el pedido no puede surtirse por ese método.
+                  </div>
+                </div>
+
+                <div class="help-fix">
+                  <div class="help-fix__q">El sistema me sacó de sesión solo</div>
+                  <div class="help-fix__a">
+                    La sesión dura 8 horas. Si cambiaste tu contraseña o un administrador cerró
+                    tu sesión remotamente, deberás iniciar sesión de nuevo.
+                  </div>
+                </div>
+
+                <div class="help-fix">
+                  <div class="help-fix__q">No veo cierta sección del menú</div>
+                  <div class="help-fix__a">
+                    Cada sección es visible según tu <strong>rol</strong>. Si necesitas acceso a
+                    algo, pide a un administrador que ajuste tu rol.
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <!-- FAQ -->
+            <article id="sec_faq" class="help-card help-anchor">
+              <header class="help-card-header">
+                <div class="help-card-title-block">
+                  <b-icon :icon="ICONS.faq" size="is-small" class="mr-2" />
+                  <h3>Preguntas frecuentes</h3>
+                </div>
+              </header>
+
+              <div class="help-faq-list">
+                <template v-for="sec in filteredSections" :key="sec.id">
+                  <div class="help-faq-section">
+                    <div class="help-faq-section__title">
+                      <b-icon :icon="sec.icon" size="is-small" class="mr-1" />
+                      <strong>{{ sec.title }}</strong>
+                      <span class="help-faq-section__count">{{ sec.items.length }}</span>
+                    </div>
+
+                    <b-collapse v-for="qa in sec.items" :key="qa.id" class="help-faq-item" animation="fade"
+                      :open="openMap[qa.id] ?? qa.openByDefault">
+                      <template #trigger="{ open }">
+                        <div class="help-faq-trigger">
+                          <span>{{ qa.q }}</span>
+                          <b-icon :icon="open ? ICONS.chevUp : ICONS.chevDown" size="is-small" />
+                        </div>
+                      </template>
+                      <div class="help-faq-body">
+                        <p v-for="(p, idx) in qa.a" :key="idx">{{ p }}</p>
+                        <div v-if="qa.tags?.length" class="help-tags">
+                          <span v-for="t in qa.tags" :key="t" class="help-tag">#{{ t }}</span>
+                        </div>
+                      </div>
+                    </b-collapse>
+                  </div>
+                </template>
+
+                <p v-if="!hasAnyResults" class="help-no-results has-text-grey is-size-7">
+                  No encontré resultados para <strong>"{{ search }}"</strong>.
+                  Prueba: "guardar", "pedido", "notificación", "contraseña", "sesión".
+                </p>
+              </div>
+            </article>
+
+            <!-- Soporte -->
+            <article id="sec_soporte" class="help-card help-card--support help-anchor">
+              <header class="help-card-header">
+                <div class="help-card-title-block">
+                  <b-icon :icon="ICONS.support" size="is-small" class="mr-2" />
+                  <h3>Soporte</h3>
+                </div>
+              </header>
+
+              <p class="help-text">
+                Si algo no funciona como se describe aquí, escríbenos. Para ayudarte más rápido incluye:
+              </p>
+
+              <ul class="help-list">
+                <li>Qué estabas haciendo (pasos cortos: "entré a ventas, elegí una planilla, presioné Enviar y...").
+                </li>
+                <li>Nombre del pedido, folio o planilla (si aplica).</li>
+                <li>Una captura de pantalla del error (si puedes).</li>
+                <li>Hora aproximada en que ocurrió.</li>
+              </ul>
+
+              <div class="help-contact">
+                <div class="help-contact__chip">
+                  <b-icon :icon="ICONS.mail" size="is-small" class="mr-1" />
+                  <span>Correo de soporte</span>
+                </div>
+                <p class="help-contact__email">soporte.rsbo@icloud.com</p>
+              </div>
+            </article>
+
+          </div>
+        </template>
+
+      </DynamicTabs>
     </section>
   </div>
 </template>
-
-
 
 <script setup>
 import { computed, ref, watch, nextTick, onMounted, onBeforeUnmount } from "vue";

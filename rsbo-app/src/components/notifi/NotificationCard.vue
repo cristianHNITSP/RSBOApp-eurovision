@@ -106,6 +106,25 @@ function selectAxis(notifId, axis) {
   selectedAxisMap.value[notifId] = axis;
 }
 
+const REASONS_MAP = {
+  defecto_fabricacion:    'Defecto de fabricación',
+  error_prescripcion:     'Error en prescripción',
+  insatisfaccion_cliente: 'Insatisfacción del cliente',
+  dano_transporte:        'Daño en transporte',
+  lente_roto:             'Lente roto',
+  pedido_incorrecto:      'Pedido incorrecto',
+  garantia:               'Garantía',
+  otro:                   'Otro',
+};
+
+function formatReason(r) {
+  return REASONS_MAP[r] || r || '—';
+}
+
+function condLabel(c) {
+  return { bueno: 'Bueno', danado: 'Dañado', defectuoso: 'Defectuoso' }[c] || c;
+}
+
 function toggleExpand() {
   isExpanded.value = !isExpanded.value;
 }
@@ -343,23 +362,54 @@ function closeMobileMenu() {
               <span class="detail-header__label">Pendientes de revisión</span>
               <span class="level-badge level-badge--bajo">{{ notif.metadata.devolutions.length }} activas</span>
             </div>
-            <ul class="order-list">
-              <li v-for="dev in notif.metadata.devolutions" :key="dev.id" class="order-item">
-                <div class="order-item__head" style="justify-content: space-between;">
-                  <div>
+            <ul class="dev-grid-list">
+              <li v-for="dev in notif.metadata.devolutions" :key="dev.id" class="dev-grid-item">
+                
+                <!-- Info (Columna 1) -->
+                <div class="dev-grid-info">
+                  <div class="dev-grid-row">
                     <span class="order-folio">{{ dev.folio }}</span>
+                    <span v-if="dev.type" class="dev-type-tag" :class="`type-${dev.type}`">
+                      {{ dev.type === 'lab' ? 'Laboratorio' : 'Venta Directa' }}
+                    </span>
+                  </div>
+                  <div class="dev-grid-row">
                     <span class="order-client">{{ dev.cliente }}</span>
                   </div>
-                  <div class="buttons are-small">
-                    <b-button type="is-success is-light" icon-left="check" @click.stop="handleDevAction(dev.id, dev.folio, 'approve')">
-                      Aprobar
-                    </b-button>
-                    <b-button type="is-danger is-light" icon-left="times" @click.stop="handleDevAction(dev.id, dev.folio, 'reject')">
-                      Rechazar
-                    </b-button>
+                  <div class="dev-grid-row">
+                    <span class="dev-reason-text">
+                      {{ formatReason(dev.reason) }} · <b>{{ dev.itemsCount }} producto(s)</b>
+                    </span>
+                  </div>
+                  
+                  <!-- Items Detalle (si existen) -->
+                  <div v-if="dev.items?.length" class="dev-grid-items mt-1">
+                    <span v-for="(it, i) in dev.items.slice(0, 3)" :key="i" class="dev-item-chip">
+                      <span class="dic-cb">{{ it.codebar || it.sku || '—' }}</span>
+                      <span class="dic-qty">×{{ it.qty }}</span>
+                      <span class="dic-cond" :class="`cond-${it.condition}`">{{ condLabel(it.condition) }}</span>
+                    </span>
+                    <span v-if="dev.items.length > 3" class="dev-item-more">+{{ dev.items.length - 3 }}</span>
+                  </div>
+
+                  <div class="dev-grid-row dev-requester-meta">
+                    <b-icon pack="fas" icon="user-edit" size="is-small" />
+                    <span>Solicitado por: <b>{{ dev.createdBy?.name || dev.createdBy || dev.requestedBy || dev.username || 'Usuario' }}</b></span>
                   </div>
                 </div>
-                <p class="notif-message-note">{{ dev.reason }} · {{ dev.itemsCount }} ítem(s)</p>
+
+                <!-- Acciones (Columna 2) -->
+                <div class="dev-grid-actions">
+                  <b-button type="is-success is-light" size="is-small" icon-left="check" 
+                    @click.stop="handleDevAction(dev.id, dev.folio, 'approve')">
+                    Aprobar
+                  </b-button>
+                  <b-button type="is-danger is-light" size="is-small" icon-left="times" 
+                    @click.stop="handleDevAction(dev.id, dev.folio, 'reject')">
+                    Rechazar
+                  </b-button>
+                </div>
+
               </li>
             </ul>
           </template>

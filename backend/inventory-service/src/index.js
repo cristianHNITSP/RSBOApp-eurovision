@@ -143,6 +143,9 @@ app.use("/api/devolutions", devolutionsRoutes);
 const mermaRoutes = require("./routes/merma.routes");
 app.use("/api/mermas", mermaRoutes);
 
+const cashClosureRoutes = require("./routes/cash-closure.routes");
+app.use("/api/inventory/cash-closures", cashClosureRoutes);
+
 // Se movió a /api/inventory/transactions para consistencia global
 
 // si tu API usa prefijo /api:

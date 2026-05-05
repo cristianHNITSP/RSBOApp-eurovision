@@ -93,16 +93,37 @@ function getCookie(name) {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
+// Umbral en segundos: si la sesión va a expirar en < 10 min y el usuario hace
+// una mutación, lanzamos una renovación silenciosa antes de continuar.
+const PROACTIVE_RENEW_THRESHOLD_SECONDS = 10 * 60;
+
 api.interceptors.request.use((config) => {
   config.headers = config.headers || {};
   config.headers["X-Request-Id"] = config.headers["X-Request-Id"] || genReqId();
 
-  // Adjuntar CSRF token en requests mutantes (POST/PUT/PATCH/DELETE)
   const method = (config.method || "get").toUpperCase();
+  const url    = config.url || "";
+
+  // Adjuntar CSRF token en requests mutantes (POST/PUT/PATCH/DELETE)
   if (["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
     const csrfToken = getCookie("csrf_token");
     if (csrfToken) {
       config.headers["X-CSRF-Token"] = csrfToken;
+    }
+
+    // Renovación proactiva: cualquier mutación dispara refresh si la sesión
+    // está cerca de expirar. No bloqueamos la request (fire-and-forget).
+    if (!/^\/access\//.test(url)) {
+      try {
+        // import dinámico para evitar ciclo (axios ↔ useSessionWatcher)
+        import("@/composables/auth/useSessionWatcher").then(({ useSessionWatcher }) => {
+          const w = useSessionWatcher();
+          const remaining = w.secondsRemaining.value;
+          if (Number.isFinite(remaining) && remaining > 0 && remaining < PROACTIVE_RENEW_THRESHOLD_SECONDS) {
+            w.refresh();
+          }
+        }).catch(() => { /* noop */ });
+      } catch { /* noop */ }
     }
   }
 
@@ -153,9 +174,11 @@ api.interceptors.response.use(
 );
 
 // -------------------------
-// Dedupe de requests iguales
+// Dedupe de requests iguales + Cache TTL
 // -------------------------
 const pendingRequests = new Map();
+const responseCache   = new Map(); // { key: { data, expiresAt } }
+const CACHE_TTL_MS    = 4000;      // 4 segundos de gracia para evitar spam
 
 function stableStringify(obj) {
   if (!obj) return "";
@@ -175,22 +198,52 @@ function makeKey(config) {
 }
 
 /**
- * Envía la solicitud solo si no hay una idéntica en curso
+ * Envía la solicitud con deduplicación y caché temporal
  * @param {object} config - Configuración Axios
  */
 export async function sendRequest(config) {
+  const method = (config.method || "get").toLowerCase();
   const key = makeKey(config);
 
+  // 1. Si es GET y está en caché vigente, devolverlo
+  if (method === "get") {
+    const cached = responseCache.get(key);
+    if (cached && Date.now() < cached.expiresAt) {
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.log(`[HTTP][Cache] ${config.url} (hit)`);
+      }
+      return cached.promise;
+    }
+  }
+
+  // 2. Si ya hay una idéntica en vuelo, devolver la promesa existente
   if (pendingRequests.has(key)) {
     return pendingRequests.get(key);
   }
 
-  const request = api(config).finally(() => {
-    pendingRequests.delete(key);
-  });
+  // 3. Lanzar la petición
+  const requestPromise = api(config);
+  
+  // Guardar en pendientes
+  pendingRequests.set(key, requestPromise);
 
-  pendingRequests.set(key, request);
-  return request;
+  const finalPromise = requestPromise
+    .then((res) => {
+      // Si fue exitosa y es GET, guardamos en caché por unos segundos
+      if (method === "get") {
+        responseCache.set(key, {
+          promise: Promise.resolve(res),
+          expiresAt: Date.now() + CACHE_TTL_MS,
+        });
+      }
+      return res;
+    })
+    .finally(() => {
+      pendingRequests.delete(key);
+    });
+
+  return finalPromise;
 }
 
 export { api as apiClient };

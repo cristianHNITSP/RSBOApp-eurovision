@@ -15,7 +15,7 @@ app.set("trust proxy", 1);
 // ── Rate Limiter simple (in-memory, sin dependencia externa) ──────────────
 const rateLimitStore = new Map();
 const RATE_LIMIT_WINDOW = 60 * 1000;      // 1 minuto
-const RATE_LIMIT_MAX     = 120;            // máx requests por ventana
+const RATE_LIMIT_MAX     = 500;            // máx requests por ventana
 const RATE_LIMIT_LOGIN   = 8;             // máx intentos de login por ventana
 
 function rateLimit(max = RATE_LIMIT_MAX) {

@@ -37,6 +37,7 @@
           >
             Actualizar datos
           </b-button>
+          <slot name="actions" />
         </div>
         <div class="ventas-hero__status-line mt-3">
           <span v-if="loading" class="ventas-hero__status ventas-hero__status--loading">

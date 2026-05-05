@@ -5,6 +5,7 @@
  * @module services/notification.service
  */
 
+const mongoose = require('mongoose');
 const Notification = require('../models/Notification');
 
 /**
@@ -35,26 +36,48 @@ function baseFilter(roleName) {
  * Excluye las descartadas por el usuario y añade isPinned/isRead por usuario.
  */
 async function listForUser({ roleName, userId, limit = 50, skip = 0 }) {
+  console.log(`[NOTIF-DEBUG] listForUser: role=${roleName}, userId=${userId}`);
+  const userOid = new mongoose.Types.ObjectId(userId);
   const filter = {
     $and: [
       visibilityFilter(roleName),
       notExpired(),
-      { dismissedBy: { $nin: [userId] } },
+      { dismissedBy: { $nin: [userOid] } },
     ],
   };
 
+  const skipVal  = Math.max(0, parseInt(skip || "0"));
+  const limitVal = Math.max(1, parseInt(limit || "50"));
+
   const [notifications, total] = await Promise.all([
-    Notification.find(filter)
-      .sort({ priority: -1, createdAt: -1 })
-      .skip(Number(skip))
-      .limit(Number(limit))
-      .lean(),
+    Notification.aggregate([
+      { $match: filter },
+      {
+        $addFields: {
+          priorityWeight: {
+            $switch: {
+              branches: [
+                { case: { $eq: ["$priority", "critical"] }, then: 4 },
+                { case: { $eq: ["$priority", "high"] },     then: 3 },
+                { case: { $eq: ["$priority", "medium"] },   then: 2 },
+                { case: { $eq: ["$priority", "low"] },      then: 1 }
+              ],
+              default: 0
+            }
+          }
+        }
+      },
+      { $sort: { priorityWeight: -1, createdAt: -1 } },
+      { $skip: skipVal },
+      { $limit: limitVal }
+    ]),
     Notification.countDocuments(filter),
   ]);
 
   const userStr = String(userId);
   const result = notifications.map((n) => ({
     ...n,
+    _id: String(n._id), // Asegurar que el ID sea string tras agregación
     isPinned: (n.pinnedBy || []).some((id) => String(id) === userStr),
   }));
 
@@ -66,11 +89,12 @@ async function listForUser({ roleName, userId, limit = 50, skip = 0 }) {
  * Sirve para el badge de "nuevas" notificaciones.
  */
 async function countNew({ roleName, userId, since }) {
+  const userOid = new mongoose.Types.ObjectId(userId);
   const filter = {
     $and: [
       visibilityFilter(roleName),
       notExpired(),
-      { dismissedBy: { $nin: [userId] } },
+      { dismissedBy: { $nin: [userOid] } },
     ],
   };
   
@@ -228,6 +252,7 @@ async function upsertDaily({ groupKey, date, title, message, metadata, type, pri
     // No incrementamos count automáticamente si es una notificación de estado agrupada
     // a menos que el llamador lo pida explícitamente (ej. nuevas alertas)
     existing.count    = 1; 
+    existing.dismissedBy = []; // Reset dismissed so it pops up again for everyone
     if (type)     existing.type     = type;
     
     // Solo escalar prioridad hacia arriba si tiene pins activos

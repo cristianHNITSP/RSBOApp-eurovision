@@ -11,6 +11,7 @@ export const VENTAS_TABS = [
   { key: 'optica',          label: 'Óptica',         icon: 'eye' },
   { key: 'lentes-contacto', label: 'Lentes Contacto',icon: 'circle' },
   { key: 'historial',       label: 'Historial',      icon: 'history' },
+  { key: 'cortes',          label: 'Cortes',         icon: 'cash-register' },
 ];
 
 export function useVentasDashboard(getUser) {

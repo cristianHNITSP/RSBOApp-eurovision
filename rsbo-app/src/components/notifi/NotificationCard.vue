@@ -1,11 +1,9 @@
 <script setup>
 import { ref, computed } from 'vue';
+import { updateDevolutionStatus } from "@/services/devolutions.js";
+import { labToast } from "@/composables/shared/useLabToast.js";
 
 const props = defineProps({
-  notif: {
-    type: Object,
-    required: true
-  },
   notif: {
     type: Object,
     required: true
@@ -58,9 +56,29 @@ const hasDetail = computed(() => {
     props.notif.metadata.type === 'stock_alert' ||
     props.notif.metadata.type === 'pending_orders' ||
     props.notif.metadata.type === 'new_order' ||
-    props.notif.metadata.type === 'correction'
+    props.notif.metadata.type === 'correction' ||
+    props.notif.metadata.type === 'dev_approval'
   ));
 });
+
+async function handleDevAction(devId, folio, action) {
+  try {
+    const status = action === 'approve' ? 'aprobada' : 'rechazada';
+    await updateDevolutionStatus(devId, status, `Acción rápida desde notificación`);
+    labToast.success(`Devolución ${folio} ${action === 'approve' ? 'aprobada' : 'rechazada'}`);
+    
+    // Remove the devolution from the local list if possible, or just let the next refresh handle it.
+    // For now, we'll just show the success toast.
+    if (props.notif.metadata?.devolutions) {
+      props.notif.metadata.devolutions = props.notif.metadata.devolutions.filter(d => d.id !== devId);
+      if (props.notif.metadata.devolutions.length === 0) {
+        emit('dismiss', props.notif);
+      }
+    }
+  } catch (e) {
+    labToast.danger(e?.response?.data?.error || "Error al procesar acción");
+  }
+}
 
 function hasAxisData(notif) {
   const cells = notif.metadata?.cells || [];
@@ -86,6 +104,25 @@ function getCurrentAlerts(notif) {
 
 function selectAxis(notifId, axis) {
   selectedAxisMap.value[notifId] = axis;
+}
+
+const REASONS_MAP = {
+  defecto_fabricacion:    'Defecto de fabricación',
+  error_prescripcion:     'Error en prescripción',
+  insatisfaccion_cliente: 'Insatisfacción del cliente',
+  dano_transporte:        'Daño en transporte',
+  lente_roto:             'Lente roto',
+  pedido_incorrecto:      'Pedido incorrecto',
+  garantia:               'Garantía',
+  otro:                   'Otro',
+};
+
+function formatReason(r) {
+  return REASONS_MAP[r] || r || '—';
+}
+
+function condLabel(c) {
+  return { bueno: 'Bueno', danado: 'Dañado', defectuoso: 'Defectuoso' }[c] || c;
 }
 
 function toggleExpand() {
@@ -317,6 +354,64 @@ function closeMobileMenu() {
                 <b-icon pack="fas" icon="user" size="is-small" />{{ notif.metadata.actor }}
               </span>
             </div>
+          </template>
+          
+          <!-- DETALLE: Devoluciones pendientes agrupadas -->
+          <template v-else-if="notif.metadata.type === 'dev_approval'">
+            <div class="detail-header">
+              <span class="detail-header__label">Pendientes de revisión</span>
+              <span class="level-badge level-badge--bajo">{{ notif.metadata.devolutions.length }} activas</span>
+            </div>
+            <ul class="dev-grid-list">
+              <li v-for="dev in notif.metadata.devolutions" :key="dev.id" class="dev-grid-item">
+                
+                <!-- Info (Columna 1) -->
+                <div class="dev-grid-info">
+                  <div class="dev-grid-row">
+                    <span class="order-folio">{{ dev.folio }}</span>
+                    <span v-if="dev.type" class="dev-type-tag" :class="`type-${dev.type}`">
+                      {{ dev.type === 'lab' ? 'Laboratorio' : 'Venta Directa' }}
+                    </span>
+                  </div>
+                  <div class="dev-grid-row">
+                    <span class="order-client">{{ dev.cliente }}</span>
+                  </div>
+                  <div class="dev-grid-row">
+                    <span class="dev-reason-text">
+                      {{ formatReason(dev.reason) }} · <b>{{ dev.itemsCount }} producto(s)</b>
+                    </span>
+                  </div>
+                  
+                  <!-- Items Detalle (si existen) -->
+                  <div v-if="dev.items?.length" class="dev-grid-items mt-1">
+                    <span v-for="(it, i) in dev.items.slice(0, 3)" :key="i" class="dev-item-chip">
+                      <span class="dic-cb">{{ it.codebar || it.sku || '—' }}</span>
+                      <span class="dic-qty">×{{ it.qty }}</span>
+                      <span class="dic-cond" :class="`cond-${it.condition}`">{{ condLabel(it.condition) }}</span>
+                    </span>
+                    <span v-if="dev.items.length > 3" class="dev-item-more">+{{ dev.items.length - 3 }}</span>
+                  </div>
+
+                  <div class="dev-grid-row dev-requester-meta">
+                    <b-icon pack="fas" icon="user-edit" size="is-small" />
+                    <span>Solicitado por: <b>{{ dev.createdBy?.name || dev.createdBy || dev.requestedBy || dev.username || 'Usuario' }}</b></span>
+                  </div>
+                </div>
+
+                <!-- Acciones (Columna 2) -->
+                <div class="dev-grid-actions">
+                  <b-button type="is-success is-light" size="is-small" icon-left="check" 
+                    @click.stop="handleDevAction(dev.id, dev.folio, 'approve')">
+                    Aprobar
+                  </b-button>
+                  <b-button type="is-danger is-light" size="is-small" icon-left="times" 
+                    @click.stop="handleDevAction(dev.id, dev.folio, 'reject')">
+                    Rechazar
+                  </b-button>
+                </div>
+
+              </li>
+            </ul>
           </template>
 
         </div>

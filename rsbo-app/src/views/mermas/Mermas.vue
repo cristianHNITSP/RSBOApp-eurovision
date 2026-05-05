@@ -41,6 +41,7 @@
           <option :value="null">Todos</option>
           <option value="LAB">Laboratorio</option>
           <option value="VENTAS">Ventas</option>
+          <option value="DEVOLUCION">Devolución</option>
           <option value="INVENTARIO">Inventario</option>
         </b-select>
       </b-field>

@@ -239,7 +239,7 @@ export function useLabMutations({ getUser, sheets, items, orders, events, notify
       correction.message = "";
       await events.loadEvents();
       notify("Solicitud de corrección enviada.", "is-info");
-      createGroupedNotification({ groupKey: "pending_corrections", title: "Correcciones pendientes", type: "danger", targetRoles: ["supervisor"] }).catch(() => {});
+
     } catch (e) {
       const n = normalizeAck(e, { errorFallback: "No se pudo enviar la corrección." });
       notify(n?.message, "is-danger", 5000);

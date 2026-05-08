@@ -1,101 +1,138 @@
 <template>
-  <div class="dashboard-home-view">
-    <DashboardHero
-      :environmentLabel="environmentLabel"
+  <div class="db-root">
+    <!-- ══ HERO HEADER ══ -->
+    <DashboardHero 
+      :user="user" 
+      :role="role"
+      :roleLabel="roleLabel"
+      :roleIconClass="roleIconClass"
       :roleBannerStyle="roleBannerStyle"
       :rolePillStyle="rolePillStyle"
-      :roleIconClass="roleIconClass"
-      :roleLabel="roleLabel"
-      :lastSyncLabel="lastSyncLabel"
-      :user="user"
+      :environmentLabel="environmentLabel"
+      :isLoading="isLoading"
       :stats="s"
-      :loading="isLoading"
       :canSeeInventory="canSeeInventory"
       :canSeeOrders="canSeeOrders"
       :canSeeDevolutions="canSeeDevolutions"
     />
 
-    <DashboardKpiGrid
+    <!-- ══ KPI STRIP ══ -->
+    <DashboardKpiGrid 
       :visibleKpis="visibleKpis"
       :isLoading="isLoading"
     />
 
-    <section class="db-main" >
-      <DynamicTabs v-model="dashTab" :tabs="DASH_TABS">
-        <template #resumen>
-          <DashboardTabResumen
-            :canSeeInventory="canSeeInventory"
-            :criticalAlerts="criticalAlerts"
-            :isLoading="isLoading"
-            :s="s"
-            :safeStockPercent="safeStockPercent"
-            :lastSyncLabel="lastSyncLabel"
-            :formatNumber="formatNumber"
-            :isVentas="isVentas"
-            :canSeeReports="canSeeReports"
-            :serviceLevelClass="serviceLevelClass"
-            :serviceLevelStatus="serviceLevelStatus"
-            :serviceLevelTagType="serviceLevelTagType"
-            :isSupervisor="isSupervisor"
-          />
-        </template>
-        <template #operaciones>
-          <DashboardTabOperaciones
-            :canSeeOrders="canSeeOrders"
-            :isLoading="isLoading"
-            :s="s"
-            :canSeeLab="canSeeLab"
-            :isLab="isLab"
-          />
-        </template>
-        <template #devoluciones>
-          <DashboardTabDevoluciones
-            :canManageDevolutions="canManageDevolutions"
-            :isLoading="isLoading"
-            :s="s"
-            :loadingDevols="loadingDevols"
-            :pendingDevols="pendingDevols"
-            :DEVOL_REASON_LABELS="DEVOL_REASON_LABELS"
-            :fmtTimeAgo="fmtTimeAgo"
-            :quickDevAction="quickDevAction"
-            :loadingLogs="loadingLogs"
-            :correctionLogs="correctionLogs"
-          />
-        </template>
-        <template #optica>
-          <DashboardTabOptica
-            :optica="optica"
-            :stats="opticaStats"
-            :isLoading="optica.loading"
-          />
-        </template>
-        <template #supervision>
-          <DashboardTabSupervision
-            :isLoading="isLoading"
-            :s="s"
-          />
-        </template>
-      </DynamicTabs>
+    <section class="db-main">
+      <div class="db-tabs-wrapper">
+        <DynamicTabs v-model="dashTab" :tabs="DASH_TABS">
+          <template #resumen>
+            <DashboardTabResumen
+              :canSeeInventory="canSeeInventory"
+              :criticalAlertsOptic="criticalAlertsOptic"
+              :criticalAlertsCL="criticalAlertsCL"
+              :isLoading="isLoading"
+              :s="s"
+              :safeStockPercent="safeStockPercent"
+              :lastSyncLabel="lastSyncLabel"
+              :formatNumber="formatNumber"
+              :isVentas="isVentas"
+              :canSeeReports="canSeeReports"
+              :serviceLevelClass="serviceLevelClass"
+              :serviceLevelStatus="serviceLevelStatus"
+              :serviceLevelTagType="serviceLevelTagType"
+              :isSupervisor="isSupervisor"
+            />
+          </template>
+          <template #movimientos>
+            <DashboardTabMovimientos />
+          </template>
+          <template #mi-desempeno>
+            <TabVentasMyPerformance :isHighRole="isSupervisor || isRoot" :canSeeRevenue="isSupervisor || isRoot" />
+          </template>
+          <template #mi-actividad>
+            <TabLabMyActivity />
+          </template>
+          <template #operaciones>
+            <DashboardTabOperaciones
+              :canSeeOrders="canSeeOrders"
+              :isLoading="isLoading"
+              :s="s"
+              :canSeeLab="canSeeLab"
+              :isLab="isLab"
+            />
+          </template>
+          <template #devoluciones>
+            <DashboardTabDevoluciones
+              :canManageDevolutions="canManageDevolutions"
+              :isLoading="isLoading"
+              :s="s"
+              :loadingDevols="loadingDevols"
+              :pendingDevols="pendingDevols"
+              :DEVOL_REASON_LABELS="DEVOL_REASON_LABELS"
+              :fmtTimeAgo="fmtTimeAgo"
+              :quickDevAction="quickDevAction"
+              :loadingLogs="loadingLogs"
+              :correctionLogs="correctionLogs"
+            />
+          </template>
+          <template #optica>
+            <DashboardTabOptica
+              :optica="optica"
+              :stats="opticaStats"
+              :isLoading="optica.loading"
+            />
+          </template>
+          <template #supervision>
+            <DashboardTabSupervision
+              :isLoading="isLoading"
+              :s="s"
+            />
+          </template>
+        </DynamicTabs>
+
+        <!-- Overlay de carga inicial / Estado vacío -->
+        <transition name="fade" mode="out-in">
+          <div v-if="isLoading && !s" key="loading" class="db-tab-loading-overlay">
+            <div class="db-loader-spinner"></div>
+            <p>Sincronizando tablero...</p>
+          </div>
+
+          <div v-else-if="!isLoading && !s" key="empty" class="db-empty-state">
+            <div class="empty py-6">
+              <div class="empty__icon"><i class="fas fa-database"></i></div>
+              <div class="empty__title">Sin datos disponibles</div>
+              <div class="empty__text">No se pudo recuperar la información del tablero. Intenta recargar la página.</div>
+              <button class="button is-primary is-light mt-4" @click="loadStats(true)">
+                <i class="fas fa-sync-alt mr-2"></i> Reintentar
+              </button>
+            </div>
+          </div>
+        </transition>
+      </div>
     </section>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onActivated, toRef, reactive, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onActivated, toRef, reactive, onUnmounted, watch } from 'vue'
 import DynamicTabs from '@/components/DynamicTabs.vue'
 import DashboardHero from '@/components/dashboard/DashboardHero.vue'
 import DashboardTabOptica from '@/components/dashboard/DashboardTabOptica.vue'
 import DashboardKpiGrid from '@/components/dashboard/DashboardKpiGrid.vue'
 import DashboardTabResumen from '@/components/dashboard/DashboardTabResumen.vue'
+import DashboardTabMovimientos from '@/components/dashboard/DashboardTabMovimientos.vue'
 import DashboardTabOperaciones from '@/components/dashboard/DashboardTabOperaciones.vue'
 import DashboardTabDevoluciones from '@/components/dashboard/DashboardTabDevoluciones.vue'
 import DashboardTabSupervision from '@/components/dashboard/DashboardTabSupervision.vue'
+import TabVentasMyPerformance from '@/components/dashboard/role-tabs/TabVentasMyPerformance.vue'
+import TabLabMyActivity from '@/components/dashboard/role-tabs/TabLabMyActivity.vue'
 
 import { useDashboardStats } from '@/composables/api/useDashboardStats'
 import { armazonesService, solucionesService, accesoriosService, estuchesService, equiposService } from '@/services/optica'
 import { fetchDevolutions, updateDevolutionStatus } from '@/services/devolutions'
 import { listEvents } from '@/services/laboratorio'
 import { useLabToast } from '@/composables/shared/useLabToast'
+import { useOpticaStats } from '@/composables/api/useOpticaStats'
 
 import './DashboardHome.css'
 
@@ -107,21 +144,32 @@ const userRef = toRef(props, 'user')
 const {
   stats, loading: statsLoading, load: loadStats,
   role, canSeeInventory, canSeeOrders, canSeeReports,
-  canSeeLab,
+  canSeeLab, canSeeMovements,
   canSeeDevolutions, canManageDevolutions,
   isRoot, isLab, isVentas, isSupervisor,
 } = useDashboardStats(userRef)
 
+const {
+  opticaSummary, loading: opticaStatsLoading, load: loadOpticaStats
+} = useOpticaStats()
+
+const isEurovision = computed(() => role.value === 'eurovision')
+const isLaboratorio = computed(() => role.value === 'laboratorio')
+
 const s         = computed(() => stats.value)
-const isLoading = computed(() => props.loading || statsLoading.value)
+const os        = computed(() => opticaSummary.value)
+const isLoading = computed(() => props.loading || statsLoading.value || opticaStatsLoading.value)
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 const dashTab = ref('resumen')
 const DASH_TABS = computed(() => {
   const tabs = [
     { key: 'resumen',      label: 'Resumen',       icon: 'chart-pie' },
-    { key: 'operaciones',  label: 'Operaciones',   icon: 'flask-vial' },
   ]
+  if (canSeeMovements.value) tabs.push({ key: 'movimientos', label: 'Movimientos', icon: 'arrow-trend-up' })
+  if (isVentas.value || isEurovision.value) tabs.push({ key: 'mi-desempeno', label: 'Mi Desempeño', icon: 'user-chart' })
+  if (isLaboratorio.value) tabs.push({ key: 'mi-actividad', label: 'Mi Actividad', icon: 'microscope' })
+  tabs.push({ key: 'operaciones',  label: 'Operaciones',   icon: 'flask-vial' })
   if (canSeeDevolutions.value) tabs.push({ key: 'devoluciones', label: 'Devoluciones', icon: 'rotate-left', badge: (s.value?.devolucionesPendientes || 0) + (s.value?.devolucionesEnRevision || 0), badgeType: 'warning' })
   if (canSeeInventory.value)   tabs.push({ key: 'optica',       label: 'Optica',        icon: 'glasses' })
   if (isSupervisor.value || isRoot.value) tabs.push({ key: 'supervision', label: 'Supervision', icon: 'eye' })
@@ -184,13 +232,23 @@ function onLabWs(e) {
   if (relevantTypes.includes(type)) {
     debouncedRefresh()
   }
+  if (type === 'INV_CHANGE') {
+    loadOpticaStats(true)
+  }
 }
+
+// ── Carga de datos ───────────────────────────────────────────────────────────
+watch(canSeeInventory, (can) => {
+  if (can) {
+    loadOpticaStats()
+    loadOptica()
+  }
+}, { immediate: true })
 
 onMounted(() => { 
   loadStats(); 
   loadPendingDevols(); 
   loadCorrectionLogs(); 
-  if (canSeeInventory.value) loadOptica();
   window.addEventListener('lab:ws', onLabWs);
 })
 
@@ -198,7 +256,10 @@ onActivated(() => {
   loadStats(); 
   loadPendingDevols(); 
   loadCorrectionLogs(); 
-  if (canSeeInventory.value) loadOptica();
+  if (canSeeInventory.value) {
+    loadOpticaStats();
+    loadOptica();
+  }
 })
 
 onUnmounted(() => {
@@ -216,11 +277,11 @@ const environmentLabel = computed(() => {
 })
 // ── Rol meta ──────────────────────────────────────────────────────────────────
 const ROLE_META = {
-  root:        { label:'Administrador del sistema',   icon:'fas fa-crown',         ring:'#dc2626', banner:'linear-gradient(90deg,#dc2626,#ea580c)', pill:{ background:'rgba(220,38,38,.15)',color:'#dc2626',border:'1px solid rgba(220,38,38,.3)' } },
-  eurovision:  { label:'Encargado Eurovisión',        icon:'fas fa-star',           ring:'#906fe1', banner:'linear-gradient(90deg,#906fe1,#2563eb)', pill:{ background:'rgba(144,111,225,.15)',color:'#906fe1',border:'1px solid rgba(144,111,225,.3)' } },
-  supervisor:  { label:'Supervisor de operaciones',   icon:'fas fa-eye',            ring:'#0891b2', banner:'linear-gradient(90deg,#0891b2,#0d9488)', pill:{ background:'rgba(8,145,178,.15)', color:'#0891b2',border:'1px solid rgba(8,145,178,.3)' } },
-  ventas:      { label:'Personal de ventas',          icon:'fas fa-cart-shopping',  ring:'#16a34a', banner:'linear-gradient(90deg,#16a34a,#65a30d)', pill:{ background:'rgba(22,163,74,.15)', color:'#16a34a',border:'1px solid rgba(22,163,74,.3)' } },
-  laboratorio: { label:'Técnico de laboratorio',      icon:'fas fa-microscope',     ring:'#0284c7', banner:'linear-gradient(90deg,#0284c7,#906fe1)', pill:{ background:'rgba(2,132,199,.15)', color:'#0284c7',border:'1px solid rgba(2,132,199,.3)' } },
+  root:        { label:'Administrador del sistema',   icon:'fas fa-crown',         ring:'#dc2626', banner:'linear-gradient(90deg, #dc2626, #ea580c)', pill:{ background:'rgba(220,38,38,.15)',color:'#dc2626',border:'1px solid rgba(220,38,38,.3)' } },
+  eurovision:  { label:'Encargado Eurovisión',        icon:'fas fa-star',           ring:'#906fe1', banner:'linear-gradient(90deg, #906fe1, #2563eb)', pill:{ background:'rgba(144,111,225,.15)',color:'#906fe1',border:'1px solid rgba(144,111,225,.3)' } },
+  supervisor:  { label:'Supervisor de operaciones',   icon:'fas fa-eye',            ring:'#0891b2', banner:'linear-gradient(90deg, #0891b2, #0d9488)', pill:{ background:'rgba(8,145,178,.15)', color:'#0891b2',border:'1px solid rgba(8,145,178,.3)' } },
+  ventas:      { label:'Personal de ventas',          icon:'fas fa-cart-shopping',  ring:'#16a34a', banner:'linear-gradient(90deg, #16a34a, #65a30d)', pill:{ background:'rgba(22,163,74,.15)', color:'#16a34a',border:'1px solid rgba(22,163,74,.3)' } },
+  laboratorio: { label:'Técnico de laboratorio',      icon:'fas fa-microscope',     ring:'#0284c7', banner:'linear-gradient(90deg, #0284c7, #906fe1)', pill:{ background:'rgba(2,132,199,.15)', color:'#0284c7',border:'1px solid rgba(2,132,199,.3)' } },
 }
 const meta           = computed(() => ROLE_META[role.value] || ROLE_META.eurovision)
 const roleLabel      = computed(() => meta.value.label)
@@ -229,14 +290,24 @@ const roleBannerStyle = computed(() => ({ background: meta.value.banner }))
 const rolePillStyle  = computed(() => meta.value.pill)
 
 // ── Nivel de servicio ─────────────────────────────────────────────────────────
-const serviceLevelStatus = computed(() => { const sl = s.value?.serviceLevel || 0; return sl >= 97 ? 'Excelente' : sl >= 90 ? 'Bueno' : sl >= 80 ? 'Aceptable' : 'A mejorar' })
-const serviceLevelTagType = computed(() => { const sl = s.value?.serviceLevel || 0; return sl >= 97 ? 'is-success' : sl >= 90 ? 'is-info' : sl >= 80 ? 'is-warning' : 'is-danger' })
-const serviceLevelClass  = computed(() => { const sl = s.value?.serviceLevel || 0; return sl >= 97 ? 'excellent' : sl >= 90 ? 'good' : sl >= 80 ? 'ok' : 'poor' })
+const serviceLevelStatus = computed(() => { 
+  const sl = s.value?.serviceLevel || 0; 
+  return sl >= 97 ? 'Excelente' : sl >= 90 ? 'Bueno' : sl >= 80 ? 'Aceptable' : 'A mejorar' 
+})
+const serviceLevelTagType = computed(() => { 
+  const sl = s.value?.serviceLevel || 0; 
+  return sl >= 97 ? 'is-success' : sl >= 90 ? 'is-info' : sl >= 80 ? 'is-warning' : 'is-danger' 
+})
+const serviceLevelClass  = computed(() => { 
+  const sl = s.value?.serviceLevel || 0; 
+  return sl >= 97 ? 'excellent' : sl >= 90 ? 'good' : sl >= 80 ? 'ok' : 'poor' 
+})
 
 // ── Computeds inventario ──────────────────────────────────────────────────────
-const criticalAlerts   = computed(() => s.value?.criticalAlerts ?? 0)
+const criticalAlertsOptic   = computed(() => s.value?.criticalAlertsOptic ?? 0)
+const criticalAlertsCL      = computed(() => s.value?.criticalAlertsCL ?? 0)
 const safeStockPercent = computed(() => {
-  const total = s.value?.totalCombinations || 0, crit = s.value?.criticalAlerts || 0
+  const total = s.value?.totalCombinations || 0, crit = s.value?.criticalAlertsOptic || 0
   return !total ? 0 : Math.round(((total - crit) / total) * 100)
 })
 const lastSyncLabel = computed(() => {
@@ -307,19 +378,25 @@ function fmtTimeAgo(d) {
 // ── KPIs ──────────────────────────────────────────────────────────────────────
 const allKpis = computed(() => [
   // Inventario optico
-  { key:'sheets',         icon:'table-cells-large',   accent:'purple', title:'Hojas activas',            caption:'Plantillas ópticas',                       formattedValue: s.value?.activeSheets ?? '—',             requiresInventory:true },
-  { key:'combinaciones',  icon:'layer-group',          accent:'blue',   title:'Combinaciones ópticas',    caption:'Esférica, Cilíndrica, Adición',            formattedValue: formatNumber(s.value?.totalCombinations),  requiresInventory:true },
-  { key:'stock',          icon:'boxes-stacked',        accent:'green',  title:'Existencias ópticas',      caption:'Piezas en almacén',                        formattedValue: formatNumber(s.value?.totalStock),         requiresInventory:true },
-  { key:'alertas',        icon:'triangle-exclamation', accent:'orange', title:'Alertas críticas',         caption:'Stock nivel crítico',                       formattedValue: criticalAlerts.value, alert: criticalAlerts.value > 0, requiresInventory:true },
+  { key:'sheets',         icon:'table-cells-large',   accent:'purple', title:'Catálogos de lentes',      caption:'Plantillas activas (bases y micas)',        formattedValue: s.value?.activeSheets ?? '—',             requiresInventory:true },
+  { key:'combinaciones',  icon:'layer-group',          accent:'blue',   title:'Graduaciones disponibles', caption:'Esférica, Cilíndrica, Adición',            formattedValue: formatNumber(s.value?.totalCombinations),  requiresInventory:true },
+  { key:'stock',          icon:'boxes-stacked',        accent:'green',  title:'Lentes en almacén',        caption:'Bases y micas (stock total)',              formattedValue: formatNumber(s.value?.totalStock),         requiresInventory:true },
+  { key:'alertas',        icon:'triangle-exclamation', accent:'orange', title:'⚠ Stock bajo en lentes',   caption:'Graduaciones con 0-2 unidades',            formattedValue: criticalAlertsOptic.value, alert: criticalAlertsOptic.value > 0, requiresInventory:true },
+  // Tienda (Optica)
+  { key:'optProd',        icon:'store',                accent:'cyan',   title:'Productos en tienda',      caption:'Armazones, soluciones, accesorios, etc.',  formattedValue: os.value?.totalProductos ?? '—',           requiresInventory:true },
+  { key:'optStock',       icon:'boxes-packing',        accent:'teal',   title:'Piezas totales tienda',    caption:'Stock acumulado de todos los productos',   formattedValue: formatNumber(os.value?.totalPiezas),       requiresInventory:true },
+  { key:'optAgotados',    icon:'box-open',             accent:'red',    title:'Agotados en tienda',       caption:'Productos con 0 unidades',                 formattedValue: os.value?.totalAgotados ?? '—',            alert: (os.value?.totalAgotados ?? 0) > 0, requiresInventory:true },
+  { key:'optValor',       icon:'coins',                accent:'green',  title:'Valor inventario tienda',  caption:'Valor estimado total en MXN',              formattedValue: os.value ? `$${formatNumber(os.value.valorTotalTienda)}` : '—', requiresInventory:true },
   // Lentes de contacto
-  { key:'clSheets',       icon:'eye',                  accent:'cyan',   title:'Lentes de contacto',       caption:'Hojas activas',                            formattedValue: s.value?.clActiveSheets ?? '—',           requiresInventory:true },
+  { key:'clSheets',       icon:'eye',                  accent:'cyan',   title:'Catálogos de contacto',    caption:'Plantillas activas lentes de contacto',    formattedValue: s.value?.clActiveSheets ?? '—',           requiresInventory:true },
   { key:'clStock',        icon:'boxes-stacked',        accent:'teal',   title:'Existencias contacto',     caption:'Piezas lentes de contacto',                formattedValue: formatNumber(s.value?.clTotalStock),       requiresInventory:true },
-  { key:'clCoverage',     icon:'percent',              accent:'blue',   title:'Cobertura contacto',       caption:'Del catálogo de contacto',                 formattedValue: (s.value?.clCoveragePct ?? 0) + '%',       requiresInventory:true },
+  { key:'clAlertas',      icon:'triangle-exclamation', accent:'orange', title:'⚠ Stock bajo en contacto', caption:'Graduaciones con 0-2 unidades',            formattedValue: criticalAlertsCL.value, alert: criticalAlertsCL.value > 0, requiresInventory:true },
+  { key:'clCoverage',     icon:'percent',              accent:'blue',   title:'Cobertura contacto',       caption: `De ${formatNumber(s.value?.clTotalPossible || 0)} graduaciones del catálogo`, formattedValue: (s.value?.clCoveragePct ?? 0) + '%',       requiresInventory:true },
   // Pedidos y operaciones
   { key:'pendientes',     icon:'clipboard-list',       accent:'orange', title:'Pendientes',               caption:'Abiertos o parciales',                     formattedValue: s.value?.ordersPending ?? '—',            requiresOrders:true },
   { key:'cerrados30d',    icon:'circle-check',         accent:'green',  title:'Cerrados (30d)',            caption:'Últimos 30 días',                          formattedValue: s.value?.ordersClosed30d ?? '—',           requiresOrders:true },
   { key:'scansToday',     icon:'barcode',              accent:'cyan',   title:'Escaneos hoy',             caption:'Salidas por escáner',                      formattedValue: s.value?.scansToday ?? '—',               requiresLab:true },
-  { key:'serviceLevel',   icon:'gauge-high',           accent:'purple', title:'Nivel de servicio',        caption:'Sin correcciones (30d)',                    formattedValue: (s.value?.serviceLevel ?? 0) + '%',        requiresReports:true },
+  { key:'serviceLevel',   icon:'gauge-high',           accent:'purple', title:'Nivel de servicio',        caption: `Basado en ${formatNumber(s.value?.ordersClosed30d || 0)} pedidos sin errores`,                    formattedValue: (s.value?.serviceLevel ?? 0) + '%',        requiresReports:true },
   { key:'devPendientes',  icon:'rotate-left',          accent:'orange', title:'Devoluciones pendientes',  caption:'Esperando revisión',                       formattedValue: (s.value?.devolucionesPendientes ?? 0) + (s.value?.devolucionesEnRevision ?? 0),    requiresDevolutions:true, alert: ((s.value?.devolucionesPendientes ?? 0) + (s.value?.devolucionesEnRevision ?? 0)) > 0 },
   { key:'devTotal30d',    icon:'arrow-rotate-left',    accent:'purple', title:'Devoluciones (30d)',        caption:'Este período',                             formattedValue: s.value?.devolucionesTotal30d ?? '—',      requiresDevolutions:true },
   { key:'corrections7d',  icon:'wrench',               accent:'red',    title:'Correcciones (7d)',         caption:'Solicitudes activas',                      formattedValue: s.value?.corrections7d ?? '—',            requiresLab:true },
@@ -339,3 +416,7 @@ const visibleKpis = computed(() => {
   return filtered.slice(0, max)
 })
 </script>
+
+<style scoped>
+/* Estilos específicos si son necesarios */
+</style>

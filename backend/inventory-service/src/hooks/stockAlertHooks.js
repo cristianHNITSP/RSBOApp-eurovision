@@ -35,7 +35,7 @@ const CLMatrixMultifocal = require("../models/contactlenses/CLMatrixMultifocal")
 
 // Cooldown corto: si la ruta ya disparo hace <60s, el hook lo omite.
 // Si es una creacion/seed (nadie notifico antes), pasa sin cooldown.
-const HOOK_COOLDOWN_MS = 60 * 1000; // 1 minuto
+const HOOK_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutos
 
 function registerStockAlertHooks() {
   const schemas = [

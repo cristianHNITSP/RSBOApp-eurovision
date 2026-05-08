@@ -1,0 +1,26 @@
+.help-fixes {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.help-fix {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 0.7rem 0.8rem;
+  background: var(--bg-subtle);
+}
+
+.help-fix__q {
+  font-size: 0.82rem;
+  font-weight: 900;
+  color: var(--text-primary);
+}
+
+.help-fix__a {
+  margin-top: 0.25rem;
+  font-size: 0.79rem;
+  color: var(--text-secondary);
+  line-height: 1.25;
+}

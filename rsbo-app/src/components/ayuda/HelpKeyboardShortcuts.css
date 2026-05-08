@@ -1,0 +1,48 @@
+.help-shortcuts-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.6rem;
+  margin-top: 0.55rem;
+}
+
+.help-shortcuts-block {
+  border: 1px solid var(--border-solid);
+  background: var(--bg-subtle);
+  border-radius: 0.85rem;
+  padding: 0.7rem 0.8rem;
+}
+
+.help-shortcuts-block__title {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 0.45rem;
+}
+
+.help-shortcut-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.79rem;
+  color: var(--text-secondary);
+  padding: 0.18rem 0;
+}
+
+.help-shortcut-key {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.72rem;
+  font-weight: 800;
+  background: var(--surface-solid);
+  border: 1px solid var(--border-solid);
+  border-radius: 6px;
+  padding: 0.1rem 0.4rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+  color: var(--text-primary);
+}
+
+@media (min-width: 1024px) {
+  .help-shortcuts-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}

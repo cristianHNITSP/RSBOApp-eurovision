@@ -10,10 +10,7 @@
   backdrop-filter: blur(var(--fx-blur));
   -webkit-backdrop-filter: blur(var(--fx-blur));
   border: 1px solid var(--border);
-  border-top: 1px solid rgba(255, 255, 255, 0.6);
-  box-shadow: 
-    var(--shadow-md), 
-    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  box-shadow: var(--shadow-md);
   overflow: hidden;
 }
 

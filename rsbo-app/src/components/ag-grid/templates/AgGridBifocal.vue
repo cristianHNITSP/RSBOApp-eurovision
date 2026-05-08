@@ -7,7 +7,7 @@
              → agregar columnas NO reinvoca getRows (anti-colisión)
   ============================================================ -->
 <template>
-  <div class="grid-page" :class="{ 'is-fullscreen': isFullscreen, 'ag-grid-fullscreen-container': isFullscreen }"
+  <div class="grid-page" :class="{ 'is-fullscreen': isFullscreen, 'ag-grid-fullscreen-container': isFullscreen, 'is-hibernating': isHibernating }"
     ref="gridPageRef">
     <header class="grid-topbar">
       <navtools class="navtools-wrap" v-model="formulaValue" :dirty="dirty" :saving="saving" :total-rows="totalRows"
@@ -67,6 +67,7 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onActivated, toRefs } from "vue";
+import { useVisualHibernation } from "@/composables/ag-grid/useVisualHibernation";
 import { AgGridVue } from "ag-grid-vue3";
 import { AllCommunityModule, ModuleRegistry } from "ag-grid-community";
 import navtools from "@/components/ag-grid/navtools.vue";
@@ -117,6 +118,7 @@ const integration = useAgGridIntegration({
 const { gridApi, dirty, saving, lastSavedAt, switchingView, pendingChanges, gridHistory, unsavedGuard, suppressNextWsRefresh, postMessage } = integration;
 
 const gridPageRef = ref(null);
+const { isHibernating } = useVisualHibernation(gridPageRef);
 
 // ─── State ───────────────────────────────────────────────────────
 const sheetMeta = ref(null);

@@ -102,6 +102,11 @@ const notificationSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.Mixed,
       default: null,
     },
+    /** Hash del contenido (title + message + metadata) para evitar actualizaciones nulas */
+    contentHash: {
+      type: String,
+      default: null,
+    },
   },
   { timestamps: true }
 );

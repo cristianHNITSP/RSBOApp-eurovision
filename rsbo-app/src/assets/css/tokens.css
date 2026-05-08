@@ -232,7 +232,8 @@
     #0f1117;
 
   /* === Aliases de compatibilidad === */
-  --white: #161b22;
+  --white: #ffffff; /* Fallback for white surfaces */
+  --bg-card: var(--surface-solid);
   --hover-color-menus: #1e2432;
   --text: var(--text-primary);
   --muted: var(--text-muted);

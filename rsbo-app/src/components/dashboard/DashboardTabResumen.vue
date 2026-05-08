@@ -11,15 +11,20 @@
               <div class="gc-sub">Cobertura, stock y alertas en tiempo real</div>
             </div>
           </div>
-          <div class="gc-status-pill" :class="criticalAlerts > 0 ? 'sp-warn' : 'sp-ok'" v-if="!isLoading">
-            <i :class="criticalAlerts > 0 ? 'fas fa-triangle-exclamation' : 'fas fa-shield-check'"></i>
-            {{ criticalAlerts > 0 ? `${criticalAlerts} alertas críticas` : 'Sin alertas críticas' }}
+          <div class="gc-status-pill" :class="(criticalAlertsOptic > 0 || criticalAlertsCL > 0) ? 'sp-warn' : 'sp-ok'" v-if="!isLoading">
+            <i :class="(criticalAlertsOptic > 0 || criticalAlertsCL > 0) ? 'fas fa-triangle-exclamation' : 'fas fa-shield-check'"></i>
+            <span v-if="criticalAlertsOptic > 0 || criticalAlertsCL > 0">
+              {{ criticalAlertsOptic }} opt / {{ criticalAlertsCL }} cont
+            </span>
+            <span v-else>Sin alertas críticas</span>
           </div>
         </div>
         <div class="gc-body">
           <div class="triband">
             <div class="triband-item">
-              <div class="tb-label">Cobertura del catálogo</div>
+              <b-tooltip :label="`${s?.coveragePct ?? 0}% de cobertura significa que de ${formatNumber(s?.totalCombinations)} graduaciones posibles, ${formatNumber(s?.withStock)} tienen al menos 1 pieza en almacén.`" position="is-right" type="is-dark" multilined>
+                <div class="tb-label" style="cursor:help;">Catálogo cubierto <i class="fas fa-info-circle has-text-grey-light ml-1"></i></div>
+              </b-tooltip>
               <div class="tb-val" v-if="!isLoading">
                 <span class="tb-number gradient-purple">{{ s?.coveragePct ?? 0 }}</span>
                 <span class="tb-unit">%</span>
@@ -29,7 +34,9 @@
             </div>
             <div class="triband-sep"></div>
             <div class="triband-item">
-              <div class="tb-label">Stock en rango seguro</div>
+              <b-tooltip :label="`${safeStockPercent}% seguro significa que de ${formatNumber(s?.totalCombinations)} graduaciones, la mayoría tiene más de 3 unidades en stock.`" position="is-right" type="is-dark" multilined>
+                <div class="tb-label" style="cursor:help;">Graduaciones con buen stock <i class="fas fa-info-circle has-text-grey-light ml-1"></i></div>
+              </b-tooltip>
               <div class="tb-val" v-if="!isLoading">
                 <span class="tb-number gradient-blue">{{ safeStockPercent }}</span>
                 <span class="tb-unit">%</span>
@@ -39,18 +46,31 @@
             </div>
             <div class="triband-sep"></div>
             <div class="triband-item">
-              <div class="tb-label">Alertas críticas</div>
+              <b-tooltip :label="`${criticalAlertsOptic} graduaciones de bases y micas tienen entre 0 y 2 unidades y requieren atención.`" position="is-right" type="is-dark" multilined>
+                <div class="tb-label" style="cursor:help;">⚠ Stock bajo en lentes <i class="fas fa-info-circle has-text-grey-light ml-1"></i></div>
+              </b-tooltip>
               <div class="tb-val" v-if="!isLoading">
-                <span class="tb-number gradient-red">{{ criticalAlerts }}</span>
+                <span class="tb-number gradient-red">{{ criticalAlertsOptic }}</span>
               </div>
               <b-skeleton v-else :width="60" :height="32" animated class="mb-1" />
-              <b-progress v-if="!isLoading" :value="Math.min(criticalAlerts * 4, 100)" size="is-small" type="is-danger" :show-value="false" class="tb-prog" />
+              <b-progress v-if="!isLoading" :value="Math.min(criticalAlertsOptic * 4, 100)" size="is-small" type="is-danger" :show-value="false" class="tb-prog" />
+            </div>
+            <div class="triband-sep"></div>
+            <div class="triband-item">
+              <b-tooltip :label="`${criticalAlertsCL} graduaciones de lentes de contacto tienen entre 0 y 2 unidades y requieren atención.`" position="is-right" type="is-dark" multilined>
+                <div class="tb-label" style="cursor:help;">⚠ Stock bajo en contacto <i class="fas fa-info-circle has-text-grey-light ml-1"></i></div>
+              </b-tooltip>
+              <div class="tb-val" v-if="!isLoading">
+                <span class="tb-number gradient-orange">{{ criticalAlertsCL }}</span>
+              </div>
+              <b-skeleton v-else :width="60" :height="32" animated class="mb-1" />
+              <b-progress v-if="!isLoading" :value="Math.min(criticalAlertsCL * 4, 100)" size="is-small" type="is-warning" :show-value="false" class="tb-prog" />
             </div>
           </div>
           <div class="gc-footer">
             <span class="gf-item"><i class="fas fa-rotate"></i> Sync: <b>{{ lastSyncLabel }}</b></span>
-            <span class="gf-item"><i class="fas fa-table"></i> <b>{{ s?.activeSheets ?? '—' }}</b> hojas</span>
-            <span class="gf-item"><i class="fas fa-layer-group"></i> <b>{{ formatNumber(s?.totalCombinations) }}</b> combinaciones</span>
+            <span class="gf-item"><i class="fas fa-table"></i> <b>{{ s?.activeSheets ?? '—' }}</b> catálogos</span>
+            <span class="gf-item"><i class="fas fa-layer-group"></i> <b>{{ formatNumber(s?.totalCombinations) }}</b> graduaciones</span>
             <span class="gf-item"><i class="fas fa-boxes-stacked"></i> <b>{{ formatNumber(s?.totalStock) }}</b> piezas</span>
           </div>
         </div>
@@ -179,7 +199,8 @@
 <script setup>
 defineProps({
   canSeeInventory: Boolean,
-  criticalAlerts: Number,
+  criticalAlertsOptic: Number,
+  criticalAlertsCL: Number,
   isLoading: Boolean,
   s: Object,
   safeStockPercent: Number,

@@ -6,6 +6,7 @@
  */
 
 const mongoose = require('mongoose');
+const crypto = require('crypto');
 const Notification = require('../models/Notification');
 
 /**
@@ -35,16 +36,29 @@ function baseFilter(roleName) {
  * Lista notificaciones visibles para el rol del usuario.
  * Excluye las descartadas por el usuario y añade isPinned/isRead por usuario.
  */
-async function listForUser({ roleName, userId, limit = 50, skip = 0 }) {
-  console.log(`[NOTIF-DEBUG] listForUser: role=${roleName}, userId=${userId}`);
+async function listForUser({ roleName, userId, limit = 50, skip = 0, dateRange }) {
+  console.log(`[NOTIF-DEBUG] listForUser: role=${roleName}, userId=${userId}, dateRange=${dateRange}`);
   const userOid = new mongoose.Types.ObjectId(userId);
-  const filter = {
-    $and: [
-      visibilityFilter(roleName),
-      notExpired(),
-      { dismissedBy: { $nin: [userOid] } },
-    ],
-  };
+  
+  const filters = [visibilityFilter(roleName)];
+  
+  if (!dateRange) {
+    // Modo "activas" (panel)
+    filters.push(notExpired(), { dismissedBy: { $nin: [userOid] } });
+  } else {
+    // Modo "historial" (vista completa)
+    if (dateRange !== 'indefinido') {
+      const now = new Date();
+      let startDate = new Date();
+      if (dateRange === 'diario') startDate.setHours(0,0,0,0);
+      else if (dateRange === 'semana') startDate.setDate(now.getDate() - 7);
+      else if (dateRange === 'mes') startDate.setMonth(now.getMonth() - 1);
+      
+      filters.push({ createdAt: { $gte: startDate } });
+    }
+  }
+
+  const filter = { $and: filters };
 
   const skipVal  = Math.max(0, parseInt(skip || "0"));
   const limitVal = Math.max(1, parseInt(limit || "50"));
@@ -243,12 +257,31 @@ async function dismiss({ notificationId, roleName, userId }) {
 async function upsertDaily({ groupKey, date, title, message, metadata, type, priority, targetRoles, isGlobal, createdBy, createdByName }) {
   const today = date || new Date().toISOString().slice(0, 10);
 
+  // Calcular fingerprint robusto (falsos negativos prevenidos al incluir metadata y texto exacto)
+  const hashPayload = JSON.stringify({ title, message, metadata });
+  const contentHash = crypto.createHash('sha256').update(hashPayload).digest('hex');
+
+  let expiresAt = null;
+  if (metadata?.type === 'stock_alert') {
+    expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
+  } else if (['pending_orders', 'new_order', 'correction'].includes(metadata?.type)) {
+    expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 4);
+  }
+
   const existing = await Notification.findOne({ groupKey, date: today });
 
   if (existing) {
+    if (existing.contentHash === contentHash) {
+      // Fingerprint idéntico: No hacer nada, retornar skipped
+      return { notification: existing, accumulated: true, skipped: true };
+    }
+
     existing.title    = title;
     existing.message  = message;
     existing.metadata = metadata ?? existing.metadata;
+    existing.contentHash = contentHash;
     // No incrementamos count automáticamente si es una notificación de estado agrupada
     // a menos que el llamador lo pida explícitamente (ej. nuevas alertas)
     existing.count    = 1; 
@@ -263,6 +296,7 @@ async function upsertDaily({ groupKey, date, title, message, metadata, type, pri
         existing.priority = priority;
       }
     }
+    if (expiresAt) existing.expiresAt = expiresAt;
     existing.markModified('metadata');
     await existing.save();
     return { notification: existing, accumulated: true };
@@ -278,8 +312,9 @@ async function upsertDaily({ groupKey, date, title, message, metadata, type, pri
     priority:      priority ?? 'high',
     targetRoles:   isGlobal ? [] : (targetRoles ?? []),
     isGlobal:      Boolean(isGlobal),
-    expiresAt:     null,
+    expiresAt:     expiresAt,
     count:         1,
+    contentHash,
     createdBy,
     createdByName: createdByName ?? '',
   });

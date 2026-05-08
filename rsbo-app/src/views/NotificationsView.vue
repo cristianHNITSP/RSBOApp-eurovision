@@ -14,6 +14,7 @@ const notifications = ref([]);
 const isHistoryLoading = ref(true);
 
 const filterType = ref(''); // '', 'info', 'warning', 'danger', 'success'
+const dateRange = ref('indefinido'); // 'diario', 'semana', 'mes', 'indefinido'
 const showPinnedOnly = ref(false);
 const currentPage = ref(1);
 const perPage = 20;
@@ -27,7 +28,8 @@ async function loadNotifications() {
   try {
     const { data } = await fetchNotifications({
       limit: perPage,
-      skip: (currentPage.value - 1) * perPage
+      skip: (currentPage.value - 1) * perPage,
+      dateRange: dateRange.value
     });
     notifications.value = data.notifications ?? [];
     total.value = data.total ?? 0;
@@ -143,6 +145,12 @@ function onPageChange(page) {
   loadNotifications();
 }
 
+import { watch } from 'vue';
+watch(dateRange, () => {
+  currentPage.value = 1;
+  loadNotifications();
+});
+
 function timeAgo(dateStr) {
   if (!dateStr) return '';
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -196,6 +204,14 @@ onMounted(() => {
                 <option value="warning">Aviso</option>
                 <option value="danger">Crítico</option>
                 <option value="success">Éxito</option>
+              </b-select>
+            </b-field>
+            <b-field>
+              <b-select v-model="dateRange" size="is-small" rounded>
+                <option value="indefinido">Todas las fechas</option>
+                <option value="diario">Hoy</option>
+                <option value="semana">Última semana</option>
+                <option value="mes">Último mes</option>
               </b-select>
             </b-field>
             <b-field>

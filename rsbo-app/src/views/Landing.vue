@@ -236,16 +236,17 @@ onBeforeUnmount(() => {
   min-height: 100dvh;
   display: grid;
   place-items: center;
-  background-color: #0f172a; /* Fondo base más oscuro por defecto */
+  background-color: var(--bg-base);
   background-image:
-    radial-gradient(circle at 0% 0%, rgba(79, 70, 229, 0.3), transparent 60%),
-    radial-gradient(circle at 100% 0%, rgba(236, 72, 153, 0.25), transparent 60%),
-    radial-gradient(circle at 50% 100%, rgba(249, 115, 22, 0.2), transparent 60%);
+    radial-gradient(circle at 0% 0%, var(--c-primary-alpha), transparent 60%),
+    radial-gradient(circle at 100% 0%, var(--c-sidebar-pink-alpha), transparent 60%),
+    radial-gradient(circle at 50% 100%, var(--c-sidebar-warm-alpha), transparent 60%);
   background-size: 200% 200%;
   animation: liquidBg 15s ease infinite;
   padding: 1.5rem;
   position: relative;
   overflow: hidden;
+  transition: background-color var(--transition-slow);
 }
 
 @keyframes liquidBg {
@@ -267,7 +268,7 @@ onBeforeUnmount(() => {
 .liquid-blob--1 {
   width: 600px;
   height: 600px;
-  background: rgba(79, 70, 229, 0.5);
+  background: var(--c-primary);
   top: -200px;
   left: -200px;
 }
@@ -275,7 +276,7 @@ onBeforeUnmount(() => {
 .liquid-blob--2 {
   width: 550px;
   height: 550px;
-  background: rgba(236, 72, 153, 0.4);
+  background: var(--c-sidebar-pink);
   bottom: -150px;
   right: -150px;
   animation-duration: 30s;
@@ -284,7 +285,7 @@ onBeforeUnmount(() => {
 .liquid-blob--3 {
   width: 500px;
   height: 500px;
-  background: rgba(249, 115, 22, 0.35);
+  background: var(--c-sidebar-warm);
   top: 20%;
   left: 55%;
   animation-duration: 35s;
@@ -305,7 +306,7 @@ onBeforeUnmount(() => {
 }
 
 .floating-icon {
-  color: rgba(79, 70, 229, 0.6);
+  color: var(--c-primary);
   filter: blur(0.4px);
 }
 
@@ -317,49 +318,49 @@ onBeforeUnmount(() => {
 }
 
 .login-card {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(25px);
-  -webkit-backdrop-filter: blur(25px);
-  border-radius: 32px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 
-    0 10px 40px rgba(0, 0, 0, 0.2),
-    0 0 100px rgba(79, 70, 229, 0.1);
+  background: var(--surface-raised);
+  backdrop-filter: blur(var(--fx-blur));
+  -webkit-backdrop-filter: blur(var(--fx-blur));
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
   overflow: hidden;
+  transition: background-color var(--transition-base), border-color var(--transition-base);
 }
 
-/* Forzar legibilidad en labels e inputs de Buefy */
+/* Forzar legibilidad en labels e inputs de Buefy usando tokens */
 :deep(.label) {
-  color: rgba(255, 255, 255, 0.9) !important;
+  color: var(--text-primary) !important;
   font-weight: 700;
   font-size: 0.85rem;
 }
 
 :deep(.input) {
-  background: rgba(255, 255, 255, 0.05) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  color: white !important;
-  border-radius: 12px !important;
+  background: var(--bg-muted) !important;
+  border: 1px solid var(--border-input) !important;
+  color: var(--text-primary) !important;
+  border-radius: var(--radius-md) !important;
   height: 2.8rem;
+  transition: all var(--transition-fast) !important;
 }
 
 :deep(.input:focus) {
-  border-color: #4f46e5 !important;
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2) !important;
+  border-color: var(--c-primary) !important;
+  box-shadow: 0 0 0 3px var(--c-primary-alpha) !important;
 }
 
 :deep(.input::placeholder) {
-  color: rgba(255, 255, 255, 0.35) !important;
+  color: var(--text-muted) !important;
 }
 
 :deep(.checkbox) {
-  color: rgba(255, 255, 255, 0.8) !important;
+  color: var(--text-secondary) !important;
 }
 
 .login-header {
   padding: 3rem 2rem;
   text-align: center;
-  background: linear-gradient(135deg, rgba(79, 70, 229, 0.85), rgba(236, 72, 153, 0.75));
+  background: linear-gradient(135deg, var(--c-primary), var(--c-sidebar-pink));
   color: white;
   position: relative;
 }
@@ -371,7 +372,7 @@ onBeforeUnmount(() => {
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
 }
 
 .login-logo {

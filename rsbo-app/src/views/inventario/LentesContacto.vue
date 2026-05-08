@@ -205,7 +205,7 @@ const resolverGridProps = (sheet, activeInternal) => {
 </script>
 
 <template>
-  <section class="section section-cl" v-motion-fade-visible-once>
+  <section class="section section-cl">
 
     <header class="page-section-header">
       <div>

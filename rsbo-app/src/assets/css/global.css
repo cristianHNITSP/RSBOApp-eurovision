@@ -1366,14 +1366,63 @@ button.dropdown-item:hover {
 .skel--bar {
   height: 8px;
   width: 100%;
-  border-radius: var(--radius-pill);order-radius: var(--radius-pill);
+  border-radius: var(--radius-pill);
   border: 1px solid var(--border);
 }
 
 /* ============================================================
-   DASHBOARD CARD SYSTEM — compartido entre DashboardHome y
-   sus sub-componentes (DashboardTabOptica, DashboardHero…)
+   DASHBOARD / ANALITICAS OVERLAYS — .db-tab-loading-overlay, .an-tab-loading-overlay
    ============================================================ */
+.db-tab-loading-overlay,
+.an-tab-loading-overlay {
+  background: var(--surface-overlay) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  transition: opacity 0.3s ease;
+}
+
+[data-theme="dark"] .db-tab-loading-overlay,
+[data-theme="dark"] .an-tab-loading-overlay {
+  background: rgba(15, 17, 23, 0.78) !important;
+}
+
+/* ============================================================
+   TABLE HOVER DARK MODE
+   ============================================================ */
+[data-theme="dark"] .table.is-hoverable tbody tr:not(.is-selected):hover {
+  background-color: var(--bg-muted) !important;
+  cursor: pointer;
+}
+
+[data-theme="dark"] .table.is-striped tbody tr:not(.is-selected):nth-child(even) {
+  background-color: var(--bg-subtle);
+}
+
+[data-theme="dark"] .table {
+  background-color: transparent !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .table thead th {
+  color: var(--text-muted) !important;
+  border-bottom-color: var(--border-strong) !important;
+}
+
+[data-theme="dark"] .table td, [data-theme="dark"] .table th {
+  border-color: var(--border-light) !important;
+}
+
+/* ============================================================
+   DASHBOARD CARD SYSTEM
+   ============================================================ */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
 
 /* Layout tabs */
 .tab-two-col {

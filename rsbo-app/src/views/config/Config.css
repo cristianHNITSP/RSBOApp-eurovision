@@ -1,0 +1,11 @@
+.section-config {
+  border-radius: 12px;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, var(--bg-subtle) 0%, var(--bg-muted) 100%);
+  box-shadow: var(--shadow-sm);
+  border-bottom: 1px solid var(--border);
+}
+
+:deep(.dyn-tabs__content) {
+  margin-top: 1rem;
+}

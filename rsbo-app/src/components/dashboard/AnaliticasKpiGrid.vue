@@ -31,7 +31,7 @@
               <div class="an-kpi-lbl">Cobertura</div>
               <div class="an-kpi-num" style="color:#3b82f6" v-if="!isLoading">{{ s?.coveragePct ?? 0 }}%</div>
               <b-skeleton v-else :width="60" :height="26" animated />
-              <div class="an-kpi-cap">Del catálogo objetivo</div>
+              <div class="an-kpi-cap">De {{ fmtn(s?.totalPossibleCombinations || 0) }} graduaciones posibles</div>
             </div>
           </div>
         </div>
@@ -68,7 +68,7 @@
               <div class="an-kpi-lbl">Combinaciones (Contacto)</div>
               <div class="an-kpi-num" style="color:#0d9488" v-if="!isLoading">{{ fmtn(s?.clTotalCombinations) }}</div>
               <b-skeleton v-else :width="70" :height="26" animated />
-              <div class="an-kpi-cap">Cobertura {{ s?.clCoveragePct ?? 0 }}%</div>
+              <div class="an-kpi-cap">De {{ fmtn(s?.clTotalPossible || 0) }} graduaciones posibles</div>
             </div>
           </div>
         </div>
@@ -107,7 +107,7 @@
               <div class="an-kpi-lbl">Nivel de servicio</div>
               <div class="an-kpi-num" :style="{ color: slColor }" v-if="!isLoading">{{ s?.serviceLevel ?? 0 }}%</div>
               <b-skeleton v-else :width="60" :height="26" animated />
-              <div class="an-kpi-cap">{{ serviceLevelStatus }}</div>
+              <div class="an-kpi-cap">{{ serviceLevelStatus }} (basado en {{ fmtn(s?.ordersClosed30d || 0) }} pedidos)</div>
             </div>
           </div>
         </div>

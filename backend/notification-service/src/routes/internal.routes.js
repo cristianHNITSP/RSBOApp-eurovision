@@ -65,7 +65,7 @@ router.post("/upsert-daily", async (req, res) => {
       }
     }
 
-    const { notification, accumulated } = await svc.upsertDaily({
+    const { notification, accumulated, skipped } = await svc.upsertDaily({
       groupKey,
       date,
       title,
@@ -78,6 +78,10 @@ router.post("/upsert-daily", async (req, res) => {
       createdBy:     SYSTEM_OID,
       createdByName: createdByName || "Sistema",
     });
+
+    if (skipped) {
+      return res.json({ skipped: true, reason: "unchanged" });
+    }
 
     // WS broadcast para actualizar el badge en el frontend
     try {

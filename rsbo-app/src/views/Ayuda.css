@@ -1,0 +1,15 @@
+.ayuda-view-wrapper {
+  min-height: 100%;
+}
+
+.view-main {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* Deep override: separación entre tabs y su contenido */
+:deep(.dyn-tabs__content) {
+  margin-top: 0.75rem;
+}

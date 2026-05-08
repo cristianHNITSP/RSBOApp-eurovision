@@ -195,7 +195,7 @@ const resolverGridProps = (sheet, activeInternal) => {
 </script>
 
 <template>
-  <section class="section section-matriz-dioptrias" v-motion-fade-visible-once>
+  <section class="section section-matriz-dioptrias">
 
     <header class="page-section-header">
       <div>

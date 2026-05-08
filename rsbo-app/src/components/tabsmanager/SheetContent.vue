@@ -2,17 +2,21 @@
 <template>
   <div class="sheet-content-wrapper">
     <component
+      v-if="ready"
       :is="gridComponent"
       :key="sheet.id"
       v-bind="gridProps"
       :actor="actor"
       @update:internal="$emit('update:internal', $event)"
     />
+    <div v-else class="sheet-content-placeholder">
+      <div class="sheet-content-placeholder__spinner"></div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, onBeforeUnmount, watch, ref } from "vue";
+import { computed, onMounted, onBeforeUnmount, watch, ref, nextTick } from "vue";
 import AgGridBifocal from "@/components/ag-grid/templates/AgGridBifocal.vue";
 import AgGridBase from "@/components/ag-grid/templates/AgGridBase.vue";
 import AgGridMonofocal from "@/components/ag-grid/templates/AgGridMonofocal.vue";
@@ -62,8 +66,14 @@ const resolverGridProps = (sheet, activeInternal) => {
 
 const gridProps = computed(() => resolverGridProps(props.sheet, props.activeInternal));
 
+const ready = ref(false);
+
 // WebSocket lifecycle logging (actual WS handled inside grid components)
 onMounted(() => {
+  // Diferir montaje del grid: dar 1 frame al browser para pintar el layout
+  requestAnimationFrame(() => {
+    ready.value = true;
+  });
   if (props.sheet?.id) {
     console.log(`[SheetContent] Mounted: ${props.sheet.id}`);
   }
@@ -91,5 +101,27 @@ watch(
   width: 100%;
   height: 100%;
   position: relative;
+}
+
+.sheet-content-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-solid, #faf9ff);
+}
+
+.sheet-content-placeholder__spinner {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid rgba(121, 87, 213, 0.15);
+  border-top-color: rgba(139, 92, 246, 0.85);
+  animation: spin 0.8s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 </style>

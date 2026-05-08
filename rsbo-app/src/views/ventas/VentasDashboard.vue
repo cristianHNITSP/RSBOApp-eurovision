@@ -216,12 +216,9 @@ provide('ventas', { strategies, activeTab });
   backdrop-filter: blur(var(--fx-blur));
   -webkit-backdrop-filter: blur(var(--fx-blur));
   border: 1px solid var(--border);
-  border-top: 1px solid rgba(255, 255, 255, 0.7);
   border-radius: 24px;
   padding: 1.5rem;
-  box-shadow:
-    var(--shadow-lg),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+  box-shadow: var(--shadow-lg);
   position: relative;
 }
 

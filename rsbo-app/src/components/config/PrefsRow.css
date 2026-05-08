@@ -1,0 +1,30 @@
+.prefs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.prefs-row__left {
+  min-width: 220px;
+  flex: 1;
+}
+
+.prefs-row__right {
+  display: flex;
+  justify-content: flex-end;
+  min-width: 220px;
+}
+
+.prefs-label {
+  margin: 0;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.prefs-help {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}

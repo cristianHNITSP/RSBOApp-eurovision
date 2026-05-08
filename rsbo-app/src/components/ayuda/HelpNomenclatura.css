@@ -1,0 +1,161 @@
+.nomenclatura-example {
+  margin: 0.65rem 0;
+  text-align: center;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  border: 1px dashed var(--border);
+  background: var(--bg-subtle);
+}
+
+.nomenclatura-example__code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 1.05rem;
+  font-weight: 1000;
+  color: var(--c-primary);
+  letter-spacing: 0.06em;
+  word-break: break-all;
+}
+
+.nomenclatura-example__label {
+  margin-top: 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.nomenclatura-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.nomenclatura-breakdown--compact {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.35rem;
+}
+
+.nomenclatura-segment {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-solid);
+}
+
+.nomenclatura-segment__part {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-weight: 1000;
+  font-size: 0.82rem;
+  color: var(--c-primary);
+  background: var(--c-primary-alpha);
+  padding: 0.1rem 0.4rem;
+  border-radius: 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.nomenclatura-segment__desc {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.nomenclatura-sep {
+  color: var(--text-muted);
+  font-weight: 900;
+  font-size: 0.85rem;
+}
+
+.nomenclatura-duo {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+  margin-top: 0.55rem;
+}
+
+.nomenclatura-duo__block {
+  border: 1px solid var(--border);
+  background: var(--bg-subtle);
+  border-radius: 14px;
+  padding: 0.75rem 0.85rem;
+}
+
+.nomenclatura-table {
+  margin-top: 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.nomenclatura-table__row {
+  display: grid;
+  grid-template-columns: minmax(80px, auto) 1fr 1fr;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.79rem;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+}
+
+.nomenclatura-table__row:last-child {
+  border-bottom: none;
+}
+
+.nomenclatura-table__row--head {
+  background: var(--c-primary-alpha);
+  font-weight: 900;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-primary);
+}
+
+.nomenclatura-status-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.45rem;
+}
+
+.nomenclatura-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.79rem;
+  color: var(--text-secondary);
+}
+
+.nomenclatura-status__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.nomenclatura-status__dot--pendiente { background: rgba(245, 158, 11, 0.85); }
+.nomenclatura-status__dot--parcial   { background: rgba(59, 130, 246, 0.85); }
+.nomenclatura-status__dot--cerrado   { background: rgba(34, 197, 94, 0.85); }
+.nomenclatura-status__dot--cancelado { background: rgba(239, 68, 68, 0.85); }
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.muted {
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+@media (min-width: 1024px) {
+  .nomenclatura-duo {
+    grid-template-columns: 1fr 1fr;
+  }
+}

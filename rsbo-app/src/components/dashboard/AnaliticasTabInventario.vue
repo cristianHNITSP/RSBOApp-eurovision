@@ -25,14 +25,14 @@
               <div class="at-lbl">Entradas</div>
               <div class="at-val" style="color:#10b981" v-if="!isLoading">{{ fmtn(s?.entries30d) }}</div>
               <b-skeleton v-else :width="70" :height="32" animated />
-              <div class="at-cap">{{ entriesPct }}% del total</div>
+              <div class="at-cap">{{ entriesPct }}% de los movimientos totales</div>
             </div>
             <div class="an-trio-sep"></div>
             <div class="an-trio-item">
               <div class="at-lbl">Salidas</div>
               <div class="at-val" style="color:#3b82f6" v-if="!isLoading">{{ fmtn(s?.exits30d) }}</div>
               <b-skeleton v-else :width="70" :height="32" animated />
-              <div class="at-cap">{{ exitsPct }}% del total</div>
+              <div class="at-cap">{{ exitsPct }}% de los movimientos totales</div>
             </div>
             <div class="an-trio-sep"></div>
             <div class="an-trio-item">
@@ -135,21 +135,21 @@
         <div class="gc-body">
           <div class="an-trio">
             <div class="an-trio-item">
-              <div class="at-lbl">Hojas activas</div>
+              <div class="at-lbl">Catálogos activos</div>
               <div class="at-val" style="color:#06b6d4" v-if="!isLoading">{{ s?.clActiveSheets ?? 0 }}</div><b-skeleton
                 v-else :width="50" :height="32" animated />
               <div class="at-cap">Plantillas de lentes de contacto</div>
             </div>
             <div class="an-trio-sep"></div>
             <div class="an-trio-item">
-              <div class="at-lbl">Existencias totales</div>
+              <div class="at-lbl">Piezas en almacén</div>
               <div class="at-val" style="color:#0d9488" v-if="!isLoading">{{ fmtn(s?.clTotalStock) }}</div><b-skeleton
                 v-else :width="70" :height="32" animated />
-              <div class="at-cap">Piezas en almacén</div>
+              <div class="at-cap">Total de piezas físicas</div>
             </div>
             <div class="an-trio-sep"></div>
             <div class="an-trio-item">
-              <div class="at-lbl">Combinaciones</div>
+              <div class="at-lbl">Graduaciones</div>
               <div class="at-val" style="color:#3b82f6" v-if="!isLoading">{{ fmtn(s?.clTotalCombinations) }}</div>
               <b-skeleton v-else :width="70" :height="32" animated />
               <div class="at-cap">Esférica, Cilíndrica, Eje, Adición</div>
@@ -305,7 +305,7 @@
         </div>
         <div class="gc-body">
           <template v-if="!isLoading">
-            <div class="cov-row"><span class="cov-k">Combinaciones totales</span><b class="cov-v">{{
+            <div class="cov-row"><span class="cov-k">Graduaciones totales</span><b class="cov-v">{{
               fmtn(s?.totalCombinations) }}</b></div>
             <div class="cov-row"><span class="cov-k">Con stock</span><b class="cov-v" style="color:#10b981">{{
               fmtn(s?.withStock) }}</b></div>
@@ -313,12 +313,12 @@
             </div>
             <b-progress :value="s?.coveragePct ?? 0" size="is-small" type="is-primary" :show-value="false"
               class="my-2" />
-            <div class="cov-row"><span class="cov-k">Existencias totales</span><b class="cov-v">{{ fmtn(s?.totalStock)
+            <div class="cov-row"><span class="cov-k">Piezas en almacén</span><b class="cov-v">{{ fmtn(s?.totalStock)
                 }}</b></div>
-            <div class="cov-row"><span class="cov-k">Alertas críticas</span><b-tag
-                :type="(s?.criticalAlerts ?? 0) > 0 ? 'is-danger' : 'is-success'" size="is-small" class="is-rounded">{{
-                  s?.criticalAlerts ?? 0 }}</b-tag></div>
-            <div class="cov-row"><span class="cov-k">Stock seguro</span><b class="cov-v">{{ safeStockPct }}%</b></div>
+            <div class="cov-row"><span class="cov-k">Stock crítico (≤2)</span><b-tag
+                :type="(s?.criticalAlertsOptic ?? 0) > 0 ? 'is-danger' : 'is-success'" size="is-small" class="is-rounded">{{
+                  s?.criticalAlertsOptic ?? 0 }}</b-tag></div>
+            <div class="cov-row"><span class="cov-k">Stock seguro</span><b class="cov-v">{{ safeStockPct }}% (Celdas > 2)</b></div>
             <b-progress :value="safeStockPct" size="is-small" type="is-info" :show-value="false" class="mt-1" />
           </template>
           <template v-else><b-skeleton width="100%" :height="140" animated /></template>
@@ -335,9 +335,9 @@
         </div>
         <div class="gc-body">
           <template v-if="!isLoading">
-            <div class="cov-row"><span class="cov-k">Hojas activas</span><b class="cov-v">{{ s?.clActiveSheets ?? 0
+            <div class="cov-row"><span class="cov-k">Catálogos activos</span><b class="cov-v">{{ s?.clActiveSheets ?? 0
                 }}</b></div>
-            <div class="cov-row"><span class="cov-k">Combinaciones totales</span><b class="cov-v">{{
+            <div class="cov-row"><span class="cov-k">Graduaciones totales</span><b class="cov-v">{{
               fmtn(s?.clTotalCombinations) }}</b></div>
             <div class="cov-row"><span class="cov-k">Con stock</span><b class="cov-v" style="color:#10b981">{{
               fmtn(s?.clWithStock) }}</b></div>
@@ -345,8 +345,11 @@
             </div>
             <b-progress :value="s?.clCoveragePct ?? 0" size="is-small" type="is-info" :show-value="false"
               class="my-2" />
-            <div class="cov-row"><span class="cov-k">Existencias totales</span><b class="cov-v">{{ fmtn(s?.clTotalStock)
+            <div class="cov-row"><span class="cov-k">Piezas en almacén</span><b class="cov-v">{{ fmtn(s?.clTotalStock)
                 }}</b></div>
+            <div class="cov-row"><span class="cov-k">Stock crítico (≤2)</span><b-tag
+                :type="(s?.criticalAlertsCL ?? 0) > 0 ? 'is-warning' : 'is-success'" size="is-small" class="is-rounded">{{
+                  s?.criticalAlertsCL ?? 0 }}</b-tag></div>
             <div class="cov-row"><span class="cov-k">Promedio por celda</span><b class="cov-v">{{ s?.clAvgPerCell ?? 0
                 }}</b></div>
           </template>

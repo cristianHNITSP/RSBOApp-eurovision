@@ -1,0 +1,32 @@
+.prefs-card {
+  grid-column: span 6;
+  background: var(--surface-solid);
+  border: 1px solid var(--border-solid);
+  border-radius: 12px;
+  padding: 0.95rem;
+  box-shadow: var(--shadow-md);
+}
+
+.prefs-card--wide {
+  grid-column: span 12;
+}
+
+.prefs-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.7rem;
+}
+
+.prefs-title {
+  font-weight: 900;
+  color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+}
+
+@media screen and (max-width: 768px) {
+  .prefs-card {
+    grid-column: span 12;
+  }
+}

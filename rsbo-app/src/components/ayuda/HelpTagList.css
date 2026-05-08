@@ -1,0 +1,15 @@
+.help-tags {
+  margin-top: 0.4rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.help-tag {
+  font-size: 0.7rem;
+  color: var(--c-primary);
+  background: var(--c-primary-alpha);
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  border: 1px solid rgba(79, 70, 229, 0.15);
+}

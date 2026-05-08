@@ -41,8 +41,8 @@ async function broadcastCount(roleName, userId, since) {
 // ─── GET / ──────────────────────────────────────────────────────────────────
 router.get('/', auth, async (req, res) => {
   try {
-    const { limit, skip } = req.query;
-    const data = await svc.listForUser({ ...userCtx(req), limit, skip });
+    const { limit, skip, dateRange } = req.query;
+    const data = await svc.listForUser({ ...userCtx(req), limit, skip, dateRange });
     res.json(data);
   } catch (err) {
     console.error('GET /notification:', err);

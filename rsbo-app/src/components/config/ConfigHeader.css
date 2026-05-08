@@ -1,0 +1,79 @@
+.page-section-header {
+  /* el mb-4 viene de Bulma, no hace falta sobreescribir */
+}
+
+.config-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--c-primary);
+  background: var(--c-primary-alpha);
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+  margin-bottom: 1rem;
+}
+
+.config-pill .icon {
+  margin-right: 0.1rem;
+}
+
+.psh-desc {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+}
+
+.psh-quick {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.55rem;
+  margin-top: 0.75rem;
+}
+
+.psh-quick__card {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-start;
+  background: var(--surface-solid);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.65rem 0.75rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.psh-quick__icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--c-primary-alpha);
+  color: var(--c-primary);
+  border: 1px solid rgba(79, 70, 229, 0.18);
+  flex: 0 0 auto;
+  font-size: 0.9rem;
+}
+
+.psh-quick__title {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.psh-quick__text {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  margin: 0.15rem 0 0;
+  line-height: 1.25;
+}
+
+@media (min-width: 1024px) {
+  .psh-quick {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}

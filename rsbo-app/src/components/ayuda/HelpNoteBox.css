@@ -1,0 +1,12 @@
+.help-note {
+  margin-top: 0.75rem;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  background: var(--c-primary-alpha);
+  border: 1px solid #e9d5ff;
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+}

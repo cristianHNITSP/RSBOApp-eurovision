@@ -1,0 +1,54 @@
+.bo-grid {
+  margin-top: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.bo-card {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--bg-subtle);
+  overflow: hidden;
+}
+
+.bo-card__trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.75rem 0.9rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.bo-card__icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--c-primary-alpha);
+  color: var(--c-primary);
+  border: 1px solid rgba(79, 70, 229, 0.18);
+  flex: 0 0 auto;
+}
+
+.bo-card__title {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.bo-card__body {
+  padding: 0.1rem 0.9rem 0.8rem 1.65rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.bo-card__body p {
+  font-size: 0.79rem;
+  color: var(--text-secondary);
+  line-height: 1.35;
+}

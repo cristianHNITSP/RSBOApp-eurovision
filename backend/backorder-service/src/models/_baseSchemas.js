@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { ENUMS } = require("../data/constants");
 
 const ActorSchema = new mongoose.Schema(
   { userId: { type: String, default: null }, name: { type: String, default: null } },
@@ -31,8 +32,8 @@ const ProveedorSchema = new mongoose.Schema(
 const PagoSchema = new mongoose.Schema(
   {
     monto:        { type: Number, required: true, min: 0 },
-    metodoPago:   { type: String, enum: ["EFECTIVO", "TARJETA", "TRANSFERENCIA", "OTRO"], required: true },
-    tipo:         { type: String, enum: ["ANTICIPO", "ABONO", "PAGO_COMPLETO", "PAGO_FINAL", "REEMBOLSO"], required: true },
+    metodoPago:   { type: String, enum: ENUMS.PAGO_METODOS, required: true },
+    tipo:         { type: String, enum: ENUMS.PAGO_TIPOS, required: true },
     fecha:        { type: Date, default: Date.now },
     referencia:   { type: String, default: null },
     notas:        { type: String, default: "" },
@@ -54,8 +55,6 @@ const EventoEstadoSchema = new mongoose.Schema(
   { _id: true }
 );
 
-const STATUS_VALUES = ["SOLICITADO", "PEDIDO_PROVEEDOR", "RECIBIDO", "LISTO_ENTREGA", "ENTREGADO", "CANCELADO"];
-
 /**
  * Devuelve el bloque de campos comunes a los 3 modelos
  */
@@ -66,7 +65,7 @@ function baseFields() {
     cliente:  { type: ClienteSchema, required: true },
     proveedor:{ type: ProveedorSchema, default: () => ({}) },
 
-    status:   { type: String, enum: STATUS_VALUES, default: "SOLICITADO", index: true },
+    status:   { type: String, enum: ENUMS.STATUS, default: "SOLICITADO", index: true },
 
     precioEstimado: { type: Number, default: 0, min: 0 },
     precioFinal:    { type: Number, default: null, min: 0 },
@@ -94,4 +93,4 @@ function baseFields() {
   };
 }
 
-module.exports = { baseFields, STATUS_VALUES, ActorSchema, ClienteSchema, ProveedorSchema, PagoSchema, EventoEstadoSchema };
+module.exports = { baseFields, STATUS_VALUES: ENUMS.STATUS, ActorSchema, ClienteSchema, ProveedorSchema, PagoSchema, EventoEstadoSchema };

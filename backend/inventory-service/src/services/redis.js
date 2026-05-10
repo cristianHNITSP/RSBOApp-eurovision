@@ -1,13 +1,11 @@
-/**
- * Redis cache service for inventory-service.
- */
+const config = require("../config");
 let Redis;
 try { Redis = require("ioredis"); } catch { Redis = null; }
 
 let client = null;
 let ready = false;
 
-const REDIS_URL = process.env.REDIS_URL || "";
+const REDIS_URL = config.redis.url;
 
 if (REDIS_URL && Redis) {
   client = new Redis(REDIS_URL, {

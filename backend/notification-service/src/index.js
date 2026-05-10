@@ -1,61 +1,74 @@
-// notification-service/src/index.js
-require('dotenv').config();
+/**
+ * @fileoverview Punto de entrada principal del servicio de notificaciones
+ */
 
-const express      = require('express');
-const cors         = require('cors');
-const cookieParser = require('cookie-parser');
-const mongoose     = require('mongoose');
-const ws           = require('./ws');
+const config = require("./config");
+const express = require("express");
+const mongoose = require("mongoose");
+const cors = require("cors");
+const cookieParser = require("cookie-parser");
+const { APP_CONSTANTS } = require("./data/constants");
 
 const app = express();
 
-// ─── CORS ────────────────────────────────────────────────────────────────────
-const rawOrigins = (process.env.CORS_ORIGINS || '').split(',').map((o) => o.trim()).filter(Boolean);
-const devOrigins = ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://192.168.0.87:5173'];
-const allowedOrigins = Array.from(new Set([...rawOrigins, ...devOrigins]));
+const PORT = config.port;
+const HOST = config.host;
+
+app.set("trust proxy", 1);
+
+const envOrigins = config.cors.origins;
+const devOrigins = APP_CONSTANTS.DEV_ORIGINS;
+const allowedOrigins = Array.from(new Set([...envOrigins, ...devOrigins]));
+console.log("✅ CORS allowed origins:", allowedOrigins);
 
 app.use(
   cors({
-    origin: (origin, cb) => {
-      if (!origin) return cb(null, true);
-      if (allowedOrigins.includes(origin)) return cb(null, true);
-      return cb(new Error('Not allowed by CORS'));
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      console.warn(`❌ CORS bloqueado para origen no permitido: ${origin}`);
+      return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
   })
 );
 
-app.use(express.json({ limit: '5mb' }));
+app.use(express.json());
 app.use(cookieParser());
 
-// ─── Rutas ───────────────────────────────────────────────────────────────────
-// El gateway proxia /api/notification → este servicio, reenviando la URL completa.
-// Por eso montamos en /api/notification para que el path coincida.
-app.use('/api/notification', require('./routes/notification.routes'));
-app.use('/api/notification/internal', require('./routes/internal.routes'));
-
-// ─── Healthcheck ─────────────────────────────────────────────────────────────
-app.get('/health', (_req, res) =>
-  res.json({ ok: true, service: 'notification', time: new Date().toISOString() })
-);
-
-// ─── MongoDB + arranque ──────────────────────────────────────────────────────
-const MONGO_URI = process.env.MONGO_URI;
-if (!MONGO_URI) {
-  console.error('❌ MONGO_URI no definida en .env');
-  process.exit(1);
-}
+// Logger de depuración
+app.use((req, res, next) => {
+  console.log(`[DEBUG] ${req.method} ${req.url}`);
+  next();
+});
 
 mongoose
-  .connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+  .connect(config.mongo.uri)
   .then(() => {
-    console.log('✅ Conectado a MongoDB (notification_db)');
-    ws.connect(); // conectar al Gateway WS para broadcasting
-    require('./services/redisPubSub').startSubscriber();
-    const PORT = process.env.PORT || 3000;
-    app.listen(PORT, () => console.log(`🟢 Notification service en puerto ${PORT}`));
+    console.log("✅ Connected to MongoDB (notification)");
   })
   .catch((err) => {
-    console.error('❌ Error conectando a MongoDB:', err.message);
+    console.error("MongoDB connection error:", err);
     process.exit(1);
   });
+
+app.get(APP_CONSTANTS.PATHS.HEALTH, (_req, res) => {
+  res.json({ ok: true, service: "notification", ts: Date.now() });
+});
+
+// Rutas
+app.use("/api/notifications", require("./routes/notification.routes"));
+app.use("/api/notification/internal", require("./routes/internal.routes"));
+
+app.use((err, _req, res, _next) => {
+  console.error("[Notification ERROR]", err);
+  const status = err.status || 500;
+  res.status(status).json({ error: err.message || "Internal error" });
+});
+
+const notificationWs = require("./ws");
+notificationWs.connect();
+
+app.listen(PORT, HOST, () => {
+  console.log(`🚀 Notification Service corriendo en http://${HOST}:${PORT}`);
+});

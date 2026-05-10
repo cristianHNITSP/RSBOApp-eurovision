@@ -52,10 +52,9 @@ const routes = [
         meta: { requiresAuth: true, breadcrumb: "Ventas / Laboratorio" },
       },
       {
-        path: "ventas/:category(bases-micas|optica|lentes-contacto|historial)?",
+        path: "ventas",
         name: "ventas-dashboard",
         component: () => import("../views/ventas/VentasDashboard.vue"),
-        props: true,
         meta: { requiresAuth: true, breadcrumb: "Ventas" },
       },
 

@@ -3,10 +3,10 @@ import axios from "axios";
 
 // En dev con Vite proxy: VITE_API_URL="/api"
 // En prod: puedes setear https://tu-dominio.com/api (si aplica)
-const API_URL = import.meta.env.VITE_API_URL || "/api";
+import { API_URLS } from "../config/apiConfig";
 
 export const api = axios.create({
-  baseURL: API_URL,
+  baseURL: API_URLS.base,
   timeout: Number(import.meta.env.VITE_API_TIMEOUT || 15000),
   withCredentials: true, // ✅ cookies
 });

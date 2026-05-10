@@ -1,7 +1,7 @@
 // src/services/notifications.js
 import api from '@/api/axios';
 
-const BASE = '/notification';
+const BASE = '/notifications';
 
 /** Lista notificaciones visibles para el usuario autenticado */
 export const fetchNotifications = (params = {}) =>

@@ -1,13 +1,11 @@
 <script>
-import { ref } from 'vue';
 import { labToast } from '@/composables/shared/useLabToast.js';
 import { fetchNotifications, pinNotification, dismissNotifApi } from '@/services/notifications';
+import { NOTIFICATION_CONFIG } from '@/data/notifications.data';
 
 import NotificationHeader from './notifi/NotificationHeader.vue';
 import NotificationCard from './notifi/NotificationCard.vue';
 import NotificationEmptyState from './notifi/NotificationEmptyState.vue';
-
-const PRIORITY_ORDER = { critical: 4, high: 3, medium: 2, low: 1 };
 
 export default {
   name: 'NotificationPanel',
@@ -24,7 +22,7 @@ export default {
   setup() {
     let _wsDebounceTimer = null;
     return {
-      scheduleLoad(fn, ms = 800) {
+      scheduleLoad(fn, ms = NOTIFICATION_CONFIG.DEBOUNCE_MS) {
         clearTimeout(_wsDebounceTimer);
         _wsDebounceTimer = setTimeout(fn, ms);
       },
@@ -35,7 +33,8 @@ export default {
     return {
       notifications: [],
       loading: false,
-      _loadedAt: null,  // timestamp del último fetch (para control de stale)
+      _loadedAt: null,
+      config: NOTIFICATION_CONFIG
     };
   },
 
@@ -48,8 +47,8 @@ export default {
         const pa = a.isPinned ? 1 : 0;
         const pb = b.isPinned ? 1 : 0;
         if (pa !== pb) return pb - pa;
-        const prioA = PRIORITY_ORDER[a.priority] ?? 0;
-        const prioB = PRIORITY_ORDER[b.priority] ?? 0;
+        const prioA = this.config.PRIORITY_ORDER[a.priority] ?? 0;
+        const prioB = this.config.PRIORITY_ORDER[b.priority] ?? 0;
         if (prioA !== prioB) return prioB - prioA;
         return new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt);
       });
@@ -57,10 +56,9 @@ export default {
   },
 
   watch: {
-    // Carga al abrir el panel; si ya tiene datos y < 60 s, reutiliza
     visible(val) {
       if (!val) return;
-      const stale = !this._loadedAt || (Date.now() - this._loadedAt) > 60_000;
+      const stale = !this._loadedAt || (Date.now() - this._loadedAt) > this.config.STALE_TIME_MS;
       if (!this.notifications.length || stale) this.load();
     },
   },
@@ -69,7 +67,7 @@ export default {
     async load() {
       this.loading = true;
       try {
-        const { data } = await fetchNotifications({ limit: 10 });
+        const { data } = await fetchNotifications({ limit: this.config.FETCH_LIMIT });
         this.notifications = data.notifications ?? data ?? [];
         this._loadedAt = Date.now();
       } catch { /* silencioso */ } finally {
@@ -77,7 +75,6 @@ export default {
       }
     },
 
-    // Descarta la notificación para el usuario de forma persistente en BD
     async dismissNotification(notif) {
       if (notif.isPinned) {
         labToast.warning('Desfija la notificación antes de descartarla.');
@@ -90,7 +87,7 @@ export default {
         setTimeout(() => {
           const idx = this.notifications.findIndex((n) => String(n._id) === String(notif._id));
           if (idx !== -1) this.notifications.splice(idx, 1);
-        }, 300);
+        }, this.config.ANIMATION_DURATION_MS);
       } catch {
         if (el) el.classList.remove('slide-out-right');
         labToast.warning('No se pudo descartar la notificación.');
@@ -111,15 +108,12 @@ export default {
     _onWs(e) {
       if (e?.detail?.type !== 'NOTIFICATION_NEW') return;
       if (this.visible) {
-        // Panel abierto: debounce 800 ms para no recargar en ráfaga
         this.scheduleLoad(() => this.load());
       }
-      // Panel cerrado: el badge ya lo actualiza DashboardLayout vía lab:ws; no recargamos la lista
     },
   },
 
   mounted() {
-    // Carga lazy: solo si el panel ya está visible al montar (poco común pero posible)
     if (this.visible) this.load();
     window.addEventListener('lab:ws', this._onWs);
   },
@@ -133,17 +127,12 @@ export default {
 <template>
   <transition name="panel-pop">
     <div v-show="visible" class="notification-panel" role="dialog" aria-label="Notificaciones">
-      <!-- Drag handle (móvil) -->
       <div class="panel-drag-handle" aria-hidden="true"></div>
 
       <div class="aside-container">
-        
-        <NotificationHeader 
-          @close="$emit('close')"
-        />
+        <NotificationHeader @close="$emit('close')" />
 
         <div class="notification-list">
-          
           <NotificationEmptyState 
             v-if="loading || visibleNotifications.length === 0"
             :loading="loading"
@@ -165,7 +154,6 @@ export default {
               </router-link>
             </div>
           </template>
-
         </div>
       </div>
     </div>

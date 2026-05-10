@@ -14,6 +14,7 @@
  */
 
 const mongoose = require('mongoose');
+const { VALID_ROLES } = require('../data/roles');
 
 const roleSchema = new mongoose.Schema({
   name: {
@@ -21,7 +22,7 @@ const roleSchema = new mongoose.Schema({
     required: true,
     unique: true,
     lowercase: true,
-    enum: ['root', 'eurovision', 'supervisor', 'ventas', 'laboratorio'],
+    enum: VALID_ROLES,
     description: 'Nombre del rol, restringido a valores predefinidos'
   },
   description: {

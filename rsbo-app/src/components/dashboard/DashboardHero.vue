@@ -78,6 +78,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue';
+import { getAvatar, AVATAR_DEFAULTS } from '@/utils/avatarHelper';
 
 const props = defineProps({
   user: { type: Object, default: null },
@@ -95,7 +96,7 @@ const props = defineProps({
 });
 
 const avatarLoaded = ref(false);
-const avatarUrl = ref('/eurovision.svg');
+const avatarUrl = ref(AVATAR_DEFAULTS.DASHBOARD);
 
 function loadAvatar(url) {
   avatarLoaded.value = false;
@@ -103,10 +104,13 @@ function loadAvatar(url) {
   const img = new Image();
   img.src = url;
   img.onload = () => { avatarLoaded.value = true; };
-  img.onerror = () => { avatarUrl.value = '/eurovision.svg'; avatarLoaded.value = true; };
+  img.onerror = () => { 
+    avatarUrl.value = AVATAR_DEFAULTS.DASHBOARD; 
+    avatarLoaded.value = true; 
+  };
 }
 
-watch(() => props.user?.avatar, v => loadAvatar(v?.trim() ? v : '/eurovision.svg'), { immediate: true });
+watch(() => props.user?.avatar, v => loadAvatar(getAvatar(v, 'DASHBOARD')), { immediate: true });
 
 const greeting = computed(() => { const h = new Date().getHours(); return h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches'; });
 const firstName = computed(() => (props.user?.name || 'Usuario').split(' ')[0]);

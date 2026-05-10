@@ -1,3 +1,11 @@
+<script setup>
+defineProps({
+  isCollapsed: { type: Boolean, default: false }
+});
+
+defineEmits(['toggle']);
+</script>
+
 <template>
   <div class="sidebar-header" :class="{ 'is-collapsed': isCollapsed }">
     <!-- Logo + título -->
@@ -23,14 +31,6 @@
       :icon-right="isCollapsed ? 'arrow-right' : 'arrow-left'" />
   </div>
 </template>
-
-<script setup>
-defineProps({
-  isCollapsed: { type: Boolean, default: false }
-})
-
-defineEmits(['toggle'])
-</script>
 
 <style scoped>
 @import "./SidebarHeader.css";

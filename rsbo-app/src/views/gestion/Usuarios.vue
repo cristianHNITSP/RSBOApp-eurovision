@@ -4,7 +4,6 @@
       <UserBanner
         ref="bannerRef"
         :user="selectedUser"
-        :fallback-avatar="FALLBACK_AVATAR"
         :permission-catalog="permissionsCatalog"
         :loading="usersLoading"
         @avatar-picked="onAvatarPicked"
@@ -35,7 +34,6 @@
         :current-page="currentPage"
         :loading="usersLoading"
         :selected-user="selectedUser"
-        :fallback-avatar="FALLBACK_AVATAR"
         @page-change="onPageChange"
         @sort="onSort"
         @row-click="selectRow"
@@ -58,22 +56,13 @@
       @save="savePassword"
       @toast="toast"
     />
-    <b-modal
+    <UserCreateModal
       v-model="createOpen"
-      has-modal-card
-      trap-focus
-      :destroy-on-hide="true"
-      aria-role="dialog"
-      aria-modal
-    >
-      <UserCreateModal
-        :roles="roles"
-        :saving="saving"
-        :fallback-avatar="FALLBACK_AVATAR"
-        @save="createUser"
-        @toast="toast"
-      />
-    </b-modal>
+      :roles="roles"
+      :saving="saving"
+      @save="createUser"
+      @toast="toast"
+    />
   </div>
 </template>
 
@@ -105,7 +94,7 @@ const {
   selectedUser, bannerRef,
   editOpen, passOpen, createOpen,
   editUser, passUser,
-  users, FALLBACK_AVATAR,
+  users,
   loadUsers, onPageChange, onSort, selectRow,
   onAvatarPicked,
   openEdit, saveEdit,

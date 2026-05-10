@@ -55,8 +55,7 @@ import UserProfileForm  from '@/components/config/UserProfileForm.vue';
 import { labToast }       from '@/composables/shared/useLabToast';
 import { useProfileForm } from '@/composables/auth/useProfileForm';
 import { usePasswordForm } from '@/composables/auth/usePasswordForm';
-
-const avatarUrl = 'https://cdn.jsdelivr.net/gh/alohe/avatars/png/vibrent_1.png';
+import { getAvatar, AVATAR_DEFAULTS } from '@/utils/avatarHelper';
 
 const props = defineProps({
   user:    { type: Object,  default: null },
@@ -97,7 +96,7 @@ const displayUsername  = computed(() => props.user?.username || '—');
 const roleName         = computed(() => props.user?.role?.name || 'Sin rol asignado');
 const statusLabel      = computed(() => (props.user?.isActive ? 'Activo' : 'Inactivo'));
 const statusDotClass   = computed(() => (props.user?.isActive ? 'dot--ok' : 'dot--bad'));
-const avatarPlaceholder = computed(() => props.user?.avatar || formData.avatar || avatarUrl);
+const avatarPlaceholder = computed(() => getAvatar(props.user?.avatar || formData.avatar, 'PROFILE'));
 
 watch(() => props.user, (u) => { if (u) initProfile(u); }, { immediate: true });
 

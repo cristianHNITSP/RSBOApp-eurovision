@@ -1,3 +1,10 @@
+<script setup>
+defineProps({
+  stats: { type: Object, required: true },
+  roles: { type: Array, required: true },
+});
+</script>
+
 <template>
   <header class="panel-usuarios-header page-section-header m-0">
     <div>
@@ -36,12 +43,5 @@
     </div>
   </header>
 </template>
-
-<script setup>
-defineProps({
-  stats: { type: Object, required: true },
-  roles: { type: Array, required: true },
-});
-</script>
 
 <style src="./UsuariosHeader.css" scoped />

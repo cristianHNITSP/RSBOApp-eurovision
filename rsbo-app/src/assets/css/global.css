@@ -248,6 +248,16 @@ strong {
   border-top-color: var(--border-solid);
 }
 
+.modal-background {
+  background-color: rgba(10, 12, 28, 0.45) !important;
+  backdrop-filter: blur(8px) saturate(1.5) !important;
+  -webkit-backdrop-filter: blur(8px) saturate(1.5) !important;
+}
+
+[data-theme="dark"] .modal-background {
+  background-color: rgba(0, 0, 0, 0.65) !important;
+}
+
 /* ----------------------------------------------------------
    BUEFY DROPDOWNS CONTENT — DARK MODE
    ---------------------------------------------------------- */
@@ -1794,6 +1804,46 @@ button.dropdown-item:hover {
 
 .premium-btn:active:not([disabled]) {
   filter: brightness(0.9);
+}
+
+.premium-glass {
+  background: var(--surface-overlay) !important;
+  backdrop-filter: blur(var(--fx-blur)) saturate(1.5) !important;
+  -webkit-backdrop-filter: blur(var(--fx-blur)) saturate(1.5) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: var(--shadow-lg) !important;
+}
+
+[data-theme="dark"] .premium-glass {
+  background: rgba(22, 27, 34, 0.75) !important;
+  border: 1px solid rgba(148, 163, 184, 0.15) !important;
+}
+
+.premium-table {
+  background: var(--surface-solid) !important;
+  border-radius: var(--radius-xl) !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+
+.premium-table thead th {
+  background: var(--bg-subtle) !important;
+  border-bottom: 2px solid var(--border) !important;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  color: var(--text-muted) !important;
+  padding: 1rem !important;
+}
+
+.premium-table tbody td {
+  padding: 1rem !important;
+  border-bottom: 1px solid var(--border-light) !important;
+}
+
+.premium-table tr:last-child td {
+  border-bottom: none !important;
 }
 
 /* ============================================================

@@ -1,25 +1,21 @@
 <template>
   <div class="sidebar-mobile-wrapper">
     <aside class="sidebar-mobile">
-      <!-- Decor overlays -->
       <div class="sidebar-decor" aria-hidden="true"></div>
 
-      <!-- HEADER -->
       <SidebarHeader
         :is-collapsed="false"
         @toggle="$emit('close')"
       />
 
-      <!-- MENÚ -->
       <SidebarMenu
-        :menu-items="menuItems"
+        :menu-items="computedMenuItems"
         :is-collapsed="false"
         :is-child-active="isChildActive"
         mode="tree"
         @navigate="$emit('close')"
       />
 
-      <!-- FOOTER USUARIO -->
       <SidebarFooter
         :loading="loading"
         :avatar-loaded="avatarLoaded"
@@ -37,6 +33,7 @@
 import SidebarHeader from "./sidebar/SidebarHeader.vue";
 import SidebarMenu from "./sidebar/SidebarMenu.vue";
 import SidebarFooter from "./sidebar/SidebarFooter.vue";
+import { SIDEBAR_MENU, SIDEBAR_CONFIG } from "../data/sidebar.data";
 
 export default {
   name: "SidebarMobile",
@@ -53,7 +50,7 @@ export default {
   data() {
     return {
       activeSubmenu: null,
-      avatarUrl: "https://github.com/octocat.png",
+      avatarUrl: SIDEBAR_CONFIG.DEFAULT_AVATAR,
       avatarLoaded: false,
     };
   },
@@ -63,41 +60,30 @@ export default {
       const role = this.user?.role?.name || this.user?.role || "Usuario";
       return { name, role };
     },
-    menuItems() {
+    computedMenuItems() {
       const count = this.pendingOrders;
       const labBadge = count > 0 ? String(count) : null;
-      return [
-        { group: "Principal" },
-        { label: "Dashboard", icon: "tachometer-alt", path: "/l/home" },
-        { label: "Analíticas", icon: "chart-line", path: "/l/analiticas", badge: "Nuevo", badgeType: "is-success" },
-        { group: "Gestión" },
-        { label: "Usuarios", icon: "users", path: "/l/usuarios" },
-        {
-          label: "Inventario",
-          icon: "box-open",
-          children: [
-            { label: "Bases y Micas", icon: "glasses", path: "/l/inventario/bases-micas" },
-            { label: "Óptica", icon: "eye", path: "/l/inventario/optica" },
-            { label: "Lentes de Contacto", icon: "circle", path: "/l/inventario/lentes-contacto" },
-          ],
-        },
-        {
-          label: "Ventas",
-          icon: "shopping-cart",
-          badge: labBadge,
-          badgeType: "is-warning",
-          children: [
-            { label: "Laboratorio", icon: "flask", path: "/l/ventas/laboratorio", badge: labBadge, badgeType: "is-warning" },
-            { label: "Bases y Micas", icon: "glasses", path: "/l/ventas/bases-micas", badge: labBadge, badgeType: "is-warning" },
-            { label: "Óptica", icon: "eye", path: "/l/ventas/optica" },
-            { label: "Lentes de Contacto", icon: "circle", path: "/l/ventas/lentes-contacto" },
-          ],
-        },
-        { label: "Devoluciones", icon: "rotate-left", path: "/l/devoluciones" },
-        { group: "Otros" },
-        { label: "Ajustes", icon: "cog", path: "/l/config.panel" },
-        { label: "Ayuda", icon: "question-circle", path: "/l/Ayuda" },
-      ];
+      const userRole = String(this.user?.role?.name || this.user?.role || this.user?.roleName || "").toLowerCase();
+
+      return SIDEBAR_MENU.filter(item => {
+        if (item.roles && !item.roles.includes(userRole)) return false;
+        return true;
+      }).map(item => {
+        const newItem = { ...item };
+        if (newItem.children) {
+          newItem.children = newItem.children.map(child => {
+            if (child.needsBadge === 'lab') {
+              return { ...child, badge: labBadge, badgeType: "is-warning" };
+            }
+            return child;
+          });
+          if (newItem.label === "Ventas" && labBadge) {
+            newItem.badge = labBadge;
+            newItem.badgeType = "is-warning";
+          }
+        }
+        return newItem;
+      });
     },
   },
   watch: {
@@ -105,7 +91,7 @@ export default {
       immediate: true,
       handler(newUser) {
         let avatar = newUser?.avatar ? String(newUser.avatar).trim() : "";
-        if (!avatar) avatar = "https://github.com/octocat.png";
+        if (!avatar) avatar = SIDEBAR_CONFIG.DEFAULT_AVATAR;
 
         this.avatarLoaded = false;
         this.$nextTick(() => {
@@ -114,7 +100,7 @@ export default {
           img.src = avatar;
           img.onload = () => (this.avatarLoaded = true);
           img.onerror = () => {
-            this.avatarUrl = "https://github.com/octocat.png";
+            this.avatarUrl = SIDEBAR_CONFIG.DEFAULT_AVATAR;
             this.avatarLoaded = true;
           };
         });
@@ -123,7 +109,7 @@ export default {
   },
   methods: {
     onAvatarLoad() { this.avatarLoaded = true; },
-    onAvatarError() { this.avatarUrl = "https://github.com/octocat.png"; this.avatarLoaded = true; },
+    onAvatarError() { this.avatarUrl = SIDEBAR_CONFIG.DEFAULT_AVATAR; this.avatarLoaded = true; },
     navigateTo(path) {
       this.$router.push(path);
       this.$emit('close');

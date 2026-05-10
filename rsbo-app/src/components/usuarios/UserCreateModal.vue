@@ -9,7 +9,7 @@
 
       <section class="modal-card-body">
         <div class="create-avatar is-flex is-flex-direction-column is-align-items-center">
-          <AvatarPicker :modelValue="form.avatar || ''" :placeholder="fallbackAvatar" :editMode="true" :size="64"
+          <AvatarPicker :modelValue="form.avatar || ''" :placeholder="AVATAR_DEFAULTS.FALLBACK" :editMode="true" :size="64"
             @update:modelValue="(val) => (form.avatar = val)" />
           <div class="create-avatar__hint has-text-centered mt-2">
             <p class="is-size-7 has-text-grey m-0">Foto de perfil</p>
@@ -70,6 +70,7 @@ import { reactive, watch, computed } from 'vue'
 import AvatarPicker from '@/components/AvatarPicker.vue'
 import { formatRoleLabel } from '@/utils/roleHelpers.js'
 import { generateSecurePassword } from '@/utils/generatePassword.js'
+import { AVATAR_DEFAULTS } from '@/utils/avatarHelper'
 
 const USERNAME_REGEX = /^[a-z0-9_.-]{3,32}$/
 
@@ -77,7 +78,6 @@ const props = defineProps({
   modelValue: { type: Boolean, required: true },
   roles: { type: Array, default: () => [] },
   saving: { type: Boolean, default: false },
-  fallbackAvatar: { type: String, default: '' },
 })
 
 const emit = defineEmits(['update:modelValue', 'save', 'toast'])

@@ -1,0 +1,103 @@
+# ==============================================================================
+# 🛠️ RSBO APP - DOCKER COMPOSE OVERRIDE (DESARROLLO LOCAL)
+# ==============================================================================
+#
+# 🚀 COMANDOS ÚTILES (Ejecutar en la raíz del proyecto):
+#
+# 🟢 DESPLIEGUE:
+#   docker-compose up --build           -> Construye y levanta TODO en segundo plano.
+#   docker-compose ps                      -> Verifica el estado de los contenedores y healthchecks.
+#
+# 📜 MONITOREO:
+#   docker-compose logs -f                 -> Ver logs de todos los servicios en tiempo real.
+#   docker-compose logs -f [servicio]      -> Ver logs de un servicio específico (ej: gateway).
+#
+# 🔴 PARADA Y LIMPIEZA:
+#   docker-compose stop                    -> Detiene los contenedores (sin borrarlos).
+#   docker-compose down                    -> Detiene y BORRA contenedores y redes.
+#   docker-compose down -v                 -> Detiene y BORRA contenedores, redes Y VOLÚMENES (Borra la BD).
+#
+# 🔄 MANTENIMIENTO:
+#   docker-compose restart [servicio]      -> Reinicia un servicio específico.
+#   docker-compose exec [servicio] sh      -> Entrar a la terminal de un contenedor (ej: exec mongo sh).
+#   docker system prune -a --volumes       -> LIMPIEZA TOTAL (Borra imágenes, redes y volúmenes huérfanos).
+#
+# ==============================================================================
+
+services:
+  # ─── FRONTEND DEV (Vite) ──────────────────────────────────
+  rsbo-frontend-dev:
+    image: node:20-alpine
+    container_name: rsboapp-frontend-dev
+    working_dir: /app
+    volumes:
+      - ./rsbo-app:/app
+      - /app/node_modules
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
+    ports:
+      - "5173:5173"
+    env_file: [ ./rsbo-app/.env ]
+    environment:
+      # ✅ Valor de infraestructura (fijo dentro de Docker)
+      VITE_PROXY_TARGET: "http://gateway:3000"
+    depends_on:
+      gateway: { condition: service_healthy }
+    networks: [ rsbo-net ]
+
+  # ─── MONGO EXPRESS ────────────────────────────────────────
+  mongo-express:
+    image: mongo-express
+    container_name: rsboapp-mongo-express
+    ports:
+      - "127.0.0.1:${MONGO_EXPRESS_PORT_HOST:-8081}:8081"
+    environment:
+      ME_CONFIG_MONGODB_URL: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/"
+      ME_CONFIG_BASICAUTH_USERNAME: ${MONGO_EXPRESS_BASICAUTH_USERNAME}
+      ME_CONFIG_BASICAUTH_PASSWORD: ${MONGO_EXPRESS_BASICAUTH_PASSWORD}
+      ME_CONFIG_SITE_BASEURL: "/"
+    depends_on:
+      mongo: { condition: service_healthy }
+    networks: [ rsbo-net ]
+
+  # ─── BACKEND OVERRIDES (Puertos y Volúmenes) ──────────────
+  gateway:
+    ports:
+      - "127.0.0.1:${GATEWAY_PORT_HOST:-3000}:3000"
+    volumes:
+      - ./backend/gateway:/app
+      - /app/node_modules
+
+  auth-service:
+    ports:
+      - "127.0.0.1:3001:3000"
+    volumes:
+      - ./backend/auth-service:/app
+      - /app/node_modules
+
+  inventory-service:
+    ports:
+      - "127.0.0.1:3002:3000"
+    volumes:
+      - ./backend/inventory-service:/app
+      - /app/node_modules
+
+  optica-service:
+    ports:
+      - "127.0.0.1:3003:3000"
+    volumes:
+      - ./backend/optica-service:/app
+      - /app/node_modules
+
+  backorder-service:
+    ports:
+      - "127.0.0.1:3004:3000"
+    volumes:
+      - ./backend/backorder-service:/app
+      - /app/node_modules
+
+  notification-service:
+    ports:
+      - "127.0.0.1:3005:3000"
+    volumes:
+      - ./backend/notification-service:/app
+      - /app/node_modules

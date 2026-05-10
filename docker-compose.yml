@@ -1,316 +1,147 @@
-# version: '3.9'
-# Comandos útiles:
-# - Iniciar todos: docker start $(docker ps -a -q)
-# - Detener todos: docker stop $(docker ps -q)
-# - Reconstruir: docker-compose down && docker-compose up --build
-# - entrar al contenedor para ejecutar seed users: docker exec -it rsboapp-backend sh || docker exec -it rsboapp-backend npm run seed-users
-# - corre el file seed-users: npm run seed-users
+# ============================================================
+# RSBO APP - DOCKER COMPOSE BASE (INDUSTRIAL GRADE v3)
+# ============================================================
 
-# PUERTOS:
-#API (Express): http://localhost:3000
-#Mongo Express (solo desde tu máquina): http://localhost:8081
+# Anchors para evitar repetición y errores humanos
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
 
-# DESPLIGUE:
-# desarrollo: docker compose --profile dev up --build
-# docker compose down && docker compose --profile dev up --build
-# producción: docker compose --profile prod up --build
-
-#BAJAR Y DESPLEGAR EN DEV:
-# sudo docker compose down && sudo docker compose --profile dev up --build
-
-# duerme wsl hasta que lo vuelva abrir: wsl --shutdown
-
-# Se reconstruirá la imagen e instalará todas las dependencias nuevas, incluyendo cors.
-# docker-compose build --no-cache
-# docker-compose up
-
-#Nuevos comandos
-#sudo docker compose --profile dev up --build
-#sudo docker compose --profile prod up --build
-#sudo docker compose --profile dev up --build auth-service
-#sudo docker compose --profile dev up auth-service gateway mongo mongo-express
-#sudo docker compose --profile dev down
-
-#Ejecutar la semillas de auth-service
-#sudo docker exec -it rsboapp-auth npm run seed-users
-#sudo docker exec rsboapp-inventory sh -c "node src/seeds/seed-catalog.js"
-
-#Ejecutar las semillas de rsboapp-inventory
-#sudo docker exec -it rsboapp-inventory npm run seed-templates
-
-# ver logs -f es para seguir los actualizados
-# sudo docker logs -f rsboapp-inventory
-# sudo docker logs rsboapp-inventory
-# sudo docker logs -f rsboapp-auth
-
+x-healthcheck-node: &node-healthcheck
+  test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+  interval: 10s
+  timeout: 5s
+  retries: 3
+  start_period: 15s # Tiempo de gracia para el boot de Node
 
 services:
-  # =========================
-  # FRONTEND (Vite build + Nginx)
-  # =========================
-  rsbo-frontend:
-    build:
-      context: ./rsbo-app
-      dockerfile: Dockerfile
-      target: prod
-    container_name: rsboapp-frontend
-    # NO usa el puerto 80 del host: va por 4300 en localhost → no choca con BeachClub
-    ports:
-      - "127.0.0.1:${FRONTEND_PORT_HOST:-4300}:80"
-    depends_on:
-      - gateway
-    restart: unless-stopped
-    networks:
-      - rsbo-net
-    profiles: ["prod"]
-
-  # =========================
-  # FRONTEND DEV (Vite) - hot reload
-  # =========================
-  rsbo-frontend-dev:
-    image: node:20-alpine
-    container_name: rsboapp-frontend-dev
-    working_dir: /app
-    volumes:
-      - ./rsbo-app:/app
-      - /app/node_modules
-    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
-    ports:
-      - "5173:5173"
-    environment:
-      #Vite proxy apunta al gateway dentro de la red Docker
-      VITE_PROXY_TARGET: "http://gateway:3000"
-      # Opcional (pero coherente)
-      VITE_API_URL: "/api"
-      VITE_WS_URL: "/ws"
-    depends_on:
-      - gateway
-    restart: unless-stopped
-    networks:
-      - rsbo-net
-    profiles: ["dev"]
-  # =========================
-  # GATEWAY (único punto de entrada al backend)
-  # =========================
+  # ─── GATEWAY (Entry point) ────────────────────────────────
   gateway:
-    build:
-      context: ./backend/gateway
+    build: { context: ./backend/gateway }
     container_name: rsboapp-gateway
-    env_file:
-      - ./.env
-      - ./backend/gateway/.env
-    environment:
-      NODE_ENV: ${NODE_ENV:-production}
+    env_file: [./.env, ./backend/gateway/.env]
     depends_on:
-      - auth-service
-      - inventory-service
-      - optica-service
-      - notification-service
-      - backorder-service
-    expose:
-      - "3000"                    # visible dentro de la red Docker
-    ports:
-      - "127.0.0.1:${GATEWAY_PORT_HOST:-3000}:3000"  # útil para pruebas desde tu host
-    restart: unless-stopped
-    networks:
-      - rsbo-net
-    profiles: ["prod", "dev"]
+      auth-service: { condition: service_healthy }
+    networks: [rsbo-net]
+    user: "node"
+    healthcheck: *node-healthcheck
+    logging: *default-logging
 
-  # =========================
-  # AUTH SERVICE
-  # =========================
+  # ─── AUTH SERVICE (Includes AdminJS) ──────────────────────
   auth-service:
-    build:
-      context: ./backend/auth-service
+    build: { context: ./backend/auth-service }
     container_name: rsboapp-auth
-    env_file:
-      - ./.env
-      - ./backend/auth-service/.env
+    env_file: [./.env, ./backend/auth-service/.env]
     environment:
-      NODE_ENV: ${NODE_ENV:-production}
-      SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-8}
-      SESSION_RENEW_THRESHOLD_HOURS: ${SESSION_RENEW_THRESHOLD_HOURS:-6}
-      MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${AUTH_DB}?authSource=admin"
       INVENTORY_MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${INVENTORY_DB}?authSource=admin"
       NOTIFICATION_MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${NOTIFICATION_DB}?authSource=admin"
       OPTICA_MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${OPTICA_DB}?authSource=admin"
+      BACKORDER_MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${BACKORDER_DB}?authSource=admin"
+      MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${AUTH_DB}?authSource=admin"
     depends_on:
-      - mongo
-    expose:
-      - "3000"
-    restart: unless-stopped
-    volumes:
-      - ./backend/auth-service:/app
-      - /app/node_modules
-    networks:
-      - rsbo-net
-    profiles: ["prod", "dev"]
+      mongo: { condition: service_healthy }
+    networks: [rsbo-net]
+    user: "node"
+    healthcheck: *node-healthcheck
+    logging: *default-logging
 
-  # =========================
-  # INVENTORY SERVICE
-  # =========================
+  # ─── INVENTORY SERVICE ────────────────────────────────────
   inventory-service:
-    build:
-      context: ./backend/inventory-service
+    build: { context: ./backend/inventory-service }
     container_name: rsboapp-inventory
-    env_file:
-      - ./.env
-      - ./backend/inventory-service/.env
+    env_file: [./.env, ./backend/inventory-service/.env]
     environment:
-      NODE_ENV: ${NODE_ENV:-production}
       MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${INVENTORY_DB}?authSource=admin"
       REDIS_URL: "redis://redis:6379"
       GATEWAY_WS_URL: "ws://gateway:3000/ws-internal"
       NOTIFICATION_SERVICE_INTERNAL_URL: "http://notification-service:3000"
-      INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN}"
     depends_on:
-      - mongo
-      - redis
-    expose:
-      - "3000"
-    restart: unless-stopped
-    volumes:
-      - ./backend/inventory-service:/app
-      - /app/node_modules
-    networks:
-      - rsbo-net
-    profiles: ["prod", "dev"]
+      mongo: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks: [rsbo-net]
+    user: "node"
+    healthcheck: *node-healthcheck
+    logging: *default-logging
 
-  # =========================
-  # OPTICA SERVICE
-  # =========================
+  # ─── OPTICA SERVICE ───────────────────────────────────────
   optica-service:
-    build:
-      context: ./backend/optica-service
+    build: { context: ./backend/optica-service }
     container_name: rsboapp-optica
-    env_file:
-      - ./.env
-      - ./backend/optica-service/.env
+    env_file: [./.env, ./backend/optica-service/.env]
     environment:
-      NODE_ENV: ${NODE_ENV:-production}
       MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${OPTICA_DB}?authSource=admin"
       GATEWAY_WS_URL: "ws://gateway:3000/ws-internal"
-      INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN}"
     depends_on:
-      - mongo
-    expose:
-      - "3000"
-    restart: unless-stopped
-    volumes:
-      - ./backend/optica-service:/app
-      - /app/node_modules
-    networks:
-      - rsbo-net
-    profiles: ["prod", "dev"]
+      mongo: { condition: service_healthy }
+    networks: [rsbo-net]
+    user: "node"
+    healthcheck: *node-healthcheck
+    logging: *default-logging
 
-  # =========================
-  # BACKORDER SERVICE
-  # =========================
+  # ─── BACKORDER SERVICE ────────────────────────────────────
   backorder-service:
-    build:
-      context: ./backend/backorder-service
+    build: { context: ./backend/backorder-service }
     container_name: rsboapp-backorder
-    env_file:
-      - ./.env
-      - ./backend/backorder-service/.env
+    env_file: [./.env, ./backend/backorder-service/.env]
     environment:
-      NODE_ENV: ${NODE_ENV:-production}
       MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${BACKORDER_DB}?authSource=admin"
       GATEWAY_WS_URL: "ws://gateway:3000/ws-internal"
       NOTIFICATION_SERVICE_URL: "http://notification-service:3000"
-      INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN}"
     depends_on:
-      - mongo
-    expose:
-      - "3000"
-    restart: unless-stopped
-    volumes:
-      - ./backend/backorder-service:/app
-      - /app/node_modules
-    networks:
-      - rsbo-net
-    profiles: ["prod", "dev"]
+      mongo: { condition: service_healthy }
+    networks: [rsbo-net]
+    user: "node"
+    healthcheck: *node-healthcheck
+    logging: *default-logging
 
-  # =========================
-  # NOTIFICATION SERVICE
-  # =========================
+  # ─── NOTIFICATION SERVICE ─────────────────────────────────
   notification-service:
-    build:
-      context: ./backend/notification-service
+    build: { context: ./backend/notification-service }
     container_name: rsboapp-notification
-    env_file:
-      - ./.env
-      - ./backend/notification-service/.env
+    env_file: [./.env, ./backend/notification-service/.env]
     environment:
-      NODE_ENV: ${NODE_ENV:-production}
       MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${NOTIFICATION_DB}?authSource=admin"
       GATEWAY_WS_URL: "ws://gateway:3000/ws-internal"
-      INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN}"
       REDIS_URL: "redis://redis:6379"
     depends_on:
-      - mongo
-      - redis
-    expose:
-      - "3000"
-    restart: unless-stopped
-    volumes:
-      - ./backend/notification-service:/app
-      - /app/node_modules
-    networks:
-      - rsbo-net
-    profiles: ["prod", "dev"]
+      mongo: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks: [rsbo-net]
+    user: "node"
+    healthcheck: *node-healthcheck
+    logging: *default-logging
 
-  # =========================
-  # Redis (cache para inventory-service)
-  # =========================
+  # ─── INFRASTRUCTURE ───────────────────────────────────────
   redis:
     image: redis:7-alpine
     container_name: rsboapp-redis
-    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru --save "" --appendonly no
-    expose:
-      - "6379"
-    restart: unless-stopped
-    networks:
-      - rsbo-net
-    profiles: ["prod", "dev"]
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save "" --appendonly no
+    networks: [rsbo-net]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    logging: *default-logging
 
-  # =========================
-  # MongoDB
-  # =========================
   mongo:
     image: mongo:6
     container_name: rsboapp-mongo
     volumes:
       - rsbo-mongo-data:/data/db
-    env_file:
-      - ./.env
+    env_file: [./.env]
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
-    restart: unless-stopped
-    networks:
-      - rsbo-net
-    profiles: ["prod", "dev"]
-
-  # =========================
-  # Mongo Express (solo DEV)
-  # =========================
-  mongo-express:
-    image: mongo-express
-    container_name: rsboapp-mongo-express
-    ports:
-      - "127.0.0.1:${MONGO_EXPRESS_PORT_HOST:-8081}:8081"
-    environment:
-      ME_CONFIG_MONGODB_URL: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/"
-      ME_CONFIG_BASICAUTH_USERNAME: ${MONGO_EXPRESS_BASICAUTH_USERNAME}
-      ME_CONFIG_BASICAUTH_PASSWORD: ${MONGO_EXPRESS_BASICAUTH_PASSWORD}
-      ME_CONFIG_SITE_BASEURL: "/"
-    depends_on:
-      - mongo
-    restart: unless-stopped
-    networks:
-      - rsbo-net
-    profiles: ["dev"]
+    networks: [rsbo-net]
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging: *default-logging
 
 networks:
   rsbo-net:

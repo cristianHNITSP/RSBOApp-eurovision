@@ -3,10 +3,17 @@ import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import path from "path";
 
-export default defineConfig(() => {
-  // En contenedor: VITE_PROXY_TARGET=http://gateway:3000
-  // En host:      VITE_PROXY_TARGET=http://localhost:3000
-  const apiTarget = process.env.VITE_PROXY_TARGET || "http://localhost:3000";
+export default defineConfig(({ mode }) => {
+  // --- VALIDACIÓN FAIL-FAST (solo en dev: el proxy no existe en producción) ---
+  if (mode !== "production") {
+    const missing = ["VITE_PROXY_TARGET"].filter(key => !process.env[key]);
+    if (missing.length > 0) {
+      console.error(`\n\x1b[31m[FRONTEND CONFIG ERROR] Faltan variables críticas: ${missing.join(", ")}\x1b[0m\n`);
+      process.exit(1);
+    }
+  }
+
+  const apiTarget = process.env.VITE_PROXY_TARGET;
 
   const onProxyError = (prefix) => (err, req, res) => {
     console.error(`${prefix} PROXY ERROR:`, err?.code, err?.message);

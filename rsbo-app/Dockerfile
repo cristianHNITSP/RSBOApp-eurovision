@@ -6,6 +6,13 @@ COPY package*.json ./
 RUN npm ci
 
 COPY . .
+
+# Argumentos para que Vite los hornee en tiempo de compilación
+ARG VITE_API_URL=/api
+ARG VITE_WS_URL=/ws
+ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_WS_URL=$VITE_WS_URL
+
 RUN npm run build
 
 # ---- RUNTIME (Nginx) ----

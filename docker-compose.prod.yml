@@ -1,0 +1,87 @@
+# ============================================================
+# RSBO APP - DOCKER COMPOSE PRODUCTION (HARDENING)
+# ============================================================
+
+services:
+  # ─── FRONTEND (Producción: Nginx) ─────────────────────────
+  rsbo-frontend:
+    build:
+      context: ./rsbo-app
+      dockerfile: Dockerfile
+      target: prod
+      args:
+        VITE_API_URL: ${VITE_API_URL:-/api}
+        VITE_WS_URL: ${VITE_WS_URL:-/ws}
+    container_name: rsboapp-frontend
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT_HOST:-4300}:80"
+    depends_on:
+      gateway: { condition: service_healthy }
+    restart: unless-stopped
+    networks: [rsbo-net]
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  # ─── GATEWAY ──────────────────────────────────────────────
+  gateway:
+    ports:
+      - "127.0.0.1:${GATEWAY_PORT_HOST:-3000}:3000"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  # ─── AUTH & ADMIN ─────────────────────────────────────────
+  auth-service:
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 768M # Incrementado para soportar AdminJS + Auth
+
+  # ─── MICROSERVICES ────────────────────────────────────────
+  inventory-service:
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+
+  optica-service:
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  backorder-service:
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  notification-service:
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  # ─── INFRASTRUCTURE ───────────────────────────────────────
+  redis:
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 320M
+
+  mongo:
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1536M

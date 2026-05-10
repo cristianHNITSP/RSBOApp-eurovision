@@ -105,13 +105,28 @@ app.use((_req, res, next) => {
 app.use(express.json());
 
 // 🔹 URLs de microservicios
+const requiredServices = [
+  'AUTH_SERVICE_URL',
+  'USERS_SERVICE_URL',
+  'INVENTORY_SERVICE_URL',
+  'OPTICA_SERVICE_URL',
+  'NOTIFICATION_SERVICE_URL',
+  'BACKORDER_SERVICE_URL'
+];
+
+const missingServices = requiredServices.filter(k => !process.env[k]);
+if (missingServices.length > 0) {
+  console.error(`\x1b[31m[FAIL-FAST] Missing service URLs in Gateway: ${missingServices.join(', ')}\x1b[0m`);
+  process.exit(1);
+}
+
 const SERVICES = {
-  auth: process.env.AUTH_SERVICE_URL,
-  users: process.env.USERS_SERVICE_URL,
-  inventory: process.env.INVENTORY_SERVICE_URL,
-  optica: process.env.OPTICA_SERVICE_URL,
+  auth:         process.env.AUTH_SERVICE_URL,
+  users:        process.env.USERS_SERVICE_URL,
+  inventory:    process.env.INVENTORY_SERVICE_URL,
+  optica:       process.env.OPTICA_SERVICE_URL,
   notification: process.env.NOTIFICATION_SERVICE_URL,
-  backorder: process.env.BACKORDER_SERVICE_URL,
+  backorder:    process.env.BACKORDER_SERVICE_URL,
 };
 
 // ✅ Helpers
@@ -252,13 +267,18 @@ app.use("/api/stats", proxyRequest(SERVICES.inventory));
 app.use("/api/devolutions", proxyRequest(SERVICES.inventory));
 app.use("/api/mermas", proxyRequest(SERVICES.inventory));
 app.use("/api/optica", proxyRequest(SERVICES.optica));
-app.use("/api/notification", proxyRequest(SERVICES.notification));
+app.use("/api/notifications", proxyRequest(SERVICES.notification));
 app.use("/api/backorders", proxyRequest(SERVICES.backorder));
 
 // 🔹 Ruta principal
 app.get("/", (_req, res) => res.send("🚀 RSBO Gateway funcionando"));
 
-// 🔹 Healthcheck (público bajo /api porque el front expone /api)
+// 🔹 Healthcheck interno (usado por Docker healthcheck — debe responder en /health)
+app.get("/health", (_req, res) => {
+  res.status(200).json({ ok: true, service: "gateway", time: new Date().toISOString() });
+});
+
+// 🔹 Healthcheck público (expuesto al frontend a través de /api)
 app.get("/api/health", (_req, res) => {
   res.status(200).json({
     ok: true,

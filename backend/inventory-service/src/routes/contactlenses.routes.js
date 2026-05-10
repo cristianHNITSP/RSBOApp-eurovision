@@ -1298,12 +1298,12 @@ async function resolveCLCodebar(sheet, codebar) {
   const cb = String(codebar || "").trim();
   for (const [key, cell] of (doc.cells.entries ? Array.from(doc.cells.entries()) : Object.entries(doc.cells))) {
     if (!cell) continue;
-    
+
     // 1. Caso plano (Base, Colorido, Tórico)
     if (String(cell.codebar || "") === cb) {
       return { key, cell, eye: null };
     }
-    
+
     // 2. Caso anidado (Multifocal)
     if (cell.OD && String(cell.OD.codebar || "") === cb) {
       return { key, cell: cell.OD, eye: "OD" };

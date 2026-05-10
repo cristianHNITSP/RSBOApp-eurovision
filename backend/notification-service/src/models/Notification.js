@@ -7,8 +7,7 @@
  */
 
 const mongoose = require('mongoose');
-
-const VALID_ROLES = ['root', 'eurovision', 'supervisor', 'ventas', 'laboratorio'];
+const { ENUMS } = require('../data/constants');
 
 const notificationSchema = new mongoose.Schema(
   {
@@ -26,12 +25,12 @@ const notificationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['info', 'warning', 'danger', 'success', 'inventory_alert'],
+      enum: ENUMS.TYPES,
       default: 'info',
     },
     priority: {
       type: String,
-      enum: ['low', 'medium', 'high', 'critical'],
+      enum: ENUMS.PRIORITIES,
       default: 'low',
     },
     /**
@@ -40,7 +39,7 @@ const notificationSchema = new mongoose.Schema(
      * Si isGlobal=false, solo los roles listados aquí la ven.
      */
     targetRoles: {
-      type: [{ type: String, enum: VALID_ROLES }],
+      type: [{ type: String, enum: ENUMS.VALID_ROLES }],
       default: [],
     },
     /** Si true, la notificación se muestra a todos los roles */
@@ -112,7 +111,6 @@ const notificationSchema = new mongoose.Schema(
 );
 
 // Índices útiles
-// Índice compuesto para consulta principal: "visibles, no descartadas, ordenadas"
 notificationSchema.index({ targetRoles: 1, priority: -1, createdAt: -1 });
 notificationSchema.index({ isGlobal: 1, priority: -1, createdAt: -1 });
 notificationSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0, partialFilterExpression: { expiresAt: { $ne: null } } });

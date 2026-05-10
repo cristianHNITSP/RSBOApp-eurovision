@@ -5,11 +5,11 @@
       <div class="bo-hero-accent"></div>
       <div class="bo-hero-inner">
         <div class="bo-hero-left">
-          <span class="bo-pill">LOGÍSTICA</span>
+          <span class="bo-pill">{{ labels.HERO.PILL }}</span>
           <h1 class="bo-hero-title">
             Gestionar <span class="bo-brand-grad">Encargos</span>
           </h1>
-          <p class="bo-hero-sub">Seguimiento de cristales, lentes y trabajos de óptica en proceso.</p>
+          <p class="bo-hero-sub">{{ labels.HERO.SUBTITLE }}</p>
         </div>
         <div class="bo-hero-right">
           <button class="button bo-btn-add" @click="openCreateModal">
@@ -47,7 +47,7 @@
           <div class="gc-head-left">
             <div class="bo-tabs">
               <button 
-                v-for="cat in categories" 
+                v-for="cat in config.CATEGORIES" 
                 :key="cat.id"
                 @click="handleCategoryChange(cat.id)"
                 :class="{ 'is-active': filters.category === cat.id }"
@@ -74,11 +74,11 @@
               <div class="select is-small">
                 <select v-model="filters.status" @change="handleStatusChange">
                   <option :value="null">Todos los estados</option>
-                  <option value="SOLICITADO">Solicitados</option>
-                  <option value="PEDIDO_PROVEEDOR">En Pedido</option>
-                  <option value="RECIBIDO">Recibidos</option>
-                  <option value="LISTO_ENTREGA">Listos para Entrega</option>
-                  <option value="ENTREGADO">Entregados</option>
+                  <option v-for="(color, status) in config.STATUS_COLORS" :key="status" :value="status">
+                    <template v-if="status !== 'DEFAULT'">
+                      {{ status.replace('_', ' ') }}
+                    </template>
+                  </option>
                 </select>
               </div>
             </div>
@@ -89,7 +89,7 @@
         <div class="gc-body bo-list-container">
           <div v-if="isLoading && !backorders.length" class="bo-empty-state">
             <div class="spinner"></div>
-            <p>Sincronizando con el laboratorio...</p>
+            <p>{{ labels.EMPTY_STATES.LOADING }}</p>
           </div>
 
           <div v-else-if="backorders.length > 0" class="bo-items-list">
@@ -131,7 +131,7 @@
 
           <div v-else class="bo-empty-state">
             <i class="fas fa-box-open mb-3 is-size-1"></i>
-            <p>No se encontraron encargos en esta categoría.</p>
+            <p>{{ labels.EMPTY_STATES.NO_RESULTS }}</p>
           </div>
         </div>
 
@@ -191,6 +191,7 @@ import StatusBadge from "../../components/backorders/StatusBadge.vue";
 import BackOrderCreateModal from "../../components/backorders/BackOrderCreateModal.vue";
 import BackOrderDetailModal from "../../components/backorders/BackOrderDetailModal.vue";
 import { labToast } from "../../composables/shared/useLabToast";
+import { BACKORDER_CONFIG, BACKORDER_LABELS } from "@/data/backorders.data";
 
 const {
   backorders,
@@ -208,16 +209,13 @@ const {
   nextPage,
 } = useBackOrders();
 
+const config = BACKORDER_CONFIG;
+const labels = BACKORDER_LABELS;
+
 const createModalOpen = ref(false);
 const detailModalOpen = ref(false);
 const selectedBoId = ref(null);
 const selectedCategory = ref(null);
-
-const categories = [
-  { id: "BASES_MICAS", label: "Bases y Micas" },
-  { id: "LENTES_CONTACTO", label: "Lentes de Contacto" },
-  { id: "OPTICA", label: "Óptica" },
-];
 
 const summaryStats = computed(() => {
   const s = stats.value || {};
@@ -238,15 +236,7 @@ function formatDate(date) {
 }
 
 function getStatusColor(status) {
-  const colors = {
-    SOLICITADO: "#3b82f6",
-    PEDIDO_PROVEEDOR: "#f59e0b",
-    RECIBIDO: "#06b6d4",
-    LISTO_ENTREGA: "#8b5cf6",
-    ENTREGADO: "#10b981",
-    CANCELADO: "#6b7280",
-  };
-  return colors[status] || "#ddd";
+  return config.STATUS_COLORS[status] || config.STATUS_COLORS.DEFAULT;
 }
 
 function getPaymentProgress(bo) {
@@ -255,7 +245,6 @@ function getPaymentProgress(bo) {
 }
 
 function openCreateModal() {
-  console.log("[BackOrders] Opening Create Modal");
   createModalOpen.value = true;
 }
 
@@ -280,7 +269,7 @@ function handleSearch() {
   searchTimeout = setTimeout(async () => {
     setSearch(filters.value.search);
     await listByCategory();
-  }, 400);
+  }, config.SEARCH_DEBOUNCE_MS);
 }
 
 async function handlePreviousPage() {
@@ -300,7 +289,6 @@ async function handleCreated(payload) {
     labToast.success("Encargo creado correctamente");
     await handleRefresh();
   } catch (err) {
-    // El error ya se maneja en el composable o se puede mostrar aquí
     console.error("Error al crear encargo:", err);
   }
 }
@@ -310,7 +298,6 @@ async function handleRefresh() {
   await loadStats();
 }
 
-// Escuchar eventos de actualización (WebSockets desde DashboardLayout)
 const onWsRefresh = () => {
   handleRefresh();
 };
@@ -333,7 +320,6 @@ onUnmounted(() => {
   margin: 0 auto;
 }
 
-/* HERO */
 .bo-hero {
   position: relative;
   background: white;
@@ -386,7 +372,6 @@ onUnmounted(() => {
   text-transform: uppercase;
 }
 
-/* KPI STRIP */
 .bo-kpis {
   margin-bottom: 2rem;
 }
@@ -446,7 +431,6 @@ onUnmounted(() => {
   line-height: 1;
 }
 
-/* LIST CONTAINER */
 .bo-card {
   background: var(--surface-overlay);
   backdrop-filter: blur(12px);
@@ -509,7 +493,6 @@ onUnmounted(() => {
   background: white;
 }
 
-/* ITEMS LIST */
 .bo-items-list {
   padding: 0.5rem;
 }

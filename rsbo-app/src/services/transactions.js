@@ -1,8 +1,8 @@
 import api from "@/api/axios";
 
-export async function listTransactions(limit = 50) {
+export async function listTransactions(params = { limit: 50 }) {
   try {
-    const res = await api.get("/inventory/transactions", { params: { limit } });
+    const res = await api.get("/inventory/transactions", { params });
     return res.data;
   } catch (err) {
     console.error("[TRANSACTIONS][API] listTransactions ERROR", err);

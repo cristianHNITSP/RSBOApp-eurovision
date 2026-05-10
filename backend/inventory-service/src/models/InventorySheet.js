@@ -1,5 +1,7 @@
 // models/InventorySheet.js
 const mongoose = require("mongoose");
+const { ENUMS } = require("../data/constants");
+const { DEFAULT_RANGES_BY_TIPO, DEFAULT_EXPIRY_MONTHS } = require("../data/inventory-defaults");
 
 const DEBUG_INVENTORY = String(process.env.DEBUG_INVENTORY || "") === "1";
 
@@ -22,22 +24,6 @@ const RangesSchema = new mongoose.Schema(
   { _id: false }
 );
 
-const defaultRangesByTipo = {
-  BASE: { base: { start: 0, end: 8, step: 0.5 } },
-  SPH_CYL: {
-    sph: { start: -6, end: 6, step: 0.25 },
-    cyl: { start: -6, end: 6, step: 0.25 }
-  },
-  SPH_ADD: {
-    sph: { start: -6, end: 6, step: 0.25 },
-    add: { start: 0, end: 4, step: 0.25 }
-  },
-  BASE_ADD: {
-    base: { start: 0, end: 8, step: 0.5 },
-    add: { start: 0, end: 4, step: 0.25 }
-  }
-};
-
 const PartySchema = new mongoose.Schema(
   {
     id: { type: String, default: null, trim: true },
@@ -45,9 +31,6 @@ const PartySchema = new mongoose.Schema(
   },
   { _id: false }
 );
-
-/** Caducidad por defecto: 24 meses (=2 años) */
-const DEFAULT_EXPIRY_MONTHS = 24;
 
 const addMonths = (date, months) => {
   const d = new Date(date);
@@ -69,7 +52,7 @@ const InventorySheetSchema = new mongoose.Schema(
     tipo_matriz: {
       type: String,
       required: true,
-      enum: ["BASE", "SPH_CYL", "SPH_ADD", "BASE_ADD"]
+      enum: ENUMS.TIPO_MATRIZ
     },
 
     baseKey: { type: String, required: true, trim: true },
@@ -98,7 +81,7 @@ precioCompra: { type: Number, required: true, min: 0 },
     ranges: {
       type: RangesSchema,
       default: function () {
-        return defaultRangesByTipo[this.tipo_matriz] || {};
+        return DEFAULT_RANGES_BY_TIPO[this.tipo_matriz] || {};
       }
     },
 
@@ -130,19 +113,14 @@ precioCompra: { type: Number, required: true, min: 0 },
   { timestamps: true }
 );
 
-InventorySheetSchema.pre("validate", function (next) {
-  if (DEBUG_INVENTORY) {
-    console.log("[INV][MODEL pre-validate] IN", {
-      _id: this._id ? String(this._id) : null,
-      numFactura: this.numFactura,
-      loteProducto: this.loteProducto,
-      fechaCompra: this.fechaCompra,
-      fechaCaducidad: this.fechaCaducidad,
-      fechaCreacion: this.fechaCreacion,
-       precioVenta: this.precioVenta
-    });
-  }
+InventorySheetSchema.index({ nombre: 1, material: 1 });
+InventorySheetSchema.index({ "proveedor.name": 1, "marca.name": 1 });
+InventorySheetSchema.index({ tratamiento: 1, variante: 1 });
+InventorySheetSchema.index({ fechaCaducidad: 1 });
+InventorySheetSchema.index({ numFactura: 1, loteProducto: 1 });
+InventorySheetSchema.index({ sku: 1 }, { unique: true, sparse: true });
 
+InventorySheetSchema.pre("validate", function (next) {
   if (!this.fechaCreacion) {
     this.fechaCreacion = this.createdAt || new Date();
   }
@@ -159,28 +137,7 @@ InventorySheetSchema.pre("validate", function (next) {
     this.fechaCaducidad = addMonths(base, DEFAULT_EXPIRY_MONTHS);
   }
 
-  if (DEBUG_INVENTORY) {
-    console.log("[INV][MODEL pre-validate] OUT", {
-      _id: this._id ? String(this._id) : null,
-      numFactura: this.numFactura,
-      loteProducto: this.loteProducto,
-      fechaCompra: this.fechaCompra ? this.fechaCompra.toISOString() : null,
-      fechaCaducidad: this.fechaCaducidad ? this.fechaCaducidad.toISOString() : null,
-      fechaCreacion: this.fechaCreacion ? this.fechaCreacion.toISOString() : null
-    });
-  }
-
   next();
 });
-
-// índices
-InventorySheetSchema.index({ nombre: 1, material: 1 });
-InventorySheetSchema.index({ "proveedor.name": 1, "marca.name": 1 });
-InventorySheetSchema.index({ tratamiento: 1, variante: 1 });
-
-InventorySheetSchema.index({ fechaCaducidad: 1 });
-InventorySheetSchema.index({ numFactura: 1, loteProducto: 1 });
-
-InventorySheetSchema.index({ sku: 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model("InventorySheet", InventorySheetSchema);

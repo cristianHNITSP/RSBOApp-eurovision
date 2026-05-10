@@ -1,7 +1,7 @@
-// ws.js — conecta al Gateway WS para broadcast de eventos de laboratorio
+const config = require("./config");
 const WebSocket = require("ws");
 
-const GATEWAY_WS = process.env.GATEWAY_WS_URL || "ws://localhost:3000/ws-internal";
+const GATEWAY_WS = config.gateway.wsUrl;
 const RECONNECT_DELAY = 4000;
 
 let _ws = null;

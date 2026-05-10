@@ -150,101 +150,101 @@ router.get("/",
     return `inv:inventory:sheets:${p}:${l}:${q}:${f}:${d}:${od}`;
   }, 30),
   async (req, res) => {
-  try {
-    const includeDeleted = String(req.query.includeDeleted) === "true";
-    const onlyDeleted = String(req.query.onlyDeleted) === "true";
-    const q = String(req.query.q || "").trim();
-    const focusId = String(req.query.focusId || "").trim();
-    const limit = Math.min(Math.max(parseInt(req.query.limit) || 6, 1), 50);
+    try {
+      const includeDeleted = String(req.query.includeDeleted) === "true";
+      const onlyDeleted = String(req.query.onlyDeleted) === "true";
+      const q = String(req.query.q || "").trim();
+      const focusId = String(req.query.focusId || "").trim();
+      const limit = Math.min(Math.max(parseInt(req.query.limit) || 6, 1), 50);
 
-    let dbQuery = {};
-    if (onlyDeleted) {
-      dbQuery = { isDeleted: true };
-    } else if (!includeDeleted) {
-      dbQuery = { isDeleted: { $ne: true } };
-    }
+      let dbQuery = {};
+      if (onlyDeleted) {
+        dbQuery = { isDeleted: true };
+      } else if (!includeDeleted) {
+        dbQuery = { isDeleted: { $ne: true } };
+      }
 
-    if (q) {
-      const rx = new RegExp(escapeRegExp(q), "i");
-      dbQuery.$or = [
-        { sku: rx },
-        { nombre: rx },
-        { material: rx },
-        { baseKey: rx },
+      if (q) {
+        const rx = new RegExp(escapeRegExp(q), "i");
+        dbQuery.$or = [
+          { sku: rx },
+          { nombre: rx },
+          { material: rx },
+          { baseKey: rx },
 
-        { tratamientos: rx },
-        { tratamiento: rx },
-        { variante: rx },
+          { tratamientos: rx },
+          { tratamiento: rx },
+          { variante: rx },
 
-        { numFactura: rx },
-        { loteProducto: rx },
+          { numFactura: rx },
+          { loteProducto: rx },
 
-        { "proveedor.name": rx },
-        { "marca.name": rx }
-      ];
-    }
+          { "proveedor.name": rx },
+          { "marca.name": rx }
+        ];
+      }
 
-    if (req.query.sku) dbQuery.sku = String(req.query.sku).trim().toUpperCase();
+      if (req.query.sku) dbQuery.sku = String(req.query.sku).trim().toUpperCase();
 
-    const SORT = { updatedAt: -1, createdAt: -1 };
-    const total = await InventorySheet.countDocuments(dbQuery);
-    const totalPages = Math.max(Math.ceil(total / limit), 1);
+      const SORT = { updatedAt: -1, createdAt: -1 };
+      const total = await InventorySheet.countDocuments(dbQuery);
+      const totalPages = Math.max(Math.ceil(total / limit), 1);
 
-    // When focusId provided, find which page contains that sheet
-    let page = Math.max(parseInt(req.query.page) || 1, 1);
-    if (focusId) {
-      const allIds = await InventorySheet.find(dbQuery).sort(SORT).select("_id").lean();
-      const idx = allIds.findIndex((d) => String(d._id) === focusId);
-      if (idx >= 0) page = Math.floor(idx / limit) + 1;
-    }
-    page = Math.min(page, totalPages);
-    
-    const sheets = await InventorySheet.find(dbQuery)
-      .sort(SORT)
-      .skip((page - 1) * limit)
-      .limit(limit);
+      // When focusId provided, find which page contains that sheet
+      let page = Math.max(parseInt(req.query.page) || 1, 1);
+      if (focusId) {
+        const allIds = await InventorySheet.find(dbQuery).sort(SORT).select("_id").lean();
+        const idx = allIds.findIndex((d) => String(d._id) === focusId);
+        if (idx >= 0) page = Math.floor(idx / limit) + 1;
+      }
+      page = Math.min(page, totalPages);
 
-    console.log(`[INV][API] listSheets | query: ${JSON.stringify(dbQuery)} | found: ${sheets.length}/${total}`);
+      const sheets = await InventorySheet.find(dbQuery)
+        .sort(SORT)
+        .skip((page - 1) * limit)
+        .limit(limit);
 
-    // backfill SKU for this page only
-    for (const s of sheets) {
-      if (!s.sku) {
-        try {
-          await ensureSheetSku(InventorySheet, s);
-        } catch (e) {
-          console.warn("SKU backfill fail:", s?._id, e?.message || e);
+      console.log(`[INV][API] listSheets | query: ${JSON.stringify(dbQuery)} | found: ${sheets.length}/${total}`);
+
+      // backfill SKU for this page only
+      for (const s of sheets) {
+        if (!s.sku) {
+          try {
+            await ensureSheetSku(InventorySheet, s);
+          } catch (e) {
+            console.warn("SKU backfill fail:", s?._id, e?.message || e);
+          }
         }
       }
-    }
 
-    if (DEBUG_INVENTORY) {
-      const sample = sheets.slice(0, 2).map((s) => {
-        const o = s.toObject();
-        return {
-          _id: String(o._id),
-          keys: Object.keys(o),
-          purchase: pickPurchase(o)
-        };
+      if (DEBUG_INVENTORY) {
+        const sample = sheets.slice(0, 2).map((s) => {
+          const o = s.toObject();
+          return {
+            _id: String(o._id),
+            keys: Object.keys(o),
+            purchase: pickPurchase(o)
+          };
+        });
+        console.log("[INV][GET /inventory] sample sheets:", sample);
+      }
+
+      const data = sheets.map((s) => ({
+        ...s.toObject(),
+        tabs: buildTabsForTipo(s),
+        physicalLimits: PHYSICAL_LIMITS
+      }));
+
+      res.json({
+        ok: true,
+        data,
+        meta: { total, page, limit, totalPages, hasMore: page < totalPages, hasPrior: page > 1 }
       });
-      console.log("[INV][GET /inventory] sample sheets:", sample);
+    } catch (err) {
+      console.error("GET /inventory error:", err);
+      res.status(500).json({ ok: false, message: "Error al listar hojas" });
     }
-
-    const data = sheets.map((s) => ({
-      ...s.toObject(),
-      tabs: buildTabsForTipo(s),
-      physicalLimits: PHYSICAL_LIMITS
-    }));
-
-    res.json({
-      ok: true,
-      data,
-      meta: { total, page, limit, totalPages, hasMore: page < totalPages, hasPrior: page > 1 }
-    });
-  } catch (err) {
-    console.error("GET /inventory error:", err);
-    res.status(500).json({ ok: false, message: "Error al listar hojas" });
-  }
-});
+  });
 
 router.post(
   "/sheets",
@@ -449,7 +449,7 @@ router.get(
     try {
       const sheet = await InventorySheet.findById(req.params.sheetId);
       if (!sheet) return res.status(404).json({ ok: false, message: "Sheet no existe" });
-      
+
       if (sheet.isDeleted) return res.status(410).json({ ok: false, message: "Esta planilla se encuentra en la papelera." });
 
       if (!sheet.sku) {
@@ -516,7 +516,7 @@ router.get("/resolve/:codebar", async (req, res) => {
     if (!cb) return res.status(400).json({ ok: false, message: "Codebar requerido" });
 
     const sheets = await InventorySheet.find({ isDeleted: { $ne: true } }).lean();
-    
+
     for (const sheet of sheets) {
       const Model = models[getMatrixModelName(sheet.tipo_matriz)];
       if (!Model) continue;
@@ -558,11 +558,11 @@ router.get("/resolve/:codebar", async (req, res) => {
 
 function getMatrixModelName(tipo) {
   switch (tipo) {
-    case "BASE":     return "MatrixBase";
-    case "SPH_CYL":  return "MatrixSphCyl";
-    case "SPH_ADD":  return "MatrixBifocal";
+    case "BASE": return "MatrixBase";
+    case "SPH_CYL": return "MatrixSphCyl";
+    case "SPH_ADD": return "MatrixBifocal";
     case "BASE_ADD": return "MatrixProgresivo";
-    default:         return null;
+    default: return null;
   }
 }
 
@@ -587,12 +587,12 @@ router.patch(
   body("fechaCompra").optional({ nullable: true, checkFalsy: true }).isISO8601(),
   body("fechaCaducidad").optional({ nullable: true, checkFalsy: true }).isISO8601(),
   body("precioVenta")
-  .optional({ nullable: true })
-  .custom((v) => v === null || String(v).trim() === "" || (Number.isFinite(Number(v)) && Number(v) >= 0)),
+    .optional({ nullable: true })
+    .custom((v) => v === null || String(v).trim() === "" || (Number.isFinite(Number(v)) && Number(v) >= 0)),
 
   body("precioCompra")
-  .optional({ nullable: true })
-  .custom((v) => v === null || String(v).trim() === "" || (Number.isFinite(Number(v)) && Number(v) >= 0)),
+    .optional({ nullable: true })
+    .custom((v) => v === null || String(v).trim() === "" || (Number.isFinite(Number(v)) && Number(v) >= 0)),
 
   body("proveedor").optional({ nullable: true }).isObject(),
   body("proveedor.name").optional({ nullable: true, checkFalsy: true }).isString().trim(),
@@ -711,7 +711,7 @@ router.patch(
         if (DEBUG_INVENTORY) console.log("[INV][PATCH] force recalc fechaCaducidad (set null)");
       }
 
-      
+
 
       if (isDef(req.body.proveedor)) sheet.proveedor = normalizeParty(req.body.proveedor);
       if (isDef(req.body.marca)) sheet.marca = normalizeParty(req.body.marca);

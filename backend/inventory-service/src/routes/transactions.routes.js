@@ -13,7 +13,7 @@ const OPTICA_SERVICE_URL = process.env.OPTICA_SERVICE_URL || "http://optica-serv
 router.get("/", protect(), async (req, res) => {
   try {
     const limit = Math.min(Number(req.query.limit) || 50, 100);
-    
+
     // 1. Obtener órdenes de laboratorio
     const orders = await LaboratoryOrder.find({})
       .sort({ createdAt: -1 })
@@ -105,9 +105,9 @@ router.get("/search", protect(), async (req, res) => {
 
     // Buscamos en LaboratoryOrder
     const orders = await LaboratoryOrder.find({ $and: searchConditions })
-    .sort({ createdAt: -1 })
-    .limit(15)
-    .lean();
+      .sort({ createdAt: -1 })
+      .limit(15)
+      .lean();
 
     // Mapeamos LAB
     const labData = orders.map(o => ({

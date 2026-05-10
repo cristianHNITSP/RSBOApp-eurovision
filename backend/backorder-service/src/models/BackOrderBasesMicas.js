@@ -1,11 +1,12 @@
 const mongoose = require("mongoose");
 const { baseFields } = require("./_baseSchemas");
+const { ENUMS } = require("../data/constants");
 
 const ItemBasesMicasSchema = new mongoose.Schema({
   marca:       { type: String, default: "" },
   material:    { type: String, default: "" },
   tratamiento: { type: String, default: "" },
-  tipo_matriz: { type: String, enum: ["BASE", "SPH_CYL", "SPH_ADD", "BASE_ADD"], required: true },
+  tipo_matriz: { type: String, enum: ENUMS.TIPO_MATRIZ, required: true },
   params: {
     sph:      { type: Number, default: null },
     cyl:      { type: Number, default: null },
@@ -13,7 +14,7 @@ const ItemBasesMicasSchema = new mongoose.Schema({
     base:     { type: Number, default: null },
     base_izq: { type: Number, default: null },
     base_der: { type: Number, default: null },
-    eye:      { type: String, enum: ["OD", "OI", "AMBOS", null], default: null },
+    eye:      { type: String, enum: ENUMS.EYE_SIDE, default: null },
   },
   cantidad:    { type: Number, required: true, min: 1, default: 1 },
   descripcionLibre: { type: String, default: "" },

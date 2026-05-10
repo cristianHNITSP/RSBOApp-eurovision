@@ -5,14 +5,10 @@ import { useRoute, useRouter } from "vue-router";
 import TabsManager from "@/components/TabsManager.vue";
 import { labToast } from "@/composables/shared/useLabToast.js";
 
-import AgGridBifocal from "@/components/ag-grid/templates/AgGridBifocal.vue";
-import AgGridBase from "@/components/ag-grid/templates/AgGridBase.vue";
-import AgGridMonofocal from "@/components/ag-grid/templates/AgGridMonofocal.vue";
-import AgGridProgresivo from "@/components/ag-grid/templates/AgGridProgresivo.vue";
-
 import { listSheets } from "@/services/inventory";
 import { fetchCatalog } from "@/services/catalog";
 import { useSheetPagination } from "@/composables/api/useSheetPagination.js";
+import { INVENTORY_LABELS, GRID_RESOLVERS, INVENTORY_CONFIG } from "@/data/inventory.data";
 
 const props = defineProps({
   user: { type: Object, required: false, default: null }
@@ -21,16 +17,14 @@ const props = defineProps({
 const route = useRoute();
 const router = useRouter();
 
-const activeSheet = ref("nueva");
+const activeSheet = ref(INVENTORY_CONFIG.TABS.NEW);
 const activeInternalTab = ref(null);
 
-
-// Catálogo cargado desde BD
 const catalog = ref({ bases: [], treatments: [] });
 const catalogLoading = ref(true);
 
 /* ─────────────────────────────────────────────────────────────────────────
-   Normalización de planilla (raw → normalizado)
+   Normalización de planilla
 ───────────────────────────────────────────────────────────────────────── */
 function mapSheet(s) {
   if (!s) return null;
@@ -38,22 +32,17 @@ function mapSheet(s) {
     id: String(s._id ?? s.id),
     sku: s.sku ?? null,
     name: s.nombre ?? s.name ?? "",
-
     proveedor: s.proveedor && typeof s.proveedor === "object"
       ? { id: s.proveedor.id ?? null, name: String(s.proveedor.name ?? "") }
       : { id: null, name: "" },
-
     marca: s.marca && typeof s.marca === "object"
       ? { id: s.marca.id ?? null, name: String(s.marca.name ?? "") }
       : { id: null, name: "" },
-
     tipo_matriz: s.tipo_matriz,
     baseKey: s.baseKey,
     material: s.material,
-
     tratamiento: s.tratamiento ?? null,
     variante: s.variante ?? null,
-
     fechaCreacion: s.fechaCreacion ?? s.createdAt ?? null,
     fechaCaducidad: s.fechaCaducidad ?? null,
     fechaCompra: s.fechaCompra ?? null,
@@ -61,7 +50,6 @@ function mapSheet(s) {
     loteProducto: s.loteProducto ?? "",
     precioVenta: s.precioVenta ?? null,
     precioCompra: s.precioCompra ?? null,
-
     tratamientos: s.tratamientos || [],
     tabs: s.tabs || [],
     meta: s.meta || { observaciones: "", notas: "" }
@@ -69,49 +57,38 @@ function mapSheet(s) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
-   Paginación de planillas
+   Paginación
 ───────────────────────────────────────────────────────────────────────── */
 const pager = useSheetPagination(listSheets, mapSheet);
 
-/** dynamicSheets = tab "nueva" al principio + planillas paginadas */
 const dynamicSheets = computed(() => [
-  { id: "nueva", name: "+ Agregar" },
+  { id: INVENTORY_CONFIG.TABS.NEW, name: "+ Agregar" },
   ...pager.sheets
 ]);
 
-const loadingSheets = computed(() => pager.loadingForward.value || pager.loadingBackward.value);
-
 /* ─────────────────────────────────────────────────────────────────────────
-   Foco desde búsqueda global
+   Foco desde búsqueda
 ───────────────────────────────────────────────────────────────────────── */
 async function focusSheetFromQuery(sheetId) {
   if (!sheetId) return;
-
-  // Already loaded in current window?
   if (pager.sheets.find((s) => s.id === sheetId)) {
     activeSheet.value = sheetId;
   } else {
-    // Reload window centered on that sheet
     await pager.init(sheetId);
     await nextTick();
     if (pager.sheets.find((s) => s.id === sheetId)) {
       activeSheet.value = sheetId;
     }
   }
-
   const newQuery = { ...route.query };
   delete newQuery.sheetId;
   router.replace({ query: Object.keys(newQuery).length ? newQuery : undefined });
 }
 
-watch(
-  () => route.query.sheetId,
-  (id) => { if (id) focusSheetFromQuery(id); },
-  { immediate: true }
-);
+watch(() => route.query.sheetId, (id) => { if (id) focusSheetFromQuery(id); }, { immediate: true });
 
 /* ─────────────────────────────────────────────────────────────────────────
-   Carga del catálogo desde BD
+   Catálogo
 ───────────────────────────────────────────────────────────────────────── */
 async function cargarCatalog() {
   catalogLoading.value = true;
@@ -119,42 +96,29 @@ async function cargarCatalog() {
     const { data } = await fetchCatalog();
     catalog.value = data?.data ?? { bases: [], treatments: [] };
   } catch (e) {
-    console.error("Error al cargar catálogo:", e);
     labToast.danger("No se pudo cargar el catálogo. Verifica la conexión.");
   } finally {
     catalogLoading.value = false;
   }
 }
 
-/* ─────────────────────────────────────────────────────────────────────────
-   Carga inicial
-───────────────────────────────────────────────────────────────────────── */
 onMounted(async () => {
   const focusId = route.query.sheetId || null;
-
-  await Promise.all([
-    cargarCatalog(),
-    pager.init(focusId || null)
-  ]);
-
+  await Promise.all([cargarCatalog(), pager.init(focusId || null)]);
   if (focusId) {
     await nextTick();
     if (pager.sheets.find((s) => s.id === focusId)) {
       activeSheet.value = focusId;
     }
-    const newQuery = { ...route.query };
-    delete newQuery.sheetId;
-    router.replace({ query: Object.keys(newQuery).length ? newQuery : undefined });
   }
 });
 
 /* ─────────────────────────────────────────────────────────────────────────
-   Handlers de TabsManager
+   Handlers
 ───────────────────────────────────────────────────────────────────────── */
 function crearNuevaPlanilla({ result, tabs }) {
   const s = result;
   if (!s) return;
-
   pager.prependSheet({ ...s, tabs: tabs || s.tabs || [] });
   activeSheet.value = String(s._id ?? s.id);
   labToast.success(`Planilla creada: ${s.nombre ?? s.name}`);
@@ -166,32 +130,6 @@ function reordenarSheets({ oldIndex, newIndex }) {
   const moved = pager.sheets.splice(oldIndex, 1)[0];
   pager.sheets.splice(newIndex, 0, moved);
 }
-
-/* ─────────────────────────────────────────────────────────────────────────
-   Resolvers de grilla
-───────────────────────────────────────────────────────────────────────── */
-const resolverGrid = (tipo) => {
-  switch (tipo) {
-    case "SPH_CYL": return AgGridMonofocal;
-    case "SPH_ADD": return AgGridBifocal;
-    case "BASE": return AgGridBase;
-    case "BASE_ADD": return AgGridProgresivo;
-    default: return AgGridMonofocal;
-  }
-};
-
-const resolverGridProps = (sheet, activeInternal) => {
-  if (!sheet) return {};
-  const base = { sheetId: sheet.id };
-
-  if (sheet.tipo_matriz === "SPH_ADD" || sheet.tipo_matriz === "SPH_CYL") {
-    return { ...base, sphType: activeInternal || "sph-neg" };
-  }
-  if (sheet.tipo_matriz === "BASE" || sheet.tipo_matriz === "BASE_ADD") {
-    return { ...base, sphType: activeInternal || "base-neg" };
-  }
-  return base;
-};
 </script>
 
 <template>
@@ -203,35 +141,19 @@ const resolverGridProps = (sheet, activeInternal) => {
           <div>
             <span class="inventario-pill">
               <b-icon icon="glasses" size="is-small" class="mr-1" />
-              Inventario
+              {{ INVENTORY_LABELS.SUBTITLE }}
             </span>
-            <h2>Bases y Micas</h2>
-            <p class="psh-desc">Gestiona el stock de planillas oftálmicas: monofocal, bifocal, progresivo y base.</p>
+            <h2>{{ INVENTORY_LABELS.TITLE }}</h2>
+            <p class="psh-desc">{{ INVENTORY_LABELS.DESCRIPTION }}</p>
           </div>
-
-          <!-- VIEW TOGGLE (disabled) -->
         </div>
 
         <div class="psh-quick mt-3">
-          <div class="psh-quick__card">
-            <div class="psh-quick__icon"><i class="fas fa-plus-square"></i></div>
+          <div v-for="card in INVENTORY_LABELS.QUICK_CARDS" :key="card.title" class="psh-quick__card">
+            <div class="psh-quick__icon"><i :class="card.icon"></i></div>
             <div>
-              <p class="psh-quick__title">Agregar planilla</p>
-              <p class="psh-quick__text">Selecciona el tipo, material y tratamiento</p>
-            </div>
-          </div>
-          <div class="psh-quick__card">
-            <div class="psh-quick__icon"><i class="fas fa-save"></i></div>
-            <div>
-              <p class="psh-quick__title">Guardar cambios</p>
-              <p class="psh-quick__text">Edita el stock y pulsa "Guardar cambios"</p>
-            </div>
-          </div>
-          <div class="psh-quick__card">
-            <div class="psh-quick__icon"><i class="fas fa-file-export"></i></div>
-            <div>
-              <p class="psh-quick__title">Exportar a Excel</p>
-              <p class="psh-quick__text">Descarga el inventario como archivo de Excel</p>
+              <p class="psh-quick__title">{{ card.title }}</p>
+              <p class="psh-quick__text">{{ card.text }}</p>
             </div>
           </div>
         </div>
@@ -240,14 +162,24 @@ const resolverGridProps = (sheet, activeInternal) => {
 
     <div class="columns is-multiline">
       <div class="column is-12">
-        <TabsManager :initial-sheets="dynamicSheets" :active-id="activeSheet" :catalog="catalog"
-          :catalog-loading="catalogLoading" :actor="user"
+        <TabsManager 
+          :initial-sheets="dynamicSheets" 
+          :active-id="activeSheet" 
+          :catalog="catalog"
+          :catalog-loading="catalogLoading" 
+          :actor="user"
           :active-internal-id="activeInternalTab"
-          :loading-tabs="pager.loadingForward.value && pager.sheets.length === 0" :has-more="pager.hasMore.value"
-          :has-prior="pager.hasPrior.value" :loading-more="pager.loadingForward.value"
-          :loading-prior="pager.loadingBackward.value" :prior-count="pager.priorCount.value"
-          @update:active="activeSheet = $event" @update:internal="activeInternalTab = $event"
-          @crear="crearNuevaPlanilla" @reorder="reordenarSheets" @load-more="pager.loadNext()"
+          :loading-tabs="pager.loadingForward.value && pager.sheets.length === 0" 
+          :has-more="pager.hasMore.value"
+          :has-prior="pager.hasPrior.value" 
+          :loading-more="pager.loadingForward.value"
+          :loading-prior="pager.loadingBackward.value" 
+          :prior-count="pager.priorCount.value"
+          @update:active="activeSheet = $event" 
+          @update:internal="activeInternalTab = $event"
+          @crear="crearNuevaPlanilla" 
+          @reorder="reordenarSheets" 
+          @load-more="pager.loadNext()"
           @load-prior="pager.loadPrior()">
         </TabsManager>
       </div>
@@ -275,11 +207,6 @@ const resolverGridProps = (sheet, activeInternal) => {
   padding: 0.2rem 0.45rem;
   border-radius: 999px;
   margin-bottom: 0.35rem;
-}
-
-.contenido-planilla {
-  width: 100%;
-  height: auto;
 }
 
 .planilla-wrapper {
@@ -319,7 +246,6 @@ const resolverGridProps = (sheet, activeInternal) => {
 }
 
 @media (prefers-reduced-motion: reduce) {
-
   .sheet-enter-active,
   .sheet-leave-active {
     transition: none !important;

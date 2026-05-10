@@ -1,13 +1,13 @@
 // routes/estuches.routes.js
 const express = require("express");
-const router  = express.Router();
+const router = express.Router();
 const { body, param, validationResult } = require("express-validator");
 
-const Estuche         = require("../models/Estuche");
+const Estuche = require("../models/Estuche");
 const { logMovement } = require("../utils/logHelper");
 const { sanitizeMiddleware } = require("../utils/sanitizer");
-const { protect }          = require("../utils/auth");
-const { broadcast }   = require("../ws");
+const { protect } = require("../utils/auth");
+const { broadcast } = require("../ws");
 const { handleAtomicSale } = require("../utils/saleHelper");
 
 const COLLECTION = "estuches";
@@ -32,9 +32,9 @@ router.get("/", async (req, res) => {
     const { q } = req.query;
     const filter = { isDeleted: false };
     if (q) filter.$or = [
-      { sku:    { $regex: q, $options: "i" } },
+      { sku: { $regex: q, $options: "i" } },
       { nombre: { $regex: q, $options: "i" } },
-      { tipo:   { $regex: q, $options: "i" } },
+      { tipo: { $regex: q, $options: "i" } },
     ];
     const items = await Estuche.find(filter)
       .collation({ locale: "es", strength: 1 })
@@ -145,7 +145,7 @@ router.post("/:id/sale", param("id").isMongoId(), body("qty").optional().isInt({
 router.delete("/:id", param("id").isMongoId(), validate, async (req, res) => {
   try {
     const actor = req.user;
-    const item  = await Estuche.findById(req.params.id);
+    const item = await Estuche.findById(req.params.id);
     if (!item) return res.status(404).json({ ok: false, error: "No encontrado" });
     if (item.isDeleted) return res.status(410).json({ ok: false, error: "Ya está en papelera" });
     item.isDeleted = true;
@@ -163,7 +163,7 @@ router.delete("/:id", param("id").isMongoId(), validate, async (req, res) => {
 router.delete("/:id/hard", param("id").isMongoId(), validate, async (req, res) => {
   try {
     const actor = req.user;
-    const item  = await Estuche.findById(req.params.id);
+    const item = await Estuche.findById(req.params.id);
     if (!item) return res.status(404).json({ ok: false, error: "No encontrado" });
     const snapshot = { sku: item.sku, nombre: item.nombre };
     await logMovement(COLLECTION, item._id, item.sku, "HARD_DELETE", { snapshot }, actor);
@@ -177,7 +177,7 @@ router.delete("/:id/hard", param("id").isMongoId(), validate, async (req, res) =
 router.patch("/:id/restore", param("id").isMongoId(), validate, async (req, res) => {
   try {
     const actor = req.user;
-    const item  = await Estuche.findById(req.params.id);
+    const item = await Estuche.findById(req.params.id);
     if (!item) return res.status(404).json({ ok: false, error: "No encontrado" });
     if (!item.isDeleted) return res.status(400).json({ ok: false, error: "No está en papelera" });
     item.isDeleted = false;

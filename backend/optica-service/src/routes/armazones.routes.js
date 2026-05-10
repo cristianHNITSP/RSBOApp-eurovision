@@ -1,13 +1,13 @@
 // routes/armazones.routes.js
 const express = require("express");
-const router  = express.Router();
+const router = express.Router();
 const { body, param, validationResult } = require("express-validator");
 
-const Armazon         = require("../models/Armazon");
+const Armazon = require("../models/Armazon");
 const { logMovement } = require("../utils/logHelper");
 const { sanitizeMiddleware } = require("../utils/sanitizer");
-const { protect }          = require("../utils/auth");
-const { broadcast }        = require("../ws");
+const { protect } = require("../utils/auth");
+const { broadcast } = require("../ws");
 
 const COLLECTION = "armazones";
 // Proteger todas las rutas: requiere estar logueado
@@ -35,8 +35,8 @@ router.get("/", async (req, res) => {
     const { q } = req.query;
     const filter = { isDeleted: false };
     if (q) filter.$or = [
-      { sku:    { $regex: q, $options: "i" } },
-      { marca:  { $regex: q, $options: "i" } },
+      { sku: { $regex: q, $options: "i" } },
+      { marca: { $regex: q, $options: "i" } },
       { modelo: { $regex: q, $options: "i" } },
     ];
 
@@ -163,9 +163,9 @@ router.post("/:id/sale", param("id").isMongoId(), body("qty").optional().isInt({
     const qty = req.body.qty || 1;
     const actor = req.user;
     const result = await handleAtomicSale(Armazon, COLLECTION, req.params.id, qty, actor);
-    
+
     if (!result.ok) return res.status(result.status).json({ ok: false, error: result.message, current: result.current });
-    
+
     return res.json({ ok: true, data: result.data });
   } catch (err) {
     console.error(`[OPTICA][${COLLECTION.toUpperCase()}] SALE error:`, err);
@@ -177,7 +177,7 @@ router.post("/:id/sale", param("id").isMongoId(), body("qty").optional().isInt({
 router.delete("/:id", param("id").isMongoId(), validate, async (req, res) => {
   try {
     const actor = req.user;
-    const item  = await Armazon.findById(req.params.id);
+    const item = await Armazon.findById(req.params.id);
     if (!item) return res.status(404).json({ ok: false, error: "No encontrado" });
     if (item.isDeleted) return res.status(410).json({ ok: false, error: "Ya está en papelera" });
 
@@ -201,7 +201,7 @@ router.delete("/:id", param("id").isMongoId(), validate, async (req, res) => {
 router.delete("/:id/hard", param("id").isMongoId(), validate, async (req, res) => {
   try {
     const actor = req.user;
-    const item  = await Armazon.findById(req.params.id);
+    const item = await Armazon.findById(req.params.id);
     if (!item) return res.status(404).json({ ok: false, error: "No encontrado" });
 
     const snapshot = { sku: item.sku, marca: item.marca, modelo: item.modelo };
@@ -221,7 +221,7 @@ router.delete("/:id/hard", param("id").isMongoId(), validate, async (req, res) =
 router.patch("/:id/restore", param("id").isMongoId(), validate, async (req, res) => {
   try {
     const actor = req.user;
-    const item  = await Armazon.findById(req.params.id);
+    const item = await Armazon.findById(req.params.id);
     if (!item) return res.status(404).json({ ok: false, error: "No encontrado" });
     if (!item.isDeleted) return res.status(400).json({ ok: false, error: "No está en papelera" });
 

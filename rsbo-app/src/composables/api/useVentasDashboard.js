@@ -7,40 +7,38 @@ import { useOpticaVentas } from './useOpticaVentas';
 import { useLentesContactoVentas } from './useLentesContactoVentas';
 
 export const VENTAS_TABS = [
-  { key: 'bases-micas',     label: 'Bases y Micas',  icon: 'glasses' },
-  { key: 'optica',          label: 'Óptica',         icon: 'eye' },
-  { key: 'lentes-contacto', label: 'Lentes Contacto',icon: 'circle' },
-  { key: 'historial',       label: 'Historial',      icon: 'history' },
-  { key: 'cortes',          label: 'Cortes',         icon: 'cash-register' },
+  { key: 'bases-micas', label: 'Bases y Micas', icon: 'glasses' },
+  // { key: 'optica', label: 'Óptica', icon: 'eye' },
+  { key: 'lentes-contacto', label: 'Lentes Contacto', icon: 'circle' },
+  { key: 'historial', label: 'Historial', icon: 'history' },
+  { key: 'cortes', label: 'Cortes', icon: 'cash-register' },
 ];
 
 export function useVentasDashboard(getUser) {
-  const route  = useRoute();
+  const route = useRoute();
   const router = useRouter();
 
   // Usamos reactive() para que las propiedades se "desenvuelvan" (unwrap) automáticamente,
   // permitiendo que los componentes hijos reciban valores planos y no Refs en sus props.
   const strategies = reactive({
-    'bases-micas':     useBasesMicasVentas(getUser),
-    'optica':          useOpticaVentas(getUser),
+    'bases-micas': useBasesMicasVentas(getUser),
+    'optica': useOpticaVentas(getUser),
     'lentes-contacto': useLentesContactoVentas(getUser),
   });
 
   const activeTab = computed({
     get: () => {
-      const k = route.params.category;
+      const t = route.query.tab;
       const valid = VENTAS_TABS.map(t => t.key);
-      return valid.includes(k) ? k : 'bases-micas';
+      return typeof t === 'string' && valid.includes(t) ? t : 'bases-micas';
     },
     set: (key) => {
-      // If the name is defined in router, use it. Otherwise fallback.
-      router.replace({ 
-        name: 'ventas-dashboard', 
-        params: { category: key } 
-      }).catch(() => {
-        // Fallback if route name doesn't exist yet
-        router.replace(`/l/ventas/${key}`);
-      });
+      if (route.query.tab === key) return;
+      router.replace({
+        name: route.name || 'ventas-dashboard',
+        params: route.params,
+        query: { ...route.query, tab: key },
+      }).catch(() => { });
     },
   });
 
@@ -52,7 +50,9 @@ export function useVentasDashboard(getUser) {
 
   // Sync history filter with active tab
   watch(activeTab, (k) => {
-    if (k !== 'historial' && history) {
+    if (k === 'historial' && history) {
+      history.category = 'all'; // Siempre resetear a 'Todas' al entrar al historial
+    } else if (k !== 'cortes' && history) {
       history.category = k;
     }
   });

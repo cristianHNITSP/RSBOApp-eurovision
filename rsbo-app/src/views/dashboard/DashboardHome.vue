@@ -90,7 +90,7 @@
           </template>
         </DynamicTabs>
 
-        <!-- Overlay de carga inicial / Estado vacío -->
+        <!-- Overlay de carga inicial -->
         <transition name="fade" mode="out-in">
           <div v-if="isLoading && !s" key="loading" class="db-tab-loading-overlay">
             <div class="db-loader-spinner"></div>
@@ -134,13 +134,13 @@ import { listEvents } from '@/services/laboratorio'
 import { useLabToast } from '@/composables/shared/useLabToast'
 import { useOpticaStats } from '@/composables/api/useOpticaStats'
 
+import { DASHBOARD_CONFIG, ROLE_META, DEVOL_REASON_LABELS, KPI_TEMPLATES } from '@/data/dashboard.data'
 import './DashboardHome.css'
 
 const labToast = useLabToast()
-
 const props = defineProps({ user: Object, loading: Boolean })
-
 const userRef = toRef(props, 'user')
+
 const {
   stats, loading: statsLoading, load: loadStats,
   role, canSeeInventory, canSeeOrders, canSeeReports,
@@ -163,15 +163,16 @@ const isLoading = computed(() => props.loading || statsLoading.value || opticaSt
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 const dashTab = ref('resumen')
 const DASH_TABS = computed(() => {
-  const tabs = [
-    { key: 'resumen',      label: 'Resumen',       icon: 'chart-pie' },
-  ]
+  const tabs = [{ key: 'resumen', label: 'Resumen', icon: 'chart-pie' }]
   if (canSeeMovements.value) tabs.push({ key: 'movimientos', label: 'Movimientos', icon: 'arrow-trend-up' })
   if (isVentas.value || isEurovision.value) tabs.push({ key: 'mi-desempeno', label: 'Mi Desempeño', icon: 'user-chart' })
   if (isLaboratorio.value) tabs.push({ key: 'mi-actividad', label: 'Mi Actividad', icon: 'microscope' })
-  tabs.push({ key: 'operaciones',  label: 'Operaciones',   icon: 'flask-vial' })
-  if (canSeeDevolutions.value) tabs.push({ key: 'devoluciones', label: 'Devoluciones', icon: 'rotate-left', badge: (s.value?.devolucionesPendientes || 0) + (s.value?.devolucionesEnRevision || 0), badgeType: 'warning' })
-  if (canSeeInventory.value)   tabs.push({ key: 'optica',       label: 'Optica',        icon: 'glasses' })
+  tabs.push({ key: 'operaciones', label: 'Operaciones', icon: 'flask-vial' })
+  if (canSeeDevolutions.value) {
+    const badge = (s.value?.devolucionesPendientes || 0) + (s.value?.devolucionesEnRevision || 0)
+    tabs.push({ key: 'devoluciones', label: 'Devoluciones', icon: 'rotate-left', badge, badgeType: 'warning' })
+  }
+  if (canSeeInventory.value) tabs.push({ key: 'optica', label: 'Optica', icon: 'glasses' })
   if (isSupervisor.value || isRoot.value) tabs.push({ key: 'supervision', label: 'Supervision', icon: 'eye' })
   return tabs
 })
@@ -212,29 +213,21 @@ async function loadOptica() {
     optica.accesorios = acc?.data?.data  || []
     optica.estuches   = est?.data?.data  || []
     optica.equipos    = eqp?.data?.data  || []
-  } catch { /* silently fail */ } finally { optica.loading = false }
+  } catch { /* fail */ } finally { optica.loading = false }
 }
 
-// ── Real-time Refresh (WS) ───────────────────────────────────────────────────
+// ── Real-time Refresh ────────────────────────────────────────────────────────
 let _wsRefreshTimer = null
 function debouncedRefresh() {
   clearTimeout(_wsRefreshTimer)
-  _wsRefreshTimer = setTimeout(() => loadStats(true), 2000)
+  _wsRefreshTimer = setTimeout(() => loadStats(true), DASHBOARD_CONFIG.REFRESH_INTERVAL_MS)
 }
 
 function onLabWs(e) {
   const type = e?.detail?.type
-  const relevantTypes = [
-    'LAB_ORDER_CREATE', 'LAB_ORDER_CANCEL', 'LAB_ORDER_SCAN', 
-    'LAB_ORDER_RESET', 'LAB_ORDER_CLOSE', 'STOCK_ALERT', 
-    'INVENTORY_CHUNK_SAVED'
-  ]
-  if (relevantTypes.includes(type)) {
-    debouncedRefresh()
-  }
-  if (type === 'INV_CHANGE') {
-    loadOpticaStats(true)
-  }
+  const relevantTypes = ['LAB_ORDER_CREATE', 'LAB_ORDER_CANCEL', 'LAB_ORDER_SCAN', 'LAB_ORDER_RESET', 'LAB_ORDER_CLOSE', 'STOCK_ALERT', 'INVENTORY_CHUNK_SAVED']
+  if (relevantTypes.includes(type)) debouncedRefresh()
+  if (type === 'INV_CHANGE') loadOpticaStats(true)
 }
 
 // ── Carga de datos ───────────────────────────────────────────────────────────
@@ -275,14 +268,8 @@ const environmentLabel = computed(() => {
   if (/dev/i.test(env)) return 'Desarrollo'
   return 'Entorno local'
 })
+
 // ── Rol meta ──────────────────────────────────────────────────────────────────
-const ROLE_META = {
-  root:        { label:'Administrador del sistema',   icon:'fas fa-crown',         ring:'#dc2626', banner:'linear-gradient(90deg, #dc2626, #ea580c)', pill:{ background:'rgba(220,38,38,.15)',color:'#dc2626',border:'1px solid rgba(220,38,38,.3)' } },
-  eurovision:  { label:'Encargado Eurovisión',        icon:'fas fa-star',           ring:'#906fe1', banner:'linear-gradient(90deg, #906fe1, #2563eb)', pill:{ background:'rgba(144,111,225,.15)',color:'#906fe1',border:'1px solid rgba(144,111,225,.3)' } },
-  supervisor:  { label:'Supervisor de operaciones',   icon:'fas fa-eye',            ring:'#0891b2', banner:'linear-gradient(90deg, #0891b2, #0d9488)', pill:{ background:'rgba(8,145,178,.15)', color:'#0891b2',border:'1px solid rgba(8,145,178,.3)' } },
-  ventas:      { label:'Personal de ventas',          icon:'fas fa-cart-shopping',  ring:'#16a34a', banner:'linear-gradient(90deg, #16a34a, #65a30d)', pill:{ background:'rgba(22,163,74,.15)', color:'#16a34a',border:'1px solid rgba(22,163,74,.3)' } },
-  laboratorio: { label:'Técnico de laboratorio',      icon:'fas fa-microscope',     ring:'#0284c7', banner:'linear-gradient(90deg, #0284c7, #906fe1)', pill:{ background:'rgba(2,132,199,.15)', color:'#0284c7',border:'1px solid rgba(2,132,199,.3)' } },
-}
 const meta           = computed(() => ROLE_META[role.value] || ROLE_META.eurovision)
 const roleLabel      = computed(() => meta.value.label)
 const roleIconClass  = computed(() => meta.value.icon)
@@ -318,7 +305,7 @@ const lastSyncLabel = computed(() => {
 
 function formatNumber(v) { return Number(v||0).toString().replace(/\B(?=(\d{3})+(?!\d))/g,',') }
 
-// ── Devoluciones pendientes + acciones inline ─────────────────────────────────
+// ── Devoluciones ─────────────────────────────────────────────────────────────
 const pendingDevols  = ref([])
 const loadingDevols  = ref(false)
 
@@ -342,18 +329,7 @@ async function quickDevAction(dev, newStatus) {
   }
 }
 
-const DEVOL_REASON_LABELS = {
-  defecto_fabricacion:    'Defecto de fabricación',
-  error_prescripcion:     'Error de prescripción',
-  insatisfaccion_cliente: 'Insatisfacción',
-  dano_transporte:        'Daño en transporte',
-  lente_roto:             'Lente roto',
-  pedido_incorrecto:      'Pedido incorrecto',
-  garantia:               'Garantía',
-  otro:                   'Otro',
-}
-
-// ── Logs de correcciones (supervisor / eurovision) ────────────────────────────
+// ── Logs ─────────────────────────────────────────────────────────────────────
 const correctionLogs  = ref([])
 const loadingLogs     = ref(false)
 
@@ -376,47 +352,43 @@ function fmtTimeAgo(d) {
 }
 
 // ── KPIs ──────────────────────────────────────────────────────────────────────
-const allKpis = computed(() => [
-  // Inventario optico
-  { key:'sheets',         icon:'table-cells-large',   accent:'purple', title:'Catálogos de lentes',      caption:'Plantillas activas (bases y micas)',        formattedValue: s.value?.activeSheets ?? '—',             requiresInventory:true },
-  { key:'combinaciones',  icon:'layer-group',          accent:'blue',   title:'Graduaciones disponibles', caption:'Esférica, Cilíndrica, Adición',            formattedValue: formatNumber(s.value?.totalCombinations),  requiresInventory:true },
-  { key:'stock',          icon:'boxes-stacked',        accent:'green',  title:'Lentes en almacén',        caption:'Bases y micas (stock total)',              formattedValue: formatNumber(s.value?.totalStock),         requiresInventory:true },
-  { key:'alertas',        icon:'triangle-exclamation', accent:'orange', title:'⚠ Stock bajo en lentes',   caption:'Graduaciones con 0-2 unidades',            formattedValue: criticalAlertsOptic.value, alert: criticalAlertsOptic.value > 0, requiresInventory:true },
-  // Tienda (Optica)
-  { key:'optProd',        icon:'store',                accent:'cyan',   title:'Productos en tienda',      caption:'Armazones, soluciones, accesorios, etc.',  formattedValue: os.value?.totalProductos ?? '—',           requiresInventory:true },
-  { key:'optStock',       icon:'boxes-packing',        accent:'teal',   title:'Piezas totales tienda',    caption:'Stock acumulado de todos los productos',   formattedValue: formatNumber(os.value?.totalPiezas),       requiresInventory:true },
-  { key:'optAgotados',    icon:'box-open',             accent:'red',    title:'Agotados en tienda',       caption:'Productos con 0 unidades',                 formattedValue: os.value?.totalAgotados ?? '—',            alert: (os.value?.totalAgotados ?? 0) > 0, requiresInventory:true },
-  { key:'optValor',       icon:'coins',                accent:'green',  title:'Valor inventario tienda',  caption:'Valor estimado total en MXN',              formattedValue: os.value ? `$${formatNumber(os.value.valorTotalTienda)}` : '—', requiresInventory:true },
-  // Lentes de contacto
-  { key:'clSheets',       icon:'eye',                  accent:'cyan',   title:'Catálogos de contacto',    caption:'Plantillas activas lentes de contacto',    formattedValue: s.value?.clActiveSheets ?? '—',           requiresInventory:true },
-  { key:'clStock',        icon:'boxes-stacked',        accent:'teal',   title:'Existencias contacto',     caption:'Piezas lentes de contacto',                formattedValue: formatNumber(s.value?.clTotalStock),       requiresInventory:true },
-  { key:'clAlertas',      icon:'triangle-exclamation', accent:'orange', title:'⚠ Stock bajo en contacto', caption:'Graduaciones con 0-2 unidades',            formattedValue: criticalAlertsCL.value, alert: criticalAlertsCL.value > 0, requiresInventory:true },
-  { key:'clCoverage',     icon:'percent',              accent:'blue',   title:'Cobertura contacto',       caption: `De ${formatNumber(s.value?.clTotalPossible || 0)} graduaciones del catálogo`, formattedValue: (s.value?.clCoveragePct ?? 0) + '%',       requiresInventory:true },
-  // Pedidos y operaciones
-  { key:'pendientes',     icon:'clipboard-list',       accent:'orange', title:'Pendientes',               caption:'Abiertos o parciales',                     formattedValue: s.value?.ordersPending ?? '—',            requiresOrders:true },
-  { key:'cerrados30d',    icon:'circle-check',         accent:'green',  title:'Cerrados (30d)',            caption:'Últimos 30 días',                          formattedValue: s.value?.ordersClosed30d ?? '—',           requiresOrders:true },
-  { key:'scansToday',     icon:'barcode',              accent:'cyan',   title:'Escaneos hoy',             caption:'Salidas por escáner',                      formattedValue: s.value?.scansToday ?? '—',               requiresLab:true },
-  { key:'serviceLevel',   icon:'gauge-high',           accent:'purple', title:'Nivel de servicio',        caption: `Basado en ${formatNumber(s.value?.ordersClosed30d || 0)} pedidos sin errores`,                    formattedValue: (s.value?.serviceLevel ?? 0) + '%',        requiresReports:true },
-  { key:'devPendientes',  icon:'rotate-left',          accent:'orange', title:'Devoluciones pendientes',  caption:'Esperando revisión',                       formattedValue: (s.value?.devolucionesPendientes ?? 0) + (s.value?.devolucionesEnRevision ?? 0),    requiresDevolutions:true, alert: ((s.value?.devolucionesPendientes ?? 0) + (s.value?.devolucionesEnRevision ?? 0)) > 0 },
-  { key:'devTotal30d',    icon:'arrow-rotate-left',    accent:'purple', title:'Devoluciones (30d)',        caption:'Este período',                             formattedValue: s.value?.devolucionesTotal30d ?? '—',      requiresDevolutions:true },
-  { key:'corrections7d',  icon:'wrench',               accent:'red',    title:'Correcciones (7d)',         caption:'Solicitudes activas',                      formattedValue: s.value?.corrections7d ?? '—',            requiresLab:true },
-  { key:'cerradoHoy',     icon:'check',                accent:'green',  title:'Cerrados hoy',             caption:'Completados hoy',                          formattedValue: s.value?.ordersClosedToday ?? '—',        requiresOrders:true },
-])
-
 const visibleKpis = computed(() => {
-  const filtered = allKpis.value.filter(k => {
+  const filtered = KPI_TEMPLATES.filter(k => {
     if (k.requiresInventory   && !canSeeInventory.value)   return false
     if (k.requiresOrders      && !canSeeOrders.value)      return false
     if (k.requiresLab         && !canSeeLab.value)         return false
     if (k.requiresReports     && !canSeeReports.value)     return false
     if (k.requiresDevolutions && !canSeeDevolutions.value) return false
     return true
+  }).map(k => {
+    let val = '—'
+    let alert = false
+    switch(k.key) {
+      case 'sheets': val = s.value?.activeSheets; break
+      case 'combinaciones': val = formatNumber(s.value?.totalCombinations); break
+      case 'stock': val = formatNumber(s.value?.totalStock); break
+      case 'alertas': val = criticalAlertsOptic.value; alert = criticalAlertsOptic.value > 0; break
+      case 'optProd': val = os.value?.totalProductos; break
+      case 'optStock': val = formatNumber(os.value?.totalPiezas); break
+      case 'optAgotados': val = os.value?.totalAgotados; alert = (os.value?.totalAgotados ?? 0) > 0; break
+      case 'optValor': val = os.value ? `$${formatNumber(os.value.valorTotalTienda)}` : '—'; break
+      case 'clSheets': val = s.value?.clActiveSheets; break
+      case 'clStock': val = formatNumber(s.value?.clTotalStock); break
+      case 'clAlertas': val = criticalAlertsCL.value; alert = criticalAlertsCL.value > 0; break
+      case 'clCoverage': val = (s.value?.clCoveragePct ?? 0) + '%'; break
+      case 'pendientes': val = s.value?.ordersPending; break
+      case 'cerrados30d': val = s.value?.ordersClosed30d; break
+      case 'scansToday': val = s.value?.scansToday; break
+      case 'serviceLevel': val = (s.value?.serviceLevel ?? 0) + '%'; break
+      case 'devPendientes': val = (s.value?.devolucionesPendientes ?? 0) + (s.value?.devolucionesEnRevision ?? 0); alert = val > 0; break
+      case 'devTotal30d': val = s.value?.devolucionesTotal30d; break
+      case 'corrections7d': val = s.value?.corrections7d; break
+      case 'cerradoHoy': val = s.value?.ordersClosedToday; break
+    }
+    return { ...k, formattedValue: val ?? '—', alert }
   })
-  const max = canSeeInventory.value ? 8 : canSeeDevolutions.value ? 6 : 4
+  
+  const max = DASHBOARD_CONFIG.MAX_VISIBLE_KPIS(canSeeInventory.value, canSeeDevolutions.value)
   return filtered.slice(0, max)
 })
 </script>
-
-<style scoped>
-/* Estilos específicos si son necesarios */
-</style>

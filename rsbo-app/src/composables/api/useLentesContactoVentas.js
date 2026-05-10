@@ -1,16 +1,16 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount } from "vue";
 import { labToast } from "@/composables/shared/useLabToast.js";
-import { 
-  listContactLensSheets, 
+import {
+  listContactLensSheets,
   fetchContactLensItems,
   registerContactLensSale
 } from "@/services/contactlenses";
 import { createOrder } from "@/services/laboratorio"; // Assuming LC orders also go to lab or are registered here
-import { 
-  normTxt, 
-  buildRowTitle, 
-  buildRowParams, 
-  getActor 
+import {
+  normTxt,
+  buildRowTitle,
+  buildRowParams,
+  getActor
 } from "./_ventasShared";
 
 /**
@@ -30,7 +30,7 @@ export function useLentesContactoVentas(getUser) {
   function _onLabWs(e) {
     const type = e?.detail?.type;
     if (!WS_REFRESH_TYPES.has(type)) return;
-    
+
     const payload = e?.detail?.payload || {};
     const sid = payload.sheetId;
 
@@ -78,33 +78,33 @@ export function useLentesContactoVentas(getUser) {
 
   // ── DB state ──────────────────────────────────────────────────────────────
   const sheetsDB = ref([]);
-  const itemsDB  = ref([]);
+  const itemsDB = ref([]);
 
   // ── UI state ──────────────────────────────────────────────────────────────
   const selectedSheetId = ref("");
-  const itemQuery       = ref("");
-  const stockFilter     = ref("withStock");
-  const catalogPage     = ref(1);
+  const itemQuery = ref("");
+  const stockFilter = ref("withStock");
+  const catalogPage = ref(1);
   const catalogPageSize = ref(15);
-  const selectedAxis    = ref(null); // New state for filtering by axis
+  const selectedAxis = ref(null); // New state for filtering by axis
 
-  const cartItems            = ref([]);
-  const cartCliente          = ref("");
-  const cartNote             = ref("");
-  const cartClienteNombres   = ref("");
+  const cartItems = ref([]);
+  const cartCliente = ref("");
+  const cartNote = ref("");
+  const cartClienteNombres = ref("");
   const cartClienteApellidos = ref("");
-  const cartClienteEmpresa   = ref("");
-  const cartClienteContacto  = ref("");
-  const cartPago             = ref([]);
+  const cartClienteEmpresa = ref("");
+  const cartClienteContacto = ref("");
+  const cartPago = ref([]);
 
-  const loadingSheets      = ref(false);
-  const loadingItems       = ref(false);
-  const loadingSale        = ref(false);
+  const loadingSheets = ref(false);
+  const loadingItems = ref(false);
+  const loadingSale = ref(false);
   const sheetSearchLoading = ref(false);
-  const sheetSearchQuery   = ref("");
+  const sheetSearchQuery = ref("");
 
-  const voucherOpen  = ref(false);
-  const lastVoucher  = ref(null);
+  const voucherOpen = ref(false);
+  const lastVoucher = ref(null);
 
   // ── Computed ──────────────────────────────────────────────────────────────
 
@@ -134,7 +134,7 @@ export function useLentesContactoVentas(getUser) {
 
   const paginatedItems = computed(() => {
     const page = Math.min(catalogPage.value, catalogPages.value);
-    const per  = catalogPageSize.value;
+    const per = catalogPageSize.value;
     return filteredItems.value.slice((page - 1) * per, page * per);
   });
 
@@ -176,8 +176,8 @@ export function useLentesContactoVentas(getUser) {
       const arr = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
       const mapped = arr.map((s) => ({
         ...s,
-        id:          String(s._id ?? s.id ?? ""),
-        nombre:      s.nombre ?? s.name ?? "",
+        id: String(s._id ?? s.id ?? ""),
+        nombre: s.nombre ?? s.name ?? "",
       }));
       sheetsDB.value = mapped;
       if (!selectedSheetId.value && mapped.length) selectedSheetId.value = mapped[0].id;
@@ -198,12 +198,12 @@ export function useLentesContactoVentas(getUser) {
 
     if (!silent) loadingItems.value = true;
     try {
-      const { data } = await fetchContactLensItems(sid, { 
-        limit: 500, 
+      const { data } = await fetchContactLensItems(sid, {
+        limit: 500,
         withStock: stockFilter.value === "withStock",
         axisMin: selectedAxis.value || undefined,
         axisMax: selectedAxis.value || undefined,
-        signal: itemsAc.signal 
+        signal: itemsAc.signal
       });
       const arr = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
       const sheet = sheetsDB.value.find((s) => String(s.id) === String(sid)) || null;
@@ -211,9 +211,9 @@ export function useLentesContactoVentas(getUser) {
         ...r,
         existencias: Number(r.existencias ?? 0),
         precioVenta: Number(sheet?.precioVenta || 0),
-        _normTitle:  normTxt(buildRowTitle(r, sheet)),
+        _normTitle: normTxt(buildRowTitle(r, sheet)),
         _normParams: normTxt(buildRowParams(r, sheet)),
-        _normCode:   normTxt(r.codebar || "")
+        _normCode: normTxt(r.codebar || "")
       }));
 
       // 🔄 Sincronizar el carrito con los nuevos datos del catálogo
@@ -306,7 +306,7 @@ export function useLentesContactoVentas(getUser) {
       // Mock de "order" para el voucher (ya que no hay LaboratoryOrder real)
       const fakeOrder = {
         _id: `SALE-${Date.now()}`,
-        folio: `VTA-LC-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${Math.random().toString(36).slice(2,5).toUpperCase()}`,
+        folio: `VTA-LC-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.random().toString(36).slice(2, 5).toUpperCase()}`,
         cliente: clienteVal,
         totalMonto: cartTotalMonto.value,
         createdAt: new Date(),
@@ -325,7 +325,7 @@ export function useLentesContactoVentas(getUser) {
       voucherOpen.value = true;
       clearCart();
       labToast.success(`Venta de LC registrada`);
-      
+
       return fakeOrder;
     } catch (e) {
       labToast.danger("Error al registrar venta");
@@ -336,9 +336,9 @@ export function useLentesContactoVentas(getUser) {
   }
 
   // ── Watchers ──────────────────────────────────────────────────────────────
-  watch(selectedSheetId, () => { 
+  watch(selectedSheetId, () => {
     selectedAxis.value = null; // Reset axis when sheet changes
-    loadItems(); 
+    loadItems();
   });
   watch(selectedAxis, () => { loadItems(); });
   watch([itemQuery, stockFilter], () => { catalogPage.value = 1; });
@@ -391,7 +391,7 @@ export function useLentesContactoVentas(getUser) {
       loadingSale
     },
     selectedSheetId, itemQuery, stockFilter, catalogPage,
-    cartCliente, cartNote, cartClienteNombres, cartClienteApellidos, 
+    cartCliente, cartNote, cartClienteNombres, cartClienteApellidos,
     cartClienteEmpresa, cartClienteContacto, cartPago,
     addToCart, removeFromCart, incCartQty, decCartQty, clearCart,
     registrarVenta, loadItems,

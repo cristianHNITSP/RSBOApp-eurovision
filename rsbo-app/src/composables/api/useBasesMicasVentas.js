@@ -3,13 +3,13 @@ import { labToast } from "@/composables/shared/useLabToast.js";
 import { listSheets as invListSheets, fetchItems as invFetchItems } from "@/services/inventory";
 import { createOrder } from "@/services/laboratorio";
 import { createGroupedNotification } from "@/services/notifications";
-import { 
-  normTxt, 
-  fv, 
-  buildRowTitle, 
-  buildRowParams, 
-  getActor, 
-  PAGO_LABELS 
+import {
+  normTxt,
+  fv,
+  buildRowTitle,
+  buildRowParams,
+  getActor,
+  PAGO_LABELS
 } from "./_ventasShared";
 
 /**
@@ -38,7 +38,7 @@ export function useBasesMicasVentas(getUser) {
     // 1. Intentar actualización SILENCIOSA si es un INV_CHANGE con datos suficientes
     if (type === "INV_CHANGE" && payload.codebar && typeof payload.newStock === "number") {
       const codeStr = String(payload.codebar);
-      
+
       // Actualizar en el catálogo
       const item = itemsDB.value.find(i => String(i.codebar) === codeStr);
       if (item) item.existencias = payload.newStock;
@@ -74,32 +74,34 @@ export function useBasesMicasVentas(getUser) {
 
   // ── DB state ──────────────────────────────────────────────────────────────
   const sheetsDB = ref([]);
-  const itemsDB  = ref([]);
+  const itemsDB = ref([]);
 
   // ── UI state ──────────────────────────────────────────────────────────────
   const selectedSheetId = ref("");
-  const itemQuery       = ref("");
-  const stockFilter     = ref("withStock");
-  const catalogPage     = ref(1);
-  const catalogPageSize = ref(15);
+  const itemQuery = ref("");
+  const stockFilter = ref("withStock");
+  const catalogPage = ref(1);
+  const catalogPageSize = ref(7);
+  const totalItems = ref(0);
+  const catalogPages = ref(1);
 
-  const cartItems            = ref([]);
-  const cartCliente          = ref("");
-  const cartNote             = ref("");
-  const cartClienteNombres   = ref("");
+  const cartItems = ref([]);
+  const cartCliente = ref("");
+  const cartNote = ref("");
+  const cartClienteNombres = ref("");
   const cartClienteApellidos = ref("");
-  const cartClienteEmpresa   = ref("");
-  const cartClienteContacto  = ref("");
-  const cartPago             = ref([]);
+  const cartClienteEmpresa = ref("");
+  const cartClienteContacto = ref("");
+  const cartPago = ref([]);
 
-  const loadingSheets      = ref(false);
-  const loadingItems       = ref(false);
-  const loadingSale        = ref(false);
+  const loadingSheets = ref(false);
+  const loadingItems = ref(false);
+  const loadingSale = ref(false);
   const sheetSearchLoading = ref(false);
-  const sheetSearchQuery   = ref("");
+  const sheetSearchQuery = ref("");
 
-  const voucherOpen  = ref(false);
-  const lastVoucher  = ref(null);
+  const voucherOpen = ref(false);
+  const lastVoucher = ref(null);
 
   // ── Computed ──────────────────────────────────────────────────────────────
 
@@ -107,31 +109,8 @@ export function useBasesMicasVentas(getUser) {
     sheetsDB.value.find((s) => String(s.id) === String(selectedSheetId.value)) || null
   );
 
-  const filteredItems = computed(() => {
-    let rows = itemsDB.value;
-    if (stockFilter.value === "withStock") rows = rows.filter((r) => r.existencias > 0);
-    else if (stockFilter.value === "zero") rows = rows.filter((r) => r.existencias === 0);
-
-    const q = normTxt(itemQuery.value);
-    if (q) {
-      rows = rows.filter((r) =>
-        (r._normTitle || "").includes(q) ||
-        (r._normParams || "").includes(q) ||
-        (r._normCode || "").includes(q)
-      );
-    }
-    return rows;
-  });
-
-  const catalogPages = computed(() =>
-    Math.max(1, Math.ceil(filteredItems.value.length / catalogPageSize.value))
-  );
-
-  const paginatedItems = computed(() => {
-    const page = Math.min(catalogPage.value, catalogPages.value);
-    const per  = catalogPageSize.value;
-    return filteredItems.value.slice((page - 1) * per, page * per);
-  });
+  const filteredItems = computed(() => itemsDB.value);
+  const paginatedItems = computed(() => itemsDB.value);
 
   const cartTotal = computed(() =>
     cartItems.value.reduce((sum, ci) => sum + ci.qty, 0)
@@ -142,7 +121,7 @@ export function useBasesMicasVentas(getUser) {
   );
 
   const cartClienteDisplay = computed(() => {
-    const nombres   = cartClienteNombres.value.trim();
+    const nombres = cartClienteNombres.value.trim();
     const apellidos = cartClienteApellidos.value.trim();
     return [nombres, apellidos].filter(Boolean).join(" ") || cartCliente.value.trim();
   });
@@ -166,8 +145,8 @@ export function useBasesMicasVentas(getUser) {
       const arr = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
       const mapped = arr.map((s) => ({
         ...s,
-        id:          String(s._id ?? s.id ?? ""),
-        nombre:      s.nombre ?? s.name ?? "",
+        id: String(s._id ?? s.id ?? ""),
+        nombre: s.nombre ?? s.name ?? "",
         tratamientos: Array.isArray(s.tratamientos) ? s.tratamientos : []
       }));
       mapped.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
@@ -184,38 +163,44 @@ export function useBasesMicasVentas(getUser) {
   async function loadItems(silent = false) {
     const sid = selectedSheetId.value;
     if (!sid) { itemsDB.value = []; return; }
-    
-    // Abortar petición previa si existe
+
     if (itemsAc) itemsAc.abort();
     itemsAc = new AbortController();
-    
+
     if (!silent) loadingItems.value = true;
     try {
-      const { data } = await invFetchItems(sid, { limit: 500, signal: itemsAc.signal });
-      const arr = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+      const params = {
+        page: catalogPage.value,
+        limit: catalogPageSize.value,
+        q: itemQuery.value,
+        stock: stockFilter.value
+      };
+
+      const { data } = await invFetchItems(sid, { ...params, signal: itemsAc.signal });
+      const responseData = data?.data || {};
+      const arr = Array.isArray(responseData.docs) ? responseData.docs : [];
+      const serverMeta = responseData.meta || {};
+
       const sheet = sheetsDB.value.find((s) => String(s.id) === String(sid)) || null;
       itemsDB.value = arr.map((r) => ({
         ...r,
         existencias: Number(r.existencias ?? 0),
         precioVenta: Number(sheet?.precioVenta || 0),
-        _normTitle:  normTxt(buildRowTitle(r, sheet)),
+        _normTitle: normTxt(buildRowTitle(r, sheet)),
         _normParams: normTxt(buildRowParams(r, sheet)),
-        _normCode:   normTxt(r.codebar || "")
+        _normCode: normTxt(r.codebar || "")
       }));
-      
-      // 🔄 Sincronizar el carrito con los nuevos datos del catálogo
+
+      catalogPages.value = serverMeta.pages || 1;
+      totalItems.value = serverMeta.total || 0;
+
       cartItems.value.forEach(ci => {
         const matching = itemsDB.value.find(i => String(i.codebar) === String(ci.row.codebar));
         if (matching) {
           ci.row.existencias = matching.existencias;
-          // 🛡️ CAPEO AUTOMÁTICO
-          if (ci.qty > matching.existencias) {
-            ci.qty = Math.max(0, matching.existencias);
-          }
+          if (ci.qty > matching.existencias) ci.qty = Math.max(0, matching.existencias);
         }
       });
-
-      catalogPage.value = 1;
     } catch (e) {
       if (e.name === "AbortError") return;
       labToast.danger("Error al cargar productos");
@@ -272,7 +257,7 @@ export function useBasesMicasVentas(getUser) {
   async function registrarVenta() {
     if (loadingSale.value) return;
     if (!cartItems.value.length) { labToast.warning("Carrito vacío"); return; }
-    
+
     const clienteVal = String(cartCliente.value || "").trim();
     if (!clienteVal) { labToast.warning("Nombre de cliente requerido"); return; }
 
@@ -316,7 +301,7 @@ export function useBasesMicasVentas(getUser) {
       voucherOpen.value = true;
       clearCart();
       labToast.success(`Pedido ${order?.folio || ""} enviado`);
-      
+
       return order;
     } catch (e) {
       labToast.danger(e?.response?.data?.message || "Error al crear pedido");
@@ -327,8 +312,9 @@ export function useBasesMicasVentas(getUser) {
   }
 
   // ── Watchers ──────────────────────────────────────────────────────────────
-  watch(selectedSheetId, () => { loadItems(); });
-  watch([itemQuery, stockFilter], () => { catalogPage.value = 1; });
+  watch(selectedSheetId, () => { catalogPage.value = 1; loadItems(); });
+  watch([itemQuery, stockFilter], () => { catalogPage.value = 1; loadItems(); });
+  watch(catalogPage, () => { loadItems(); });
   watch([cartClienteNombres, cartClienteApellidos], () => {
     const n = cartClienteNombres.value.trim();
     const a = cartClienteApellidos.value.trim();
@@ -377,9 +363,9 @@ export function useBasesMicasVentas(getUser) {
     },
     // Expose flat for v-model compatibility in Dashboard
     selectedSheetId, itemQuery, stockFilter, catalogPage,
-    cartCliente, cartNote, cartClienteNombres, cartClienteApellidos, 
+    cartCliente, cartNote, cartClienteNombres, cartClienteApellidos,
     cartClienteEmpresa, cartClienteContacto, cartPago,
-    
+
     addToCart, removeFromCart, incCartQty, decCartQty, clearCart,
     registrarVenta, loadItems,
     lastVoucher, voucherOpen,

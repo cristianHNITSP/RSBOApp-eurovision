@@ -1,24 +1,20 @@
-const express      = require("express");
-const mongoose     = require("mongoose");
-const cors         = require("cors");
+const config = require("./config");
+const express = require("express");
+const mongoose = require("mongoose");
+const cors = require("cors");
 const cookieParser = require("cookie-parser");
-const morgan       = require("morgan");
-require("dotenv").config();
+const morgan = require("morgan");
+const { APP_CONSTANTS } = require("./data/constants");
 
 const app = express();
 
-const PORT = Number(process.env.PORT) || 3000;
-const HOST = process.env.SERVICE_HOST || "0.0.0.0";
+const PORT = config.port;
+const HOST = config.host;
 
 app.set("trust proxy", 1);
 
-const rawOrigins  = process.env.CORS_ORIGINS || "";
-const envOrigins  = rawOrigins.split(",").map((o) => o.trim()).filter(Boolean);
-const devOrigins  = [
-  "http://localhost:5173",
-  "http://127.0.0.1:5173",
-  "http://192.168.0.87:5173",
-];
+const envOrigins = config.cors.origins;
+const devOrigins = APP_CONSTANTS.DEV_ORIGINS;
 const allowedOrigins = Array.from(new Set([...envOrigins, ...devOrigins]));
 console.log("✅ CORS allowed origins:", allowedOrigins);
 
@@ -36,40 +32,21 @@ app.use(
 
 app.use(express.json());
 app.use(cookieParser());
-app.use(morgan("dev"));
+if (config.env !== "production") {
+  app.use(morgan("dev"));
+}
 
-// ── Conexión MongoDB ──────────────────────────────────────────────────────────
 mongoose
-  .connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
+  .connect(config.mongo.uri)
   .then(async () => {
     console.log("✅ Connected to MongoDB (optica)");
-    /* 
-    try {
-      const Armazon = require("./models/Armazon");
-      const count   = await Armazon.countDocuments({});
-      if (count === 0) {
-        console.log("🌱 BD vacía — ejecutando seed inicial...");
-        const { execFileSync } = require("child_process");
-        execFileSync("node", [require("path").join(__dirname, "seeds/seed-optica.js")], {
-          stdio: "inherit",
-          env: process.env,
-        });
-      }
-    } catch (seedErr) {
-      console.warn("⚠️  Seed automático falló (no crítico):", seedErr.message);
-    }
-    */
   })
   .catch((err) => {
     console.error("MongoDB connection error:", err);
     process.exit(1);
   });
 
-// ── Rutas ─────────────────────────────────────────────────────────────────────
-app.get("/health", (_req, res) => {
+app.get(APP_CONSTANTS.PATHS.HEALTH, (_req, res) => {
   res.json({ ok: true, service: "optica", ts: Date.now() });
 });
 
@@ -83,7 +60,6 @@ app.use("/api/optica/logs",       require("./routes/logs.routes"));
 app.use("/api/optica/sales",      require("./routes/sales.routes"));
 app.use("/api/optica/stats",      require("./routes/stats.routes"));
 
-// ── Manejo de errores ─────────────────────────────────────────────────────────
 app.use((err, _req, res, _next) => {
   console.error("[Optica ERROR]", err);
   const status = err.status || 500;

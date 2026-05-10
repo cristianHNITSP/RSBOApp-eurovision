@@ -1,13 +1,13 @@
 // routes/lentes.routes.js — lentes de contacto (sección óptica)
 const express = require("express");
-const router  = express.Router();
+const router = express.Router();
 const { body, param, validationResult } = require("express-validator");
 
-const LenteContacto   = require("../models/LenteContacto");
+const LenteContacto = require("../models/LenteContacto");
 const { logMovement } = require("../utils/logHelper");
 const { sanitizeMiddleware } = require("../utils/sanitizer");
-const { protect }          = require("../utils/auth");
-const { broadcast }   = require("../ws");
+const { protect } = require("../utils/auth");
+const { broadcast } = require("../ws");
 const { handleAtomicSale } = require("../utils/saleHelper");
 
 const COLLECTION = "lentes";
@@ -34,8 +34,8 @@ router.get("/", async (req, res) => {
     const { q } = req.query;
     const filter = { isDeleted: false };
     if (q) filter.$or = [
-      { sku:    { $regex: q, $options: "i" } },
-      { marca:  { $regex: q, $options: "i" } },
+      { sku: { $regex: q, $options: "i" } },
+      { marca: { $regex: q, $options: "i" } },
       { nombre: { $regex: q, $options: "i" } },
     ];
     const items = await LenteContacto.find(filter)
@@ -156,7 +156,7 @@ router.post("/:id/sale", param("id").isMongoId(), body("qty").optional().isInt({
 router.delete("/:id", param("id").isMongoId(), validate, async (req, res) => {
   try {
     const actor = req.user;
-    const item  = await LenteContacto.findById(req.params.id);
+    const item = await LenteContacto.findById(req.params.id);
     if (!item) return res.status(404).json({ ok: false, error: "No encontrado" });
     if (item.isDeleted) return res.status(410).json({ ok: false, error: "Ya está en papelera" });
     item.isDeleted = true;
@@ -176,7 +176,7 @@ router.delete("/:id", param("id").isMongoId(), validate, async (req, res) => {
 router.delete("/:id/hard", param("id").isMongoId(), validate, async (req, res) => {
   try {
     const actor = req.user;
-    const item  = await LenteContacto.findById(req.params.id);
+    const item = await LenteContacto.findById(req.params.id);
     if (!item) return res.status(404).json({ ok: false, error: "No encontrado" });
     const snapshot = { sku: item.sku, marca: item.marca, nombre: item.nombre };
     await logMovement(COLLECTION, item._id, item.sku, "HARD_DELETE", { snapshot }, actor);
@@ -192,7 +192,7 @@ router.delete("/:id/hard", param("id").isMongoId(), validate, async (req, res) =
 router.patch("/:id/restore", param("id").isMongoId(), validate, async (req, res) => {
   try {
     const actor = req.user;
-    const item  = await LenteContacto.findById(req.params.id);
+    const item = await LenteContacto.findById(req.params.id);
     if (!item) return res.status(404).json({ ok: false, error: "No encontrado" });
     if (!item.isDeleted) return res.status(400).json({ ok: false, error: "No está en papelera" });
     item.isDeleted = false;

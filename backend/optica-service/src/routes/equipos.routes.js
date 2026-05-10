@@ -1,12 +1,12 @@
 // routes/equipos.routes.js
 const express = require("express");
-const router  = express.Router();
+const router = express.Router();
 const { body, param, validationResult } = require("express-validator");
 
-const Equipo          = require("../models/Equipo");
+const Equipo = require("../models/Equipo");
 const { logMovement } = require("../utils/logHelper");
 const { sanitizeMiddleware } = require("../utils/sanitizer");
-const { protect }          = require("../utils/auth");
+const { protect } = require("../utils/auth");
 
 const COLLECTION = "equipos";
 router.use(protect());
@@ -29,10 +29,10 @@ router.get("/", async (req, res) => {
     const { q } = req.query;
     const filter = { isDeleted: false };
     if (q) filter.$or = [
-      { sku:    { $regex: q, $options: "i" } },
+      { sku: { $regex: q, $options: "i" } },
       { nombre: { $regex: q, $options: "i" } },
-      { marca:  { $regex: q, $options: "i" } },
-      { serie:  { $regex: q, $options: "i" } },
+      { marca: { $regex: q, $options: "i" } },
+      { serie: { $regex: q, $options: "i" } },
     ];
     const items = await Equipo.find(filter)
       .collation({ locale: "es", strength: 1 })
@@ -126,7 +126,7 @@ router.patch("/:id/estado", param("id").isMongoId(), body("estado").notEmpty(), 
 router.delete("/:id", param("id").isMongoId(), validate, async (req, res) => {
   try {
     const actor = req.body?.actor || {};
-    const item  = await Equipo.findById(req.params.id);
+    const item = await Equipo.findById(req.params.id);
     if (!item) return res.status(404).json({ ok: false, error: "No encontrado" });
     if (item.isDeleted) return res.status(410).json({ ok: false, error: "Ya está en papelera" });
     item.isDeleted = true;
@@ -145,7 +145,7 @@ router.delete("/:id", param("id").isMongoId(), validate, async (req, res) => {
 router.delete("/:id/hard", param("id").isMongoId(), validate, async (req, res) => {
   try {
     const actor = req.body?.actor || {};
-    const item  = await Equipo.findById(req.params.id);
+    const item = await Equipo.findById(req.params.id);
     if (!item) return res.status(404).json({ ok: false, error: "No encontrado" });
     const snapshot = { sku: item.sku, nombre: item.nombre, serie: item.serie };
     await logMovement(COLLECTION, item._id, item.sku, "HARD_DELETE", { snapshot }, actor);
@@ -160,7 +160,7 @@ router.delete("/:id/hard", param("id").isMongoId(), validate, async (req, res) =
 router.patch("/:id/restore", param("id").isMongoId(), validate, async (req, res) => {
   try {
     const actor = req.body?.actor || {};
-    const item  = await Equipo.findById(req.params.id);
+    const item = await Equipo.findById(req.params.id);
     if (!item) return res.status(404).json({ ok: false, error: "No encontrado" });
     if (!item.isDeleted) return res.status(400).json({ ok: false, error: "No está en papelera" });
     item.isDeleted = false;

@@ -25,7 +25,7 @@
           <div class="user-cell__avatar-wrap">
             <AvatarPicker
               :model-value="props.row.profile?.avatar || ''"
-              :placeholder="fallbackAvatar"
+              :placeholder="getAvatar(props.row.profile?.avatar, 'PROFILE')"
               :edit-mode="canEditAvatar(props.row)"
               :size="32"
               @update:model-value="$emit('avatar-picked', props.row, $event)"
@@ -88,6 +88,7 @@
 import AvatarPicker from "@/components/AvatarPicker.vue";
 import { formatRoleLabel, roleTagType } from "@/utils/roleHelpers.js";
 import { canEditAvatar, formatDateTime, formatDate, rowClass } from "@/composables/gestion/usuarios/useUsuariosLogic.js";
+import { getAvatar } from "@/utils/avatarHelper";
 
 defineProps({
   users:          { type: Array,   required: true },
@@ -96,7 +97,6 @@ defineProps({
   currentPage:    { type: Number,  required: true },
   loading:        { type: Boolean, required: true },
   selectedUser:   { type: Object,  default: null },
-  fallbackAvatar: { type: String,  required: true },
 });
 
 defineEmits([

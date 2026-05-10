@@ -5,6 +5,8 @@ import { usersService } from "../../../services/usersService.js";
 import { labToast } from "@/composables/shared/useLabToast";
 import { formatRoleLabel, roleTagType } from "@/utils/roleHelpers.js";
 
+import { AVATAR_DEFAULTS } from "@/utils/avatarHelper";
+
 export function canEditAvatar(u) {
   return !!(u && !u.isMe && !u.deletedAt);
 }
@@ -80,15 +82,6 @@ export function useUsuariosLogic() {
   const toast = (message, type = "is-danger", duration = 3000) => {
     labToast.show(message, type, duration);
   };
-
-  const FALLBACK_AVATAR =
-    "data:image/svg+xml;charset=UTF-8," +
-    encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
-    <defs><linearGradient id="g" x1="0" x2="1"><stop stop-color="#7957d5"/><stop offset="1" stop-color="#9a6dff"/></linearGradient></defs>
-    <rect width="96" height="96" rx="48" fill="url(#g)"/>
-    <circle cx="48" cy="40" r="16" fill="rgba(255,255,255,.9)"/>
-    <path d="M18 86c7-17 20-24 30-24s23 7 30 24" fill="rgba(255,255,255,.9)"/>
-    </svg>`);
 
   function setUserAvatarLocal(userId, avatar) {
     usersRaw.value = (usersRaw.value || []).map((u) => {
@@ -390,9 +383,6 @@ export function useUsuariosLogic() {
 
     // Computed
     users,
-
-    // Constante
-    FALLBACK_AVATAR,
 
     // Formato
     formatDateTime, formatDate, rowClass,

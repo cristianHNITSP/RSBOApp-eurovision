@@ -38,6 +38,7 @@
   --surface-solid: #ffffff;
   --surface-raised: rgba(255, 255, 255, 0.92);
   --surface-overlay: rgba(255, 255, 255, 0.58);
+  --surface-glass: rgba(255, 255, 255, 0.45);
 
   /* === Texto === */
   --text-primary: #0f172a;
@@ -60,6 +61,8 @@
   --shadow-sm: 0 4px 12px rgba(15, 23, 42, 0.06);
   --shadow-md: 0 10px 30px rgba(15, 23, 42, 0.08);
   --shadow-lg: 0 18px 50px rgba(15, 23, 42, 0.12);
+  --shadow-xl: 0 25px 80px rgba(15, 23, 42, 0.15);
+  --shadow-2xl: 0 35px 120px rgba(15, 23, 42, 0.18);
   --shadow-soft: 0 14px 40px rgba(15, 23, 42, 0.10);
   --shadow-primary: 0 14px 30px rgba(88, 28, 135, 0.18);
   --shadow-glow: 0 0 20px var(--c-primary-alpha);
@@ -190,6 +193,7 @@
   --surface-solid: #161b22;
   --surface-raised: rgba(30, 36, 50, 0.95);
   --surface-overlay: rgba(22, 27, 34, 0.62);
+  --surface-glass: rgba(15, 17, 23, 0.65);
 
   /* === Texto === */
   --text-primary: #f0f4ff;
@@ -212,6 +216,8 @@
   --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.30);
   --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.40);
   --shadow-lg: 0 18px 50px rgba(0, 0, 0, 0.50);
+  --shadow-xl: 0 25px 80px rgba(0, 0, 0, 0.65);
+  --shadow-2xl: 0 35px 120px rgba(0, 0, 0, 0.80);
   --shadow-soft: 0 14px 40px rgba(0, 0, 0, 0.38);
   --shadow-primary: 0 14px 30px rgba(88, 28, 135, 0.45);
   --shadow-glow: 0 0 25px rgba(167, 136, 240, 0.15);

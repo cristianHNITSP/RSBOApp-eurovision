@@ -3,7 +3,7 @@
     <aside
       class="sidebar"
       :class="{ 'is-collapsed': isCollapsed }"
-      :style="{ width: isCollapsed ? '70px' : '240px' }"
+      :style="{ width: isCollapsed ? sidebarConfig.WIDTH_COLLAPSED : sidebarConfig.WIDTH_EXPANDED }"
     >
       <!-- Decor overlays (vibe banner) -->
       <div class="sidebar-decor" aria-hidden="true"></div>
@@ -17,7 +17,7 @@
 
       <!-- MENÚ -->
       <SidebarMenu
-        :menu-items="menuItems"
+        :menu-items="computedMenuItems"
         :is-collapsed="isCollapsed"
         :active-submenu="activeSubmenu"
         :is-child-active="isChildActive"
@@ -53,6 +53,8 @@ import SidebarHeader from "./sidebar/SidebarHeader.vue";
 import SidebarMenu from "./sidebar/SidebarMenu.vue";
 import SidebarFooter from "./sidebar/SidebarFooter.vue";
 import SidebarSubmenuPanel from "./sidebar/SidebarSubmenuPanel.vue";
+import { SIDEBAR_MENU, SIDEBAR_CONFIG } from "../data/sidebar.data";
+import { getAvatar, AVATAR_DEFAULTS } from "@/utils/avatarHelper";
 
 export default {
   name: "Sidebar",
@@ -73,8 +75,9 @@ export default {
     return {
       isCollapsed: this.collapsed,
       activeSubmenu: null,
-      avatarUrl: "https://github.com/octocat.png",
+      avatarUrl: AVATAR_DEFAULTS.SIDEBAR,
       avatarLoaded: false,
+      sidebarConfig: SIDEBAR_CONFIG
     };
   },
   computed: {
@@ -83,55 +86,43 @@ export default {
       const role = this.user?.role?.name || this.user?.role || "Usuario";
       return { name, role };
     },
-    menuItems() {
+    computedMenuItems() {
       const count = this.pendingOrders;
       const labBadge = count > 0 ? String(count) : null;
-      // Roles efectivos en frontend (root va al panel admin, no llega aquí)
-      const userRole = this.user?.role?.name || this.user?.role || this.user?.roleName || "";
-      const canSeeBackOrders = ["root", "eurovision", "supervisor", "ventas"].includes(String(userRole).toLowerCase());
-      return [
-        { group: "Principal" },
-        { label: "Dashboard", icon: "tachometer-alt", path: "/l/home" },
-        { label: "Analíticas", icon: "chart-line", path: "/l/analiticas", badge: "Nuevo", badgeType: "is-success" },
-        { group: "Gestión" },
-        { label: "Usuarios", icon: "users", path: "/l/usuarios" },
-        {
-          label: "Inventario",
-          icon: "box-open",
-          children: [
-            { label: "Bases y Micas", icon: "glasses", path: "/l/inventario/bases-micas" },
-            { label: "Óptica", icon: "eye", path: "/l/inventario/optica" },
-            { label: "Lentes de Contacto", icon: "circle", path: "/l/inventario/lentes-contacto" },
-          ],
-        },
-        {
-          label: "Ventas",
-          icon: "shopping-cart",
-          badge: labBadge,
-          badgeType: "is-warning",
-          children: [
-            { label: "Laboratorio", icon: "flask", path: "/l/ventas/laboratorio", badge: labBadge, badgeType: "is-warning" },
-            { label: "Bases y Micas", icon: "glasses", path: "/l/ventas/bases-micas" },
-            { label: "Óptica", icon: "eye", path: "/l/ventas/optica" },
-            { label: "Lentes de Contacto", icon: "circle", path: "/l/ventas/lentes-contacto" },
-            { label: "Historial", icon: "history", path: "/l/ventas/historial" },
-            { label: "Mermas", icon: "trash-can", path: "/l/mermas" },
-          ],
-        },
-        { label: "Devoluciones", icon: "rotate-left", path: "/l/devoluciones" },
-        ...(canSeeBackOrders ? [{ label: "Encargos", icon: "clipboard-list", path: "/l/encargos" }] : []),
-        { group: "Otros" },
-        { label: "Ajustes", icon: "cog", path: "/l/config.panel" },
-        { label: "Ayuda", icon: "question-circle", path: "/l/Ayuda" },
-      ];
+      const userRole = String(this.user?.role?.name || this.user?.role || this.user?.roleName || "").toLowerCase();
+
+      return SIDEBAR_MENU.filter(item => {
+        if (item.roles && !item.roles.includes(userRole)) return false;
+        return true;
+      }).map(item => {
+        const newItem = { ...item };
+        
+        // Handle Lab Badge
+        if (newItem.children) {
+          newItem.children = newItem.children.map(child => {
+            if (child.needsBadge === 'lab') {
+              return { ...child, badge: labBadge, badgeType: "is-warning" };
+            }
+            return child;
+          });
+          
+          // If any child has a badge, the parent might need one too
+          if (newItem.label === "Ventas" && labBadge) {
+            newItem.badge = labBadge;
+            newItem.badgeType = "is-warning";
+          }
+        }
+        
+        return newItem;
+      });
     },
     submenuStyles() {
       return {
         position: "fixed",
         top: "0",
         bottom: "0",
-        width: "260px",
-        left: this.isCollapsed ? "70px" : "240px",
+        width: this.sidebarConfig.SUBMENU_WIDTH,
+        left: this.isCollapsed ? this.sidebarConfig.WIDTH_COLLAPSED : this.sidebarConfig.WIDTH_EXPANDED,
         zIndex: 20,
         transition: "left 0.22s ease",
       };
@@ -144,8 +135,7 @@ export default {
     user: {
       immediate: true,
       handler(newUser) {
-        let avatar = newUser?.avatar ? String(newUser.avatar).trim() : "";
-        if (!avatar) avatar = "https://github.com/octocat.png";
+        const avatar = getAvatar(newUser?.avatar, 'SIDEBAR');
 
         this.avatarLoaded = false;
         this.$nextTick(() => {
@@ -154,7 +144,7 @@ export default {
           img.src = avatar;
           img.onload = () => (this.avatarLoaded = true);
           img.onerror = () => {
-            this.avatarUrl = "https://github.com/octocat.png";
+            this.avatarUrl = AVATAR_DEFAULTS.SIDEBAR;
             this.avatarLoaded = true;
           };
         });
@@ -166,7 +156,7 @@ export default {
       this.avatarLoaded = true;
     },
     onAvatarError() {
-      this.avatarUrl = "https://github.com/octocat.png";
+      this.avatarUrl = SIDEBAR_CONFIG.DEFAULT_AVATAR;
       this.avatarLoaded = true;
     },
     toggleSidebar() {
@@ -190,7 +180,6 @@ export default {
       submenuEl.style.pointerEvents = "none";
       void submenuEl.offsetWidth;
 
-      // iOS-style fluid spring transition
       submenuEl.style.transition = "opacity 0.4s cubic-bezier(0.32, 0.72, 0, 1), transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1)";
       submenuEl.style.opacity = 1;
       submenuEl.style.transform = "translateX(0) scale(1)";

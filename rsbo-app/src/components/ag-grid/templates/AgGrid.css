@@ -12,7 +12,7 @@
   flex: 0 0 auto;
   position: sticky;
   top: 0;
-  z-index: 30;
+  z-index: 5;
 }
 
 .navtools-wrap {
@@ -130,7 +130,7 @@
   position: absolute;
   top: 6px;
   right: 10px;
-  z-index: 20;
+  z-index: 6;
   background: rgba(167, 139, 250, 0.18);
   border: 1px solid rgba(167, 139, 250, 0.35);
   color: #7c3aed;

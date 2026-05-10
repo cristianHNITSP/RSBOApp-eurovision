@@ -75,6 +75,7 @@ import { ref, watch, computed, reactive } from "vue";
 const _imgCache = reactive({});
 import { avatarCategories } from "@/services/myUserCRUD";
 import DynamicTabs from "@/components/DynamicTabs.vue";
+import { AVATAR_DEFAULTS } from "@/utils/avatarHelper";
 
 const props = defineProps({
   modelValue: { type: String, default: "" },
@@ -90,7 +91,7 @@ const isModalActive = ref(false);
 const activeTab = ref("");
 const selectedAvatar = ref("");
 
-const currentSrc = computed(() => props.modelValue || props.placeholder || "");
+const currentSrc = computed(() => props.modelValue || props.placeholder || AVATAR_DEFAULTS.PROFILE);
 
 const avatarCategoriesSafe = computed(() => {
   if (!avatarCategories || typeof avatarCategories !== "object") return {};

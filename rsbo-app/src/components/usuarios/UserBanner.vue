@@ -4,7 +4,7 @@
       <div class="banner-info-item">
         <span class="banner-info-label">Usuario</span>
         <div class="banner-info-value">
-          <AvatarPicker :modelValue="user.profile?.avatar || ''" :placeholder="fallbackAvatar"
+          <AvatarPicker :modelValue="user.profile?.avatar || ''" :placeholder="userPlaceholder"
             :editMode="canEditAvatar(user)" :size="44" @update:modelValue="(val) => emit('avatar-picked', user, val)" />
           <div class="selected-user-banner__text">
             <div class="selected-user-banner__name-row">
@@ -133,16 +133,18 @@
 </template>
 
 <script setup>
-import { ref, watch, nextTick } from 'vue'
+import { ref, watch, nextTick, computed } from 'vue'
 import AvatarPicker from '@/components/AvatarPicker.vue'
 import { PERMISSION_LABELS } from '@/utils/permissionLabels.js'
+import { getAvatar, AVATAR_DEFAULTS } from '@/utils/avatarHelper'
 
 const props = defineProps({
   user: { type: Object, default: null },
-  fallbackAvatar: { type: String, required: true },
   permissionsCatalog: { type: Object, default: null },
   loading: { type: Boolean, default: false },
 })
+
+const userPlaceholder = computed(() => getAvatar(props.user?.profile?.avatar, 'PROFILE'));
 
 const emit = defineEmits([
   'avatar-picked',

@@ -1,5 +1,6 @@
 // models/Armazon.js
 const mongoose = require("mongoose");
+const { ENUMS } = require("../data/constants");
 
 const ArmazonSchema = new mongoose.Schema(
   {
@@ -10,19 +11,19 @@ const ArmazonSchema = new mongoose.Schema(
     material: {
       type: String,
       trim: true,
-      enum: ["Acetato", "Metal", "TR-90", "Titanio", "Combinado", "Madera", "Otro"],
+      enum: ENUMS.ARMAZON_MATERIAL,
       default: "Otro",
     },
     tipo: {
       type: String,
       trim: true,
-      enum: ["Completo", "Al aire", "Semi-al-aire", "Deportivo", "Infantil", "Otro"],
+      enum: ENUMS.ARMAZON_TIPO,
       default: "Completo",
     },
     genero: {
       type: String,
       trim: true,
-      enum: ["Hombre", "Mujer", "Unisex", "Infantil"],
+      enum: ENUMS.GENERO,
       default: "Unisex",
     },
     talla:     { type: String, default: "", trim: true },   // e.g. "51-21-145"

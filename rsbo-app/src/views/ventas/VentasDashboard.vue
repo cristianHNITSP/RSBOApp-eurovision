@@ -1,60 +1,66 @@
 <template>
   <div class="ventas-dashboard-view mesh-bg">
-
     <section class="view-main">
       <VentasHero :category="activeTab" :counts="heroCounts" :loading="isLoadingAny" @refresh="onRefresh">
         <template #actions>
           <b-button type="is-warning" icon-left="cash-register" class="premium-btn ml-2" @click="closureOpen = true">
-            Corte de Caja
+            {{ config.labels.BUTTONS.CASH_CLOSURE }}
           </b-button>
         </template>
       </VentasHero>
 
       <div class="glass-container liquid-glass">
         <DynamicTabs v-model="activeTab" :tabs="VENTAS_TABS">
-          <template v-for="key in CATEGORY_KEYS" #[key] :key="key">
-            <transition name="fade-slide" mode="out-in" appear>
-              <div class="columns is-multiline is-variable is-4" :key="activeTab">
-                <div class="column is-8">
-                  <VentasCatalog v-bind="strategies[key].catalog"
-                    :filtered-items-length="strategies[key].catalog.filteredItems.length"
-                    v-model:selectedSheetId="strategies[key].selectedSheetId"
-                    v-model:itemQuery="strategies[key].itemQuery" v-model:stockFilter="strategies[key].stockFilter"
-                    v-model:catalogPage="strategies[key].catalogPage"
-                    :show-sheet-picker="key === 'bases-micas' || key === 'lentes-contacto' || key === 'optica'"
-                    :picker-placeholder="key === 'optica' ? 'Seleccionar colección...' : 'Buscar planilla...'"
-                    :picker-icon="key === 'optica' ? 'fa-tags' : (key === 'lentes-contacto' ? 'fa-circle' : 'fa-layer-group')"
-                    :code-label="key === 'optica' ? 'SKU' : 'código'" @add-to-cart="strategies[key].addToCart">
-                    <template v-if="key === 'lentes-contacto' && strategies[key].catalog.isToric" #extra-filters>
-                      <b-field label="Eje" class="mb-0 catalog-sheet-field">
-                        <SheetPickerInput v-model="strategies[key].catalog.selectedAxis"
-                          :sheet-title="(a) => a ? a.name : 'Todos los ejes'"
-                          :results="strategies[key].catalog.availableAxes" :search-fn="(q) => { }"
-                          placeholder="Filtrar por eje..." icon="fa-compass" />
-                      </b-field>
-                    </template>
-                  </VentasCatalog>
-                </div>
-                <div class="column is-4">
-                  <VentasCart :kind="strategies[key].kind" :cart-items="strategies[key].cart.items"
-                    :cart-total="strategies[key].cart.total" :cart-total-monto="strategies[key].cart.totalMonto"
-                    :loading-sale="strategies[key].cart.loadingSale" v-model:cartCliente="strategies[key].cartCliente"
-                    v-model:cartNote="strategies[key].cartNote"
-                    v-model:cartClienteNombres="strategies[key].cartClienteNombres"
-                    v-model:cartClienteApellidos="strategies[key].cartClienteApellidos"
-                    v-model:cartClienteEmpresa="strategies[key].cartClienteEmpresa"
-                    v-model:cartClienteContacto="strategies[key].cartClienteContacto"
-                    v-model:cartPago="strategies[key].cartPago" @checkout="strategies[key].registrarVenta"
-                    @remove-from-cart="strategies[key].removeFromCart" @inc-cart-qty="strategies[key].incCartQty"
-                    @dec-cart-qty="strategies[key].decCartQty" @ask-clear-cart="strategies[key].clearCart" />
-                </div>
+          <template v-for="key in config.CATEGORY_KEYS" #[key] :key="key">
+            <div class="columns is-multiline is-variable is-4" :key="activeTab">
+              <div class="column is-8">
+                <VentasCatalog v-bind="strategies[key].catalog"
+                  :filtered-items-length="strategies[key].catalog.filteredItems.length"
+                  v-model:selectedSheetId="strategies[key].selectedSheetId"
+                  v-model:itemQuery="strategies[key].itemQuery" v-model:stockFilter="strategies[key].stockFilter"
+                  v-model:catalogPage="strategies[key].catalogPage"
+                  :show-sheet-picker="config.CATEGORY_KEYS.includes(key)"
+                  :picker-placeholder="catalogMeta[key]?.placeholder || catalogMeta.default.placeholder"
+                  :picker-icon="catalogMeta[key]?.icon || catalogMeta.default.icon"
+                  :code-label="catalogMeta[key]?.codeLabel || catalogMeta.default.codeLabel" 
+                  @add-to-cart="strategies[key].addToCart">
+                  
+                  <template v-if="key === 'lentes-contacto' && strategies[key].catalog.isToric" #extra-filters>
+                    <b-field label="Eje" class="mb-0 catalog-sheet-field">
+                      <SheetPickerInput v-model="strategies[key].catalog.selectedAxis"
+                        :sheet-title="(a) => a ? a.name : 'Todos los ejes'"
+                        :results="strategies[key].catalog.availableAxes" :search-fn="(q) => { }"
+                        placeholder="Filtrar por eje..." icon="fa-compass" />
+                    </b-field>
+                  </template>
+                </VentasCatalog>
               </div>
-            </transition>
+              <div class="column is-4">
+                <VentasCart :kind="strategies[key].kind" :cart-items="strategies[key].cart.items"
+                  :cart-total="strategies[key].cart.total" :cart-total-monto="strategies[key].cart.totalMonto"
+                  :loading-sale="strategies[key].cart.loadingSale" v-model:cartCliente="strategies[key].cartCliente"
+                  v-model:cartNote="strategies[key].cartNote"
+                  v-model:cartClienteNombres="strategies[key].cartClienteNombres"
+                  v-model:cartClienteApellidos="strategies[key].cartClienteApellidos"
+                  v-model:cartClienteEmpresa="strategies[key].cartClienteEmpresa"
+                  v-model:cartClienteContacto="strategies[key].cartClienteContacto"
+                  v-model:cartPago="strategies[key].cartPago" @checkout="strategies[key].registrarVenta"
+                  @remove-from-cart="strategies[key].removeFromCart" @inc-cart-qty="strategies[key].incCartQty"
+                  @dec-cart-qty="strategies[key].decCartQty" @ask-clear-cart="strategies[key].clearCart" />
+              </div>
+            </div>
           </template>
 
           <template #historial>
-            <VentasHistory v-model:category="history.category" :rows="history.rows" :loading="history.loading"
-              @refresh="history.reload" @select-order="onSelectOrder" />
+            <VentasHistory 
+              v-model:category="history.category" 
+              v-model:page="history.page"
+              :total-pages="history.totalPages"
+              :rows="history.rows" 
+              :loading="history.loading"
+              @refresh="history.reload" 
+              @select-order="onSelectOrder" 
+            />
           </template>
 
           <template #cortes>
@@ -64,15 +70,18 @@
       </div>
     </section>
 
-    <!-- Voucher Modal -->
-    <b-modal v-model="voucherOpen" :width="560" scroll="keep" trap-focus destroy-on-hide>
-      <VentasVoucher :order="currentOrder" @close="voucherOpen = false" @print="onPrintVoucher" />
-    </b-modal>
+    <!-- Modals -->
+    <Teleport to="body">
+      <b-modal v-model="voucherOpen" :width="config.VOUCHER_WIDTH" scroll="keep" trap-focus destroy-on-hide>
+        <VentasVoucher :order="currentOrder" @close="voucherOpen = false" @print="onPrintVoucher" />
+      </b-modal>
+    </Teleport>
 
-    <!-- Closure Modal -->
-    <b-modal v-model="closureOpen" :width="500" scroll="keep" trap-focus destroy-on-hide>
-      <CashClosureModal @close="closureOpen = false" @success="onClosureSuccess" />
-    </b-modal>
+    <Teleport to="body">
+      <b-modal v-model="closureOpen" :width="config.CLOSURE_MODAL_WIDTH" scroll="keep" trap-focus destroy-on-hide>
+        <CashClosureModal @close="closureOpen = false" @success="onClosureSuccess" />
+      </b-modal>
+    </Teleport>
   </div>
 </template>
 
@@ -90,13 +99,15 @@ import SheetPickerInput from '@/components/ui/SheetPickerInput.vue';
 
 import { useVentasDashboard, VENTAS_TABS } from '@/composables/api/useVentasDashboard';
 import { useLabToast } from '@/composables/shared/useLabToast';
+import { VENTAS_CONFIG, CATALOG_METADATA, SALES_LABELS } from '@/data/ventas.data';
 
 const props = defineProps({
   user: { type: Object, default: null }
 });
 
 const labToast = useLabToast();
-const CATEGORY_KEYS = ['bases-micas', 'optica', 'lentes-contacto'];
+const config = { ...VENTAS_CONFIG, labels: SALES_LABELS };
+const catalogMeta = CATALOG_METADATA;
 
 const { activeTab, strategies, history } = useVentasDashboard(() => props.user);
 
@@ -105,16 +116,16 @@ const closureOpen = ref(false);
 const currentOrder = ref(null);
 
 const isLoadingAny = computed(() => {
-  if (activeTab.value === 'historial') return history.loading.value;
-  if (activeTab.value === 'cortes') return false;
+  if (activeTab.value === config.TABS.HISTORIAL) return history.loading.value;
+  if (activeTab.value === config.TABS.CORTES) return false;
   const s = strategies[activeTab.value];
   if (!s || !s.catalog || !s.cart) return false;
   return s.catalog.loadingSheets || s.catalog.loadingItems || s.cart.loadingSale;
 });
 
 const heroCounts = computed(() => {
-  if (activeTab.value === 'historial') return { items: history.rows?.value?.length || 0 };
-  if (activeTab.value === 'cortes') return {};
+  if (activeTab.value === config.TABS.HISTORIAL) return { items: history.rows?.value?.length || 0 };
+  if (activeTab.value === config.TABS.CORTES) return {};
   const s = strategies[activeTab.value];
   if (!s || !s.catalog || !s.cart) return { sheets: 0, items: 0, cart: 0 };
   return {
@@ -125,10 +136,8 @@ const heroCounts = computed(() => {
 });
 
 function onRefresh() {
-  if (activeTab.value === 'historial') {
+  if (activeTab.value === config.TABS.HISTORIAL) {
     history.reload();
-  } else if (activeTab.value === 'cortes') {
-    // handled by component
   } else {
     const s = strategies[activeTab.value];
     if (s && s.loadItems) s.loadItems();
@@ -147,11 +156,11 @@ function onPrintVoucher() {
 function onClosureSuccess(result) {
   closureOpen.value = false;
   labToast.success(`Corte ${result.folio} realizado con éxito.`);
-  activeTab.value = 'cortes';
+  activeTab.value = config.TABS.CORTES;
 }
 
 const autoOpenVoucher = computed(() => {
-  for (const k of CATEGORY_KEYS) {
+  for (const k of config.CATEGORY_KEYS) {
     const s = strategies[k];
     if (s && s.voucherOpen) return s.lastVoucher;
   }
@@ -172,7 +181,7 @@ provide('lab', {
     if (!id) return null;
     const currentS = strategies[activeTab.value];
     if (currentS) {
-      if (activeTab.value === 'lentes-contacto' && currentS.catalog?.availableAxes) {
+      if (activeTab.value === config.TABS.CONTACTO && currentS.catalog?.availableAxes) {
         const axes = Array.isArray(currentS.catalog.availableAxes) ? currentS.catalog.availableAxes : [];
         const foundAxis = axes.find(a => String(a.id) === String(id));
         if (foundAxis) return foundAxis;
@@ -183,7 +192,7 @@ provide('lab', {
         if (found) return found;
       }
     }
-    for (const k of CATEGORY_KEYS) {
+    for (const k of config.CATEGORY_KEYS) {
       const s = strategies[k];
       if (s?.sheetsDB) {
         const sheets = Array.isArray(s.sheetsDB) ? s.sheetsDB : [];
@@ -198,46 +207,4 @@ provide('lab', {
 provide('ventas', { strategies, activeTab });
 </script>
 
-<style scoped>
-.ventas-dashboard-view {
-  min-height: 100vh;
-  padding-bottom: 3rem;
-}
-
-.view-main {
-  padding: 1.5rem 1.25rem 0;
-  margin-top: 0;
-  position: relative;
-  z-index: 1;
-}
-
-.glass-container {
-  background: var(--surface);
-  backdrop-filter: blur(var(--fx-blur));
-  -webkit-backdrop-filter: blur(var(--fx-blur));
-  border: 1px solid var(--border);
-  border-radius: 24px;
-  padding: 1.5rem;
-  box-shadow: var(--shadow-lg);
-  position: relative;
-}
-
-.glass-container.liquid-glass::before {
-  opacity: 0.4;
-}
-
-.fade-slide-enter-active,
-.fade-slide-leave-active {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.fade-slide-enter-from {
-  opacity: 0;
-  transform: translateY(10px);
-}
-
-.fade-slide-leave-to {
-  opacity: 0;
-  transform: translateY(-10px);
-}
-</style>
+<style src="./VentasDashboard.css" scoped></style>

@@ -1,6 +1,6 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount } from "vue";
 import { labToast } from "@/composables/shared/useLabToast.js";
-import { 
+import {
   armazonesService,
   accesoriosService,
   solucionesService,
@@ -10,9 +10,9 @@ import {
 } from "@/services/optica";
 import { createOrder } from "@/services/laboratorio";
 import { createOpticaSale } from "@/services/opticaSales";
-import { 
-  normTxt, 
-  getActor 
+import {
+  normTxt,
+  getActor
 } from "./_ventasShared";
 
 const COLLECTIONS = [
@@ -40,7 +40,7 @@ export function useOpticaVentas(getUser) {
   function _onLabWs(e) {
     const type = e?.detail?.type;
     if (!WS_REFRESH_TYPES.has(type)) return;
-    
+
     const payload = e?.detail?.payload || {};
     const colId = payload.collection;
 
@@ -132,7 +132,7 @@ export function useOpticaVentas(getUser) {
 
   const paginatedItems = computed(() => {
     const page = Math.min(catalogPage.value, catalogPages.value);
-    const per  = catalogPageSize.value;
+    const per = catalogPageSize.value;
     return filteredItems.value.slice((page - 1) * per, page * per);
   });
 
@@ -173,9 +173,9 @@ export function useOpticaVentas(getUser) {
         ...r,
         existencias: Number(r.stock ?? r.existencias ?? 0),
         precioVenta: Number(r.precio ?? r.precioVenta ?? 0),
-        _normTitle:  normTxt(buildRowTitle(r)),
+        _normTitle: normTxt(buildRowTitle(r)),
         _normParams: normTxt(buildRowParams(r)),
-        _normCode:   normTxt(r.sku || r.codebar || "")
+        _normCode: normTxt(r.sku || r.codebar || "")
       }));
 
       // 🔄 Sincronizar el carrito con los nuevos datos del catálogo
@@ -209,13 +209,13 @@ export function useOpticaVentas(getUser) {
       return;
     }
     if (Number(row.existencias ?? 0) < 1) { labToast.warning("Sin stock"); return; }
-    
+
     const title = [row.marca, row.modelo, row.color].filter(Boolean).join(" ");
     const params = [row.material, row.tipo, row.genero, row.talla].filter(Boolean).join(" | ");
-    
+
     cartItems.value.push({
-      key, row: { ...row }, 
-      qty: 1, 
+      key, row: { ...row },
+      qty: 1,
       precio: Number(row.precioVenta || 0),
       title: title || row.name || 'Producto',
       params
@@ -290,10 +290,10 @@ export function useOpticaVentas(getUser) {
       voucherOpen.value = true;
       clearCart();
       labToast.success(`Venta de óptica registrada correctamente`);
-      
+
       // Recargar catálogo para ver el nuevo stock
       loadItems();
-      
+
       return fakeOrder;
     } catch (e) {
       console.error("Error en venta de óptica:", e);
@@ -336,7 +336,7 @@ export function useOpticaVentas(getUser) {
       sheetTitle: (s) => s?.nombre || "—",
       buildRowTitle,
       buildRowParams,
-      searchSheets: () => {},
+      searchSheets: () => { },
       reload: loadItems
     },
     cart: {
@@ -353,7 +353,7 @@ export function useOpticaVentas(getUser) {
       loadingSale
     },
     itemQuery, stockFilter, catalogPage, selectedSheetId,
-    cartCliente, cartNote, cartClienteNombres, cartClienteApellidos, 
+    cartCliente, cartNote, cartClienteNombres, cartClienteApellidos,
     cartClienteEmpresa, cartClienteContacto, cartPago,
     addToCart, removeFromCart, incCartQty, decCartQty, clearCart,
     registrarVenta, loadItems,

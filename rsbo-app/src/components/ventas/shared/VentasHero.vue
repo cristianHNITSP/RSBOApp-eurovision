@@ -67,7 +67,8 @@ const title = computed(() => {
     'bases-micas':     'Bases y Micas',
     'optica':          'Armazones y Óptica',
     'lentes-contacto': 'Lentes de Contacto',
-    'historial':       'Historial de Ventas'
+    'historial':       'Historial de Ventas',
+    'cortes':          'Cortes de Caja'
   };
   return titles[props.category] || 'Ventas';
 });
@@ -77,7 +78,8 @@ const description = computed(() => {
     'bases-micas':     'Gestión de inventario y pedidos de laboratorio para micas y bases graduadas.',
     'optica':          'Venta directa de armazones, estuches, soluciones y accesorios ópticos.',
     'lentes-contacto': 'Catálogo de lentes de contacto esféricos y tóricos con gestión de stock.',
-    'historial':       'Consulta de pedidos anteriores, estados de laboratorio y comprobantes de venta.'
+    'historial':       'Consulta de pedidos anteriores, estados de laboratorio y comprobantes de venta.',
+    'cortes':          'Revisión de cierres históricos y generación de nuevos cortes de caja.'
   };
   return descs[props.category] || 'Panel de control de ventas RSBO.';
 });

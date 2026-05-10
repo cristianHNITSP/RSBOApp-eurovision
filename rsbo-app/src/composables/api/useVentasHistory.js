@@ -5,25 +5,33 @@ import { listTransactions } from "@/services/transactions";
  * Composable for unified sales history.
  */
 export function useVentasHistory(getUser) {
-  const category = ref('all'); // 'all' | 'bases-micas' | 'optica' | 'lentes-contacto'
-  const rows     = ref([]);
-  const loading  = ref(false);
-
-  const CATEGORY_MAP = {
-    'LAB': 'bases-micas',
-    'VNT': 'optica' // Por ahora mapeamos ventas directas a optica
-  };
+  const category   = ref('all');
+  const rows       = ref([]);
+  const loading    = ref(false);
+  const page       = ref(1);
+  const totalPages = ref(1);
+  const limit      = 7;
 
   async function reload() {
     loading.value = true;
     try {
-      // Usar el nuevo endpoint unificado
-      const res = await listTransactions(200);
-      const data = Array.isArray(res?.data) ? res.data : [];
+      // Pedimos datos paginados y filtrados al servidor
+      const params = {
+        page: page.value,
+        limit,
+        category: category.value !== 'all' ? category.value : undefined
+      };
+
+      const res = await listTransactions(params);
       
+      // El backend responde con { data: { docs, meta } } o { docs, meta }
+      const responseData = res?.data || res || {};
+      const docs = Array.isArray(responseData.docs) ? responseData.docs : (Array.isArray(res?.data) ? res.data : []);
+      const meta = responseData.meta || {};
+
       const PAGO_LABELS = { trans: "TRANS", efec: "EFEC", credito: "CRÉDITO", tarjeta: "TARJETA C|D" };
       
-      let mapped = data.map(tx => {
+      const mapped = docs.map(tx => {
         const lines = (tx.items || []).map(l => ({
           title: l.title || l.sku || 'Producto',
           qty: l.qty || 0,
@@ -32,25 +40,6 @@ export function useVentasHistory(getUser) {
 
         const pagoArr = Array.isArray(tx.pago) ? tx.pago : [];
         const pagoDisplay = pagoArr.map(p => PAGO_LABELS[p] || p).join(" / ") || "—";
-
-        // Determinar categoría para el filtro
-        // LAB -> bases-micas
-        // VNT -> Prioridad: Si tiene armazones -> optica. Si solo tiene lentes -> lentes-contacto.
-        let cat = 'optica';
-        if (tx.type === 'LAB') {
-          cat = 'bases-micas';
-        } else if (tx.type === 'VNT') {
-          const hasFrames = (tx.items || []).some(it => it.collection === 'armazones');
-          const hasLenses = (tx.items || []).some(it => it.collection === 'lentes');
-          
-          if (hasFrames) {
-            cat = 'optica';
-          } else if (hasLenses) {
-            cat = 'lentes-contacto';
-          } else {
-            cat = 'optica'; // Otros (soluciones, etc)
-          }
-        }
 
         return {
           id:               String(tx.id),
@@ -69,15 +58,12 @@ export function useVentasHistory(getUser) {
           actor:            tx.actor || 'Sistema',
           pagoDisplay:      pagoDisplay,
           lineas:           lines,
-          category:         cat
+          category:         tx.category // Asumimos que el backend ya categoriza o devolvemos lo que venga
         };
       });
 
-      if (category.value !== 'all') {
-        mapped = mapped.filter(f => f.category === category.value);
-      }
-
       rows.value = mapped;
+      totalPages.value = meta.pages || 1;
     } catch (e) {
       console.error('[VENTAS-HISTORY] reload', e);
     } finally {
@@ -85,11 +71,16 @@ export function useVentasHistory(getUser) {
     }
   }
 
-  watch(category, reload);
+  watch(category, () => {
+    page.value = 1;
+    reload();
+  });
+
+  watch(page, reload);
 
   onMounted(() => {
     reload();
   });
 
-  return { category, rows, loading, reload };
+  return { category, rows, loading, reload, page, totalPages };
 }

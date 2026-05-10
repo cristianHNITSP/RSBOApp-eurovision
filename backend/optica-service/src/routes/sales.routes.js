@@ -1,6 +1,6 @@
 const express = require("express");
-const router  = express.Router();
-const Sale    = require("../models/Sale");
+const router = express.Router();
+const Sale = require("../models/Sale");
 const { protect } = require("../utils/auth");
 const { handleAtomicSale } = require("../utils/saleHelper");
 
@@ -47,10 +47,10 @@ router.post("/", protect(), async (req, res) => {
       if (!result.ok) {
         // Si falla un ítem (ej: sin stock), detenemos y lanzamos error
         // NOTA: En un sistema real usaríamos transacciones de MongoDB si estuviéramos en la misma DB
-        return res.status(result.status).json({ 
-          ok: false, 
+        return res.status(result.status).json({
+          ok: false,
           error: `Error en ${it.sku}: ${result.message}`,
-          current: result.current 
+          current: result.current
         });
       }
 
@@ -65,7 +65,7 @@ router.post("/", protect(), async (req, res) => {
     }
 
     // 2. Generar Folio si no viene uno
-    const finalFolio = folio || `VTA-OPT-${Date.now().toString().slice(-6)}-${Math.random().toString(36).slice(2,5).toUpperCase()}`;
+    const finalFolio = folio || `VTA-OPT-${Date.now().toString().slice(-6)}-${Math.random().toString(36).slice(2, 5).toUpperCase()}`;
 
     // 3. Persistir el objeto Venta
     const sale = await Sale.create({
@@ -104,7 +104,7 @@ router.get("/search", protect(), async (req, res) => {
       if (dateFrom) query.createdAt.$gte = new Date(dateFrom);
       if (dateTo) query.createdAt.$lte = new Date(dateTo);
     }
-    
+
     // Si no hay búsqueda por texto, devolvemos las ventas por rango o las últimas 20
     if (!q) {
       const sales = await Sale.find(query)

@@ -9,7 +9,7 @@ const DATA_STALE_MS = 30_000; // datos frescos por 30 segundos
  * Gestiona el estado reactivo y la carga de datos de las secciones de Óptica.
  */
 export function useOpticaSection(SVC) {
-  
+
   function makeSection() {
     return reactive({
       items: [],
@@ -97,16 +97,16 @@ export function useOpticaSection(SVC) {
   function _onWs(e) {
     const type = e?.detail?.type;
     if (!WS_REFRESH_TYPES.has(type)) return;
-    
+
     const payload = e?.detail?.payload || {};
     const col = payload.collection;
-    
+
     console.log(`[WS][OPTICA-INV] Event: ${type}`, payload);
 
     if (type === "INV_CHANGE" && payload.id && typeof payload.newStock === "number") {
       const itemId = String(payload.id);
       const item = sec[col]?.items.find(i => String(i._id || i.id || "") === itemId);
-      
+
       if (item) {
         console.log(`[WS][OPTICA-INV] Surgical update: ${itemId} -> ${payload.newStock}`);
         item.stock = payload.newStock;

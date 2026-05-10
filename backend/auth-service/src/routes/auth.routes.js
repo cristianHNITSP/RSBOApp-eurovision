@@ -107,13 +107,16 @@ router.get('/check-session', authMiddleware, async (req, res) => {
       return res.status(401).json({ error: 'TOKEN_REVOKED', message: 'La sesión ha expirado o fue revocada. Inicia sesión nuevamente.' });
     }
 
-    // Actualizar lastUsedAt (máx 1 vez cada 5 min)
+    // Actualizar lastUsedAt (máx 1 vez cada 5 min) de forma ATÓMICA
     const tokenDoc = user.tokens.find((t) => t.token === token);
     if (tokenDoc) {
       const fiveMin = 5 * 60 * 1000;
       if (!tokenDoc.lastUsedAt || Date.now() - new Date(tokenDoc.lastUsedAt).getTime() > fiveMin) {
-        tokenDoc.lastUsedAt = new Date();
-        user.save().catch(() => {});
+        // Usamos updateOne para evitar race conditions con el array de tokens
+        User.updateOne(
+          { _id: user._id, 'tokens.token': token },
+          { $set: { 'tokens.$.lastUsedAt': new Date() } }
+        ).catch(() => {});
       }
     }
 

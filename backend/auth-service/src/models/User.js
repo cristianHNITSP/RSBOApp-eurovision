@@ -74,4 +74,23 @@ userSchema.methods.restore = async function () {
   return this.save();
 };
 
+const config = require("../config");
+const bcrypt = require("bcrypt");
+
+userSchema.pre("save", async function (next) {
+  // Solo hashear si la contraseña ha sido modificada (o es nueva)
+  if (!this.isModified("password")) return next();
+
+  try {
+    const salt = await bcrypt.genSalt(10);
+    const pepper = config.secrets.pepper;
+    
+    // Combinamos la contraseña con el Pepper antes del hash
+    this.password = await bcrypt.hash(this.password + pepper, salt);
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = mongoose.model("User", userSchema);

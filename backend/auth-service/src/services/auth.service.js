@@ -1,4 +1,5 @@
 // services/auth.service.js
+const config = require("../config");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const DOMPurify = require("isomorphic-dompurify");
@@ -15,21 +16,15 @@ function sanitizeUsername(username) {
 }
 
 function sanitizeHeader(val) {
-  // Limpieza agresiva para cabeceras de red (IP, User-Agent, etc)
   return String(val || "").replace(/[^\w\s\.\,\-\/\(\)\;\[\]\:]/g, "").substring(0, 500);
 }
 
-/**
- * IMPORTANTE:
- * - NO sanitices password con DOMPurify (puede alterarlo).
- * - Solo conviértelo a string.
- */
 function normalizePassword(password) {
   return String(password || "");
 }
 
-const SESSION_TTL_HOURS = Number(process.env.SESSION_TTL_HOURS) || 8;
-const SESSION_RENEW_THRESHOLD_HOURS = Number(process.env.SESSION_RENEW_THRESHOLD_HOURS) || 6;
+const SESSION_TTL_HOURS = 8; 
+const SESSION_RENEW_THRESHOLD_HOURS = 6;
 const SESSION_TTL_MS = SESSION_TTL_HOURS * 3600 * 1000;
 const RENEW_THRESHOLD_MS = SESSION_RENEW_THRESHOLD_HOURS * 3600 * 1000;
 const JWT_EXPIRES_IN = `${SESSION_TTL_HOURS}h`;
@@ -39,7 +34,6 @@ function parseDeviceName(ua) {
   let browser = 'Otro';
   let os      = 'Otro';
 
-  // 1. Browser Detection (Orden de prioridad específico)
   if (s.includes('Firefox/'))                               browser = 'Firefox';
   else if (s.includes('Edg/') || s.includes('Edge/'))      browser = 'Edge';
   else if (s.includes('OPR/') || s.includes('Opera/'))     browser = 'Opera';
@@ -47,7 +41,6 @@ function parseDeviceName(ua) {
   else if (s.includes('Chrome/'))                           browser = 'Chrome';
   else if (s.includes('Safari/') && !s.includes('Chrome')) browser = 'Safari';
 
-  // 2. OS Detection (De lo más específico a lo más general)
   if      (s.includes('Android'))      os = 'Android';
   else if (s.includes('iPhone'))       os = 'iPhone';
   else if (s.includes('iPad'))         os = 'iPad';
@@ -62,27 +55,25 @@ async function login({ username, password, ip, userAgent }) {
   const cleanUsername = sanitizeUsername(username);
   const cleanPassword = normalizePassword(password);
 
-  // Trae flags necesarios para bloquear login + password/tokens para validar y sesión
   const user = await User.findOne({ username: cleanUsername })
     .select("+password +tokens +isActive +deletedAt +role +username +name")
     .populate("role", "name");
 
   if (!user) throw makeError(401, "Usuario o contraseña incorrectos");
 
-  // ✅ BLOQUEO POR PAPELERA
   if (user.deletedAt) {
     throw makeError(403, "Tu cuenta está en papelera. Pide al administrador que la restaure.");
   }
 
-  // ✅ BLOQUEO POR INACTIVO
   if (user.isActive === false) {
     throw makeError(403, "Tu cuenta está desactivada. Contacta al administrador.");
   }
 
-  const valid = await bcrypt.compare(cleanPassword, user.password);
+  // ✅ Comparar con Pepper
+  const pepper = config.secrets.pepper;
+  const valid = await bcrypt.compare(cleanPassword + pepper, user.password);
   if (!valid) throw makeError(401, "Usuario o contraseña incorrectos");
 
-  // Generar token — 7 h de vida (sliding: se renueva con actividad)
   const token = jwt.sign(
     {
       id: user._id,
@@ -90,17 +81,15 @@ async function login({ username, password, ip, userAgent }) {
       role: user.role?._id?.toString() ?? user.role?.toString(),
       roleName: user.role?.name ?? null,
     },
-    process.env.JWT_SECRET,
+    config.secrets.jwt,
     { expiresIn: JWT_EXPIRES_IN }
   );
 
-  // Limpiar sesiones expiradas antes de agregar la nueva
   const now = Date.now();
   user.tokens = (user.tokens || []).filter(
     (t) => t.expiresAt && new Date(t.expiresAt).getTime() > now
   );
 
-  // Manejo de sesiones
   const cleanIp = sanitizeHeader(ip);
   const cleanUA = sanitizeHeader(userAgent);
   const { browser, os, deviceName } = parseDeviceName(cleanUA);
@@ -146,64 +135,59 @@ function buildSessionPayload(decodedUser) {
   };
 }
 
-/**
- * Renueva el JWT si el token actual está próximo a expirar.
- * Devuelve { renewed, newToken } — renewed=false si no se necesitó renovar.
- */
 async function renewTokenIfNeeded(userId, currentToken) {
   let decoded;
   try {
-    decoded = jwt.verify(currentToken, process.env.JWT_SECRET);
+    decoded = jwt.verify(currentToken, config.secrets.jwt);
   } catch {
     return { renewed: false };
   }
 
   const remainingMs = (decoded.exp * 1000) - Date.now();
   if (remainingMs > RENEW_THRESHOLD_MS) {
-    return { renewed: false }; // todavía tiene bastante tiempo
+    return { renewed: false };
   }
 
-  // Emitir nuevo token con 7 h frescas
   const newToken = jwt.sign(
     { id: decoded.id, username: decoded.username, role: decoded.role, roleName: decoded.roleName },
-    process.env.JWT_SECRET,
+    config.secrets.jwt,
     { expiresIn: JWT_EXPIRES_IN }
   );
 
   const user = await User.findById(userId).select("+tokens");
   if (!user) return { renewed: false };
 
-  // Agregar el nuevo token a la lista
-  // IMPORTANTE: NO reemplazamos ni borramos el viejo inmediatamente para evitar 
-  // que otras peticiones concurrentes en vuelo fallen con 401 durante la transición.
   const oldTokenDoc = user.tokens.find((t) => t.token === currentToken);
-  
-  user.tokens.push({
-    token:      newToken,
-    expiresAt:  new Date(Date.now() + SESSION_TTL_MS),
-    lastUsedAt: new Date(),
-    deviceInfo: oldTokenDoc?.deviceInfo || {},
-  });
 
-  // Limpiar sesiones expiradas de paso
-  const now = Date.now();
-  user.tokens = user.tokens.filter(
-    (t) => t.expiresAt && new Date(t.expiresAt).getTime() > now
+  // ✅ Operación atómica para evitar race conditions
+  // 1. Agregamos el nuevo token
+  // 2. Quitamos expirados
+  const now = new Date();
+  await User.updateOne(
+    { _id: userId },
+    {
+      $push: {
+        tokens: {
+          token: newToken,
+          expiresAt: new Date(Date.now() + SESSION_TTL_MS),
+          lastUsedAt: now,
+          deviceInfo: oldTokenDoc?.deviceInfo || {},
+        },
+      },
+      $pull: {
+        tokens: { expiresAt: { $lte: now } }
+      }
+    }
   );
 
-  await user.save();
   return { renewed: true, newToken };
 }
 
-/**
- * Lee el JWT actual y devuelve metadatos de expiración para el frontend.
- * No renueva: solo informa.
- */
 function getSessionInfo(currentToken) {
   if (!currentToken) return null;
   let decoded;
   try {
-    decoded = jwt.verify(currentToken, process.env.JWT_SECRET);
+    decoded = jwt.verify(currentToken, config.secrets.jwt);
   } catch {
     return null;
   }

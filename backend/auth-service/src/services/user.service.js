@@ -1,4 +1,5 @@
 // services/user.service.js
+const config = require("../config");
 const User = require("../models/User");
 const Role = require("../models/Role");
 const DOMPurify = require("isomorphic-dompurify");
@@ -10,7 +11,6 @@ function toInt(v, def) {
 }
 
 function sanitizeStr(v) {
-  // Solo permitimos texto plano, eliminamos cualquier etiqueta HTML por completo
   return DOMPurify.sanitize(String(v || ""), { ALLOWED_TAGS: [] }).trim();
 }
 
@@ -63,11 +63,10 @@ async function listUsers(query) {
 
   const q = String(query.q || "").trim();
   const role = query.role && query.role !== "all" ? String(query.role) : null;
-  const status = String(query.status || "all"); // all|active|inactive|trash
+  const status = String(query.status || "all"); 
   const sortBy = String(query.sortBy || "name");
   const sortDir = String(query.sortDir || "asc") === "desc" ? -1 : 1;
 
-  // El usuario root es una entidad aparte — nunca aparece en gestión
   const rootRole = await Role.findOne({ name: 'root' }).select('_id').lean();
   const rootRoleId = rootRole?._id ?? null;
 
@@ -80,7 +79,6 @@ async function listUsers(query) {
   if (status === "inactive") filter.isActive = false;
 
   if (role) {
-    // Si piden filtrar por root, devolver vacío
     if (rootRoleId && String(role) === String(rootRoleId)) {
       return { items: [], total: 0, page, limit, stats: { totalUsers: 0, activeUsers: 0, trashUsers: 0 } };
     }
@@ -106,7 +104,7 @@ async function listUsers(query) {
       .sort(sort)
       .skip(skip)
       .limit(limit)
-      .collation({ locale: 'es', strength: 1 }) // Ignora acentos y mayúsculas
+      .collation({ locale: 'es', strength: 1 })
       .lean(),
     User.countDocuments(filter).collation({ locale: 'es', strength: 1 }),
     User.countDocuments({ deletedAt: null, ...rootExclude }),
@@ -114,14 +112,8 @@ async function listUsers(query) {
     User.countDocuments({ deletedAt: { $ne: null }, ...rootExclude }),
   ]);
 
-  const normalized = (items || []).map((u) => ({
-    ...u,
-    roleDoc: u.role || null,
-    tokensCount: 0,
-  }));
-
   return {
-    items: normalized,
+    items: (items || []).map(u => ({ ...u, roleDoc: u.role, tokensCount: 0 })),
     total,
     page,
     limit,
@@ -131,291 +123,132 @@ async function listUsers(query) {
 
 async function createUser(data) {
   const name = sanitizeStr(data.name);
-  if (name.length < 2) {
-    const error = new Error("El nombre debe tener al menos 2 caracteres");
-    error.statusCode = 400;
-    throw error;
-  }
-
   const username = sanitizeStr(data.username).toLowerCase();
-  if (!isValidUsername(username)) {
-    const error = new Error("Nombre de usuario inválido (3-32 caracteres: letras, números, punto, guion o guion bajo)");
-    error.statusCode = 400;
-    throw error;
-  }
-
-  const phone = sanitizeStr(data.phone);
-  const bio = sanitizeStr(data.bio);
-  const avatar = sanitizeStr(data.avatar);
-  const roleId = data.role;
-  const isActive = data.isActive !== undefined ? !!data.isActive : true;
-
   const passwordPlain = String(data.password || "");
-  if (passwordPlain.length < 6) {
-    const error = new Error("Contraseña inválida (mínimo 6 caracteres)");
-    error.statusCode = 400;
-    throw error;
-  }
 
-  const role = await Role.findById(roleId);
-  if (!role) {
-    const error = new Error("Rol inválido");
-    error.statusCode = 400;
-    throw error;
-  }
-  if (role.name === 'root') {
-    const error = new Error("No se puede crear un usuario con rol root");
-    error.statusCode = 403;
-    throw error;
-  }
+  if (name.length < 2) throw makeError(400, "El nombre debe tener al menos 2 caracteres");
+  if (!isValidUsername(username)) throw makeError(400, "Nombre de usuario inválido");
+  if (passwordPlain.length < 6) throw makeError(400, "Contraseña inválida (mínimo 6 caracteres)");
+
+  const role = await Role.findById(data.role);
+  if (!role || role.name === 'root') throw makeError(400, "Rol inválido");
 
   const exists = await User.findOne({ username }).select("_id").lean();
-  if (exists) {
-    const error = new Error("Ese nombre de usuario ya está registrado");
-    error.statusCode = 400;
-    throw error;
-  }
+  if (exists) throw makeError(400, "Ese nombre de usuario ya está registrado");
 
-  const salt = await bcrypt.genSalt(10);
-  const password = await bcrypt.hash(passwordPlain, salt);
-
+  // ✅ NO hasheamos aquí. El modelo User.js lo hace con Pepper en el pre-save hook.
   const user = await User.create({
     name,
     username,
-    password,
+    password: passwordPlain,
     role: role._id,
-    isActive,
-    profile: { phone, bio, avatar },
+    isActive: data.isActive !== undefined ? !!data.isActive : true,
+    profile: { phone: sanitizeStr(data.phone), bio: sanitizeStr(data.bio), avatar: sanitizeStr(data.avatar) },
     deletedAt: null,
   });
 
-  const out = await User.findById(user._id).populate("role").select("-password").lean();
-  return out;
+  return User.findById(user._id).populate("role").select("-password").lean();
 }
 
 async function updateUser(userId, data) {
-  const name = data.name !== undefined ? sanitizeStr(data.name) : undefined;
-  if (name !== undefined && name.length < 2) {
-    const error = new Error("El nombre debe tener al menos 2 caracteres");
-    error.statusCode = 400;
-    throw error;
-  }
-
-  const username = data.username !== undefined ? sanitizeStr(data.username).toLowerCase() : undefined;
-  if (username !== undefined && !isValidUsername(username)) {
-    const error = new Error("Nombre de usuario inválido (3-32 caracteres: letras, números, punto, guion o guion bajo)");
-    error.statusCode = 400;
-    throw error;
-  }
-  const phone = data.phone !== undefined ? sanitizeStr(data.phone) : undefined;
-  const bio = data.bio !== undefined ? sanitizeStr(data.bio) : undefined;
-  const avatar = data.avatar !== undefined ? sanitizeStr(data.avatar) : undefined;
-  const roleId = data.role;
-  const isActive = data.isActive !== undefined ? !!data.isActive : undefined;
-
   const user = await User.findById(userId).populate('role', 'name');
-  if (!user || user.deletedAt) {
-    const error = new Error("Usuario no encontrado");
-    error.statusCode = 404;
-    throw error;
-  }
+  if (!user || user.deletedAt) throw makeError(404, "Usuario no encontrado");
+  if (user.role?.name === 'root') throw makeError(403, "No se puede modificar al root");
 
-  // El usuario root es intocable desde el panel de gestión
-  if (user.role?.name === 'root') {
-    const error = new Error("El usuario root no puede ser modificado desde este panel");
-    error.statusCode = 403;
-    throw error;
-  }
-
-  if (roleId) {
-    const role = await Role.findById(roleId);
-    if (!role) {
-      const error = new Error("Rol inválido");
-      error.statusCode = 400;
-      throw error;
-    }
-    if (role.name === 'root') {
-      const error = new Error("No se puede asignar el rol root");
-      error.statusCode = 403;
-      throw error;
-    }
+  if (data.role) {
+    const role = await Role.findById(data.role);
+    if (!role || role.name === 'root') throw makeError(400, "Rol inválido");
     user.role = role._id;
   }
 
-  if (name !== undefined) user.name = name;
-  if (username !== undefined) {
-    if (String(user.username) !== username) {
-      const exists = await User.findOne({ username, _id: { $ne: user._id } }).select("_id").lean();
-      if (exists) {
-        const error = new Error("Ese nombre de usuario ya está registrado");
-        error.statusCode = 400;
-        throw error;
-      }
+  if (data.name !== undefined) user.name = sanitizeStr(data.name);
+  if (data.username !== undefined) {
+    const newU = sanitizeStr(data.username).toLowerCase();
+    if (newU !== user.username) {
+      const exists = await User.findOne({ username: newU, _id: { $ne: user._id } }).select("_id").lean();
+      if (exists) throw makeError(400, "Ese nombre de usuario ya está registrado");
+      user.username = newU;
     }
-    user.username = username;
   }
 
-  // ✅ si está en papelera, jamás permitir activo
-  if (isActive !== undefined) user.isActive = user.deletedAt ? false : isActive;
+  if (data.isActive !== undefined) user.isActive = user.deletedAt ? false : !!data.isActive;
 
-  user.profile = user.profile || {};
-  if (phone !== undefined) user.profile.phone = phone;
-  if (bio !== undefined) user.profile.bio = bio;
-  if (avatar !== undefined) user.profile.avatar = avatar;
+  if (data.phone !== undefined) user.profile.phone = sanitizeStr(data.phone);
+  if (data.bio !== undefined) user.profile.bio = sanitizeStr(data.bio);
+  if (data.avatar !== undefined) user.profile.avatar = sanitizeStr(data.avatar);
 
   await user.save();
   return User.findById(user._id).populate("role").select("-password").lean();
 }
 
 async function updatePassword(userId, password) {
-  if (!password) {
-    const error = new Error("Contraseña requerida");
-    error.statusCode = 400;
-    throw error;
-  }
-
+  if (!password) throw makeError(400, "Contraseña requerida");
   const user = await User.findById(userId);
-  if (!user || user.deletedAt) {
-    const error = new Error("Usuario no encontrado");
-    error.statusCode = 404;
-    throw error;
-  }
+  if (!user || user.deletedAt) throw makeError(404, "Usuario no encontrado");
 
-  const salt = await bcrypt.genSalt(10);
-  user.password = await bcrypt.hash(password, salt);
+  // ✅ Solo asignamos. El hook pre-save hasheará con Pepper.
+  user.password = String(password);
   await user.save();
-
   return { message: "Contraseña actualizada correctamente" };
 }
 
-/**
- * ✅ DELETE IDEMPOTENTE
- * - Si NO existe → 200 { ok:true, alreadyDeleted:true }
- * - Si YA está en papelera → 200 { ok:true, alreadyDeleted:true }
- * - Si tiene tokens → 409
- * - Si borra → 200 { ok:true, deleted:true }
- */
 async function deleteUser(userId) {
-  // ✅ Trae tokens aunque sea select:false
   const user = await User.findById(userId).select("+tokens").populate('role', 'name');
-
-  if (!user) {
-    return { deleted: false, alreadyDeleted: true, reason: "NOT_FOUND" };
-  }
-  if (user.role?.name === 'root') {
-    const error = new Error("El usuario root no puede eliminarse");
-    error.statusCode = 403;
-    throw error;
-  }
-  if (user.deletedAt) {
-    return { deleted: false, alreadyDeleted: true, deletedAt: user.deletedAt };
-  }
-
-  if (Array.isArray(user.tokens) && user.tokens.length > 0) {
-    const error = new Error("No se puede eliminar al usuario mientras tenga sesiones activas");
-    error.statusCode = 409;
-    throw error;
-  }
+  if (!user) return { deleted: false, alreadyDeleted: true };
+  if (user.role?.name === 'root') throw makeError(403, "No se puede eliminar al root");
+  if (user.deletedAt) return { deleted: false, alreadyDeleted: true };
+  if (user.tokens?.length > 0) throw makeError(409, "Usuario con sesiones activas");
 
   await user.softDelete();
-  return { deleted: true, alreadyDeleted: false };
+  return { deleted: true };
 }
 
-/**
- * ✅ RESTORE IDEMPOTENTE
- * - Si NO existe → 200 { ok:true, alreadyActive:true }
- * - Si ya está activo → 200 { ok:true, alreadyActive:true }
- * - Si restaura → 200 { ok:true, restored:true }
- */
 async function restoreUser(userId) {
   const user = await User.findById(userId);
-
-  if (!user) {
-    return { ok: true, alreadyActive: true, reason: "NOT_FOUND" };
-  }
-
-  if (!user.deletedAt) {
-    return { ok: true, alreadyActive: true };
-  }
-
+  if (!user || !user.deletedAt) return { ok: true, alreadyActive: true };
   await user.restore();
   return { ok: true, restored: true };
 }
 
 async function getMeSessions(userId, currentToken) {
-  // Traer documento completo (no lean) para poder hacer prune + save
   const user = await User.findById(userId).select('+tokens');
-  if (!user) { const e = new Error('Usuario no encontrado'); e.statusCode = 404; throw e; }
-
-  // Limpiar sesiones expiradas antes de devolver la lista
-  const pruned = user.pruneExpiredTokens();
-  if (pruned > 0) await user.save();
-
-  return (user.tokens || [])
-    .map((t) => ({
-      id:         String(t._id),
-      isCurrent:  t.token === currentToken,
-      createdAt:  t.createdAt,
-      expiresAt:  t.expiresAt,
-      lastUsedAt: t.lastUsedAt,
-      deviceInfo: {
-        ip:         t.deviceInfo?.ip || null,
-        deviceName: t.deviceInfo?.deviceName || 'Dispositivo desconocido',
-        os:         t.deviceInfo?.os || null,
-        browser:    t.deviceInfo?.browser || null,
-      },
-    }))
-    .sort((a, b) => {
-      if (a.isCurrent && !b.isCurrent) return -1;
-      if (!a.isCurrent && b.isCurrent) return 1;
-      return new Date(b.lastUsedAt || b.createdAt || 0) - new Date(a.lastUsedAt || a.createdAt || 0);
-    });
-}
-
-async function revokeSession(userId, sessionId) {
-  const user = await User.findById(userId).select('+tokens');
-  if (!user) { const e = new Error('Usuario no encontrado'); e.statusCode = 404; throw e; }
-  const before = user.tokens.length;
-  user.tokens = user.tokens.filter((t) => String(t._id) !== sessionId);
-  if (user.tokens.length === before) { const e = new Error('Sesión no encontrada'); e.statusCode = 404; throw e; }
+  if (!user) throw makeError(404, "No encontrado");
+  user.pruneExpiredTokens();
   await user.save();
-  return { revoked: 1 };
-}
 
-async function revokeOtherSessions(userId, currentToken) {
-  const user = await User.findById(userId).select('+tokens');
-  if (!user) { const e = new Error('Usuario no encontrado'); e.statusCode = 404; throw e; }
-  const before = user.tokens.length;
-  user.tokens = user.tokens.filter((t) => t.token === currentToken);
-  await user.save();
-  return { revoked: before - user.tokens.length };
+  return (user.tokens || []).map(t => ({
+    id: String(t._id),
+    isCurrent: t.token === currentToken,
+    createdAt: t.createdAt,
+    expiresAt: t.expiresAt,
+    lastUsedAt: t.lastUsedAt,
+    deviceInfo: t.deviceInfo
+  })).sort((a,b) => (a.isCurrent ? -1 : 1));
 }
 
 async function changePasswordSelf(userId, { currentPassword, newPassword }) {
   const user = await User.findById(userId).select('+password +tokens');
-  if (!user) { const e = new Error('Usuario no encontrado'); e.statusCode = 404; throw e; }
-  const valid = await bcrypt.compare(String(currentPassword || ''), user.password);
-  if (!valid) { const e = new Error('Contraseña actual incorrecta'); e.statusCode = 401; throw e; }
-  if (String(newPassword || '').length < 8) {
-    const e = new Error('La nueva contraseña debe tener al menos 8 caracteres'); e.statusCode = 400; throw e;
-  }
-  user.password = await bcrypt.hash(String(newPassword), 12);
-  user.tokens   = []; // Invalidar todas las sesiones
+  if (!user) throw makeError(404, "No encontrado");
+
+  // ✅ Comparar con Pepper
+  const valid = await bcrypt.compare(String(currentPassword || '') + config.secrets.pepper, user.password);
+  if (!valid) throw makeError(401, "Contraseña actual incorrecta");
+
+  if (String(newPassword || '').length < 8) throw makeError(400, "Mínimo 8 caracteres");
+
+  user.password = String(newPassword);
+  user.tokens = [];
   await user.save();
-  return { success: true, sessionsRevoked: true };
+  return { success: true };
+}
+
+function makeError(status, msg) {
+  const e = new Error(msg);
+  e.statusCode = status;
+  return e;
 }
 
 module.exports = {
-  getRoles,
-  getMe,
-  listUsers,
-  createUser,
-  updateUser,
-  updatePassword,
-  deleteUser,
-  restoreUser,
-  getMeSessions,
-  revokeSession,
-  revokeOtherSessions,
-  changePasswordSelf,
+  getRoles, getMe, listUsers, createUser, updateUser, updatePassword,
+  deleteUser, restoreUser, getMeSessions, changePasswordSelf
 };

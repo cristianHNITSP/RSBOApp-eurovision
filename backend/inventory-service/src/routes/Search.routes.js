@@ -32,13 +32,11 @@ const APP_ROUTES = [
 
   // Inventario
   { id: 'r-inv-bm',      label: 'Inventario - Bases y Micas',     icon: 'glasses',         routeName: 'inventario-bases-micas',     routePath: '/l/inventario/bases-micas',      keywords: ['inventario', 'bases', 'micas', 'bases micas', 'oftálmicas', 'lentes', 'stock', 'planillas'] },
-  { id: 'r-inv-optica',  label: 'Inventario - Óptica',            icon: 'eye',             routeName: 'inventario-optica',          routePath: '/l/inventario/optica',           keywords: ['inventario', 'óptica', 'optica', 'stock', 'gafas', 'anteojos'] },
   { id: 'r-inv-lc',      label: 'Inventario - Lentes Contacto',   icon: 'circle',          routeName: 'inventario-lentes-contacto', routePath: '/l/inventario/lentes-contacto',  keywords: ['inventario', 'lentes', 'contacto', 'lentes de contacto', 'stock'] },
 
   // Ventas
   { id: 'r-ven-lab',     label: 'Ventas - Laboratorio',           icon: 'flask',           routeName: 'ventas-laboratorio',         routePath: '/l/ventas/laboratorio',          keywords: ['ventas', 'laboratorio', 'lab', 'órdenes', 'ordenes', 'pedidos'] },
   { id: 'r-ven-bm',      label: 'Ventas - Bases y Micas',         icon: 'glasses',         routeName: 'ventas-bases-micas',         routePath: '/l/ventas/bases-micas',          keywords: ['ventas', 'bases', 'micas', 'bases micas', 'órdenes'] },
-  { id: 'r-ven-optica',  label: 'Ventas - Óptica',                icon: 'eye',             routeName: 'ventas-optica',              routePath: '/l/ventas/optica',               keywords: ['ventas', 'óptica', 'optica', 'gafas', 'órdenes', 'anteojos'] },
   { id: 'r-ven-lc',      label: 'Ventas - Lentes Contacto',       icon: 'circle',          routeName: 'ventas-lentes-contacto',     routePath: '/l/ventas/lentes-contacto',      keywords: ['ventas', 'lentes', 'contacto', 'lentes de contacto', 'órdenes'] },
 
   { id: 'r-usuarios',    label: 'Gestión de Usuarios',            icon: 'users',           routeName: 'usuarios',                   routePath: '/l/usuarios',                    keywords: ['usuarios', 'users', 'gestión', 'roles', 'permisos'] },

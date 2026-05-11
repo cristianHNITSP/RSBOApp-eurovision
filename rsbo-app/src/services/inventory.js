@@ -95,3 +95,17 @@ export async function resolveCodebar(codebar) {
     throw err;
   }
 }
+
+// ── Catálogo de Ventas Especializado ──────────────────────────────────────────
+
+export async function fetchSalesCatalogItems(params) {
+  return api.get("/inventory/sales-catalog/items", { params });
+}
+
+export async function updateSalesCatalogStock(sku, payload) {
+  return api.patch(`/inventory/sales-catalog/items/${sku}/stock`, payload);
+}
+
+export async function registerInventorySale(payload) {
+  return api.post("/inventory/sales", payload);
+}

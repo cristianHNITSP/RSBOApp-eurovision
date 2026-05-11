@@ -12,7 +12,13 @@
 
         <section class="modal-card-body" v-if="!showSuccess">
           <b-field grouped>
-            <b-field label="Origen" expanded>
+            <b-field label="Servicio" expanded>
+              <b-select v-model="form.service" expanded :disabled="originLocked">
+                <option value="inventory">Inventario (Micas)</option>
+                <option value="optica">Óptica (Armazones...)</option>
+              </b-select>
+            </b-field>
+            <b-field label="Origen" expanded v-if="form.service === 'inventory'">
               <b-select v-model="form.origin" expanded :disabled="originLocked">
                 <option value="LAB">Laboratorio</option>
                 <option value="VENTAS">Ventas</option>
@@ -32,6 +38,22 @@
               <b-input v-model.number="form.qty" type="number" min="1" :max="maxQty || undefined" />
             </b-field>
           </b-field>
+
+          <!-- MODO ÓPTICA -->
+          <div v-if="form.service === 'optica'" class="mb-4 animate__animated animate__fadeIn">
+            <b-field label="Colección" expanded>
+              <b-select v-model="form.collection" expanded>
+                <option value="armazones">Armazones</option>
+                <option value="accesorios">Accesorios</option>
+                <option value="soluciones">Soluciones</option>
+                <option value="estuches">Estuches</option>
+                <option value="equipos">Equipos</option>
+              </b-select>
+            </b-field>
+            <b-field label="Escanear o Buscar SKU">
+               <b-input v-model="form.sku" placeholder="Ejem: ARM-123" icon="barcode" @keyup.enter.native="handleResolveOptica" />
+            </b-field>
+          </div>
 
           <!-- MODO SELECCIÓN (VENTAS / LAB) -->
           <div v-if="(form.origin === 'VENTAS' || form.origin === 'LAB') && !form.sheet && !originLocked" class="mb-4">
@@ -114,8 +136,9 @@
 
 <script setup>
 import { reactive, ref, computed, watch } from "vue";
-import { createMerma } from "@/services/mermas";
+import { createMerma, createOpticaMerma } from "@/services/mermas";
 import { resolveCodebar } from "@/services/inventory";
+import api from "@/api/axios";
 import TransactionSearch from "@/components/ui/TransactionSearch.vue";
 import TransactionItemPicker from "@/components/ui/TransactionItemPicker.vue";
 
@@ -137,11 +160,16 @@ const selectedTransaction = ref(null);
 const selectedItem = ref(null);
 
 const form = reactive({
+  service: "inventory",
   origin: "VENTAS",
   reason: "ROTURA",
   qty: 1,
   notes: "",
-  // técnicos / trazabilidad (no editables, vienen de prefill)
+  // Óptica fields
+  collection: "armazones",
+  documentId: null,
+  sku: "",
+  // Inventory fields
   sheet: null,
   matrixKey: null,
   eye: null,
@@ -160,7 +188,11 @@ const hint = computed(() => {
 });
 
 const canSubmit = computed(() => {
-  if (!form.sheet || !form.matrixKey) return false;
+  if (form.service === 'inventory') {
+    if (!form.sheet || !form.matrixKey) return false;
+  } else {
+    if (!form.collection || !form.sku) return false;
+  }
   if (!Number.isFinite(form.qty) || form.qty < 1) return false;
   if (props.maxQty > 0 && form.qty > props.maxQty) return false;
   return true;
@@ -176,10 +208,14 @@ watch(() => props.modelValue, (open) => {
   selectedTransaction.value = null;
   selectedItem.value = null;
   Object.assign(form, {
+    service: props.prefill?.service || "inventory",
     origin: props.prefill?.origin || "VENTAS",
     reason: "ROTURA",
     qty: props.prefill?.qty || 1,
     notes: "",
+    collection: props.prefill?.collection || "armazones",
+    sku: props.prefill?.sku || "",
+    documentId: props.prefill?.documentId || null,
     sheet: props.prefill?.sheet || null,
     matrixKey: props.prefill?.matrixKey || null,
     eye: props.prefill?.eye || null,
@@ -205,10 +241,35 @@ async function handleResolve() {
       form.matrixKey = data.matrixKey;
       form.eye = data.eye;
       form.codebar = searchCodebar.value;
-      // Actualizar maxQty localmente si es posible
+      form.sku = data.item?.sku || "";
     }
   } catch (e) {
     errorMsg.value = "No se encontró ningún producto con ese código";
+  } finally {
+    resolving.value = false;
+  }
+}
+
+async function handleResolveOptica() {
+  if (!form.sku) return;
+  resolving.value = true;
+  errorMsg.value = "";
+  try {
+    // Buscar en el catálogo de óptica por SKU
+    const res = await api.get(`/optica/${form.collection}/sku/${form.sku}`);
+    if (res.data?.ok && res.data.data) {
+      const doc = res.data.data;
+      form.documentId = doc._id;
+      resolvedItem.value = {
+        sheet: { nombre: doc.nombre || doc.name || doc.modelo || "Producto Óptica" },
+        matrixKey: `SKU: ${doc.sku}`,
+        item: { existencias: doc.stock ?? 0 }
+      };
+    } else {
+      errorMsg.value = "Producto no encontrado en esta colección";
+    }
+  } catch (e) {
+    errorMsg.value = "Error al buscar producto en Óptica";
   } finally {
     resolving.value = false;
   }
@@ -254,8 +315,40 @@ async function submit() {
   saving.value = true;
   errorMsg.value = "";
   try {
-    const { data } = await createMerma({ ...form });
-    emit("created", data?.data || null);
+    const payload = { ...form };
+    let primaryRes, secondaryRes;
+
+    if (form.service === 'optica') {
+      // 1. Primario: Óptica (Atómico)
+      primaryRes = await createOpticaMerma(payload);
+      
+      // 2. Secundario: Inventario (Log Shadow)
+      try {
+        await createMerma({
+          ...payload,
+          skipMutation: true,
+          notes: `[REPLICA OPTICA] ${payload.notes}`
+        });
+      } catch (e) {
+        console.warn("⚠️ Fallo al replicar merma en Inventario", e);
+      }
+    } else {
+      // 1. Primario: Inventario (Atómico)
+      primaryRes = await createMerma(payload);
+      
+      // 2. Secundario: Óptica (Log Shadow)
+      try {
+        await createOpticaMerma({
+          ...payload,
+          skipMutation: true,
+          notes: `[REPLICA INVENTARIO] ${payload.notes}`
+        });
+      } catch (e) {
+        console.warn("⚠️ Fallo al replicar merma en Óptica", e);
+      }
+    }
+      
+    emit("created", primaryRes.data?.data || null);
     showSuccess.value = true;
     setTimeout(() => {
       close();

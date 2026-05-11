@@ -14,8 +14,9 @@
           <template v-for="key in config.CATEGORY_KEYS" #[key] :key="key">
             <div class="columns is-multiline is-variable is-4" :key="activeTab">
               <div class="column is-8">
-                <VentasCatalog v-bind="strategies[key].catalog"
-                  :filtered-items-length="strategies[key].catalog.filteredItems.length"
+                <VentasCatalog v-bind="strategies[key]?.catalog"
+                  :filtered-items-length="strategies[key]?.catalog?.filteredItems?.length || 0"
+                  :is-offline="strategies[key]?.catalog?.isOffline"
                   v-model:selectedSheetId="strategies[key].selectedSheetId"
                   v-model:itemQuery="strategies[key].itemQuery" v-model:stockFilter="strategies[key].stockFilter"
                   v-model:catalogPage="strategies[key].catalogPage"
@@ -23,9 +24,10 @@
                   :picker-placeholder="catalogMeta[key]?.placeholder || catalogMeta.default.placeholder"
                   :picker-icon="catalogMeta[key]?.icon || catalogMeta.default.icon"
                   :code-label="catalogMeta[key]?.codeLabel || catalogMeta.default.codeLabel" 
-                  @add-to-cart="strategies[key].addToCart">
+                  @add-to-cart="strategies[key].addToCart"
+                  @reload="strategies[key]?.catalog?.reload">
                   
-                  <template v-if="key === 'lentes-contacto' && strategies[key].catalog.isToric" #extra-filters>
+                  <template v-if="key === 'lentes-contacto' && strategies[key]?.catalog?.isToric" #extra-filters>
                     <b-field label="Eje" class="mb-0 catalog-sheet-field">
                       <SheetPickerInput v-model="strategies[key].catalog.selectedAxis"
                         :sheet-title="(a) => a ? a.name : 'Todos los ejes'"
@@ -36,15 +38,20 @@
                 </VentasCatalog>
               </div>
               <div class="column is-4">
-                <VentasCart :kind="strategies[key].kind" :cart-items="strategies[key].cart.items"
-                  :cart-total="strategies[key].cart.total" :cart-total-monto="strategies[key].cart.totalMonto"
-                  :loading-sale="strategies[key].cart.loadingSale" v-model:cartCliente="strategies[key].cartCliente"
+                <VentasCart :kind="strategies[key]?.kind" :cart-items="strategies[key]?.cart?.items || []"
+                  :cart-total="strategies[key]?.cart?.total || 0" :cart-total-monto="strategies[key]?.cart?.totalMonto || 0"
+                  :loading-sale="strategies[key]?.cart?.loadingSale" v-model:cartCliente="strategies[key].cartCliente"
                   v-model:cartNote="strategies[key].cartNote"
                   v-model:cartClienteNombres="strategies[key].cartClienteNombres"
                   v-model:cartClienteApellidos="strategies[key].cartClienteApellidos"
                   v-model:cartClienteEmpresa="strategies[key].cartClienteEmpresa"
                   v-model:cartClienteContacto="strategies[key].cartClienteContacto"
-                  v-model:cartPago="strategies[key].cartPago" @checkout="strategies[key].registrarVenta"
+                  v-model:cartPago="strategies[key].cartPago" 
+                  v-model:doDirectSale="strategies[key].doDirectSale"
+                  v-model:doLabOrder="strategies[key].doLabOrder"
+                  :is-offline="strategies[key]?.catalog?.isOffline"
+                  :show-sale-type="key === 'bases-micas'"
+                  @checkout="strategies[key].registrarVenta"
                   @remove-from-cart="strategies[key].removeFromCart" @inc-cart-qty="strategies[key].incCartQty"
                   @dec-cart-qty="strategies[key].decCartQty" @ask-clear-cart="strategies[key].clearCart" />
               </div>
@@ -54,10 +61,13 @@
           <template #historial>
             <VentasHistory 
               v-model:category="history.category" 
-              v-model:page="history.page"
-              :total-pages="history.totalPages"
+              v-model:search-query="history.searchQuery"
               :rows="history.rows" 
-              :loading="history.loading"
+              :total="history.totalCount"
+              :page="history.page" 
+              :loading="history.loading" 
+              :limit="7"
+              @change-page="history.changePage"
               @refresh="history.reload" 
               @select-order="onSelectOrder" 
             />
@@ -116,7 +126,7 @@ const closureOpen = ref(false);
 const currentOrder = ref(null);
 
 const isLoadingAny = computed(() => {
-  if (activeTab.value === config.TABS.HISTORIAL) return history.loading.value;
+  if (activeTab.value === config.TABS.HISTORIAL) return history.loading;
   if (activeTab.value === config.TABS.CORTES) return false;
   const s = strategies[activeTab.value];
   if (!s || !s.catalog || !s.cart) return false;
@@ -124,7 +134,7 @@ const isLoadingAny = computed(() => {
 });
 
 const heroCounts = computed(() => {
-  if (activeTab.value === config.TABS.HISTORIAL) return { items: history.rows?.value?.length || 0 };
+  if (activeTab.value === config.TABS.HISTORIAL) return { items: history.totalCount || 0 };
   if (activeTab.value === config.TABS.CORTES) return {};
   const s = strategies[activeTab.value];
   if (!s || !s.catalog || !s.cart) return { sheets: 0, items: 0, cart: 0 };
@@ -140,7 +150,7 @@ function onRefresh() {
     history.reload();
   } else {
     const s = strategies[activeTab.value];
-    if (s && s.loadItems) s.loadItems();
+    if (s && s.catalog && s.catalog.reload) s.catalog.reload();
   }
 }
 
@@ -188,14 +198,6 @@ provide('lab', {
       }
       if (currentS.sheetsDB) {
         const sheets = Array.isArray(currentS.sheetsDB) ? currentS.sheetsDB : [];
-        const found = sheets.find(sheet => String(sheet.id) === String(id));
-        if (found) return found;
-      }
-    }
-    for (const k of config.CATEGORY_KEYS) {
-      const s = strategies[k];
-      if (s?.sheetsDB) {
-        const sheets = Array.isArray(s.sheetsDB) ? s.sheetsDB : [];
         const found = sheets.find(sheet => String(sheet.id) === String(id));
         if (found) return found;
       }

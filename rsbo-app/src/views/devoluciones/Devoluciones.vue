@@ -544,6 +544,7 @@ import { labToast } from "@/composables/shared/useLabToast.js";
 import DevolutionEditModal from "@/components/devoluciones/DevolutionEditModal.vue";
 import TransactionSearch from "@/components/ui/TransactionSearch.vue";
 import TransactionItemPicker from "@/components/ui/TransactionItemPicker.vue";
+import { getActor } from "@/composables/api/_ventasShared";
 
 // ── Props (DashboardLayout pasa :user a todos los hijos) ─────────────────────
 const props = defineProps({ user: Object, loading: Boolean });
@@ -557,7 +558,7 @@ const canCreateDevolution = computed(() =>
 
 // ── State ────────────────────────────────────────────────────────────────────
 const items = ref([]);
-const meta = ref({ total: 0, page: 1, limit: 20, pages: 1 });
+const meta = ref({ total: 0, page: 1, limit: 7, pages: 1 });
 const loading = ref(false);
 const stats = ref(null);
 
@@ -675,7 +676,7 @@ const grouped = computed(() => {
 async function load() {
   loading.value = true;
   try {
-    const params = { page: currentPage.value, limit: 20 };
+    const params = { page: currentPage.value, limit: 7 };
     if (activeStatus.value !== "all") params.status = activeStatus.value;
     if (searchQ.value.trim()) params.q = searchQ.value.trim();
 
@@ -760,7 +761,20 @@ function openProcess(dev) {
 async function confirmProcess() {
   if (!processTarget.value) return;
   try {
+    // 1. Operación Primaria: Procesar en Inventario
     const res = await updateDevolutionStatus(processTarget.value._id, "procesada", processNotes.value);
+    
+    // 2. 🧠 Orquestación Espejo (Frontend Brain) hacia Óptica
+    // Intentamos marcar como procesada en Óptica también (si existe el espejo)
+    try {
+      const { updateOpticaDevolutionStatus } = await import("@/services/opticaDevolutions");
+      // Buscamos si tenemos el ID del espejo o usamos el folio
+      await updateOpticaDevolutionStatus(processTarget.value.folio, "procesada", `Procesado vía Inventario: ${processNotes.value}`);
+      console.log("[BRAIN][REPLICA] Estado de devolución sincronizado en Óptica");
+    } catch (replicaErr) {
+      console.warn("[BRAIN][REPLICA] No se pudo sincronizar el estado en Óptica:", replicaErr.message);
+    }
+
     const warnings = res.data?.stockWarnings;
     if (warnings?.length) {
       labToast.warning(`Devolución procesada. ${warnings.length} ítem(s) no pudo(eron) restaurar stock.`);
@@ -850,7 +864,7 @@ async function submitCreate() {
   }
   creating.value = true;
   try {
-    await createDevolution({
+    const payload = {
       cliente: form.value.cliente,
       clientePhone: form.value.clientePhone || null,
       orderFolio: form.value.orderFolio || null,
@@ -859,7 +873,27 @@ async function submitCreate() {
       notes: form.value.notes,
       items: form.value.items,
       restoreStock: form.value.items.some(i => i.restoreStock),
-    });
+    };
+
+    // 1. Registro Primario en Inventario
+    const res = await createDevolution(payload);
+    const createdDev = res.data?.data || res.data;
+
+    // 2. 🧠 Orquestación Espejo (Frontend Brain) hacia Óptica
+    try {
+      const { createOpticaDevolution } = await import("@/services/opticaDevolutions");
+      await createOpticaDevolution({
+        ...payload,
+        folio: createdDev.folio,
+        isReplica: true,
+        skipMutation: true,
+        actor: getActor(userRef.value)
+      });
+      console.log("[BRAIN][REPLICA] Espejo de devolución creado en Óptica");
+    } catch (replicaErr) {
+      console.warn("[BRAIN][REPLICA] No se pudo crear el espejo en Óptica:", replicaErr.message);
+    }
+
     labToast.success("Devolución creada exitosamente");
     showCreate.value = false;
     load();

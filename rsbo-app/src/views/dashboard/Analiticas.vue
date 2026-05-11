@@ -88,17 +88,17 @@
                   <div class="an-stat-grid">
                     <div class="an-stat-cell">
                       <div class="asc-ico" style="background:rgba(245,158,11,.12);color:#f59e0b"><i class="fas fa-sack-dollar"></i></div>
-                      <div class="asc-val" style="color:#f59e0b" v-if="!isLoading">${{ (s?.ventasMontoMes || 0).toLocaleString() }}</div>
+                      <div class="asc-val" style="color:#f59e0b" v-if="!isLoading">${{ (consolidatedSales.mes).toLocaleString() }}</div>
                       <b-skeleton v-else :width="50" :height="28" animated />
                       <div class="asc-lbl">Ventas (Mes)</div>
-                      <div class="asc-cap">${{ (s?.ventasMontoSemana || 0).toLocaleString() }} esta semana</div>
+                      <div class="asc-cap">${{ (consolidatedSales.semana).toLocaleString() }} esta semana</div>
                     </div>
                     <div class="an-stat-cell">
                       <div class="asc-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i class="fas fa-money-bill-trend-up"></i></div>
-                      <div class="asc-val" style="color:#10b981" v-if="!isLoading">${{ (s?.ventasMontoHoy || 0).toLocaleString() }}</div>
+                      <div class="asc-val" style="color:#10b981" v-if="!isLoading">${{ (consolidatedSales.hoy).toLocaleString() }}</div>
                       <b-skeleton v-else :width="50" :height="28" animated />
                       <div class="asc-lbl">Ventas Hoy</div>
-                      <div class="asc-cap">Ingresos del día</div>
+                      <div class="asc-cap">Ingresos del día (Global)</div>
                     </div>
                   </div>
                 </div>
@@ -218,6 +218,18 @@ onUnmounted(() => {
   window.removeEventListener('lab:ws', onLabWs)
   clearTimeout(_wsRefreshTimer)
 })
+
+// ── Consolidated Stats ──
+const consolidatedSales = computed(() => ({
+  mes:    (s.value?.ventasMontoMes || 0)    + (os.value?.ventasMontoMes || 0),
+  semana: (s.value?.ventasMontoSemana || 0) + (os.value?.ventasMontoSemana || 0),
+  hoy:    (s.value?.ventasMontoHoy || 0)    + (os.value?.ventasMontoHoy || 0),
+}))
+
+const consolidatedMermas = computed(() => ({
+  mes:    (s.value?.movementsExits30d || 0) + (os.value?.mermasQtyMes || 0), // Inventory uses movementsExits for some counts
+  hoy:    (s.value?.movementsTodayExits || 0) + (os.value?.mermasQtyHoy || 0),
+}))
 
 // ── Role meta ──
 const roleMeta = {

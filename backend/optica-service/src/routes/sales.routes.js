@@ -6,7 +6,6 @@ const { handleAtomicSale } = require("../utils/saleHelper");
 
 // Modelos dinámicos para el decremento de stock
 const Armazon = require("../models/Armazon");
-const LenteContacto = require("../models/LenteContacto");
 const Solucion = require("../models/Solucion");
 const Accesorio = require("../models/Accesorio");
 const Estuche = require("../models/Estuche");
@@ -14,7 +13,6 @@ const Equipo = require("../models/Equipo");
 
 const MODELS = {
   armazones: Armazon,
-  lentes: LenteContacto,
   soluciones: Solucion,
   accesorios: Accesorio,
   estuches: Estuche,
@@ -34,8 +32,9 @@ router.post("/", protect(), async (req, res) => {
       return res.status(400).json({ ok: false, error: "Datos de venta incompletos" });
     }
 
-    // 1. Procesar decremento de stock para cada ítem (Atomicidad individual por ahora)
+    // 1. Procesar decremento de stock para cada ítem
     const processedItems = [];
+
     for (const it of items) {
       const Model = MODELS[it.collection];
       if (!Model) {
@@ -43,10 +42,8 @@ router.post("/", protect(), async (req, res) => {
         continue;
       }
 
-      const result = await handleAtomicSale(Model, it.collection, it.documentId, it.qty, actor);
+      const result = await handleAtomicSale(Model, it.collection, it.documentId, -Math.abs(it.qty), actor, "SALE");
       if (!result.ok) {
-        // Si falla un ítem (ej: sin stock), detenemos y lanzamos error
-        // NOTA: En un sistema real usaríamos transacciones de MongoDB si estuviéramos en la misma DB
         return res.status(result.status).json({
           ok: false,
           error: `Error en ${it.sku}: ${result.message}`,
@@ -75,7 +72,7 @@ router.post("/", protect(), async (req, res) => {
       items: processedItems,
       total: total || 0,
       pago: pago || [],
-      actor: { userId: actor.userId, name: actor.name }
+      actor: req.body.actor || { userId: actor.userId, name: actor.name }
     });
 
     console.log(`[OPTICA][SALES] Venta registrada: ${sale.folio} para ${cliente}`);
@@ -109,7 +106,7 @@ router.get("/search", protect(), async (req, res) => {
     if (!q) {
       const sales = await Sale.find(query)
         .sort({ createdAt: -1 })
-        .limit(query.createdAt ? 1000 : 20)
+        .limit(7)
         .lean();
       return res.json({ ok: true, data: sales });
     }
@@ -129,7 +126,7 @@ router.get("/search", protect(), async (req, res) => {
 
     const sales = await Sale.find({ $and: searchConditions })
       .sort({ createdAt: -1 })
-      .limit(20)
+      .limit(7)
       .lean();
 
     return res.json({ ok: true, data: sales });

@@ -2,16 +2,30 @@
   <div class="ventas-history-root">
     <!-- Filtro de Categoría Glass (Solo Vista) -->
     <div class="history-filters-glass">
-      <div class="glass-pill-selector">
-        <button 
-          v-for="cat in CATEGORIES" 
-          :key="cat.id"
-          class="glass-pill-btn"
-          :class="{ 'is-active': localCategory === cat.id }"
-          @click="localCategory = cat.id"
-        >
-          {{ cat.label }}
-        </button>
+      <div class="is-flex is-align-items-center" style="gap: 1rem; flex: 1;">
+        <div class="glass-pill-selector">
+          <button 
+            v-for="cat in CATEGORIES" 
+            :key="cat.id"
+            class="glass-pill-btn"
+            :class="{ 'is-active': localCategory === cat.id }"
+            @click="localCategory = cat.id"
+          >
+            {{ cat.label }}
+          </button>
+        </div>
+
+        <b-field class="mb-0" style="flex: 1; max-width: 300px;">
+          <b-input
+            :model-value="searchQuery"
+            @update:model-value="$emit('update:searchQuery', $event)"
+            placeholder="Buscar por cliente o folio..."
+            icon="search"
+            size="is-small"
+            rounded
+            clearable
+          />
+        </b-field>
       </div>
       
       <b-button
@@ -101,9 +115,20 @@
                           </thead>
                           <tbody>
                             <tr v-for="(line, i) in sale.lineas" :key="i">
-                              <td class="font-900">{{ line.qty }}</td>
-                              <td class="ticket-prod-name">{{ line.title }}</td>
-                              <td class="has-text-right">{{ line.precio ? (line.qty * line.precio).toFixed(2) : '—' }}</td>
+                              <td class="font-900 is-vcentered" style="width: 50px;">{{ line.qty }}</td>
+                              <td class="ticket-prod-name is-vcentered">
+                                <div class="item-title mb-1">{{ line.title }}</div>
+                                <div class="item-meta">
+                                  <div class="item-meta__line">
+                                    <span class="meta-badge"><i class="fas fa-barcode"></i> {{ line.sku }}</span>
+                                    <span v-if="line.sheetName !== 'Venta Directa'" class="meta-badge"><i class="fas fa-layer-group"></i> {{ line.sheetName }}</span>
+                                  </div>
+                                  <div v-if="line.features && line.features.length" class="item-meta__line mt-1">
+                                    <span v-for="(feat, fi) in line.features" :key="fi" class="meta-badge is-primary-light">{{ feat }}</span>
+                                  </div>
+                                </div>
+                              </td>
+                              <td class="has-text-right is-vcentered" style="width: 80px;">{{ line.precio ? (line.qty * line.precio).toFixed(2) : '—' }}</td>
                             </tr>
                           </tbody>
                         </table>
@@ -125,6 +150,10 @@
                           <div class="meta-item">
                             <span class="meta-item__label">Pago</span>
                             <span class="meta-item__val">{{ sale.pagoDisplay }}</span>
+                          </div>
+                          <div v-if="sale.phone" class="meta-item" style="grid-column: span 2;">
+                            <span class="meta-item__label">Teléfono Cliente</span>
+                            <span class="meta-item__val"><i class="fas fa-phone mr-1 text-muted"></i> {{ sale.phone }}</span>
                           </div>
                         </div>
 
@@ -188,24 +217,26 @@
 <script setup>
 import { computed, ref } from 'vue';
 import { fmtDate } from '@/utils/formatters';
+import { formatCurrency } from '@/utils/filters';
 import { labStatusHuman, labStatusClass } from '@/utils/statusHelpers';
 
+
 const props = defineProps({
-  category:   { type: String, default: 'all' },
-  rows:       { type: Array,  default: () => [] },
-  loading:    { type: Boolean, default: false },
-  page:       { type: Number,  default: 1 },
-  totalPages: { type: Number,  default: 1 }
+  category:    { type: String, default: 'all' },
+  searchQuery: { type: String, default: '' },
+  rows:        { type: Array,  default: () => [] },
+  loading:     { type: Boolean, default: false },
+  page:        { type: Number,  default: 1 },
+  totalPages:  { type: Number,  default: 1 }
 });
 
-const emit = defineEmits(['update:category', 'update:page', 'refresh', 'select-order']);
+const emit = defineEmits(['update:category', 'update:searchQuery', 'update:page', 'refresh', 'select-order']);
 
 const expandedId = ref(null);
 
 const CATEGORIES = [
-  { id: 'all',             label: 'Todas' },
   { id: 'bases-micas',     label: 'Bases y Micas' },
-  // { id: 'optica',          label: 'Óptica' },
+  { id: 'optica',          label: 'Óptica' },
   { id: 'lentes-contacto', label: 'Lentes Contacto' }
 ];
 
@@ -216,10 +247,6 @@ const localCategory = computed({
 
 function toggleRow(id) {
   expandedId.value = expandedId.value === id ? null : id;
-}
-
-function formatCurrency(val) {
-  return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(val || 0);
 }
 </script>
 
@@ -262,7 +289,15 @@ function formatCurrency(val) {
 .compact-ticket { background: #fdfdfd; border: 1px solid var(--border-light); border-radius: 16px; padding: 1rem; }
 .ticket-table-mini { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
 .ticket-table-mini th { border-bottom: 1px solid var(--border-light); padding: 0.4rem 0; color: var(--text-muted); text-align: left; }
-.ticket-table-mini td { padding: 0.5rem 0; }
+.ticket-table-mini td { padding: 0.75rem 0; border-bottom: 1px dashed rgba(0,0,0,0.03); }
+.ticket-table-mini tr:last-child td { border-bottom: none; }
+.is-vcentered { vertical-align: middle; }
+
+.item-title { font-weight: 800; color: var(--text-primary); font-size: 0.85rem; line-height: 1.2; }
+.item-meta { display: flex; flex-direction: column; gap: 0.2rem; }
+.item-meta__line { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.meta-badge { font-size: 0.6rem; font-weight: 700; font-family: ui-monospace, monospace; padding: 0.15rem 0.4rem; border-radius: 4px; background: var(--surface-raised); color: var(--text-secondary); border: 1px solid var(--border-light); }
+.meta-badge.is-primary-light { background: var(--c-primary-alpha); color: var(--c-primary); border-color: transparent; }
 
 .total-hero-card { background: linear-gradient(135deg, var(--c-primary), #7957d5); padding: 1rem; border-radius: 16px; color: white; }
 .total-hero-card__label { font-size: 0.6rem; font-weight: 800; opacity: 0.8; }

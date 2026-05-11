@@ -43,6 +43,7 @@ router.get("/", async (req, res) => {
     const items = await Armazon.find(filter)
       .collation({ locale: "es", strength: 1 }) // Insensible a acentos y mayúsculas
       .sort({ createdAt: -1 })
+      
       .lean({ virtuals: true });
     console.log(`[OPTICA][ARMAZONES] GET /  → ${items.length} items`);
     return res.json({ ok: true, data: items });

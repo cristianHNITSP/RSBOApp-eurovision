@@ -11,6 +11,13 @@ const logErr = (tag, err) => {
   });
 };
 
+/**
+ * Obtiene items del catálogo de ventas (paginado)
+ */
+export function fetchCatalogItems(params = {}) {
+  return api.get(`${BASE}/sales-catalog/items`, { params });
+}
+
 // ═══════════════════════════════════════════════════════════════
 //  Helpers genéricos por colección
 // ═══════════════════════════════════════════════════════════════
@@ -106,7 +113,6 @@ function makeCollectionService(col) {
 // ═══════════════════════════════════════════════════════════════
 
 export const armazonesService   = makeCollectionService("armazones");
-export const lentesService      = makeCollectionService("lentes");
 export const solucionesService  = makeCollectionService("soluciones");
 export const accesoriosService  = makeCollectionService("accesorios");
 export const estuchesService    = makeCollectionService("estuches");

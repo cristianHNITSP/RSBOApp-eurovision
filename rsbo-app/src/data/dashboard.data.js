@@ -86,4 +86,7 @@ export const KPI_TEMPLATES = [
   { key:'devTotal30d',    icon:'arrow-rotate-left',    accent:'purple', title:'Devoluciones (30d)',        caption:'Este período',                             requiresDevolutions:true },
   { key:'corrections7d',  icon:'wrench',               accent:'red',    title:'Correcciones (7d)',         caption:'Solicitudes activas',                      requiresLab:true },
   { key:'cerradoHoy',     icon:'check',                accent:'green',  title:'Cerrados hoy',             caption:'Completados hoy',                          requiresOrders:true },
+  // Ventas Consolidadas
+  { key:'ventasMes',      icon:'sack-dollar',          accent:'green',  title:'Ingresos (Mes)',           caption:'Global: Lab + Óptica',                     requiresReports:true },
+  { key:'ventasHoy',      icon:'money-bill-trend-up',  accent:'teal',   title:'Ventas Hoy',               caption:'Ingresos del día (Global)',               requiresReports:true },
 ];

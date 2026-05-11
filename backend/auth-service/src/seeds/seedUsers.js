@@ -8,7 +8,7 @@ if (!process.env.MONGO_URI) {
   console.error('❌ FATAL: MONGO_URI environment variable is required for seeding');
   process.exit(1);
 }
-const MONGO_URI = process.env.MONGO_URI;
+// const MONGO_URI = process.env.MONGO_URI;
 
 const { ROLES_DATA } = require('../data/roles');
 const { INITIAL_USERS } = require('../data/seed-data');
@@ -17,8 +17,8 @@ const OBSOLETE_ROLES = ['administrador', 'moderador'];
 
 async function seed() {
   try {
-    await mongoose.connect(MONGO_URI);
-    console.log('✅ Conectado a MongoDB');
+    // await mongoose.connect(MONGO_URI);
+    console.log('✅ Iniciando sembrado de usuarios/roles...');
 
     // 1️⃣  Upsert de roles (indispensable para que el sistema funcione)
     const roleRefs = {};
@@ -58,9 +58,19 @@ async function seed() {
   } catch (err) {
     console.error('❌ Error en el seed:', err);
   } finally {
-    await mongoose.disconnect();
-    process.exit(0);
+    // await mongoose.disconnect();
   }
 }
 
-seed();
+module.exports = { seed };
+
+// Si se ejecuta directamente
+if (require.main === module) {
+  mongoose.connect(process.env.MONGO_URI)
+    .then(() => seed())
+    .then(() => mongoose.disconnect())
+    .catch(err => {
+       console.error(err);
+       process.exit(1);
+    });
+}

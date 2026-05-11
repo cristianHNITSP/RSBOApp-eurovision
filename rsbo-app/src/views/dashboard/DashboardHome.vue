@@ -269,6 +269,13 @@ const environmentLabel = computed(() => {
   return 'Entorno local'
 })
 
+// ── Consolidated Stats ──
+const consolidatedSales = computed(() => ({
+  mes:    (s.value?.ventasMontoMes || 0)    + (os.value?.ventasMontoMes || 0),
+  semana: (s.value?.ventasMontoSemana || 0) + (os.value?.ventasMontoSemana || 0),
+  hoy:    (s.value?.ventasMontoHoy || 0)    + (os.value?.ventasMontoHoy || 0),
+}))
+
 // ── Rol meta ──────────────────────────────────────────────────────────────────
 const meta           = computed(() => ROLE_META[role.value] || ROLE_META.eurovision)
 const roleLabel      = computed(() => meta.value.label)
@@ -384,6 +391,8 @@ const visibleKpis = computed(() => {
       case 'devTotal30d': val = s.value?.devolucionesTotal30d; break
       case 'corrections7d': val = s.value?.corrections7d; break
       case 'cerradoHoy': val = s.value?.ordersClosedToday; break
+      case 'ventasMes': val = `$${formatNumber(consolidatedSales.value.mes)}`; break
+      case 'ventasHoy': val = `$${formatNumber(consolidatedSales.value.hoy)}`; break
     }
     return { ...k, formattedValue: val ?? '—', alert }
   })

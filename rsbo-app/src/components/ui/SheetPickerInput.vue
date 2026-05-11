@@ -57,7 +57,7 @@ import './SheetPickerInput.css';
 const lab = inject("lab");
 
 const props = defineProps({
-  modelValue: { type: String, default: "" },
+  modelValue: { type: [String, Number], default: "" },
   sheetTitle: { type: Function, required: true },
   searchFn: { type: Function, required: true },
   results: { type: Array, default: () => [] },

@@ -40,6 +40,7 @@ router.get("/", async (req, res) => {
     const items = await Solucion.find(filter)
       .collation({ locale: "es", strength: 1 })
       .sort({ createdAt: -1 })
+      
       .lean();
     console.log(`[OPTICA][SOLUCIONES] GET /  → ${items.length} items`);
     return res.json({ ok: true, data: items });

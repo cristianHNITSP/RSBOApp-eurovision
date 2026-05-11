@@ -7,6 +7,8 @@ const Equipo = require("../models/Equipo");
 const { logMovement } = require("../utils/logHelper");
 const { sanitizeMiddleware } = require("../utils/sanitizer");
 const { protect } = require("../utils/auth");
+const { broadcast } = require("../ws");
+const { handleAtomicSale } = require("../utils/saleHelper");
 
 const COLLECTION = "equipos";
 router.use(protect());
@@ -22,6 +24,8 @@ const bodyRules = [
   body("sku").notEmpty().trim().withMessage("SKU requerido"),
   body("nombre").notEmpty().trim().withMessage("Nombre requerido"),
   body("marca").notEmpty().trim().withMessage("Marca requerida"),
+  body("precio").isFloat({ min: 0 }).withMessage("Precio inválido"),
+  body("stock").isInt({ min: 0 }).withMessage("Stock inválido"),
 ];
 
 router.get("/", async (req, res) => {
@@ -37,6 +41,7 @@ router.get("/", async (req, res) => {
     const items = await Equipo.find(filter)
       .collation({ locale: "es", strength: 1 })
       .sort({ createdAt: -1 })
+      
       .lean();
     console.log(`[OPTICA][EQUIPOS] GET /  → ${items.length} items`);
     return res.json({ ok: true, data: items });
@@ -123,9 +128,50 @@ router.patch("/:id/estado", param("id").isMongoId(), body("estado").notEmpty(), 
   }
 });
 
+// ── PATCH /equipos/:id/stock — actualizar stock ─────────────────────────────
+router.patch("/:id/stock", param("id").isMongoId(), body("stock").isInt({ min: 0 }), validate, async (req, res) => {
+  try {
+    const { stock } = req.body;
+    const actor = req.user;
+    const item = await Equipo.findById(req.params.id);
+    if (!item) return res.status(404).json({ ok: false, error: "No encontrado" });
+    if (item.isDeleted) return res.status(410).json({ ok: false, error: "Elemento en papelera" });
+    
+    const prevStock = item.stock;
+    item.stock = stock;
+    await item.save();
+    
+    await logMovement(COLLECTION, item._id, item.sku, "STOCK_UPDATE", { prevStock, newStock: stock }, actor);
+    broadcast("INV_CHANGE", {
+      collection: COLLECTION,
+      id: String(item._id),
+      prevStock,
+      newStock: stock,
+      delta: stock - prevStock,
+    });
+    return res.json({ ok: true, data: item.toJSON() });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ── POST /equipos/:id/sale — Venta atómica ──────────────────────────────────
+router.post("/:id/sale", param("id").isMongoId(), body("qty").optional().isInt({ min: 1 }), validate, async (req, res) => {
+  try {
+    const qty = req.body.qty || 1;
+    const actor = req.user;
+    const result = await handleAtomicSale(Equipo, COLLECTION, req.params.id, qty, actor);
+    if (!result.ok) return res.status(result.status).json({ ok: false, error: result.message, current: result.current });
+    return res.json({ ok: true, data: result.data });
+  } catch (err) {
+    console.error(`[OPTICA][${COLLECTION.toUpperCase()}] SALE error:`, err);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 router.delete("/:id", param("id").isMongoId(), validate, async (req, res) => {
   try {
-    const actor = req.body?.actor || {};
+    const actor = req.user;
     const item = await Equipo.findById(req.params.id);
     if (!item) return res.status(404).json({ ok: false, error: "No encontrado" });
     if (item.isDeleted) return res.status(410).json({ ok: false, error: "Ya está en papelera" });
@@ -144,7 +190,7 @@ router.delete("/:id", param("id").isMongoId(), validate, async (req, res) => {
 
 router.delete("/:id/hard", param("id").isMongoId(), validate, async (req, res) => {
   try {
-    const actor = req.body?.actor || {};
+    const actor = req.user;
     const item = await Equipo.findById(req.params.id);
     if (!item) return res.status(404).json({ ok: false, error: "No encontrado" });
     const snapshot = { sku: item.sku, nombre: item.nombre, serie: item.serie };
@@ -159,7 +205,7 @@ router.delete("/:id/hard", param("id").isMongoId(), validate, async (req, res) =
 
 router.patch("/:id/restore", param("id").isMongoId(), validate, async (req, res) => {
   try {
-    const actor = req.body?.actor || {};
+    const actor = req.user;
     const item = await Equipo.findById(req.params.id);
     if (!item) return res.status(404).json({ ok: false, error: "No encontrado" });
     if (!item.isDeleted) return res.status(400).json({ ok: false, error: "No está en papelera" });

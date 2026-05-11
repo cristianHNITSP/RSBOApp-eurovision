@@ -1,5 +1,44 @@
 <template>
   <div class="an-tab-single-col">
+    <!-- Ventas de Óptica -->
+    <div class="gcard mb-5">
+      <div class="gcard-bar" style="background:linear-gradient(90deg,#10b981,#3b82f6)"></div>
+      <div class="gc-head">
+        <div class="gc-ico" style="background:rgba(16,185,129,.16);color:#10b981"><i class="fas fa-sack-dollar"></i></div>
+        <div>
+          <div class="gc-title">Ventas de Tienda</div>
+          <div class="gc-sub">Ingresos directos por productos de exhibición</div>
+        </div>
+      </div>
+      <div class="gc-body">
+        <div class="an-stat-grid" v-if="!isLoading && os">
+          <div class="an-stat-cell">
+            <div class="asc-ico"><i class="fas fa-calendar-day"></i></div>
+            <div class="asc-val">${{ fmtn(os.ventasMontoHoy) }}</div>
+            <div class="asc-lbl">Hoy</div>
+          </div>
+          <div class="an-stat-cell">
+            <div class="asc-ico" style="color:#10b981"><i class="fas fa-calendar-week"></i></div>
+            <div class="asc-val" style="color:#10b981">${{ fmtn(os.ventasMontoSemana) }}</div>
+            <div class="asc-lbl">Esta semana</div>
+          </div>
+          <div class="an-stat-cell">
+            <div class="asc-ico" style="color:#3b82f6"><i class="fas fa-calendar-check"></i></div>
+            <div class="asc-val" style="color:#3b82f6">${{ fmtn(os.ventasMontoMes) }}</div>
+            <div class="asc-lbl">Este mes</div>
+          </div>
+          <div class="an-stat-cell">
+            <div class="asc-ico" style="color:#f59e0b"><i class="fas fa-triangle-exclamation"></i></div>
+            <div class="asc-val" style="color:#f59e0b">{{ fmtn(os.mermasQtyMes) }} u.</div>
+            <div class="asc-lbl">Mermas (30d)</div>
+          </div>
+        </div>
+        <div v-else>
+          <b-skeleton width="100%" height="80" animated />
+        </div>
+      </div>
+    </div>
+
     <!-- Armazones -->
     <div class="gcard mb-5">
       <div class="gcard-bar" style="background:linear-gradient(90deg,#906fe1,#a855f7)"></div>

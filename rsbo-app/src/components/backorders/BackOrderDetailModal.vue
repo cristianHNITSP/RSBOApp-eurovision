@@ -164,6 +164,8 @@ import PaymentAddForm from "./PaymentAddForm.vue";
 import { useBackOrders } from "../../composables/api/useBackOrders";
 import { useDashboardStats } from "../../composables/api/useDashboardStats";
 import { labToast } from "../../composables/shared/useLabToast";
+import { formatCurrency } from "@/utils/filters";
+
 
 const props = defineProps({
   isOpen: { type: Boolean, default: false },
@@ -234,11 +236,8 @@ function formatKey(key) {
   return key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1');
 }
 
-function formatCurrency(amount) {
-  return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(amount || 0);
-}
-
 function formatDate(date) {
+
   return new Date(date).toLocaleString("es-MX", { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 

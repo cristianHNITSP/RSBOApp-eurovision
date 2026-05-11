@@ -28,9 +28,7 @@ const devolutionService = require("../services/devolution.service");
 const stockService = require("../services/stock.service");
 const notifClient = require("../services/notifClient");
 const { generateFolio } = require("../utils/folio");
-const axios = require("axios");
 
-const OPTICA_SERVICE_URL = process.env.OPTICA_SERVICE_URL || "http://optica-service:3000";
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret";
 const DEBUG_DEV  = String(process.env.DEBUG_DEV || "") === "1";
 
@@ -42,9 +40,6 @@ const ROLES_ADMIN   = ["root", "eurovision"];
 
 // ─── Auth middleware ──────────────────────────────────────────────────────────
 const requireAuth = (allowedRoles) => protect(allowedRoles);
-
-// generateFolio local eliminado — ahora se usa ../utils/folio.js
-
 
 // ─── Helpers de inventario (replicados de laboratory.routes.js) ───────────────
 const getMatrixModel = (tipo) => {
@@ -99,14 +94,6 @@ async function resolveCodebarLocation(sheet, codebar) {
   return null;
 }
 
-// Helpers de stock eliminados — ahora se usa stockService.mutateMatrixCell
-
-
-/**
- * Cuando se aprueba/procesa una devolución con restoreStock=true,
- * restaura el stock real en las matrices de inventario.
- * Solo se ejecuta una vez (guarda por stockRestored).
- */
 async function restoreInventoryStock(dev, actor) {
   if (!dev.restoreStock || dev.stockRestored) return;
 
@@ -126,9 +113,8 @@ async function restoreInventoryStock(dev, actor) {
       }
     }
 
-    // Caso 2: Es un ítem de Óptica (VNT) - Detectado por falta de sheet/matrixKey pero presencia de codebar/sku
+    // Caso 2: Intento de resolución por codebar si no tiene sheet
     if (!sheetDoc && item.codebar) {
-      // Intentamos ver si es de laboratorio buscando en hojas
       const sheets = await InventorySheet.find({ isDeleted: { $ne: true } }).lean();
       for (const s of sheets) {
         const found = await resolveCodebarLocation(s, item.codebar);
@@ -136,48 +122,6 @@ async function restoreInventoryStock(dev, actor) {
           sheetDoc = s;
           loc      = { ...found, codebar: item.codebar };
           break;
-        }
-      }
-
-      // Si después de buscar en hojas NO se encontró, es probable que sea de ÓPTICA
-      if (!sheetDoc) {
-        console.log(`[DEV] Item ${item.codebar} not found in lab sheets, checking Optica...`);
-        try {
-          // Intentamos restaurar en óptica (si falla o no existe, simplemente registramos el error)
-          // El optica-service tiene endpoints PATCH /:id/stock, pero necesitamos saber el ID o usar SKU
-          // Como no tenemos el ID aquí directamente, podemos usar una ruta de búsqueda por SKU
-          // O mejor, el optica-service debería tener un endpoint genérico de "reingreso"
-          
-          // Por simplicidad en este MVP, usaremos el endpoint de stock si tenemos la info
-          // En un sistema real, el objeto 'item' de la devolución debería tener 'opticaId' y 'collection'
-          
-          // Intentaremos restaurar en la colección más probable (armazones, lentes, etc.)
-          const INTERNAL_TOKEN = process.env.INTERNAL_SERVICE_TOKEN;
-          const collections = ["armazones", "lentes", "soluciones", "accesorios"];
-          let restored = false;
-          for (const col of collections) {
-            // Usamos el token interno para comunicación entre servicios
-            const headers = { "x-service-token": INTERNAL_TOKEN };
-            const findRes = await axios.get(`${OPTICA_SERVICE_URL}/api/optica/${col}`, { 
-              params: { q: item.codebar },
-              headers 
-            });
-            const target = findRes.data.data.find(it => it.sku === item.codebar);
-            if (target) {
-              const newStock = (target.stock || 0) + Math.abs(Number(item.qty || 0));
-              await axios.patch(`${OPTICA_SERVICE_URL}/api/optica/${col}/${target._id}/stock`, 
-                { stock: newStock },
-                { headers }
-              );
-              console.log(`[DEV] Successfully restored stock for ${item.codebar} in optica/${col}`);
-              restored = true;
-              break;
-            }
-          }
-          
-          if (restored) continue; // Éxito en óptica, saltamos al siguiente ítem
-        } catch (optErr) {
-          console.warn("[DEV] optica restore fail:", optErr.message);
         }
       }
     }
@@ -259,7 +203,7 @@ router.get("/stats", requireAuth(ROLES_MANAGER), async (_req, res) => {
 router.get("/", requireAuth(ROLES_VIEW), async (req, res) => {
   try {
     const page   = Math.max(1, parseInt(req.query.page || "1"));
-    const limit  = Math.min(50, parseInt(req.query.limit || "20"));
+    const limit  = Math.min(50, parseInt(req.query.limit || "7"));
     const skip   = (page - 1) * limit;
     const status = req.query.status;
     const search = req.query.q;

@@ -67,6 +67,8 @@ app.use("/api/stats", require("./routes/stats.routes"));
 app.use("/api/devolutions", require("./routes/devolutions.routes"));
 app.use("/api/mermas", require("./routes/merma.routes"));
 app.use("/api/inventory/cash-closures", require("./routes/cash-closure.routes"));
+app.use("/api/inventory/sales-catalog", require("./routes/sales-catalog.routes"));
+app.use("/api/inventory/sales", require("./routes/sales.routes"));
 
 app.use((err, _req, res, _next) => {
   console.error("[Inventory ERROR]", err);

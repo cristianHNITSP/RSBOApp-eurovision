@@ -5,21 +5,22 @@ import { listTransactions } from "@/services/transactions";
  * Composable for unified sales history.
  */
 export function useVentasHistory(getUser) {
-  const category   = ref('all');
-  const rows       = ref([]);
-  const loading    = ref(false);
-  const page       = ref(1);
-  const totalPages = ref(1);
-  const limit      = 7;
+  const category    = ref('all');
+  const searchQuery = ref('');
+  const rows        = ref([]);
+  const loading     = ref(false);
+  const page        = ref(1);
+  const totalPages  = ref(1);
+  const limit       = 7;
 
   async function reload() {
     loading.value = true;
     try {
-      // Pedimos datos paginados y filtrados al servidor
       const params = {
         page: page.value,
         limit,
-        category: category.value !== 'all' ? category.value : undefined
+        category: category.value !== 'all' ? category.value : undefined,
+        q: searchQuery.value.trim() || undefined
       };
 
       const res = await listTransactions(params);
@@ -34,12 +35,17 @@ export function useVentasHistory(getUser) {
       const mapped = docs.map(tx => {
         const lines = (tx.items || []).map(l => ({
           title: l.title || l.sku || 'Producto',
+          sku: l.sku || 'N/A',
+          sheetName: l.sheetName || 'N/A',
+          features: l.features || [],
           qty: l.qty || 0,
           precio: l.precio || 0
         }));
 
         const pagoArr = Array.isArray(tx.pago) ? tx.pago : [];
-        const pagoDisplay = pagoArr.map(p => PAGO_LABELS[p] || p).join(" / ") || "—";
+        const pagoDisplay = pagoArr.length > 0 
+          ? pagoArr.map(p => PAGO_LABELS[p] || p).join(" / ") 
+          : "Sin especificar";
 
         return {
           id:               String(tx.id),
@@ -52,6 +58,7 @@ export function useVentasHistory(getUser) {
           fecha:            tx.fecha,
           cliente:          tx.cliente,
           clienteDisplay:   tx.cliente,
+          phone:            tx.phone || '',
           note:             tx.note || '',
           totalMonto:       tx.total || 0,
           totalPiezas:      lines.reduce((s, l) => s + (l.qty || 0), 0),
@@ -76,11 +83,16 @@ export function useVentasHistory(getUser) {
     reload();
   });
 
+  watch(searchQuery, () => {
+    page.value = 1;
+    reload();
+  });
+
   watch(page, reload);
 
   onMounted(() => {
     reload();
   });
 
-  return { category, rows, loading, reload, page, totalPages };
+  return { category, searchQuery, rows, loading, reload, page, totalPages };
 }

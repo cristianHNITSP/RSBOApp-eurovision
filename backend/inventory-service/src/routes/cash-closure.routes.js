@@ -1,95 +1,87 @@
 const express = require("express");
 const router = express.Router();
 const { protect } = require("../utils/auth");
-const LaboratoryOrder = require("../models/laboratory/LaboratoryOrder");
+const Sale = require("../models/Sale");
 const MermaLog = require("../models/MermaLog");
 const CashClosure = require("../models/CashClosure");
 const { generateFolio } = require("../utils/folio");
-const axios = require("axios");
-
-const OPTICA_SERVICE_URL = process.env.OPTICA_SERVICE_URL || "http://optica-service:3000";
-
-/**
- * Calcula el resumen de lo que va del día (o desde el último corte).
- */
 async function calculateSummary(dateFrom, dateTo) {
-  // 1. Órdenes de Laboratorio
-  const orders = await LaboratoryOrder.find({
+  // 1. Ventas
+  const sales = await Sale.find({
     createdAt: { $gte: dateFrom, $lte: dateTo }
-  }).lean();
+  }).populate("items.sheet").lean();
 
-  // 2. Ventas de Óptica
-  let opticaSales = [];
-  try {
-    const opticaRes = await axios.get(`${OPTICA_SERVICE_URL}/api/optica/sales/search`, {
-      params: { dateFrom: dateFrom.toISOString(), dateTo: dateTo.toISOString() },
-      headers: { "x-service-token": process.env.INTERNAL_SERVICE_TOKEN }
-    });
-    if (opticaRes.data && opticaRes.data.ok) {
-      opticaSales = opticaRes.data.data;
-    }
-  } catch (err) {
-    console.warn("[CASH-CLOSURE] Optica sales fetch failed:", err.message);
-  }
-
-  // 3. Mermas
+  // 2. Mermas
   const mermas = await MermaLog.find({
     createdAt: { $gte: dateFrom, $lte: dateTo }
-  }).populate("sheet", "precio cost").lean();
+  }).populate("sheet", "precio cost tipo_matriz").lean();
 
   const summary = {
-    sales: {
-      total: 0,
-      count: 0,
-      byMethod: { efec: 0, tarjeta: 0, trans: 0, credito: 0 }
-    },
-    merma: {
-      totalValue: 0,
-      count: 0,
-      byReason: {}
+    sales: { total: 0, count: 0, byMethod: { efec: 0, tarjeta: 0, trans: 0, credito: 0 } },
+    merma: { totalValue: 0, count: 0, byReason: {} },
+    categories: {
+      "bases-micas":     { sales: 0, count: 0, merma: 0, bySheet: {} },
+      "lentes-contacto": { sales: 0, count: 0, merma: 0, bySheet: {} }
     }
   };
 
-  // ... (Procesar Laboratorio y Óptica se mantiene igual)
-  // Procesar Laboratorio
-  orders.forEach(o => {
-    const monto = o.totalMonto || 0;
-    summary.sales.total += monto;
-    summary.sales.count++;
-    if (Array.isArray(o.pago)) {
-      o.pago.forEach(p => {
-        if (summary.sales.byMethod[p] !== undefined) {
-          if (o.pago.length === 1) summary.sales.byMethod[p] += monto;
-          else if (p === o.pago[0]) summary.sales.byMethod[p] += monto;
+    // Procesar Ventas
+    sales.forEach(s => {
+      const monto = s.total || 0;
+      summary.sales.total += monto;
+      summary.sales.count++;
+      
+      // ✅ Categorización Atómica por Ítem (No por venta completa)
+      s.items.forEach(i => {
+        const itemMonto = (i.precio || 0) * (i.qty || 1);
+        
+        // Detección de categoría
+        let itemCat = "bases-micas";
+        const isLC = i.collection === 'lentes-contacto' || 
+                     i.category === 'contact-lenses' || 
+                     i.sheet?.tipo_matriz === "SPH_CYL_AXIS";
+                     
+        if (isLC) itemCat = "lentes-contacto";
+
+        if (summary.categories[itemCat]) {
+          summary.categories[itemCat].sales += itemMonto;
+          summary.categories[itemCat].count += (i.qty || 1);
+          
+          const sName = i.sheet?.nombre || i.description || "Genérico";
+          if (!summary.categories[itemCat].bySheet[sName]) {
+            summary.categories[itemCat].bySheet[sName] = { sales: 0, count: 0 };
+          }
+          summary.categories[itemCat].bySheet[sName].sales += itemMonto;
+          summary.categories[itemCat].bySheet[sName].count += (i.qty || 1);
         }
       });
-    }
-  });
 
-  // Procesar Óptica
-  opticaSales.forEach(s => {
-    const monto = s.total || 0;
-    summary.sales.total += monto;
-    summary.sales.count++;
-    if (Array.isArray(s.pago)) {
-      s.pago.forEach(p => {
-        if (summary.sales.byMethod[p] !== undefined) {
-          if (s.pago.length === 1) summary.sales.byMethod[p] += monto;
-          else if (p === s.pago[0]) summary.sales.byMethod[p] += monto;
-        }
-      });
-    }
-  });
+      if (Array.isArray(s.pago)) {
+        s.pago.forEach(p => {
+          if (summary.sales.byMethod[p] !== undefined) {
+            // Prorrata simple: si hay un solo método, se lleva el total. Si hay varios, el primero (mejorable a futuro)
+            if (p === s.pago[0]) summary.sales.byMethod[p] += monto;
+          }
+        });
+      }
+    });
 
-  // Procesar Merma con valor monetario
+  // Procesar Merma
   mermas.forEach(m => {
     const qty = m.qty || 0;
     summary.merma.count += qty;
     
-    // Calcular valor: si tiene sheet (Lab), usamos el precio de la hoja
-    // Si no, por ahora solo sumamos la cantidad (Óptica requeriría fetch extra por SKU)
-    const price = m.sheet?.precio || 0;
-    summary.merma.totalValue += (price * qty);
+    // ✅ Usamos el costo capturado (snapshot) o el precio si no hay costo
+    const lossUnit = m.unitCost || m.unitValue || 0;
+    const lossTotal = lossUnit * qty;
+    
+    summary.merma.totalValue += lossTotal;
+
+    // Categorizar merma financiera por categoría
+    const cat = m.tipo_matriz === "SPH_CYL_AXIS" ? "lentes-contacto" : "bases-micas";
+    if (summary.categories[cat]) {
+      summary.categories[cat].merma += lossTotal;
+    }
 
     const reason = m.reason || "OTRO";
     summary.merma.byReason[reason] = (summary.merma.byReason[reason] || 0) + qty;
@@ -133,8 +125,9 @@ router.post("/", protect(), async (req, res) => {
       endDate: dateTo,
       sales: summary.sales,
       merma: summary.merma,
+      globalSummary: req.body.globalSummary || {},
       closedBy: {
-        userId: req.user.id,
+        userId: req.user.id || req.user.userId,
         name:   req.user.name || req.user.username
       },
       observations: req.body.observations || ""
@@ -152,7 +145,7 @@ router.post("/", protect(), async (req, res) => {
  */
 router.get("/", protect(), async (req, res) => {
   try {
-    const { limit = 20, page = 1 } = req.query;
+    const { limit = 7, page = 1 } = req.query;
     const closures = await CashClosure.find()
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)

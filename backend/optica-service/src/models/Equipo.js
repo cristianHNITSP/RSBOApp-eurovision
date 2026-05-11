@@ -25,6 +25,9 @@ const EquipoSchema = new mongoose.Schema(
     mantenimiento: { type: Date, default: null },  // próximo mantenimiento
     notas:         { type: String, default: "" },
 
+    precio:    { type: Number, required: true, min: 0, default: 0 },
+    stock:     { type: Number, required: true, min: 0, default: 0 },
+
     // Soft delete
     isDeleted: { type: Boolean, default: false, index: true },
     deletedAt: { type: Date, default: null },

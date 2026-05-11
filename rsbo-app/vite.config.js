@@ -18,7 +18,8 @@ export default defineConfig(({ mode }) => {
   const onProxyError = (prefix) => (err, req, res) => {
     console.error(`${prefix} PROXY ERROR:`, err?.code, err?.message);
 
-    if (res && !res.headersSent) {
+    // En WebSockets, 'res' es un Socket y no tiene writeHead
+    if (res && typeof res.writeHead === "function" && !res.headersSent) {
       res.writeHead(502, { "Content-Type": "application/json" });
       res.end(
         JSON.stringify({
@@ -27,6 +28,9 @@ export default defineConfig(({ mode }) => {
           message: err?.message || "Unknown proxy error",
         })
       );
+    } else if (res && typeof res.destroy === "function") {
+      // Si es un socket, lo destruimos para liberar recursos
+      res.destroy();
     }
   };
 

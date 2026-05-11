@@ -37,13 +37,14 @@ export const baseForEye = (row) =>
     : Number(row.base_izq ?? 0);
 
 export const buildRowTitle = (row, sheet) => {
+  const prefix = sheet?.nombre ? `${sheet.nombre} · ` : "";
   const t = sheet?.tipo_matriz;
-  if (t === "BASE")    return `Base ${fv(row.base)}`;
-  if (t === "SPH_CYL") return `Esfera ${fv(row.sph)} · Cilindro ${fv(row.cyl)}`;
-  if (t === "SPH_CYL_AXIS") return `Esfera ${fv(row.sph)} · Cilindro ${fv(row.cyl)} · Eje ${row.axis}°`;
-  if (t === "SPH_ADD")  return `${eyeLabel(row.eye)} · Esfera ${fv(row.sph)} · Adición ${fv(row.add)}`;
-  if (t === "BASE_ADD") return `${eyeLabel(row.eye)} · Base ${fv(baseForEye(row))} · Adición ${fv(row.add)}`;
-  return "Producto";
+  if (t === "BASE")    return `${prefix}Base ${fv(row.base)}`;
+  if (t === "SPH_CYL") return `${prefix}Esfera ${fv(row.sph)} · Cilindro ${fv(row.cyl)}`;
+  if (t === "SPH_CYL_AXIS") return `${prefix}Esfera ${fv(row.sph)} · Cilindro ${fv(row.cyl)} · Eje ${row.axis}°`;
+  if (t === "SPH_ADD")  return `${prefix}${eyeLabel(row.eye)} · Esfera ${fv(row.sph)} · Adición ${fv(row.add)}`;
+  if (t === "BASE_ADD") return `${prefix}${eyeLabel(row.eye)} · Base ${fv(baseForEye(row))} · Adición ${fv(row.add)}`;
+  return prefix || "Producto";
 };
 
 export const buildRowParams = (row, sheet) => {

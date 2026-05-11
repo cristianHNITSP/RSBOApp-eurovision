@@ -175,7 +175,7 @@ function onBannerLeave(el, done) {
     <!-- Skeleton -->
     <div v-if="section.loading" class="skeleton-wrap">
       <div
-        v-for="i in 6"
+        v-for="i in 7"
         :key="i"
         class="skeleton-row"
         :style="`animation-delay:${i * 60}ms`"
@@ -200,7 +200,7 @@ function onBannerLeave(el, done) {
         :selected="section.selected"
         @update:selected="(r) => $emit('select', r)"
         paginated
-        :per-page="10"
+        :per-page="7"
         pagination-size="is-small"
         :loading="section.loading"
       >

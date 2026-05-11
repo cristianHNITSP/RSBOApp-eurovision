@@ -15,7 +15,8 @@
           <p class="mt-2 text-muted font-900 uppercase-label">Calculando resumen...</p>
         </div>
 
-        <div v-else-if="summary">
+        <div v-else-if="summary && summary.ok">
+          <!-- Periodo -->
           <div class="summary-header-box mb-5">
             <div class="is-flex is-align-items-center">
               <div class="header-icon-box mr-3">
@@ -30,47 +31,112 @@
             </div>
           </div>
 
-          <!-- Ventas -->
+          <!-- Resumen Consolidado -->
           <div class="summary-section mb-5">
-            <h3 class="section-title-premium mb-3">Resumen de Ingresos</h3>
+            <h3 class="section-title-premium mb-3">Gran Total Consolidado</h3>
             <div class="total-ventas-hero mb-3">
-              <span class="hero-label">Ventas Totales</span>
-              <span class="hero-val">{{ formatCurrency(summary.sales.total) }}</span>
+              <span class="hero-label">Ventas Globales (Micas + Óptica)</span>
+              <span class="hero-val">{{ formatCurrency(summary.combined.salesTotal) }}</span>
             </div>
             
             <div class="closure-grid">
-              <div v-for="(val, key) in summary.sales.byMethod" :key="key" class="closure-stat-card" v-show="val > 0">
+              <div v-for="(val, key) in summary.combined.byMethod" :key="key" class="closure-stat-card" v-show="val > 0">
                 <span class="closure-stat-label">{{ METHOD_LABELS[key] || key }}</span>
                 <span class="closure-stat-val">{{ formatCurrency(val) }}</span>
               </div>
             </div>
           </div>
 
-          <!-- Merma / Pérdidas -->
+          <!-- Desglose por Servicio -->
           <div class="summary-section mb-5">
-            <h3 class="section-title-premium section-title-premium--danger mb-3">Pérdidas (Merma)</h3>
+            <h3 class="section-title-premium mb-3">Desglose por Servicio</h3>
+            <div class="service-breakdown-row">
+              <div class="service-card">
+                <div class="service-icon"><i class="fas fa-microscope"></i></div>
+                <div class="service-info">
+                  <span class="service-label">Micas/Bases</span>
+                  <span class="service-val">{{ formatCurrency(summary.micas.sales.total) }}</span>
+                  <span class="service-qty">{{ summary.micas.sales.count }} ventas</span>
+                </div>
+              </div>
+              <div class="service-card">
+                <div class="service-icon"><i class="fas fa-glasses"></i></div>
+                <div class="service-info">
+                  <span class="service-label">Óptica</span>
+                  <span class="service-val">{{ formatCurrency(summary.optica.sales.total) }}</span>
+                  <span class="service-qty">{{ summary.optica.sales.count }} ventas</span>
+                  
+                  <div v-if="summary.optica.categories" class="category-breakdown mt-2">
+                    <div v-for="(v, k) in summary.optica.categories" :key="k" class="cat-line" v-show="v.count > 0">
+                      <span class="cat-line__name">{{ k }}</span>
+                      <span class="cat-line__val">{{ formatCurrency(v.sales) }} ({{ v.count }})</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div v-if="summary.micas.categories" class="inventory-granular-box mt-3">
+               <template v-for="(v, catKey) in summary.micas.categories" :key="catKey">
+                  <div class="granular-item granular-item--header" v-show="v.count > 0">
+                     <span class="granular-label">{{ catKey === 'bases-micas' ? 'Bases y Micas' : 'Lentes de Contacto' }}</span>
+                     <span class="granular-val">{{ formatCurrency(v.sales) }} · {{ v.count }} ventas</span>
+                  </div>
+                  <!-- ✅ Desglose Quirúrgico por Plantilla -->
+                  <div v-for="(sVal, sName) in v.bySheet" :key="sName" class="granular-item granular-item--detail" v-show="sVal.count > 0">
+                    <span class="granular-label"><i class="fas fa-caret-right mr-1"></i> {{ sName }}</span>
+                    <span class="granular-val">{{ formatCurrency(sVal.sales) }} ({{ sVal.count }} pzs)</span>
+                  </div>
+               </template>
+            </div>
+          </div>
+
+          <!-- Merma -->
+          <div class="summary-section mb-5">
+            <h3 class="section-title-premium section-title-premium--danger mb-3">Pérdidas (Merma Consolidada)</h3>
             <div class="merma-summary-box mb-3">
               <div class="is-flex is-justify-content-space-between is-align-items-center">
                 <div>
-                  <p class="has-text-weight-bold is-size-5 text-danger">{{ summary.merma.count }} pzs</p>
+                  <p class="has-text-weight-bold is-size-5 text-danger">{{ summary.combined.mermaCount }} pzs</p>
                   <p class="is-size-7 text-muted">Productos descartados</p>
                 </div>
                 <div class="has-text-right">
-                  <p class="has-text-weight-bold is-size-5 text-danger">{{ formatCurrency(summary.merma.totalValue) }}</p>
+                  <p class="has-text-weight-bold is-size-5 text-danger">{{ formatCurrency(summary.combined.mermaTotal) }}</p>
                   <p class="is-size-7 text-muted">Valor en inventario</p>
                 </div>
               </div>
             </div>
             
-            <div v-if="Object.keys(summary.merma.byReason).length > 0" class="reason-pills">
-              <div v-for="(qty, reason) in summary.merma.byReason" :key="reason" class="reason-pill">
-                <span class="reason-label">{{ reason }}</span>
-                <span class="reason-qty">{{ qty }}</span>
+            <!-- ✅ Desglose Quirúrgico de Mermas -->
+            <div class="inventory-granular-box mt-3">
+              <div class="granular-item granular-item--header">
+                 <span class="granular-label">Desglose por Motivo</span>
+                 <span class="granular-val">Totales</span>
+              </div>
+              <div v-for="(qty, reason) in summary.combined.mermaByReason" :key="reason" class="granular-item granular-item--detail" v-show="qty > 0">
+                <span class="granular-label"><i class="fas fa-exclamation-triangle mr-1"></i> {{ reason }}</span>
+                <span class="granular-val">{{ qty }} pzs</span>
               </div>
             </div>
-            <p v-else class="is-size-7 text-muted italic">No se registraron mermas en este periodo.</p>
+            
+            <div v-if="summary.combined.mermaCount > 0" class="inventory-granular-box mt-3">
+               <template v-if="summary.micas.categories">
+                 <div v-for="(v, k) in summary.micas.categories" :key="'merma_m_'+k" class="granular-item" v-show="v.merma > 0">
+                    <span class="granular-label"><i class="fas fa-microscope mr-1 text-muted"></i> {{ k === 'bases-micas' ? 'Bases y Micas' : 'Lentes de Contacto' }}</span>
+                    <span class="granular-val text-danger">{{ formatCurrency(v.merma) }}</span>
+                 </div>
+               </template>
+               <template v-if="summary.optica.categories">
+                 <div v-for="(v, k) in summary.optica.categories" :key="'merma_o_'+k" class="granular-item" v-show="v.merma > 0">
+                    <span class="granular-label"><i class="fas fa-glasses mr-1 text-muted"></i> Óptica: <span style="text-transform: capitalize;">{{ k }}</span></span>
+                    <span class="granular-val text-danger">{{ formatCurrency(v.merma) }}</span>
+                 </div>
+               </template>
+            </div>
+            <p v-else class="is-size-7 text-muted italic mt-2">No se registraron mermas en este periodo.</p>
           </div>
 
+          <!-- Notas -->
           <b-field label="Observaciones" custom-class="uppercase-label">
             <b-input 
               v-model="observations" 
@@ -86,6 +152,19 @@
             Este proceso generará un registro inmutable. Verifícalo antes de confirmar.
           </div>
         </div>
+
+        <!-- Estado de Error (Servicio Caído) -->
+        <div v-else-if="summary && !summary.ok" class="offline-state py-6">
+          <div class="offline-state__icon">
+            <i class="fas fa-exclamation-triangle"></i>
+          </div>
+          <p class="offline-state__title">Cierre de Caja Bloqueado</p>
+          <p class="offline-state__text">
+            {{ summary.error || 'Uno o más microservicios no responden.' }}<br>
+            <b>No es posible realizar un cierre consolidado en este momento.</b>
+          </p>
+          <p class="mt-4 is-size-7 text-danger font-900">POR FAVOR, AVISE A SOPORTE TÉCNICO.</p>
+        </div>
       </section>
 
       <footer class="modal-card-foot glass-modal-footer">
@@ -93,7 +172,7 @@
         <b-button 
           type="is-primary" 
           :loading="saving" 
-          :disabled="!summary || loading"
+          :disabled="!summary || !summary.ok || loading"
           @click="handleConfirm"
           icon-left="check-double"
           class="premium-btn"
@@ -108,9 +187,11 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useCashClosures } from '@/composables/api/useCashClosures';
+import { formatCurrency } from '@/utils/filters';
+
 
 const emit = defineEmits(['close', 'success']);
-const { getSummary, performClosure } = useCashClosures();
+const { getGlobalSummary, performGlobalClosure } = useCashClosures();
 
 const summary = ref(null);
 const loading = ref(true);
@@ -125,29 +206,28 @@ const METHOD_LABELS = {
 };
 
 onMounted(async () => {
-  summary.value = await getSummary();
+  summary.value = await getGlobalSummary();
   loading.value = false;
 });
 
 async function handleConfirm() {
+  if (!summary.value) return;
   saving.value = true;
   try {
-    const result = await performClosure(observations.value);
-    if (result) {
-      emit('success', result);
+    const result = await performGlobalClosure(summary.value, observations.value);
+    
+    if (result.ok) {
+      emit('success', result.inv);
     }
   } catch (err) {
-    // Error handled by composable/axios
+    // Error manejado por el interceptor o b-toast genérico
   } finally {
     saving.value = false;
   }
 }
 
-function formatCurrency(val) {
-  return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(val);
-}
-
 function formatDate(d) {
+
   if (!d) return '';
   return new Intl.DateTimeFormat('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(d));
 }
@@ -321,4 +401,122 @@ function formatDate(d) {
 }
 
 .text-danger { color: #f14668 !important; }
+
+.service-breakdown-row {
+  display: flex;
+  gap: 1rem;
+}
+
+.service-card {
+  flex: 1;
+  background: var(--surface-overlay);
+  border: 1px solid var(--border);
+  padding: 1rem;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.service-icon {
+  width: 40px;
+  height: 40px;
+  background: var(--surface-raised);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--c-primary);
+}
+
+.service-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.service-label {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.service-val {
+  font-size: 1.1rem;
+  font-weight: 1000;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.service-qty {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.category-breakdown {
+  border-top: 1px dashed rgba(0,0,0,0.1);
+  padding-top: 0.5rem;
+  margin-top: 0.5rem;
+  width: 100%;
+}
+
+.cat-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: capitalize;
+  padding: 0.2rem 0;
+}
+
+.cat-line__name {
+  flex: 1;
+}
+
+.cat-line__val {
+  font-weight: 800;
+  color: var(--text-primary);
+  text-align: right;
+}
+
+.inventory-granular-box {
+  background: var(--surface-glass);
+  border: 1px solid var(--border-light);
+  padding: 1rem;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.granular-item--header {
+  background: var(--surface-raised) !important;
+  border-bottom: 2px solid var(--c-primary-alpha) !important;
+}
+
+.granular-item--header .granular-label {
+  color: var(--c-primary);
+  text-transform: uppercase;
+  font-size: 0.65rem;
+}
+
+.granular-item--detail {
+  padding-left: 1.5rem !important;
+  border-left: 2px solid var(--border-light) !important;
+  margin-left: 0.5rem;
+  background: transparent !important;
+}
+
+.granular-item--detail .granular-label {
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.granular-item--detail .granular-val {
+  color: var(--text-primary);
+  font-weight: 800;
+}
 </style>

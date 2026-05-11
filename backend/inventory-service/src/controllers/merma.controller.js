@@ -22,14 +22,15 @@ exports.create = async (req, res) => {
       ...req.body,
       actor: actorFrom(req),
     });
+
     return res.status(201).json({ ok: true, data: merma });
   } catch (err) { return handle(err, res); }
 };
 
 exports.list = async (req, res) => {
   try {
-    const { origin, sheet, dateFrom, dateTo, page, limit, search } = req.query;
-    const out = await mermaService.listMermas({ origin, sheet, dateFrom, dateTo, page, limit, search });
+    const { origin, sheet, dateFrom, dateTo, page, limit, search, isReplica } = req.query;
+    const out = await mermaService.listMermas({ origin, sheet, dateFrom, dateTo, page, limit, search, isReplica });
     return res.json({ ok: true, ...out });
   } catch (err) { return handle(err, res); }
 };

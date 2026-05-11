@@ -24,19 +24,31 @@
 
     <section class="mermas-stats" v-if="stats">
       <div class="stat-card">
-        <span class="stat-card__label">Total</span>
-        <span class="stat-card__val">{{ stats.totals?.count || 0 }}</span>
-        <span class="stat-card__sub">{{ stats.totals?.qtyTotal || 0 }} unidades</span>
+        <span class="stat-card__label">Total Unidades</span>
+        <span class="stat-card__val">{{ stats.totals?.qtyTotal || 0 }}</span>
+        <span class="stat-card__sub">{{ stats.totals?.count || 0 }} registros</span>
+      </div>
+      <div class="stat-card is-danger">
+        <span class="stat-card__label">Pérdida Total</span>
+        <span class="stat-card__val">{{ formatCurrency(stats.totals?.valueTotal || 0) }}</span>
+        <span class="stat-card__sub">Valor estimado</span>
       </div>
       <div class="stat-card" v-for="o in stats.byOrigin" :key="o._id">
         <span class="stat-card__label">{{ originLabel(o._id) }}</span>
-        <span class="stat-card__val">{{ o.count }}</span>
-        <span class="stat-card__sub">{{ o.qtyTotal }} unidades</span>
+        <span class="stat-card__val">{{ o.qtyTotal }}</span>
+        <span class="stat-card__sub">{{ formatCurrency(o.valueTotal || 0) }} perdidos</span>
       </div>
     </section>
 
     <section class="mermas-filters">
-      <b-field label="Origen" label-position="on-border">
+      <b-field label="Servicio" label-position="on-border">
+        <b-select v-model="filters.service" @update:model-value="setFilter({ service: $event })">
+          <option value="inventory">Inventario (Micas)</option>
+          <option value="optica">Óptica (Armazones...)</option>
+        </b-select>
+      </b-field>
+
+      <b-field label="Origen" label-position="on-border" v-if="filters.service === 'inventory'">
         <b-select v-model="filters.origin" @update:model-value="setFilter({ origin: $event })">
           <option :value="null">Todos</option>
           <option value="LAB">Laboratorio</option>
@@ -45,10 +57,19 @@
           <option value="INVENTARIO">Inventario</option>
         </b-select>
       </b-field>
+
+      <b-field label="Tipo" label-position="on-border">
+        <b-select v-model="filters.isReplica" @update:model-value="setFilter({ isReplica: $event })">
+          <option :value="null">Todos</option>
+          <option :value="false">Originales</option>
+          <option :value="true">Réplicas (Espejo)</option>
+        </b-select>
+      </b-field>
+
       <b-field label="Buscar" label-position="on-border" expanded>
         <b-input
           v-model="filters.search"
-          placeholder="Folio o codebar"
+          :placeholder="filters.service === 'inventory' ? 'Folio o codebar' : 'Folio o SKU'"
           icon="search"
           @input="onSearchInput"
         />
@@ -67,26 +88,40 @@
         <div class="merma-row" v-for="m in items" :key="m._id">
           <div class="merma-row__head">
             <span class="merma-row__folio">{{ m.folio }}</span>
+            <span v-if="m.isReplica" class="tag is-dark is-outlined">
+              <i class="fas fa-clone mr-1"></i>REPLICA
+            </span>
             <span class="tag" :class="originClass(m.origin)">{{ originLabel(m.origin) }}</span>
             <span class="tag is-light">{{ m.reason }}</span>
-            <span class="merma-row__qty">−{{ m.qty }} u.</span>
+            <span class="merma-row__qty">
+              <span class="has-text-grey-light is-size-7 mr-2">{{ formatCurrency((m.unitCost || m.unitValue || 0) * m.qty) }}</span>
+              −{{ m.qty }} u.
+            </span>
           </div>
           
           <div class="merma-row__sheet mb-1">
-            <span class="is-size-7 has-text-weight-semibold">
-              <i class="fas fa-layer-group mr-1"></i>{{ m.sheet?.nombre || 'Planilla desconocida' }}
-            </span>
-            <span v-if="m.laboratoryOrder" class="ml-3 is-size-7 has-text-info">
-              <i class="fas fa-flask mr-1"></i>{{ m.laboratoryOrder.folio }} | {{ m.laboratoryOrder.cliente }}
-            </span>
-            <span v-else-if="m.ventaFolio" class="ml-3 is-size-7 has-text-success">
+            <template v-if="filters.service === 'inventory'">
+              <span class="is-size-7 has-text-weight-semibold">
+                <i class="fas fa-layer-group mr-1"></i>{{ m.sheet?.nombre || 'Planilla desconocida' }}
+              </span>
+              <span v-if="m.laboratoryOrder" class="ml-3 is-size-7 has-text-info">
+                <i class="fas fa-flask mr-1"></i>{{ m.laboratoryOrder.folio }} | {{ m.laboratoryOrder.cliente }}
+              </span>
+            </template>
+            <template v-else>
+              <span class="is-size-7 has-text-weight-semibold">
+                <i class="fas fa-box mr-1"></i>{{ m.collection }} | {{ m.sku }}
+              </span>
+            </template>
+            
+            <span v-if="m.ventaFolio" class="ml-3 is-size-7 has-text-success">
               <i class="fas fa-shopping-cart mr-1"></i>{{ m.ventaFolio }}
             </span>
           </div>
 
           <div class="merma-row__meta">
             <span v-if="m.codebar"><i class="fas fa-barcode mr-1"></i>{{ m.codebar }}</span>
-            <span><i class="fas fa-key mr-1"></i>{{ formatKey(m.matrixKey, m.tipo_matriz) }}<span v-if="m.eye"> · {{ m.eye }}</span></span>
+            <span v-if="filters.service === 'inventory'"><i class="fas fa-key mr-1"></i>{{ formatKey(m.matrixKey, m.tipo_matriz) }}<span v-if="m.eye"> · {{ m.eye }}</span></span>
             <span><i class="fas fa-user mr-1"></i>{{ m.actor?.name || '—' }}</span>
             <span>{{ fmtDate(m.createdAt) }}</span>
           </div>
@@ -110,6 +145,7 @@
 import { onMounted, ref } from "vue";
 import MermaButton from "@/components/mermas/MermaButton.vue";
 import { useMermas } from "@/composables/api/useMermas.js";
+import { formatCurrency } from "@/utils/filters";
 
 const { items, meta, loading, stats, filters, load, loadStats, setFilter } = useMermas();
 

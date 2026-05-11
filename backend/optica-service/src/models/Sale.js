@@ -8,8 +8,9 @@ const SaleSchema = new mongoose.Schema(
     
     // Lista de ítems vendidos
     items: [{
-      collection: { type: String, required: true }, // armazones, lentes, etc.
-      documentId: { type: mongoose.Schema.Types.ObjectId, required: true },
+      collection: { type: String, required: false }, // armazones, lentes, etc.
+      documentId: { type: mongoose.Schema.Types.ObjectId, required: false },
+
       sku: { type: String, required: true },
       description: { type: String, default: "" },
       qty: { type: Number, required: true, min: 1 },

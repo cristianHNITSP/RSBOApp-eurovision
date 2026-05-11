@@ -56,9 +56,29 @@
       </div>
 
       <b-loading :is-full-page="false" :active="loadingItems" />
-
+ 
+      <!-- Estado Offline / Error Crítico -->
+      <div v-if="isOffline" class="offline-state animate__animated animate__shakeX">
+        <div class="offline-state__icon">
+          <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <p class="offline-state__title">Servicio no disponible</p>
+        <p class="offline-state__text">
+          Se ha perdido la conexión con este módulo.<br>
+          <b>Por favor, contacte a soporte técnico inmediatamente.</b>
+        </p>
+        <b-button 
+          type="is-warning" 
+          icon-left="sync" 
+          class="mt-4"
+          @click="$emit('reload')"
+        >
+          Reintentar conexión
+        </b-button>
+      </div>
+ 
       <!-- Estado vacío -->
-      <div v-if="!loadingItems && !filteredItemsLength" class="empty">
+      <div v-else-if="!loadingItems && !filteredItemsLength" class="empty">
         <i class="fas fa-boxes empty__icon"></i>
         <p class="empty__title">Sin productos</p>
         <p class="empty__text">Cambia filtros o selecciona otra categoría.</p>
@@ -113,7 +133,7 @@
       </b-table>
 
       <!-- Paginación -->
-      <nav v-if="filteredItemsLength > catalogPageSize" class="pager">
+      <nav v-if="filteredItemsLength > 0" class="pager">
         <b-button
           size="is-small"
           type="is-light"
@@ -150,10 +170,11 @@ const props = defineProps({
   itemQuery: { type: String, default: "" },
   stockFilter: { type: String, default: "withStock" },
   loadingItems: { type: Boolean, default: false },
+  isOffline: { type: Boolean, default: false },
   paginatedItems: { type: Array, default: () => [] },
   catalogPage: { type: Number, default: 1 },
   catalogPages: { type: Number, default: 1 },
-  catalogPageSize: { type: Number, default: 15 },
+  catalogPageSize: { type: Number, default: 7 },
   selectedSheet: { type: Object, default: null },
   sheetTitle: { type: Function, default: () => '' },
   buildRowTitle: { type: Function, required: true },
@@ -164,13 +185,14 @@ const props = defineProps({
   pickerIcon: { type: String, default: "fa-layer-group" },
   codeLabel: { type: String, default: "código" }
 });
-
+ 
 const emit = defineEmits([
   "update:selectedSheetId",
   "update:itemQuery",
   "update:stockFilter",
   "update:catalogPage",
-  "add-to-cart"
+  "add-to-cart",
+  "reload"
 ]);
 
 const localItemQuery = computed({

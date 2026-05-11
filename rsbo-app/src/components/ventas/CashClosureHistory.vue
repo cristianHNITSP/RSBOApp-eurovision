@@ -100,12 +100,12 @@
     </div>
 
     <!-- Paginación Glass -->
-    <nav v-if="total > 10" class="glass-pager">
+    <nav v-if="total > 7" class="glass-pager">
       <button :disabled="currentPage === 1" @click="onPageChange(currentPage - 1)">
         <i class="fas fa-chevron-left"></i>
       </button>
-      <span class="pager-info">{{ currentPage }} / {{ Math.ceil(total / 10) }}</span>
-      <button :disabled="currentPage >= Math.ceil(total / 10)" @click="onPageChange(currentPage + 1)">
+      <span class="pager-info">{{ currentPage }} / {{ Math.ceil(total / 7) }}</span>
+      <button :disabled="currentPage >= Math.ceil(total / 7)" @click="onPageChange(currentPage + 1)">
         <i class="fas fa-chevron-right"></i>
       </button>
     </nav>
@@ -115,6 +115,8 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useCashClosures } from '@/composables/api/useCashClosures';
+import { formatCurrency } from '@/utils/filters';
+
 
 const { closures, loading, total, fetchClosures } = useCashClosures();
 const expandedId = ref(null);
@@ -142,15 +144,8 @@ function onPageChange(page) {
   fetchClosures(page);
 }
 
-function formatCurrency(val) {
-  return new Intl.NumberFormat('es-MX', { 
-    style: 'currency', 
-    currency: 'MXN',
-    maximumFractionDigits: 2
-  }).format(val);
-}
-
 function formatDate(d) {
+
   if (!d) return '';
   return new Intl.DateTimeFormat('es-MX', { 
     dateStyle: 'medium', 

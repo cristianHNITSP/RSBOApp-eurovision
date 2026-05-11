@@ -51,13 +51,16 @@ app.get(APP_CONSTANTS.PATHS.HEALTH, (_req, res) => {
 });
 
 app.use("/api/optica/armazones",  require("./routes/armazones.routes"));
-app.use("/api/optica/lentes",     require("./routes/lentes.routes"));
 app.use("/api/optica/soluciones", require("./routes/soluciones.routes"));
 app.use("/api/optica/accesorios", require("./routes/accesorios.routes"));
 app.use("/api/optica/estuches",   require("./routes/estuches.routes"));
 app.use("/api/optica/equipos",    require("./routes/equipos.routes"));
-app.use("/api/optica/logs",       require("./routes/logs.routes"));
-app.use("/api/optica/sales",      require("./routes/sales.routes"));
+app.use("/api/optica/logs",          require("./routes/logs.routes"));
+app.use("/api/optica/sales-catalog", require("./routes/sales-catalog.routes"));
+app.use("/api/optica/mermas", require("./routes/mermas.routes"));
+app.use("/api/optica/devolutions", require("./routes/devolutions.routes"));
+app.use("/api/optica/cash-closures", require("./routes/cash-closure.routes"));
+app.use("/api/optica/sales",         require("./routes/sales.routes"));
 app.use("/api/optica/stats",      require("./routes/stats.routes"));
 
 app.use((err, _req, res, _next) => {

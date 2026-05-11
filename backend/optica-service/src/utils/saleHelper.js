@@ -3,55 +3,62 @@ const { logMovement } = require("./logHelper");
 const { broadcast } = require("../ws");
 
 /**
- * Realiza un descuento atómico de stock y registra el movimiento.
+ * Realiza una mutación atómica de stock y registra el movimiento.
  * @param {mongoose.Model} Model - Modelo de Mongoose
  * @param {string} collection - Nombre de la colección (e.g. "armazones")
  * @param {string} id - ID del documento
- * @param {number} qty - Cantidad a descontar (positivo)
+ * @param {number} delta - Cambio de stock (negativo para ventas, positivo para devoluciones)
  * @param {object} actor - Usuario que realiza la acción
+ * @param {string} type - Tipo de movimiento (SALE, DEVOLUTION, MERMA, etc)
  */
-async function handleAtomicSale(Model, collection, id, qty, actor) {
-  const q = Math.abs(Number(qty || 1));
+async function handleAtomicSale(Model, collection, id, delta, actor, type = "SALE") {
+  const d = Number(delta || 0);
+  if (d === 0) return { ok: false, status: 400, message: "Delta inválido" };
+
+  const query = { _id: id, isDeleted: false };
   
-  // 1. Descuento atómico con verificación de stock suficiente ($gte)
+  // Si es decremento, validar stock suficiente
+  if (d < 0) {
+    query.stock = { $gte: Math.abs(d) };
+  }
+
   const updated = await Model.findOneAndUpdate(
-    { _id: id, isDeleted: false, stock: { $gte: q } },
-    { 
-      $inc: { stock: -q },
-      // Opcional: registrar quién actualizó por última vez en el documento mismo
-    },
-    { new: false } // Queremos el documento ANTES del cambio para saber el stock previo
+    query,
+    { $inc: { stock: d } },
+    { new: false } // Queremos el previo
   ).lean();
 
   if (!updated) {
-    // Si no se encontró el documento, podría ser por: ID inexistente, eliminado, o stock insuficiente
     const exists = await Model.findById(id).lean();
     if (!exists) return { ok: false, status: 404, message: "No encontrado" };
     if (exists.isDeleted) return { ok: false, status: 410, message: "Elemento en papelera" };
-    if (exists.stock < q) return { ok: false, status: 409, message: "Stock insuficiente", current: exists.stock };
-    return { ok: false, status: 500, message: "Error desconocido al procesar venta" };
+    if (d < 0 && exists.stock < Math.abs(d)) {
+      return { ok: false, status: 409, message: "Stock insuficiente", current: exists.stock };
+    }
+    return { ok: false, status: 500, message: "Error al actualizar stock" };
   }
 
   const prevStock = updated.stock;
-  const newStock = prevStock - q;
+  const newStock = prevStock + d;
 
   // 2. Log de movimiento
-  await logMovement(collection, id, updated.sku, "SALE", { 
+  await logMovement(collection, id, updated.sku, type, { 
     prevStock, 
     newStock, 
-    qty: q 
+    qty: Math.abs(d),
+    delta: d
   }, actor);
 
-  // 3. Broadcast WebSocket para refrescar UIs
+  // 3. Broadcast WebSocket
   broadcast("INV_CHANGE", {
     collection,
     id: String(id),
     prevStock,
     newStock,
-    delta: -q,
+    delta: d,
   });
 
-  return { ok: true, data: { id, sku: updated.sku, prevStock, newStock, delta: -q } };
+  return { ok: true, data: { id, sku: updated.sku, prevStock, newStock, delta: d } };
 }
 
 module.exports = { handleAtomicSale };

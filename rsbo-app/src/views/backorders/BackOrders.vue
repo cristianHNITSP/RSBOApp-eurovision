@@ -191,7 +191,9 @@ import StatusBadge from "../../components/backorders/StatusBadge.vue";
 import BackOrderCreateModal from "../../components/backorders/BackOrderCreateModal.vue";
 import BackOrderDetailModal from "../../components/backorders/BackOrderDetailModal.vue";
 import { labToast } from "../../composables/shared/useLabToast";
+import { formatCurrency } from "@/utils/filters";
 import { BACKORDER_CONFIG, BACKORDER_LABELS } from "@/data/backorders.data";
+
 
 const {
   backorders,
@@ -227,11 +229,8 @@ const summaryStats = computed(() => {
   ];
 });
 
-function formatCurrency(amount) {
-  return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(amount || 0);
-}
-
 function formatDate(date) {
+
   return new Date(date).toLocaleDateString("es-MX", { day: '2-digit', month: 'short' });
 }
 

@@ -39,6 +39,7 @@ router.get("/", async (req, res) => {
     const items = await Estuche.find(filter)
       .collation({ locale: "es", strength: 1 })
       .sort({ createdAt: -1 })
+      
       .lean();
     console.log(`[OPTICA][ESTUCHES] GET /  → ${items.length} items`);
     return res.json({ ok: true, data: items });

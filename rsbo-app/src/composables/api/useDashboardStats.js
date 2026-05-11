@@ -1,6 +1,6 @@
 // src/composables/useDashboardStats.js
 import { ref, computed } from "vue";
-import { fetchDashboardStats } from "@/services/stats";
+import { fetchInventoryStats, fetchOpticaStats } from "@/services/stats";
 
 // Estado compartido globalmente para evitar peticiones redundantes
 const sharedStats = ref(null);
@@ -21,11 +21,45 @@ export function useDashboardStats(userRef) {
 
     lastFetchPromise = (async () => {
       try {
-        const { data } = await fetchDashboardStats();
-        if (data?.ok) {
-          sharedStats.value = data.data;
-          return data.data;
+        // Consultamos ambos servicios en paralelo
+        const [invRes, optRes] = await Promise.allSettled([
+          fetchInventoryStats(),
+          fetchOpticaStats()
+        ]);
+
+        const invData = invRes.status === 'fulfilled' ? invRes.value.data?.data : null;
+        const optData = optRes.status === 'fulfilled' ? optRes.value.data?.data : null;
+
+        if (!invData && !optData) {
+          throw new Error("No se pudieron cargar las estadísticas de ningún servicio");
         }
+
+        // AGREGACIÓN CEREBRO (Frontend): Unificamos los dos mundos
+        const combined = {
+          // Aplanamos inventario por compatibilidad (legacy views)
+          ...(invData || {}),
+          
+          // Preservamos sub-objetos para auditoría
+          inventory: invData,
+          optica: optData,
+
+          // KPIs Globales (Suma de ambos mundos)
+          global: {
+            salesMontoMes: (invData?.ventasMontoMes || 0) + (optData?.ventasMontoMes || 0),
+            salesMontoSemana: (invData?.ventasMontoSemana || 0) + (optData?.ventasMontoSemana || 0),
+            salesMontoHoy: (invData?.ventasMontoHoy || 0) + (optData?.ventasMontoHoy || 0),
+            mermasQtyMes: (invData?.mermasQtyMes || 0) + (optData?.mermasQtyMes || 0),
+            totalPiezas: (invData?.totalStock || 0) + (optData?.totalPiezas || 0),
+            valorTotalTienda: (invData?.valorTotalTienda || 0) + (optData?.valorTotalTienda || 0),
+          },
+          // Preservamos referencias para componentes específicos
+          lab: invData?.laboratory || {},
+          inventarioMicas: invData || {},
+          inventarioOptica: optData || {}
+        };
+
+        sharedStats.value = combined;
+        return combined;
       } catch (e) {
         sharedError.value = e?.response?.data?.message || e.message;
         throw e;

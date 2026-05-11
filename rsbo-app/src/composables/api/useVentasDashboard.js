@@ -8,7 +8,7 @@ import { useLentesContactoVentas } from './useLentesContactoVentas';
 
 export const VENTAS_TABS = [
   { key: 'bases-micas', label: 'Bases y Micas', icon: 'glasses' },
-  // { key: 'optica', label: 'Óptica', icon: 'eye' },
+  { key: 'optica', label: 'Óptica', icon: 'eye' },
   { key: 'lentes-contacto', label: 'Lentes Contacto', icon: 'circle' },
   { key: 'historial', label: 'Historial', icon: 'history' },
   { key: 'cortes', label: 'Cortes', icon: 'cash-register' },
@@ -51,7 +51,8 @@ export function useVentasDashboard(getUser) {
   // Sync history filter with active tab
   watch(activeTab, (k) => {
     if (k === 'historial' && history) {
-      history.category = 'all'; // Siempre resetear a 'Todas' al entrar al historial
+      // Si entramos al historial directamente, mantenemos la última categoría o usamos la de defecto
+      if (!history.category) history.category = 'bases-micas';
     } else if (k !== 'cortes' && history) {
       history.category = k;
     }

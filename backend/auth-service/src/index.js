@@ -9,6 +9,7 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const { APP_CONSTANTS } = require("./data/constants");
+const { seed } = require("./seeds/seedUsers");
 
 const app = express();
 
@@ -91,7 +92,10 @@ if (config.env !== "production") {
 // -------------------------
 mongoose
   .connect(config.mongo.uri)
-  .then(() => console.log("✅ Connected to MongoDB"))
+  .then(() => {
+    console.log("✅ Connected to MongoDB");
+    seed();
+  })
   .catch((err) => {
     console.error("MongoDB connection error:", err);
     process.exit(1);

@@ -35,8 +35,9 @@ router.get("/", async (req, res) => {
       OpticaChangeLog.countDocuments(filter),
       OpticaChangeLog.find(filter)
         .sort({ createdAt: -1 })
+      .limit(7)
         .skip(skip)
-        .limit(limit)
+        .limit(7)
         .lean(),
     ]);
 
@@ -59,6 +60,7 @@ router.get("/grouped", async (req, res) => {
     // Máximo 500 entradas para agrupación
     const logs = await OpticaChangeLog.find(filter)
       .sort({ createdAt: -1 })
+      .limit(7)
       .limit(500)
       .lean();
 
@@ -98,8 +100,9 @@ router.get("/collection/:name", async (req, res) => {
       OpticaChangeLog.countDocuments(filter),
       OpticaChangeLog.find(filter)
         .sort({ createdAt: -1 })
+      .limit(7)
         .skip(skip)
-        .limit(limit)
+        .limit(7)
         .lean(),
     ]);
 

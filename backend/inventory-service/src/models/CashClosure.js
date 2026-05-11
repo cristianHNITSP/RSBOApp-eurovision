@@ -27,6 +27,19 @@ const CashClosureSchema = new mongoose.Schema(
       byReason:   { type: Map, of: Number, default: {} }
     },
 
+    // Snapshot Global (Replicación para auditoría)
+    globalSummary: {
+      micas: {
+        total: { type: Number, default: 0 },
+        count: { type: Number, default: 0 }
+      },
+      optica: {
+        total: { type: Number, default: 0 },
+        count: { type: Number, default: 0 }
+      },
+      grandTotal: { type: Number, default: 0 }
+    },
+
     closedBy: {
       userId: { type: String, required: true },
       name:   { type: String, required: true }

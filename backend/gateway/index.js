@@ -188,9 +188,9 @@ const proxyRequest = (serviceUrl) => async (req, res) => {
       }
     }
 
-    // Asegurar cookie solo si existe
+    // Asegurar cookie solo si existe (ya se copió en el loop de arriba, pero reforzamos si es necesario)
     if (req.headers.cookie) {
-      forwardedHeaders.cookie = req.headers.cookie;
+      forwardedHeaders['cookie'] = req.headers.cookie;
     }
 
     // GET / DELETE / HEAD no llevan body — si se reenvían con Content-Type: application/json

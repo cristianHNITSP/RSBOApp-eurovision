@@ -67,7 +67,7 @@
           <b-table
             :data="lab.filteredItems.value"
             :paginated="true"
-            :per-page="15"
+            :per-page="7"
             :current-page.sync="inventoryPage"
             hoverable
             mobile-cards

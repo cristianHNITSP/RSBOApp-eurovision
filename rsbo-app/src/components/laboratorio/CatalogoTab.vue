@@ -104,7 +104,7 @@
               <div class="qr-card__head">
                 <div class="qr-card__title">{{ lab.buildRowTitle(row, lab.selectedSheet.value) }}</div>
                 <span class="tag is-light qty-tag" :class="row.existencias > 0 ? 'is-success' : ''">
-                  {{ row.existencias }} pzas
+                   {{ row.existencias }} pzas
                 </span>
               </div>
 
@@ -133,7 +133,7 @@
             </button>
           </div>
 
-          <nav v-if="lab.filteredCatalogRows.value.length > lab.catalogPageSize.value" class="pager">
+          <nav v-if="lab.catalogPages.value > 1" class="pager">
             <b-button size="is-small" type="is-light" icon-left="chevron-left" :disabled="lab.catalogPage.value === 1"
               @click="lab.catalogPage.value--">
               Prev

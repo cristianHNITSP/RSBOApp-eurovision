@@ -11,6 +11,7 @@ const MatrixBifocal = require("../models/matrix/MatrixBifocal");
 const MatrixProgresivo = require("../models/matrix/MatrixProgresivo");
 const LaboratoryOrder = require("../models/laboratory/LaboratoryOrder");
 const LaboratoryEvent = require("../models/laboratory/LaboratoryEvent");
+const Sale = require("../models/Sale");
 const { protect } = require("../utils/auth");
 
 const { notifyPendingOrders, notifyNewOrder, notifyCorrection } = require("../services/labNotification.service");
@@ -75,33 +76,62 @@ router.get("/clients", protect(), async (req, res) => {
     const q = String(req.query.q || "").trim();
     if (!q || q.length < 2) return res.json({ ok: true, data: [] });
 
-    const regex = new RegExp(escapeRx(q), "i");
+    const regex = new RegExp(String(q).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
 
-    const clients = await LaboratoryOrder.aggregate([
-      { $match: { 
-          $or: [
-            { cliente: regex },
-            { clienteDisplay: regex },
-            { clienteNombres: regex },
-            { clienteApellidos: regex }
-          ]
-      } },
-      { $sort: { createdAt: -1 } },
-      { $group: {
-          _id: "$cliente", 
-          nombre: { $first: "$cliente" },
-          display: { $first: "$clienteDisplay" },
-          nombres: { $first: "$clienteNombres" },
-          apellidos: { $first: "$clienteApellidos" },
-          empresa: { $first: "$clienteEmpresa" },
-          contacto: { $first: "$clienteContacto" },
-          nota: { $first: "$note" },
-          pedidos: { $sum: 1 }
-      } },
-      { $limit: 10 }
+    // 🚀 Buscamos en ambas colecciones de forma paralela
+    const [labClients, saleClients] = await Promise.all([
+      LaboratoryOrder.aggregate([
+        { $match: { $or: [{ cliente: regex }, { clienteDisplay: regex }, { clienteNombres: regex }, { clienteApellidos: regex }] } },
+        { $sort: { createdAt: -1 } },
+        {
+          $group: {
+            _id: "$cliente",
+            nombre: { $first: "$cliente" },
+            display: { $first: "$clienteDisplay" },
+            nombres: { $first: "$clienteNombres" },
+            apellidos: { $first: "$clienteApellidos" },
+            empresa: { $first: "$clienteEmpresa" },
+            contacto: { $first: "$clienteContacto" },
+            nota: { $first: "$note" },
+            lastDate: { $first: "$createdAt" }
+          }
+        }
+      ]),
+      Sale.aggregate([
+        { $match: { $or: [{ cliente: regex }, { clientePhone: regex }] } },
+        { $sort: { createdAt: -1 } },
+        {
+          $group: {
+            _id: "$cliente",
+            nombre: { $first: "$cliente" },
+            display: { $first: "$cliente" },
+            nombres: { $first: "" }, // En Sale no siempre hay desglose
+            apellidos: { $first: "" },
+            empresa: { $first: "" },
+            contacto: { $first: "$clientePhone" },
+            nota: { $first: "" },
+            lastDate: { $first: "$createdAt" }
+          }
+        }
+      ])
     ]);
 
-    res.json({ ok: true, data: clients });
+    // Unir y eliminar duplicados por nombre
+    const combined = [...labClients, ...saleClients];
+    const unique = [];
+    const seen = new Set();
+    
+    // Priorizar los de laboratorio porque suelen tener más datos (nombres, apellidos, empresa)
+    combined.sort((a, b) => new Date(b.lastDate) - new Date(a.lastDate));
+
+    for (const c of combined) {
+      if (!seen.has(c.nombre)) {
+        seen.add(c.nombre);
+        unique.push(c);
+      }
+    }
+
+    res.json({ ok: true, data: unique.slice(0, 10) });
   } catch (e) {
     console.error("Error buscando clientes:", e);
     res.status(500).json({ ok: false });
@@ -113,9 +143,9 @@ function lineTitle(tipo, params, eye, codebar) {
   const fv = (v) => Number(v ?? 0).toFixed(2);
   const base = String(eye || "").toUpperCase() === "OD"
     ? Number(p.base_der ?? 0) : Number(p.base_izq ?? 0);
-  if (tipo === "BASE")     return `Base ${fv(p.base)}`;
-  if (tipo === "SPH_CYL")  return `Esfera ${fv(p.sph)} | Cilindro ${fv(p.cyl)}`;
-  if (tipo === "SPH_ADD")  return `${eyeLabel(eye)} | Esfera ${fv(p.sph)} | Adición ${fv(p.add)}`;
+  if (tipo === "BASE") return `Base ${fv(p.base)}`;
+  if (tipo === "SPH_CYL") return `Esfera ${fv(p.sph)} | Cilindro ${fv(p.cyl)}`;
+  if (tipo === "SPH_ADD") return `${eyeLabel(eye)} | Esfera ${fv(p.sph)} | Adición ${fv(p.add)}`;
   if (tipo === "BASE_ADD") return `${eyeLabel(eye)} | Base ${fv(base)} | Adición ${fv(p.add)}`;
   return String(codebar || "");
 }
@@ -226,7 +256,10 @@ router.post("/orders", [
   body("cliente").isString().trim().notEmpty(),
   body("lines").isArray({ min: 1 })
 ], handleValidation, async (req, res) => {
-  const actor = actorFromBody(req) || { userId: null, name: "system" };
+  const actor = actorFromBody(req) || { 
+    userId: req.user?.id || req.user?.userId || null, 
+    name: req.user?.name || req.user?.username || "Sistema" 
+  };
   try {
     const sheet = await InventorySheet.findById(req.body.sheetId);
     if (!sheet || sheet.isDeleted) return res.status(404).json({ ok: false, message: "Sheet no encontrada" });
@@ -257,7 +290,32 @@ router.post("/orders", [
       updatedBy: actor
     });
     broadcast("LAB_ORDER_CREATE", { orderId: order._id, folio, cliente: order.cliente });
-    
+
+    // 💸 Generar registro de Venta (Autoridad Financiera para Cortes de Caja)
+    try {
+      await Sale.create({
+        folio: folio.replace("LAB", "VTA"),
+        cliente: order.cliente,
+        clientePhone: order.clienteContacto || "",
+        items: order.lines.map(l => ({
+          sheet: l.sheet,
+          matrixKey: l.matrixKey,
+          sku: l.sku,
+          description: l.micaType,
+          qty: l.qty,
+          precio: l.precio,
+          params: l.params // ✅ Agregamos los parámetros clínicos/dioptrías a la venta
+        })),
+        total: order.totalMonto || 0,
+        pago: order.pago || [],
+        labOrder: order._id,
+        actor: order.createdBy
+      });
+    } catch (saleErr) {
+      console.error("[LAB][SALE] Error creando registro de venta:", saleErr);
+      // No bloqueamos la creación del pedido si falla la venta (aunque es crítico)
+    }
+
     // 🔔 Notificaciones asíncronas e independientes para máxima velocidad
     setImmediate(() => {
       notifyNewOrder(order).catch(e => console.warn("[LAB_NOTIF] Individual error:", e.message));
@@ -269,7 +327,10 @@ router.post("/orders", [
 });
 
 router.post("/orders/:orderId/scan", param("orderId").isMongoId(), handleValidation, async (req, res) => {
-  const actor = actorFromBody(req) || { userId: null, name: "system" };
+  const actor = actorFromBody(req) || { 
+    userId: req.user?.id || req.user?.userId || null, 
+    name: req.user?.name || req.user?.username || "Sistema" 
+  };
   try {
     const order = await LaboratoryOrder.findById(req.params.orderId);
     if (!order) return res.status(404).json({ ok: false, message: "Pedido no encontrado" });
@@ -286,11 +347,11 @@ router.post("/orders/:orderId/scan", param("orderId").isMongoId(), handleValidat
       await stockService.mutateMatrixCell({
         sheet,
         matrixKey: line.matrixKey,
-        eye:       line.eye || null,
-        delta:     -Math.abs(Number(req.body.qty || 1)),
-        type:      "LAB_EXIT",
+        eye: line.eye || null,
+        delta: -Math.abs(Number(req.body.qty || 1)),
+        type: "LAB_EXIT",
         actor,
-        codebar:   line.codebar
+        codebar: line.codebar
       });
     } catch (e) {
       if (e.code === "INSUFFICIENT_STOCK") return res.status(409).json({ ok: false, reason: "NO_STOCK" });
@@ -300,7 +361,7 @@ router.post("/orders/:orderId/scan", param("orderId").isMongoId(), handleValidat
     // 🚀 ATOMIC UPDATE: Previene que escaneos simultáneos del mismo pedido se pisen entre sí
     const updatedOrder = await LaboratoryOrder.findOneAndUpdate(
       { _id: req.params.orderId, "lines.codebar": req.body.codebar },
-      { 
+      {
         $inc: { "lines.$.picked": (req.body.qty || 1) },
         $set: { status: "parcial", updatedBy: actor }
       },
@@ -315,7 +376,10 @@ router.post("/orders/:orderId/scan", param("orderId").isMongoId(), handleValidat
 
 router.post("/orders/:orderId/close", param("orderId").isMongoId(), handleValidation, async (req, res) => {
   try {
-    const actor = actorFromBody(req) || { userId: null, name: "system" };
+    const actor = actorFromBody(req) || { 
+      userId: req.user?.id || req.user?.userId || null, 
+      name: req.user?.name || req.user?.username || "Sistema" 
+    };
     const { order, alreadyClosed } = await laboratoryService.closeOrder(req.params.orderId, actor);
     setImmediate(() => notifyPendingOrders());
     res.json({ ok: true, data: order, alreadyClosed });
@@ -326,7 +390,10 @@ router.post("/orders/:orderId/close", param("orderId").isMongoId(), handleValida
 });
 
 router.post("/orders/:orderId/reset", param("orderId").isMongoId(), async (req, res) => {
-  const actor = actorFromBody(req) || { userId: null, name: "system" };
+  const actor = actorFromBody(req) || { 
+    userId: req.user?.id || req.user?.userId || null, 
+    name: req.user?.name || req.user?.username || "Sistema" 
+  };
   try {
     const order = await LaboratoryOrder.findById(req.params.orderId);
     if (!order) return res.status(404).json({ ok: false });
@@ -339,11 +406,11 @@ router.post("/orders/:orderId/reset", param("orderId").isMongoId(), async (req, 
           await stockService.mutateMatrixCell({
             sheet,
             matrixKey: line.matrixKey,
-            eye:       line.eye || null,
-            delta:     line.picked,
-            type:      "LAB_ENTRY",
+            eye: line.eye || null,
+            delta: line.picked,
+            type: "LAB_ENTRY",
             actor,
-            codebar:   line.codebar
+            codebar: line.codebar
           });
         }
         line.picked = 0;
@@ -361,7 +428,10 @@ router.post("/orders/:orderId/reset", param("orderId").isMongoId(), async (req, 
 });
 
 router.post("/orders/:orderId/cancel", param("orderId").isMongoId(), async (req, res) => {
-  const actor = actorFromBody(req) || { userId: null, name: "system" };
+  const actor = actorFromBody(req) || { 
+    userId: req.user?.id || req.user?.userId || null, 
+    name: req.user?.name || req.user?.username || "Sistema" 
+  };
   try {
     const order = await LaboratoryOrder.findById(req.params.orderId);
     if (!order) return res.status(404).json({ ok: false });
@@ -374,11 +444,11 @@ router.post("/orders/:orderId/cancel", param("orderId").isMongoId(), async (req,
           await stockService.mutateMatrixCell({
             sheet,
             matrixKey: line.matrixKey,
-            eye:       line.eye || null,
-            delta:     line.picked,
-            type:      "LAB_ENTRY",
+            eye: line.eye || null,
+            delta: line.picked,
+            type: "LAB_ENTRY",
             actor,
-            codebar:   line.codebar
+            codebar: line.codebar
           });
         }
       }

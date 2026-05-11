@@ -1,11 +1,10 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount } from "vue";
 import { labToast } from "@/composables/shared/useLabToast.js";
-import { listSheets as invListSheets, fetchItems as invFetchItems } from "@/services/inventory";
+import { listSheets as invListSheets, registerInventorySale } from "@/services/inventory";
 import { createOrder } from "@/services/laboratorio";
-import { createGroupedNotification } from "@/services/notifications";
+import { useSalesCatalog } from "@/composables/api/useSalesCatalog";
 import {
   normTxt,
-  fv,
   buildRowTitle,
   buildRowParams,
   getActor,
@@ -13,57 +12,42 @@ import {
 } from "./_ventasShared";
 
 /**
- * Composable for Bases and Micas sales (orders that go to the laboratory).
- * Implements the VentasStrategy contract.
+ * Strategy for Bases and Micas sales.
  */
 export function useBasesMicasVentas(getUser) {
   const kind = 'lab';
   const _ac = new AbortController();
   let _wsRefreshTimer = null;
+  
+  const catalog = useSalesCatalog({ category: 'inventory', pageSize: 7 });
+
   const WS_STOCK_TYPES = new Set([
-    "LAB_ORDER_SCAN",
-    "LAB_ORDER_CLOSE",
-    "LAB_ORDER_CANCEL",
-    "LAB_ORDER_RESET",
-    "INVENTORY_CHUNK_SAVED",
-    "INV_CHANGE",
+    "LAB_ORDER_SCAN", "LAB_ORDER_CLOSE", "LAB_ORDER_CANCEL", "LAB_ORDER_RESET",
+    "INVENTORY_CHUNK_SAVED", "INV_CHANGE",
   ]);
 
   function _onLabWs(e) {
     const type = e?.detail?.type;
     if (!WS_STOCK_TYPES.has(type)) return;
-
     const payload = e?.detail?.payload || {};
 
-    // 1. Intentar actualización SILENCIOSA si es un INV_CHANGE con datos suficientes
     if (type === "INV_CHANGE" && payload.codebar && typeof payload.newStock === "number") {
       const codeStr = String(payload.codebar);
-
-      // Actualizar en el catálogo
-      const item = itemsDB.value.find(i => String(i.codebar) === codeStr);
+      const item = catalog.items.value.find(i => String(i.codebar) === codeStr);
       if (item) item.existencias = payload.newStock;
-
-      // Actualizar en el CARRITO
       const inCart = cartItems.value.find(ci => String(ci.row.codebar) === codeStr);
       if (inCart) {
         inCart.row.existencias = payload.newStock;
-        // 🛡️ CAPEO AUTOMÁTICO: Si la cantidad en carrito supera el nuevo stock, bajarla al máximo disponible
-        if (inCart.qty > payload.newStock) {
-          inCart.qty = Math.max(0, payload.newStock);
-        }
+        if (inCart.qty > payload.newStock) inCart.qty = Math.max(0, payload.newStock);
       }
-
-      // Si lo encontramos en catálogo o carrito, podemos dar por terminada la actualización quirúrgica
       if (item || inCart) return;
     }
 
-    // 2. Fallback: recarga completa con debounce para otros casos
-    const sheetIds = payload.sheetIds;
-    if (Array.isArray(sheetIds) && sheetIds.length > 0 && !sheetIds.includes(selectedSheetId.value)) return;
-    if (payload.sheetId && String(payload.sheetId) !== String(selectedSheetId.value)) return;
+    const sid = payload.sheetId;
+    if (sid && String(sid) !== String(catalog.selectedSheetId.value)) return;
 
     clearTimeout(_wsRefreshTimer);
-    _wsRefreshTimer = setTimeout(() => loadItems(true), 1500);
+    _wsRefreshTimer = setTimeout(() => catalog.fetchItems(), 1500);
   }
 
   onBeforeUnmount(() => {
@@ -72,19 +56,7 @@ export function useBasesMicasVentas(getUser) {
     window.removeEventListener("lab:ws", _onLabWs);
   });
 
-  // ── DB state ──────────────────────────────────────────────────────────────
   const sheetsDB = ref([]);
-  const itemsDB = ref([]);
-
-  // ── UI state ──────────────────────────────────────────────────────────────
-  const selectedSheetId = ref("");
-  const itemQuery = ref("");
-  const stockFilter = ref("withStock");
-  const catalogPage = ref(1);
-  const catalogPageSize = ref(7);
-  const totalItems = ref(0);
-  const catalogPages = ref(1);
-
   const cartItems = ref([]);
   const cartCliente = ref("");
   const cartNote = ref("");
@@ -93,17 +65,22 @@ export function useBasesMicasVentas(getUser) {
   const cartClienteEmpresa = ref("");
   const cartClienteContacto = ref("");
   const cartPago = ref([]);
-
   const loadingSheets = ref(false);
-  const loadingItems = ref(false);
   const loadingSale = ref(false);
-  const sheetSearchLoading = ref(false);
   const sheetSearchQuery = ref("");
-
+  const doDirectSale = ref(false);
+  const doLabOrder = ref(true);
   const voucherOpen = ref(false);
   const lastVoucher = ref(null);
 
-  // ── Computed ──────────────────────────────────────────────────────────────
+  const selectedSheetId = catalog.selectedSheetId;
+  const itemQuery = catalog.searchQuery;
+  const stockFilter = catalog.stockFilter;
+  const catalogPage = catalog.currentPage;
+  const catalogPageSize = catalog.pageSize;
+  const itemsDB = catalog.items;
+  const catalogPages = catalog.totalPages;
+  const loadingItems = catalog.loading;
 
   const selectedSheet = computed(() =>
     sheetsDB.value.find((s) => String(s.id) === String(selectedSheetId.value)) || null
@@ -112,31 +89,18 @@ export function useBasesMicasVentas(getUser) {
   const filteredItems = computed(() => itemsDB.value);
   const paginatedItems = computed(() => itemsDB.value);
 
-  const cartTotal = computed(() =>
-    cartItems.value.reduce((sum, ci) => sum + ci.qty, 0)
-  );
-
+  const cartTotal = computed(() => cartItems.value.reduce((sum, ci) => sum + ci.qty, 0));
   const cartTotalMonto = computed(() =>
     cartItems.value.reduce((sum, ci) => sum + ci.qty * (Number(ci.precio) || 0), 0)
   );
-
-  const cartClienteDisplay = computed(() => {
-    const nombres = cartClienteNombres.value.trim();
-    const apellidos = cartClienteApellidos.value.trim();
-    return [nombres, apellidos].filter(Boolean).join(" ") || cartCliente.value.trim();
-  });
 
   const sheetSearchResults = computed(() => {
     const q = normTxt(sheetSearchQuery.value);
     if (!q) return sheetsDB.value;
     return sheetsDB.value.filter(s =>
-      normTxt(s.nombre).includes(q) ||
-      normTxt(s.sku).includes(q) ||
-      normTxt(s.material).includes(q)
+      normTxt(s.nombre).includes(q) || normTxt(s.sku).includes(q) || normTxt(s.material).includes(q)
     );
   });
-
-  // ── Actions ───────────────────────────────────────────────────────────────
 
   async function loadSheets() {
     loadingSheets.value = true;
@@ -144,76 +108,24 @@ export function useBasesMicasVentas(getUser) {
       const { data } = await invListSheets({ signal: _ac.signal });
       const arr = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
       const mapped = arr.map((s) => ({
-        ...s,
-        id: String(s._id ?? s.id ?? ""),
-        nombre: s.nombre ?? s.name ?? "",
+        ...s, id: String(s._id ?? s.id ?? ""), nombre: s.nombre ?? s.name ?? "",
         tratamientos: Array.isArray(s.tratamientos) ? s.tratamientos : []
       }));
       mapped.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
       sheetsDB.value = mapped;
       if (!selectedSheetId.value && mapped.length) selectedSheetId.value = mapped[0].id;
     } catch (e) {
+      if (e.name === 'AbortError') return;
       labToast.danger("No se pudieron cargar las planillas");
     } finally {
       loadingSheets.value = false;
     }
   }
 
-  let itemsAc = null;
-  async function loadItems(silent = false) {
-    const sid = selectedSheetId.value;
-    if (!sid) { itemsDB.value = []; return; }
-
-    if (itemsAc) itemsAc.abort();
-    itemsAc = new AbortController();
-
-    if (!silent) loadingItems.value = true;
-    try {
-      const params = {
-        page: catalogPage.value,
-        limit: catalogPageSize.value,
-        q: itemQuery.value,
-        stock: stockFilter.value
-      };
-
-      const { data } = await invFetchItems(sid, { ...params, signal: itemsAc.signal });
-      const responseData = data?.data || {};
-      const arr = Array.isArray(responseData.docs) ? responseData.docs : [];
-      const serverMeta = responseData.meta || {};
-
-      const sheet = sheetsDB.value.find((s) => String(s.id) === String(sid)) || null;
-      itemsDB.value = arr.map((r) => ({
-        ...r,
-        existencias: Number(r.existencias ?? 0),
-        precioVenta: Number(sheet?.precioVenta || 0),
-        _normTitle: normTxt(buildRowTitle(r, sheet)),
-        _normParams: normTxt(buildRowParams(r, sheet)),
-        _normCode: normTxt(r.codebar || "")
-      }));
-
-      catalogPages.value = serverMeta.pages || 1;
-      totalItems.value = serverMeta.total || 0;
-
-      cartItems.value.forEach(ci => {
-        const matching = itemsDB.value.find(i => String(i.codebar) === String(ci.row.codebar));
-        if (matching) {
-          ci.row.existencias = matching.existencias;
-          if (ci.qty > matching.existencias) ci.qty = Math.max(0, matching.existencias);
-        }
-      });
-    } catch (e) {
-      if (e.name === "AbortError") return;
-      labToast.danger("Error al cargar productos");
-    } finally {
-      if (itemsAc?.signal.aborted) return;
-      loadingItems.value = false;
-    }
-  }
-
   function addToCart(row) {
     const sheet = selectedSheet.value;
     if (!sheet) return;
-    const key = `${sheet.id}::${row._id ?? row.codebar ?? buildRowParams(row, sheet)}`;
+    const key = `${sheet.id}::${row._k ?? row.sku ?? buildRowParams(row, sheet)}`;
     const existing = cartItems.value.find((ci) => ci.key === key);
     if (existing) {
       if (existing.qty < Number(row.existencias ?? 0)) existing.qty++;
@@ -244,77 +156,82 @@ export function useBasesMicasVentas(getUser) {
   }
 
   function clearCart() {
-    cartItems.value = [];
-    cartCliente.value = "";
-    cartNote.value = "";
-    cartClienteNombres.value = "";
-    cartClienteApellidos.value = "";
-    cartClienteEmpresa.value = "";
-    cartClienteContacto.value = "";
-    cartPago.value = [];
+    cartItems.value = []; cartCliente.value = ""; cartNote.value = "";
+    cartClienteNombres.value = ""; cartClienteApellidos.value = "";
+    cartClienteEmpresa.value = ""; cartClienteContacto.value = ""; cartPago.value = [];
   }
 
   async function registrarVenta() {
     if (loadingSale.value) return;
     if (!cartItems.value.length) { labToast.warning("Carrito vacío"); return; }
-
     const clienteVal = String(cartCliente.value || "").trim();
     if (!clienteVal) { labToast.warning("Nombre de cliente requerido"); return; }
 
     loadingSale.value = true;
     const actor = getActor(getUser);
     try {
-      const lines = cartItems.value.map((ci) => ({
-        codebar: ci.row.codebar, qty: ci.qty, sheetId: ci.sheetId, precio: Number(ci.precio) || 0
-      }));
-      const pagoArr = Array.isArray(cartPago.value) ? cartPago.value : [];
-      const pagoDisplay = pagoArr.map((p) => PAGO_LABELS[p] || p).join(" / ") || "—";
+      let order = null;
+      if (doLabOrder.value) {
+        const lines = cartItems.value.map((ci) => ({
+          codebar: ci.row.codebar, qty: ci.qty, sheetId: ci.sheetId, precio: Number(ci.precio) || 0,
+          matrixKey: ci.row.matrixKey, eye: ci.row.eye
+        }));
+        const { data } = await createOrder({
+          sheetId: selectedSheetId.value, cliente: cartCliente.value.trim(),
+          clienteDisplay: [cartClienteNombres.value, cartClienteApellidos.value].filter(Boolean).join(" "),
+          clienteNombres: cartClienteNombres.value.trim(), clienteApellidos: cartClienteApellidos.value.trim(),
+          pago: [...cartPago.value], totalMonto: cartTotalMonto.value, lines, actor
+        });
+        order = data?.data;
+      } else {
+        // Venta Directa de Inventario (Bases/Micas sin pasar por laboratorio)
+        const salePayload = {
+          cliente: cartCliente.value.trim(),
+          clientePhone: cartClienteContacto.value.trim() || cartNote.value.trim(),
+          total: cartTotalMonto.value,
+          pago: [...cartPago.value],
+          items: cartItems.value.map(ci => ({
+            sheet: ci.sheetId,
+            matrixKey: ci.row.matrixKey,
+            eye: ci.row.eye || null,
+            qty: ci.qty,
+            sku: ci.row.sku || ci.row.codebar,
+            codebar: ci.row.codebar,
+            precio: ci.precio,
+            description: ci.title,
+            category: 'inventory',
+            params: {
+              sph:      ci.row.sph      ?? null,
+              cyl:      ci.row.cyl      ?? null,
+              axis:     ci.row.axis     ?? null,
+              add:      ci.row.add      ?? null,
+              base:     ci.row.base     ?? null,
+              base_izq: ci.row.base_izq ?? null,
+              base_der: ci.row.base_der ?? null,
+            }
+          }))
+        };
+        const { data } = await registerInventorySale(salePayload);
+        order = data?.data;
+      }
 
-      const { data } = await createOrder({
-        sheetId: selectedSheetId.value,
-        cliente: cartCliente.value.trim(),
-        clienteDisplay: cartClienteDisplay.value,
-        clienteNombres: cartClienteNombres.value.trim(),
-        clienteApellidos: cartClienteApellidos.value.trim(),
-        clienteEmpresa: cartClienteEmpresa.value.trim(),
-        clienteContacto: cartClienteContacto.value.trim(),
-        note: cartNote.value.trim(),
-        pago: [...cartPago.value],
-        totalMonto: cartTotalMonto.value,
-        lines,
-        actor
-      });
-
-      const order = data?.data;
+      const pagoDisplay = Array.isArray(cartPago.value) ? cartPago.value.map(p => PAGO_LABELS[p] || p).join("/") : "—";
       lastVoucher.value = {
-        ...order,
-        id: String(order._id),
-        fecha: order.createdAt,
+        ...(order || {}), id: order?._id || `SALE-${Date.now()}`, fecha: order?.createdAt || new Date(),
         lineas: cartItems.value.map(ci => ({ ...ci, sheetNombre: ci.sheet.nombre })),
-        totalPiezas: cartTotal.value,
-        pagoDisplay,
-        actor: actor?.name || "Usuario",
-        labFolio: order.folio,
-        ventaFolio: order.folio.replace("LAB-", "VTA-"),
-        labStatus: order.status
+        totalPiezas: cartTotal.value, actor: actor?.name || "Usuario",
+        ventaFolio: order?.folio || `VTA-${Date.now()}`, labStatus: order?.status || 'completado'
       };
-      voucherOpen.value = true;
-      clearCart();
-      labToast.success(`Pedido ${order?.folio || ""} enviado`);
-
+      voucherOpen.value = true; clearCart();
+      labToast.success(order ? `Pedido ${order.folio} registrado` : "Venta registrada");
       return order;
     } catch (e) {
-      labToast.danger(e?.response?.data?.message || "Error al crear pedido");
-      throw e;
+      labToast.danger("Error al registrar"); throw e;
     } finally {
       loadingSale.value = false;
     }
   }
 
-  // ── Watchers ──────────────────────────────────────────────────────────────
-  watch(selectedSheetId, () => { catalogPage.value = 1; loadItems(); });
-  watch([itemQuery, stockFilter], () => { catalogPage.value = 1; loadItems(); });
-  watch(catalogPage, () => { loadItems(); });
   watch([cartClienteNombres, cartClienteApellidos], () => {
     const n = cartClienteNombres.value.trim();
     const a = cartClienteApellidos.value.trim();
@@ -326,12 +243,10 @@ export function useBasesMicasVentas(getUser) {
     window.addEventListener("lab:ws", _onLabWs);
   });
 
-  // ── Expose grouped for Strategy contract ──────────────────────────────────
   return {
     kind,
     catalog: {
-      items: itemsDB,
-      filteredItems,
+      filteredItems, 
       paginatedItems,
       catalogPage,
       catalogPages,
@@ -346,30 +261,16 @@ export function useBasesMicasVentas(getUser) {
       sheetTitle: (s) => s?.nombre || "—",
       buildRowTitle,
       searchSheets: (q) => { sheetSearchQuery.value = q; },
-      reload: loadItems
+      reload: () => catalog.fetchItems()
     },
     cart: {
-      items: cartItems,
-      cliente: cartCliente,
-      note: cartNote,
-      nombres: cartClienteNombres,
-      apellidos: cartClienteApellidos,
-      empresa: cartClienteEmpresa,
-      contacto: cartClienteContacto,
-      pago: cartPago,
-      total: cartTotal,
-      totalMonto: cartTotalMonto,
-      loadingSale
+      items: cartItems, cliente: cartCliente, note: cartNote,
+      nombres: cartClienteNombres, apellidos: cartClienteApellidos,
+      pago: cartPago, total: cartTotal, totalMonto: cartTotalMonto,
+      loadingSale, doDirectSale, doLabOrder
     },
-    // Expose flat for v-model compatibility in Dashboard
     selectedSheetId, itemQuery, stockFilter, catalogPage,
-    cartCliente, cartNote, cartClienteNombres, cartClienteApellidos,
-    cartClienteEmpresa, cartClienteContacto, cartPago,
-
     addToCart, removeFromCart, incCartQty, decCartQty, clearCart,
-    registrarVenta, loadItems,
-    lastVoucher, voucherOpen,
-    loadingSale,
-    sheetsDB // for some internal uses
+    registrarVenta, lastVoucher, voucherOpen, loadingSale, sheetsDB
   };
 }

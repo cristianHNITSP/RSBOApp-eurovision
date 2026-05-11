@@ -36,18 +36,18 @@ const OrderLineSchema = new mongoose.Schema(
 
 const LaboratoryOrderSchema = new mongoose.Schema(
   {
-    folio:      { type: String, required: true, unique: true, index: true },
+    folio: { type: String, required: true, unique: true, index: true },
     ventaFolio: { type: String, default: null, index: true },
 
     sheet: { type: mongoose.Schema.Types.ObjectId, ref: "InventorySheet", required: true },
     cliente: { type: String, required: true, trim: true },
-    clienteDisplay:   { type: String, default: "" },
-    clienteNombres:   { type: String, default: "" },
+    clienteDisplay: { type: String, default: "" },
+    clienteNombres: { type: String, default: "" },
     clienteApellidos: { type: String, default: "" },
-    clienteEmpresa:   { type: String, default: "" },
-    clienteContacto:  { type: String, default: "" },
+    clienteEmpresa: { type: String, default: "" },
+    clienteContacto: { type: String, default: "" },
     note: { type: String, default: "", trim: true },
-    pago:       { type: [String], default: [] },
+    pago: { type: [String], default: [] },
     totalMonto: { type: Number, default: 0 },
 
     status: {
@@ -67,20 +67,24 @@ const LaboratoryOrderSchema = new mongoose.Schema(
     // Snapshot inmutable creado en el cierre del lote (idempotencia + auditoría)
     closeSnapshot: {
       type: new mongoose.Schema({
-        txId:         { type: String, default: null },     // uuid del cierre, idempotencia
-        closedBy:     { type: ActorSchema, default: () => ({}) },
-        closedAt:     { type: Date, default: null },
-        totalsByLine: { type: [new mongoose.Schema({
-          lineId:  { type: String, required: true },
-          qty:     { type: Number, default: 0 },
-          picked:  { type: Number, default: 0 },
-          mermada: { type: Number, default: 0 },
-        }, { _id: false })], default: [] },
-        totals:       { type: new mongoose.Schema({
-          qty:     { type: Number, default: 0 },
-          picked:  { type: Number, default: 0 },
-          mermada: { type: Number, default: 0 },
-        }, { _id: false }), default: () => ({}) },
+        txId: { type: String, default: null },     // uuid del cierre, idempotencia
+        closedBy: { type: ActorSchema, default: () => ({}) },
+        closedAt: { type: Date, default: null },
+        totalsByLine: {
+          type: [new mongoose.Schema({
+            lineId: { type: String, required: true },
+            qty: { type: Number, default: 0 },
+            picked: { type: Number, default: 0 },
+            mermada: { type: Number, default: 0 },
+          }, { _id: false })], default: []
+        },
+        totals: {
+          type: new mongoose.Schema({
+            qty: { type: Number, default: 0 },
+            picked: { type: Number, default: 0 },
+            mermada: { type: Number, default: 0 },
+          }, { _id: false }), default: () => ({})
+        },
       }, { _id: false }),
       default: null
     }

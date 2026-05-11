@@ -207,23 +207,50 @@
         </div>
       </div>
 
+      <!-- Selector de Modo de Venta (Dual) -->
+      <div v-if="showSaleType" class="nv-pago-check mt-2 mb-3">
+        <p class="nv-pago-check__label">Modo de Operación</p>
+        <div class="field is-grouped is-grouped-multiline">
+          <div class="control">
+            <b-checkbox 
+              :model-value="doDirectSale" 
+              @update:model-value="$emit('update:doDirectSale', $event)"
+              type="is-success"
+              size="is-small"
+            >
+              <i class="fas fa-cash-register mr-1"></i>Venta Directa
+            </b-checkbox>
+          </div>
+          <div class="control">
+            <b-checkbox 
+              :model-value="doLabOrder" 
+              @update:model-value="$emit('update:doLabOrder', $event)"
+              type="is-primary"
+              size="is-small"
+            >
+              <i class="fas fa-flask mr-1"></i>Pedido Lab
+            </b-checkbox>
+          </div>
+        </div>
+      </div>
+
       <b-button
-        :type="kind === 'lab' ? 'is-primary' : 'is-success'"
-        :icon-left="kind === 'lab' ? 'flask' : 'cash-register'"
+        :type="isOffline ? 'is-danger' : checkoutBtnType"
+        :icon-left="isOffline ? 'exclamation-triangle' : checkoutBtnIcon"
         expanded
         :loading="loadingSale"
-        :disabled="!cartItems.length || !cartCliente.trim()"
+        :disabled="isOffline || !cartItems.length || !cartCliente.trim() || (showSaleType && !doDirectSale && !doLabOrder)"
         class="mt-3 premium-btn"
         @click="$emit('checkout')"
       >
-        {{ kind === 'lab' ? 'Enviar a Laboratorio' : 'Cobrar y Entregar' }}
+        {{ isOffline ? 'Servicio no disponible' : checkoutBtnText }}
       </b-button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { searchClients } from "@/services/laboratorio";
 import MermaButton from "@/components/mermas/MermaButton.vue";
 
@@ -258,7 +285,11 @@ const props = defineProps({
   cartPago: { type: Array, default: () => [] },
   cartTotal: { type: Number, default: 0 },
   cartTotalMonto: { type: Number, default: 0 },
-  loadingSale: { type: Boolean, default: false }
+  loadingSale: { type: Boolean, default: false },
+  isOffline: { type: Boolean, default: false },
+  showSaleType: { type: Boolean, default: false },
+  doDirectSale: { type: Boolean, default: false },
+  doLabOrder: { type: Boolean, default: true }
 });
 
 const emit = defineEmits([
@@ -274,7 +305,9 @@ const emit = defineEmits([
   "remove-from-cart",
   "dec-cart-qty",
   "inc-cart-qty",
-  "checkout"
+  "checkout",
+  "update:doDirectSale",
+  "update:doLabOrder"
 ]);
 
 const PAGO_OPCIONES = [
@@ -286,6 +319,36 @@ const PAGO_OPCIONES = [
 
 const suggestions = ref([]);
 const isSearching = ref(false);
+
+const checkoutBtnText = computed(() => {
+  if (props.kind !== 'lab') return 'Cobrar y Entregar';
+  if (!props.showSaleType) return 'Enviar a Laboratorio';
+  
+  if (props.doDirectSale && props.doLabOrder) return 'Venta y Pedido Lab';
+  if (props.doDirectSale) return 'Solo Venta Directa';
+  if (props.doLabOrder) return 'Solo Pedido Lab';
+  return 'Seleccionar Acción';
+});
+
+const checkoutBtnType = computed(() => {
+  if (props.kind !== 'lab') return 'is-success';
+  if (!props.showSaleType) return 'is-primary';
+  
+  if (props.doDirectSale && props.doLabOrder) return 'is-link';
+  if (props.doDirectSale) return 'is-success';
+  if (props.doLabOrder) return 'is-primary';
+  return 'is-light';
+});
+
+const checkoutBtnIcon = computed(() => {
+  if (props.kind !== 'lab') return 'cash-register';
+  if (!props.showSaleType) return 'flask';
+  
+  if (props.doDirectSale && props.doLabOrder) return 'check-double';
+  if (props.doDirectSale) return 'cash-register';
+  if (props.doLabOrder) return 'flask';
+  return 'exclamation-triangle';
+});
 
 async function onTyping(text) {
   emit('update:cartCliente', text);

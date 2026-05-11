@@ -1,25 +1,29 @@
 // src/composables/api/useMermas.js
 import { ref, reactive, onMounted, onBeforeUnmount } from "vue";
-import { listMermas, createMerma, getMermaStats } from "@/services/mermas";
+import { 
+  listMermas, createMerma, getMermaStats,
+  listOpticaMermas, createOpticaMerma 
+} from "@/services/mermas";
 
 /**
  * Composable para listar/crear mermas y reaccionar al evento WS `mermas:refresh`.
  */
 export function useMermas(initialFilters = {}) {
   const items   = ref([]);
-  const meta    = ref({ page: 1, limit: 20, total: 0, pages: 0 });
+  const meta    = ref({ page: 1, limit: 7, total: 0, pages: 0 });
   const loading = ref(false);
   const saving  = ref(false);
   const error   = ref(null);
   const stats   = ref(null);
   const filters = reactive({
+    service:  initialFilters.service  || 'inventory', // 'inventory' | 'optica'
     origin:   initialFilters.origin   || null,
     sheet:    initialFilters.sheet    || null,
     dateFrom: initialFilters.dateFrom || null,
     dateTo:   initialFilters.dateTo   || null,
     search:   initialFilters.search   || "",
     page:     1,
-    limit:    initialFilters.limit    || 20,
+    limit:    initialFilters.limit    || 7,
   });
 
   async function load() {
@@ -28,11 +32,18 @@ export function useMermas(initialFilters = {}) {
     try {
       const params = {};
       for (const [k, v] of Object.entries(filters)) {
-        if (v !== null && v !== "") params[k] = v;
+        if (v !== null && v !== "" && k !== 'service') {
+          params[k] = v;
+        }
       }
-      const { data } = await listMermas(params);
-      items.value = data?.items || [];
-      meta.value  = data?.meta  || meta.value;
+      
+      const res = filters.service === 'optica' 
+        ? await listOpticaMermas(params)
+        : await listMermas(params);
+
+      const data = res.data;
+      items.value = data?.items || data?.data || [];
+      meta.value  = data?.meta  || { ...meta.value, total: items.value.length };
     } catch (e) {
       error.value = e?.response?.data?.error || e.message || "Error al cargar mermas";
     } finally {
@@ -53,9 +64,42 @@ export function useMermas(initialFilters = {}) {
   async function create(payload) {
     saving.value = true;
     try {
-      const { data } = await createMerma(payload);
+      // 1. Registro en el servicio primario
+      const isOptica = filters.service === 'optica';
+      const res = isOptica
+        ? await createOpticaMerma(payload)
+        : await createMerma(payload);
+      
+      const createdData = res.data?.data || res.data;
+
+      // 2. 🧠 Orquestación Espejo (Frontend Brain)
+      // Intentamos replicar en el servicio hermano
+      try {
+        if (isOptica) {
+          // Óptica -> Inventario
+          await createMerma({
+            ...payload,
+            isReplica: true,
+            skipMutation: true,
+            actor: payload.actor || {}
+          });
+          console.log("[BRAIN][REPLICA] Espejo de merma creado en Inventario");
+        } else {
+          // Inventario -> Óptica
+          await createOpticaMerma({
+            ...payload,
+            isReplica: true,
+            skipMutation: true,
+            actor: payload.actor || {}
+          });
+          console.log("[BRAIN][REPLICA] Espejo de merma creado en Óptica");
+        }
+      } catch (replicaErr) {
+        console.warn("[BRAIN][REPLICA] No se pudo crear el espejo de merma:", replicaErr.message);
+      }
+
       await load();
-      return data?.data || null;
+      return createdData;
     } finally {
       saving.value = false;
     }

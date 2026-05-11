@@ -1,21 +1,26 @@
 // rsbo-app/src/composables/lab/useLabItems.js
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import { fetchItems as invFetchItems } from "@/services/inventory";
 import { normTxt, buildRowTitle, buildRowParams } from "./useLabMappers";
+import { useSalesCatalog } from "@/composables/api/useSalesCatalog";
 
 export function useLabItems(sheets) {
+  // Catálogo paginado por servidor
+  const catalog = useSalesCatalog({ category: 'inventory', pageSize: 7 });
+  
+  // Sincronizar sheetId del catálogo con el del composable principal
+  watch(() => sheets.selectedSheetId.value, (newId) => {
+    catalog.selectedSheetId.value = newId;
+  });
+
+  // Estado para la "Bandeja" (Vista de matriz completa)
   const itemsDB = ref([]);
   const itemQuery = ref("");
   const stockFilter = ref("withStock");
   const loadingItems = ref(false);
   const _itemsLimit = ref(5000);
-  const catalogQuery = ref("");
-  const catalogFilter = ref("withStock");
-  const catalogPage = ref(1);
-  const catalogPageSize = ref(18);
 
   const _inFlight = { items: null };
-  // We'll need to pass an AbortController or similar if we want to handle it here
   let _ac = new AbortController();
 
   async function loadItems(forceSheetId) {
@@ -25,6 +30,9 @@ export function useLabItems(sheets) {
       itemsDB.value = [];
       return;
     }
+
+    // El catálogo se carga solo si sid cambia o si se solicita explícitamente
+    catalog.selectedSheetId.value = sid;
 
     if (_inFlight.items) return _inFlight.items;
     loadingItems.value = true;
@@ -77,37 +85,14 @@ export function useLabItems(sheets) {
     return out;
   });
 
-  const filteredCatalogRows = computed(() => {
-    const rows = Array.isArray(itemsDB.value) ? itemsDB.value : [];
-    const q = normTxt(catalogQuery.value);
-    let out = rows;
-
-    if (catalogFilter.value === "withStock") out = out.filter((r) => r.codebar && r.existencias > 0);
-    else if (catalogFilter.value === "allCodes") out = out.filter((r) => !!r.codebar);
-
-    if (q) {
-      out = out.filter((r) =>
-        (r._normTitle || "").includes(q) ||
-        (r._normParams || "").includes(q) ||
-        (r._normCode || "").includes(q)
-      );
-    }
-
-    return out.map((r, idx) => ({
-      ...r,
-      _k: String(r.codebar || "") ? `${r.codebar}__${idx}` : `row_${idx}`
-    }));
-  });
-
-  const catalogPages = computed(() =>
-    Math.max(1, Math.ceil(filteredCatalogRows.value.length / Number(catalogPageSize.value || 18)))
-  );
-
-  const paginatedCatalog = computed(() => {
-    const page = Math.min(Math.max(1, Number(catalogPage.value || 1)), catalogPages.value);
-    const per = Number(catalogPageSize.value || 18);
-    return filteredCatalogRows.value.slice((page - 1) * per, (page - 1) * per + per);
-  });
+  // Alias para retrocompatibilidad en la UI de Laboratorio
+  const catalogQuery = catalog.searchQuery;
+  const catalogFilter = catalog.stockFilter;
+  const catalogPage = catalog.currentPage;
+  const catalogPageSize = catalog.pageSize;
+  const filteredCatalogRows = catalog.items;
+  const catalogPages = catalog.totalPages;
+  const paginatedCatalog = catalog.items; // Ya vienen paginados del servidor
 
   const totalCodes = computed(() =>
     itemsDB.value.filter((r) => !!String(r.codebar || "").trim()).length

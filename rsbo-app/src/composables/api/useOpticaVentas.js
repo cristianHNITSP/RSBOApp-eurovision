@@ -5,7 +5,6 @@ import {
   accesoriosService,
   solucionesService,
   estuchesService,
-  lentesService,
   equiposService
 } from "@/services/optica";
 import { createOrder } from "@/services/laboratorio";
@@ -14,14 +13,15 @@ import {
   normTxt,
   getActor
 } from "./_ventasShared";
+import { useSalesCatalog } from "./useSalesCatalog";
+import { fetchCatalogItems } from "@/services/optica";
 
 const COLLECTIONS = [
-  { id: 'armazones', nombre: 'Armazones', service: armazonesService },
-  { id: 'accesorios', nombre: 'Accesorios', service: accesoriosService },
-  { id: 'soluciones', nombre: 'Soluciones', service: solucionesService },
-  { id: 'estuches', nombre: 'Estuches', service: estuchesService },
-  { id: 'lentes', nombre: 'Lentes Terminado', service: lentesService },
-  { id: 'equipos', nombre: 'Equipos', service: equiposService },
+  { id: 'armazones', nombre: 'Armazones' },
+  { id: 'accesorios', nombre: 'Accesorios' },
+  { id: 'soluciones', nombre: 'Soluciones' },
+  { id: 'estuches', nombre: 'Estuches' },
+  { id: 'equipos', nombre: 'Equipos' },
 ];
 
 /**
@@ -86,12 +86,35 @@ export function useOpticaVentas(getUser) {
     window.removeEventListener("lab:ws", _onLabWs);
   });
 
-  const itemsDB = ref([]);
-  const selectedSheetId = ref("armazones"); // Using this as collection id
-  const itemQuery = ref("");
-  const stockFilter = ref("withStock");
-  const catalogPage = ref(1);
-  const catalogPageSize = ref(15);
+  const catalog = useSalesCatalog({
+    category: 'optica',
+    fetcher: fetchCatalogItems,
+    pageSize: 7
+  });
+
+  // Alias para mantener compatibilidad con la UI existente
+  const selectedSheetId = catalog.selectedSheetId;
+  const itemQuery = catalog.searchQuery;
+  const stockFilter = catalog.stockFilter;
+  const catalogPage = catalog.currentPage;
+
+  const itemsDB = catalog.items;
+  const filteredItems = catalog.items; // Ya vienen filtrados del server
+  const paginatedItems = catalog.items; // Ya vienen paginados del server
+  const catalogPages = catalog.totalPages;
+  const catalogPageSize = catalog.pageSize;
+  const loadingItems = catalog.loading;
+
+  const sheetSearchResults = ref(COLLECTIONS);
+  const searchSheets = (q) => {
+    const query = (q || "").toLowerCase();
+    sheetSearchResults.value = COLLECTIONS.filter(c => c.nombre.toLowerCase().includes(query));
+  };
+
+  const buildRowTitle = (r) => {
+    if (catalog.selectedSheetId.value === 'armazones') return `${r.marca || r.brand || ''} ${r.modelo || r.model || ''}`;
+    return r.name || r.nombre || r.description || "Producto de Óptica";
+  };
 
   const cartItems = ref([]);
   const cartCliente = ref("");
@@ -102,39 +125,9 @@ export function useOpticaVentas(getUser) {
   const cartClienteContacto = ref("");
   const cartPago = ref([]);
 
-  const loadingItems = ref(false);
   const loadingSale = ref(false);
-
   const voucherOpen = ref(false);
   const lastVoucher = ref(null);
-
-  const filteredItems = computed(() => {
-    let rows = itemsDB.value;
-    if (stockFilter.value === "withStock") rows = rows.filter((r) => r.existencias > 0);
-    else if (stockFilter.value === "zero") rows = rows.filter((r) => r.existencias === 0);
-
-    const q = normTxt(itemQuery.value);
-    if (q) {
-      rows = rows.filter((r) =>
-        normTxt(r.brand || "").includes(q) ||
-        normTxt(r.model || "").includes(q) ||
-        normTxt(r.color || "").includes(q) ||
-        normTxt(r.codebar || "").includes(q) ||
-        normTxt(r.name || "").includes(q)
-      );
-    }
-    return rows;
-  });
-
-  const catalogPages = computed(() =>
-    Math.max(1, Math.ceil(filteredItems.value.length / catalogPageSize.value))
-  );
-
-  const paginatedItems = computed(() => {
-    const page = Math.min(catalogPage.value, catalogPages.value);
-    const per = catalogPageSize.value;
-    return filteredItems.value.slice((page - 1) * per, page * per);
-  });
 
   const cartTotal = computed(() => cartItems.value.reduce((s, i) => s + i.qty, 0));
   const cartTotalMonto = computed(() =>
@@ -142,11 +135,6 @@ export function useOpticaVentas(getUser) {
   );
 
   // ── Helpers ──────────────────────────────────────────────────────────────
-  const buildRowTitle = (row) => {
-    const parts = [row.marca, row.modelo, row.color].filter(Boolean);
-    return parts.length ? parts.join(" ") : (row.name || "Producto");
-  };
-
   const buildRowParams = (row) => {
     const p = [];
     if (row.material) p.push(row.material);
@@ -156,48 +144,8 @@ export function useOpticaVentas(getUser) {
     return p.join(" | ");
   };
 
-  let itemsAc = null;
-  async function loadItems(silent = false) {
-    const colId = selectedSheetId.value;
-    const col = COLLECTIONS.find(c => c.id === colId);
-    if (!col) return;
-
-    if (itemsAc) itemsAc.abort();
-    itemsAc = new AbortController();
-
-    if (!silent) loadingItems.value = true;
-    try {
-      const { data } = await col.service.list({ signal: itemsAc.signal });
-      const arr = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
-      itemsDB.value = arr.map(r => ({
-        ...r,
-        existencias: Number(r.stock ?? r.existencias ?? 0),
-        precioVenta: Number(r.precio ?? r.precioVenta ?? 0),
-        _normTitle: normTxt(buildRowTitle(r)),
-        _normParams: normTxt(buildRowParams(r)),
-        _normCode: normTxt(r.sku || r.codebar || "")
-      }));
-
-      // 🔄 Sincronizar el carrito con los nuevos datos del catálogo
-      cartItems.value.forEach(ci => {
-        const matching = itemsDB.value.find(i => String(i._id || i.id) === String(ci.row._id || ci.row.id));
-        if (matching) {
-          ci.row.existencias = matching.existencias;
-          // 🛡️ CAPEO AUTOMÁTICO
-          if (ci.qty > matching.existencias) {
-            ci.qty = Math.max(0, matching.existencias);
-          }
-        }
-      });
-
-      catalogPage.value = 1;
-    } catch (e) {
-      if (e.name === 'AbortError') return;
-      labToast.danger(`Error al cargar ${col.nombre}`);
-    } finally {
-      if (itemsAc?.signal.aborted) return;
-      loadingItems.value = false;
-    }
+  async function loadItems() {
+    catalog.fetchItems();
   }
 
   function addToCart(row) {
@@ -258,11 +206,11 @@ export function useOpticaVentas(getUser) {
     loadingSale.value = true;
     const actor = getActor(getUser);
     try {
-      // 🚀 VENTA DIRECTA: Persistimos la venta y descontamos stock en una sola llamada al backend
       const salePayload = {
         cliente: clienteVal,
-        clientePhone: cartNote.value, // Usando nota como teléfono temporalmente si no hay campo específico
+        clientePhone: cartNote.value,
         total: cartTotalMonto.value,
+        pago: [...cartPago.value],
         items: cartItems.value.map(ci => ({
           collection: ci.key.split("::")[0],
           documentId: ci.row._id,
@@ -273,8 +221,9 @@ export function useOpticaVentas(getUser) {
         }))
       };
 
+      // 1. Operación Primaria: Registrar en Óptica
       const saleResult = await createOpticaSale(salePayload);
-      const saleData = saleResult.data;
+      const saleData = saleResult.data.data || saleResult.data;
 
       lastVoucher.value = {
         ...saleData,
@@ -285,16 +234,11 @@ export function useOpticaVentas(getUser) {
         actor: actor?.name || "Usuario",
         ventaFolio: saleData.folio
       };
-      const fakeOrder = saleData; // Para mantener compatibilidad con el retorno original
 
       voucherOpen.value = true;
       clearCart();
       labToast.success(`Venta de óptica registrada correctamente`);
-
-      // Recargar catálogo para ver el nuevo stock
-      loadItems();
-
-      return fakeOrder;
+      return saleData;
     } catch (e) {
       console.error("Error en venta de óptica:", e);
       labToast.danger("Error al registrar venta de óptica");
@@ -304,8 +248,7 @@ export function useOpticaVentas(getUser) {
     }
   }
 
-  watch(selectedSheetId, () => { loadItems(); });
-  watch([itemQuery, stockFilter], () => { catalogPage.value = 1; });
+  watch(selectedSheetId, () => { /* useSalesCatalog handles fetch */ });
   watch([cartClienteNombres, cartClienteApellidos], () => {
     const n = cartClienteNombres.value.trim();
     const a = cartClienteApellidos.value.trim();
@@ -313,31 +256,26 @@ export function useOpticaVentas(getUser) {
   });
 
   onMounted(() => {
-    loadItems();
+    selectedSheetId.value = "armazones"; // Trigger initial load
     window.addEventListener("lab:ws", _onLabWs);
   });
 
   return {
     kind,
     catalog: {
-      items: itemsDB,
-      filteredItems,
       paginatedItems,
+      loadingItems,
       catalogPage,
       catalogPages,
       catalogPageSize,
-      selectedSheet: computed(() => COLLECTIONS.find(c => c.id === selectedSheetId.value)),
-      selectedSheetId,
       itemQuery,
       stockFilter,
-      loadingItems,
-      loadingSheets: ref(false),
-      sheetSearchResults: ref(COLLECTIONS),
+      selectedSheetId,
+      sheetSearchResults,
+      searchSheets,
       sheetTitle: (s) => s?.nombre || "—",
       buildRowTitle,
-      buildRowParams,
-      searchSheets: () => { },
-      reload: loadItems
+      filteredItems, 
     },
     cart: {
       items: cartItems,

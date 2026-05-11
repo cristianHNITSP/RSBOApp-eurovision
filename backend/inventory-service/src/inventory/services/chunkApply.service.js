@@ -52,7 +52,12 @@ async function applyChunkBase(models, sheet, rows, actor) {
 
     current.existencias = existencias;
     if (!current.sku) current.sku = makeSku(sheet._id, "BASE", { base });
-    if (existencias > 0 && !current.codebar) current.codebar = makeCodebar(sheet._id, "BASE", { base });
+    // Priorizar el codebar enviado en el row
+    if (row.codebar) {
+      current.codebar = row.codebar;
+    } else if (existencias > 0 && !current.codebar) {
+      current.codebar = makeCodebar(sheet._id, "BASE", { base });
+    }
 
     current.updatedBy = actor;
     if (!current.createdBy) current.createdBy = actor;
@@ -112,7 +117,12 @@ async function applyChunkSphCyl(models, sheet, rows, actor) {
 
     current.existencias = existencias;
     if (!current.sku) current.sku = makeSku(sheet._id, "SPH_CYL", { sph, cyl });
-    if (existencias > 0 && !current.codebar) current.codebar = makeCodebar(sheet._id, "SPH_CYL", { sph, cyl });
+    // Priorizar el codebar enviado en el row
+    if (row.codebar) {
+      current.codebar = row.codebar;
+    } else if (existencias > 0 && !current.codebar) {
+      current.codebar = makeCodebar(sheet._id, "SPH_CYL", { sph, cyl });
+    }
 
     current.updatedBy = actor;
     if (!current.createdBy) current.createdBy = actor;
@@ -172,8 +182,13 @@ async function applyChunkBifocal(models, sheet, rows, actor) {
     eyeNode.existencias = existencias;
     if (!eyeNode.sku)
       eyeNode.sku = makeSku(sheet._id, "SPH_ADD", { sph, add, eye, base_izq, base_der });
-    if (existencias > 0 && !eyeNode.codebar)
+    
+    // Priorizar el codebar enviado en el row
+    if (row.codebar) {
+      eyeNode.codebar = row.codebar;
+    } else if (existencias > 0 && !eyeNode.codebar) {
       eyeNode.codebar = makeCodebar(sheet._id, "SPH_ADD", { sph, add, eye, base_izq, base_der });
+    }
 
     cell.base_izq = base_izq;
     cell.base_der = base_der;
@@ -234,8 +249,13 @@ async function applyChunkProgresivo(models, sheet, rows, actor) {
     eyeNode.existencias = existencias;
     if (!eyeNode.sku)
       eyeNode.sku = makeSku(sheet._id, "BASE_ADD", { add, eye, base_izq, base_der });
-    if (existencias > 0 && !eyeNode.codebar)
+    
+    // Priorizar el codebar enviado en el row
+    if (row.codebar) {
+      eyeNode.codebar = row.codebar;
+    } else if (existencias > 0 && !eyeNode.codebar) {
       eyeNode.codebar = makeCodebar(sheet._id, "BASE_ADD", { add, eye, base_izq, base_der });
+    }
 
     cell.base_izq = base_izq;
     cell.base_der = base_der;
@@ -297,7 +317,13 @@ async function applyChunkTorico(models, sheet, rows, actor) {
 
     current.existencias = existencias;
     if (!current.sku) current.sku = makeSku(sheet._id, "SPH_CYL_AXIS", { sph, cyl, axis });
-    if (existencias > 0 && !current.codebar) current.codebar = makeCodebar(sheet._id, "SPH_CYL_AXIS", { sph, cyl, axis });
+    
+    // Priorizar el codebar enviado en el row
+    if (row.codebar) {
+      current.codebar = row.codebar;
+    } else if (existencias > 0 && !current.codebar) {
+      current.codebar = makeCodebar(sheet._id, "SPH_CYL_AXIS", { sph, cyl, axis });
+    }
 
     current.updatedBy = actor;
     if (!current.createdBy) current.createdBy = actor;

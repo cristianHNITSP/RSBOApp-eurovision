@@ -46,6 +46,12 @@ const MermaLogSchema = new mongoose.Schema(
     matrixKey: { type: String, required: false },
     eye:       { type: String, enum: ["OD", "OI", null], default: null },
     codebar:   { type: String, default: null },
+    sku:       { type: String, default: null, index: true },
+
+    // ─── REPLICACIÓN ÓPTICA (CAMPOS SHADOW) ───
+    collection: { type: String, default: null },
+    documentId:     { type: mongoose.Schema.Types.ObjectId, default: null },
+    // ──────────────────────────────────────────
 
     // Snapshot inmutable de los parámetros técnicos del item
     params: { type: ParamsSchema, default: () => ({}) },
@@ -58,9 +64,15 @@ const MermaLogSchema = new mongoose.Schema(
     },
     notes: { type: String, default: "", trim: true, maxlength: 500 },
 
+    // 💰 Snapshot financiero del item al momento de la merma
+    unitValue: { type: Number, default: 0 }, // Precio de venta sugerido
+    unitCost:  { type: Number, default: 0 }, // Costo de inventario (Pérdida real)
+
     // Snapshot de stock antes/después para auditoría
     stockBefore: { type: Number, required: true },
     stockAfter:  { type: Number, required: true },
+
+    isReplica: { type: Boolean, default: false, index: true },
 
     actor: { type: ActorSchema, default: () => ({}) },
   },

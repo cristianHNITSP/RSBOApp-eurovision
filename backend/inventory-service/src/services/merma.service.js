@@ -13,7 +13,7 @@ function ws() {
   return _ws;
 }
 
-const VALID_ORIGINS = new Set(["LAB", "VENTAS", "INVENTARIO", "DEVOLUCION"]);
+const VALID_ORIGINS = new Set(["LAB", "INVENTARIO", "DEVOLUCION"]);
 const VALID_REASONS = new Set(["ROTURA", "DEFECTO", "CADUCIDAD", "EXTRAVIO", "OTRO"]);
 
 class MermaError extends Error {
@@ -30,11 +30,11 @@ function validatePayload(p) {
   if (!VALID_ORIGINS.has(p.origin)) throw new MermaError("BAD_ORIGIN", `origin inválido: ${p.origin}`);
   if (!VALID_REASONS.has(p.reason)) throw new MermaError("BAD_REASON", `reason inválido: ${p.reason}`);
   
-  // Si no hay sheet, debe haber al menos un sku/codebar para Óptica
-  if (!p.sheet) {
-    if (p.origin !== "VENTAS") throw new MermaError("BAD_SHEET", "sheet requerido para este origen");
-    if (!p.sku && !p.codebar) throw new MermaError("BAD_ITEM", "sku o codebar requerido para mermas de óptica");
-  } else {
+  const isReplica = Boolean(p.isReplica);
+  
+  if (!p.sheet && !isReplica) {
+    throw new MermaError("BAD_SHEET", "sheet requerido para mermas de inventario/laboratorio");
+  } else if (p.sheet) {
     if (!p.matrixKey) throw new MermaError("BAD_KEY", "matrixKey requerido");
   }
 
@@ -52,7 +52,7 @@ function validatePayload(p) {
  * Registra una merma desde cualquier origen. Decrementa stock y persiste log.
  *
  * @param {Object} payload
- * @param {"LAB"|"VENTAS"|"INVENTARIO"|"DEVOLUCION"} payload.origin
+ * @param {"LAB"|"INVENTARIO"|"DEVOLUCION"} payload.origin
  * @param {string|ObjectId} payload.sheet
  * @param {string} payload.matrixKey
  * @param {"OD"|"OI"|null} [payload.eye]
@@ -121,11 +121,6 @@ async function registerMerma(payload, externalSession = null) {
         throw err;
       }
     }
-  } else {
-    // Caso ÓPTICA: No mutamos stock físico aquí por ahora (se asume que se hace vía optica-service si se requiere)
-    // Pero guardamos el log para trazabilidad.
-    stockBefore = 0; 
-    stockAfter = 0;
   }
 
   // Crear MermaLog
@@ -146,8 +141,14 @@ async function registerMerma(payload, externalSession = null) {
     qty:         Math.abs(Number(payload.qty)),
     reason:      payload.reason,
     notes:       payload.notes || "",
+    
+    // ✅ Captura de valor financiero (Snapshot)
+    unitValue:   sheet?.precioVenta  || 0,
+    unitCost:    sheet?.precioCompra || 0,
+
     stockBefore,
     stockAfter,
+    isReplica: skipMutation,
     actor,
   };
 
@@ -196,10 +197,13 @@ async function registerMerma(payload, externalSession = null) {
   return merma;
 }
 
-async function listMermas({ origin, sheet, dateFrom, dateTo, page = 1, limit = 20, search } = {}) {
+async function listMermas({ origin, sheet, dateFrom, dateTo, page = 1, limit = 7, search, isReplica } = {}) {
   const q = {};
   if (origin) q.origin = origin;
   if (sheet)  q.sheet = sheet;
+  if (isReplica !== undefined && isReplica !== null) {
+    q.isReplica = isReplica === "true" || isReplica === true;
+  }
   if (dateFrom || dateTo) {
     q.createdAt = {};
     if (dateFrom) q.createdAt.$gte = new Date(dateFrom);
@@ -213,7 +217,7 @@ async function listMermas({ origin, sheet, dateFrom, dateTo, page = 1, limit = 2
   }
 
   const p = Math.max(1, Number(page) || 1);
-  const l = Math.min(100, Math.max(1, Number(limit) || 20));
+  const l = Math.min(100, Math.max(1, Number(limit) || 7));
 
   const [items, total] = await Promise.all([
     MermaLog.find(q)
@@ -245,15 +249,15 @@ async function getStats({ dateFrom, dateTo } = {}) {
 
   const byOrigin = await MermaLog.aggregate([
     { $match: match },
-    { $group: { _id: "$origin", count: { $sum: 1 }, qtyTotal: { $sum: "$qty" } } },
+    { $group: { _id: "$origin", count: { $sum: 1 }, qtyTotal: { $sum: "$qty" }, valueTotal: { $sum: { $multiply: ["$qty", { $ifNull: ["$unitCost", "$unitValue", 0] }] } } } },
   ]);
   const byReason = await MermaLog.aggregate([
     { $match: match },
-    { $group: { _id: "$reason", count: { $sum: 1 }, qtyTotal: { $sum: "$qty" } } },
+    { $group: { _id: "$reason", count: { $sum: 1 }, qtyTotal: { $sum: "$qty" }, valueTotal: { $sum: { $multiply: ["$qty", { $ifNull: ["$unitCost", "$unitValue", 0] }] } } } },
   ]);
   const totals = await MermaLog.aggregate([
     { $match: match },
-    { $group: { _id: null, count: { $sum: 1 }, qtyTotal: { $sum: "$qty" } } },
+    { $group: { _id: null, count: { $sum: 1 }, qtyTotal: { $sum: "$qty" }, valueTotal: { $sum: { $multiply: ["$qty", { $ifNull: ["$unitCost", "$unitValue", 0] }] } } } },
   ]);
 
   return {

@@ -87,11 +87,17 @@ if (config.env !== "production") {
 }
 
 // -------------------------
-// Mongo
+// Mongo & Seeding
 // -------------------------
+const { runSeed } = require("./seeds/seedUsers");
+
 mongoose
   .connect(config.mongo.uri)
-  .then(() => console.log("✅ Connected to MongoDB"))
+  .then(async () => {
+    console.log("✅ Connected to MongoDB");
+    // Bootstrapping automático de roles y usuarios iniciales
+    await runSeed();
+  })
   .catch((err) => {
     console.error("MongoDB connection error:", err);
     process.exit(1);

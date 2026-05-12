@@ -15,10 +15,14 @@ const { INITIAL_USERS } = require('../data/seed-data');
 
 const OBSOLETE_ROLES = ['administrador', 'moderador'];
 
-async function seed() {
+/**
+ * @function runSeed
+ * @description Ejecuta el seeding de roles y usuarios iniciales. 
+ * Es idempotente: no sobreescribe roles ni usuarios existentes.
+ */
+async function runSeed() {
   try {
-    await mongoose.connect(MONGO_URI);
-    console.log('✅ Conectado a MongoDB');
+    console.log('🌱 Iniciando seeding automático...');
 
     // 1️⃣  Upsert de roles (indispensable para que el sistema funcione)
     const roleRefs = {};
@@ -29,17 +33,16 @@ async function seed() {
         { upsert: true, new: true, setDefaultsOnInsert: true }
       );
       roleRefs[roleData.name] = role._id;
-      console.log(`✅ Rol "${roleData.name}" listo`);
+      console.log(`   ✅ Rol "${roleData.name}" validado/creado`);
     }
 
     // 2️⃣  Usuarios iniciales
     for (const userData of INITIAL_USERS) {
       const existingUser = await User.findOne({ username: userData.username });
       if (!existingUser) {
-        // Resolvemos el ID del rol por su nombre
         const roleId = roleRefs[userData.role];
         if (!roleId) {
-          console.warn(`⚠️ Omitiendo usuario ${userData.username}: Rol ${userData.role} no encontrado`);
+          console.warn(`   ⚠️ Omitiendo usuario ${userData.username}: Rol ${userData.role} no encontrado`);
           continue;
         }
 
@@ -47,20 +50,32 @@ async function seed() {
           ...userData,
           role: roleId,
         });
-        console.log(`\n🚀 Usuario ${userData.username.toUpperCase()} creado con éxito.`);
-        console.log(`   Username: ${userData.username}`);
+        console.log(`   🚀 Usuario ${userData.username.toUpperCase()} inyectado correctamente`);
       } else {
-        console.log(`ℹ️  Usuario ${userData.username.toUpperCase()} ya existe — omitido`);
+        // console.log(`   ℹ️  Usuario ${userData.username.toUpperCase()} ya existe — omitido`);
       }
     }
 
-    console.log('\n🎉 Seed completado: Solo se han configurado los ROLES y el usuario ROOT.');
+    console.log('✅ Seeding completado con éxito.\n');
   } catch (err) {
-    console.error('❌ Error en el seed:', err);
-  } finally {
-    await mongoose.disconnect();
-    process.exit(0);
+    console.error('❌ Error durante el seeding:', err);
+    // No matamos el proceso aquí si es automático para no bloquear el arranque del servicio
+    // a menos que sea un error fatal de conexión, pero aquí ya estamos conectados.
   }
 }
 
-seed();
+// Exportar para uso automático en index.js
+module.exports = { runSeed };
+
+// Ejecución manual si se llama directamente: node seedUsers.js
+if (require.main === module) {
+  (async () => {
+    try {
+      await mongoose.connect(MONGO_URI);
+      await runSeed();
+    } finally {
+      await mongoose.disconnect();
+      process.exit(0);
+    }
+  })();
+}

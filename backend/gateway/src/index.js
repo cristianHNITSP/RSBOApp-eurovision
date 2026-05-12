@@ -1,5 +1,4 @@
-// gateway/index.js
-require("dotenv").config();
+const config = require("./config");
 const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
@@ -53,37 +52,15 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000);
 
-// Orígenes base desde .env (separados por coma)
-const rawOrigins = process.env.CORS_ORIGINS || "";
-const envOrigins = rawOrigins
-  .split(",")
-  .map((o) => o.trim())
-  .filter(Boolean);
-
-// Orígenes comunes de desarrollo
-const devOrigins = [
-  "http://localhost:5173",
-  "http://127.0.0.1:5173",
-    "http://192.168.0.87:5173",
-];
-
-// Merge sin duplicados
-const allowedOrigins = Array.from(new Set([...envOrigins, ...devOrigins]));
-
+const allowedOrigins = Array.from(new Set(config.cors.origins));
 console.log("✅ CORS allowed origins:", allowedOrigins);
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Permite peticiones sin origin (curl, healthchecks, Postman, etc.)
-      if (!origin) {
+      if (!origin || allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
-
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-
       console.warn(`❌ CORS bloqueado para origen no permitido: ${origin}`);
       return callback(new Error("Not allowed by CORS"));
     },
@@ -104,30 +81,7 @@ app.use((_req, res, next) => {
 
 app.use(express.json());
 
-// 🔹 URLs de microservicios
-const requiredServices = [
-  'AUTH_SERVICE_URL',
-  'USERS_SERVICE_URL',
-  'INVENTORY_SERVICE_URL',
-  'OPTICA_SERVICE_URL',
-  'NOTIFICATION_SERVICE_URL',
-  'BACKORDER_SERVICE_URL'
-];
-
-const missingServices = requiredServices.filter(k => !process.env[k]);
-if (missingServices.length > 0) {
-  console.error(`\x1b[31m[FAIL-FAST] Missing service URLs in Gateway: ${missingServices.join(', ')}\x1b[0m`);
-  process.exit(1);
-}
-
-const SERVICES = {
-  auth:         process.env.AUTH_SERVICE_URL,
-  users:        process.env.USERS_SERVICE_URL,
-  inventory:    process.env.INVENTORY_SERVICE_URL,
-  optica:       process.env.OPTICA_SERVICE_URL,
-  notification: process.env.NOTIFICATION_SERVICE_URL,
-  backorder:    process.env.BACKORDER_SERVICE_URL,
-};
+const SERVICES = config.services;
 
 // ✅ Helpers
 const isHttpsRequest = (req) => {
@@ -288,7 +242,9 @@ app.get("/api/health", (_req, res) => {
 });
 
 // 🔹 WebSocket
-const PORT = process.env.PORT || 3000;
+app.get("/health", (req, res) => res.json({ status: "UP", service: "gateway", timestamp: new Date().toISOString() }));
+
+const PORT = config.port;
 const server = http.createServer(app);
 
 // Dos WS servers comparten el mismo HTTP server — hay que enrutar el upgrade manualmente

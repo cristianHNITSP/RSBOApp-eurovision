@@ -109,8 +109,9 @@ export function createSheetService(base, tag) {
   }
 
   function fetchItems(sheetId, query = {}) {
-    if (DEV) console.log(`[${tag.toLowerCase()}.fetchItems] sheetId:`, sheetId, "query:", query);
-    return api.get(`${base}/sheets/${sheetId}/items`, { params: query });
+    const { signal, ...params } = query;
+    if (DEV) console.log(`[${tag.toLowerCase()}.fetchItems] sheetId:`, sheetId, "query:", params);
+    return api.get(`${base}/sheets/${sheetId}/items`, { params, signal });
   }
 
   async function saveChunk(sheetId, rows, actor) {

@@ -16,17 +16,6 @@ const INITIAL_USERS = [
       bio: 'Acceso total al sistema Eurovisión',
     },
     isActive: true,
-  },
-  {
-    username: 'eurovision',
-    name: 'Eurovisión — Admin Principal',
-    password: 'euro1234',
-    role: ROLES.ROOT,
-    profile: {
-      avatar: 'https://cdn.jsdelivr.net/gh/alohe/avatars/png/vibrent_1.png',
-      bio: 'Administrador de la red Eurovisión',
-    },
-    isActive: true,
   }
 ];
 

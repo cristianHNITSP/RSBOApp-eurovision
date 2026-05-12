@@ -23,7 +23,7 @@ export function useSalesCatalog(options = {}) {
   
   const selectedSheetId = ref(null);
   const searchQuery = ref('');
-  const stockFilter = ref('withStock'); // 'all', 'withStock'
+  const stockFilter = ref('all'); // 'all', 'withStock'
   const extraFilters = ref({}); // Para ejes, etc.
  
   let abortController = null;

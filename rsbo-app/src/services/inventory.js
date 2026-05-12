@@ -98,8 +98,9 @@ export async function resolveCodebar(codebar) {
 
 // ── Catálogo de Ventas Especializado ──────────────────────────────────────────
 
-export async function fetchSalesCatalogItems(params) {
-  return api.get("/inventory/sales-catalog/items", { params });
+export async function fetchSalesCatalogItems(query) {
+  const { signal, ...params } = query;
+  return api.get("/inventory/sales-catalog/items", { params, signal });
 }
 
 export async function updateSalesCatalogStock(sku, payload) {

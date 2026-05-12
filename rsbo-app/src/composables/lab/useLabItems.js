@@ -16,7 +16,7 @@ export function useLabItems(sheets) {
   // Estado para la "Bandeja" (Vista de matriz completa)
   const itemsDB = ref([]);
   const itemQuery = ref("");
-  const stockFilter = ref("withStock");
+  const stockFilter = ref("all");
   const loadingItems = ref(false);
   const _itemsLimit = ref(5000);
 

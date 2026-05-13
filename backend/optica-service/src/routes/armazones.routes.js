@@ -156,22 +156,6 @@ router.patch("/:id/stock", param("id").isMongoId(), body("stock").isInt({ min: 0
   }
 });
 
-// ── POST /armazones/:id/sale — Venta atómica (decremento de stock) ──────────
-const { handleAtomicSale } = require("../utils/saleHelper");
-router.post("/:id/sale", param("id").isMongoId(), body("qty").optional().isInt({ min: 1 }), validate, async (req, res) => {
-  try {
-    const qty = req.body.qty || 1;
-    const actor = req.user;
-    const result = await handleAtomicSale(Armazon, COLLECTION, req.params.id, qty, actor);
-
-    if (!result.ok) return res.status(result.status).json({ ok: false, error: result.message, current: result.current });
-
-    return res.json({ ok: true, data: result.data });
-  } catch (err) {
-    console.error(`[OPTICA][${COLLECTION.toUpperCase()}] SALE error:`, err);
-    return res.status(500).json({ ok: false, error: err.message });
-  }
-});
 
 // ── DELETE /armazones/:id — soft delete ────────────────────────────────────
 router.delete("/:id", param("id").isMongoId(), validate, async (req, res) => {

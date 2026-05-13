@@ -19,10 +19,7 @@ const MatrixBase        = require("../models/matrix/MatrixBase");
 const MatrixSphCyl      = require("../models/matrix/MatrixSphCyl");
 const MatrixBifocal     = require("../models/matrix/MatrixBifocal");
 const MatrixProgresivo  = require("../models/matrix/MatrixProgresivo");
-const LaboratoryOrder   = require("../models/laboratory/LaboratoryOrder");
-const LaboratoryEvent   = require("../models/laboratory/LaboratoryEvent");
 const InventoryChangeLog = require("../models/InventoryChangeLog");
-const Devolution         = require("../models/Devolution");
 
 // Lentes de contacto
 const ContactLensesSheet = require("../models/ContactLensesSheet");
@@ -250,50 +247,7 @@ router.get("/dashboard", protect(), cacheMiddleware(KEYS.stats, 45), async (_req
       ? Number((totalStock / totalCombinations).toFixed(2))
       : 0;
 
-    // ── Laboratorio / Pedidos ─────────────────────────────────────────────
-    const [
-      ordersPending,
-      ordersClosedAll,
-      ordersCancelledAll,
-      ordersToday,
-      ordersClosedToday,
-      ordersClosed30d,
-    ] = await Promise.all([
-      LaboratoryOrder.countDocuments({ status: { $in: ["pendiente", "parcial"] } }),
-      LaboratoryOrder.countDocuments({ status: "cerrado" }),
-      LaboratoryOrder.countDocuments({ status: "cancelado" }),
-      LaboratoryOrder.countDocuments({ createdAt: { $gte: today } }),
-      LaboratoryOrder.countDocuments({ status: "cerrado", closedAt: { $gte: today } }),
-      LaboratoryOrder.countDocuments({ status: "cerrado", closedAt: { $gte: d30 } }),
-    ]);
 
-    // ── Eventos de laboratorio ────────────────────────────────────────────
-    const [
-      corrections30d,
-      corrections7d,
-      scansToday,
-      edits30d,
-    ] = await Promise.all([
-      LaboratoryEvent.countDocuments({ type: "CORRECTION_REQUEST", createdAt: { $gte: d30 } }),
-      LaboratoryEvent.countDocuments({ type: "CORRECTION_REQUEST", createdAt: { $gte: d7 } }),
-      LaboratoryEvent.countDocuments({ type: "EXIT_SCAN", createdAt: { $gte: today } }),
-      LaboratoryEvent.countDocuments({ type: "ORDER_EDIT", createdAt: { $gte: d30 } }),
-    ]);
-
-    // ── Ventas (Monto) ────────────────────────────────────────────────────
-    const [
-      ventasMontoHoyAggr,
-      ventasMontoSemanaAggr,
-      ventasMontoMesAggr
-    ] = await Promise.all([
-      LaboratoryOrder.aggregate([{ $match: { status: "cerrado", closedAt: { $gte: today } } }, { $group: { _id: null, total: { $sum: "$totalMonto" } } }]),
-      LaboratoryOrder.aggregate([{ $match: { status: "cerrado", closedAt: { $gte: d7 } } }, { $group: { _id: null, total: { $sum: "$totalMonto" } } }]),
-      LaboratoryOrder.aggregate([{ $match: { status: "cerrado", closedAt: { $gte: d30 } } }, { $group: { _id: null, total: { $sum: "$totalMonto" } } }]),
-    ]);
-
-    const ventasMontoHoy = ventasMontoHoyAggr[0]?.total || 0;
-    const ventasMontoSemana = ventasMontoSemanaAggr[0]?.total || 0;
-    const ventasMontoMes = ventasMontoMesAggr[0]?.total || 0;
 
     // ── Movimientos de inventario ─────────────────────────────────────────
     const [
@@ -308,37 +262,7 @@ router.get("/dashboard", protect(), cacheMiddleware(KEYS.stats, 45), async (_req
       InventoryChangeLog.countDocuments({ createdAt: { $gte: today } }),
     ]);
 
-    // ── Devoluciones ──────────────────────────────────────────────────────
-    const [
-      devolucionesPendientes,
-      devolucionesAprobadas,
-      devolucionesRechazadas,
-      devolucionesProcesadas,
-      devolucionesEnRevision,
-      devolucionesTotal30d,
-      devolucionesTotal7d,
-      devolucionesHoy,
-    ] = await Promise.all([
-      Devolution.countDocuments({ status: "pendiente" }),
-      Devolution.countDocuments({ status: "aprobada" }),
-      Devolution.countDocuments({ status: "rechazada" }),
-      Devolution.countDocuments({ status: "procesada" }),
-      Devolution.countDocuments({ status: "en_revision" }),
-      Devolution.countDocuments({ createdAt: { $gte: d30 } }),
-      Devolution.countDocuments({ createdAt: { $gte: d7 } }),
-      Devolution.countDocuments({ createdAt: { $gte: today } }),
-    ]);
 
-    // Nivel de servicio: % pedidos cerrados sin corrección
-    let serviceLevel = 0;
-    if (ordersClosed30d > 0) {
-      const ordersWithCorrection = await LaboratoryEvent.distinct("order", {
-        type: "CORRECTION_REQUEST",
-        createdAt: { $gte: d30 },
-      });
-      const closedWithoutCorrection = ordersClosed30d - ordersWithCorrection.length;
-      serviceLevel = Math.round((Math.max(0, closedWithoutCorrection) / ordersClosed30d) * 100);
-    }
 
     let criticalAlertsOptic = 0;
     let criticalAlertsCL = 0;
@@ -419,41 +343,13 @@ router.get("/dashboard", protect(), cacheMiddleware(KEYS.stats, 45), async (_req
         clTopLowStock,
         clTopHighStock,
 
-        // Pedidos / Laboratorio
-        ordersPending,
-        ordersClosedAll,
-        ordersCancelledAll,
-        ordersToday,
-        ordersClosedToday,
-        ordersClosed30d,
-        corrections30d,
-        corrections7d,
-        scansToday,
-        edits30d,
 
-        // Ventas
-        ventasMontoHoy,
-        ventasMontoSemana,
-        ventasMontoMes,
 
         // Movimientos inventario
         movementsTotal30d,
         entries30d,
         exits30d,
         movementsToday,
-
-        // Nivel de servicio
-        serviceLevel,
-
-        // Devoluciones
-        devolucionesPendientes,
-        devolucionesAprobadas,
-        devolucionesRechazadas,
-        devolucionesProcesadas,
-        devolucionesEnRevision,
-        devolucionesTotal30d,
-        devolucionesTotal7d,
-        devolucionesHoy,
 
         // Meta
         periodLabel: "Últimos 30 días",
@@ -545,76 +441,6 @@ router.get("/product-movements", protect(), async (req, res) => {
   }
 });
 
-// ─── GET /api/stats/my-performance ───────────────────────────────────────
-router.get("/my-performance", protect(), async (req, res) => {
-  try {
-    const userId = req.user.userId;
-    const d30 = daysAgo(30);
-    const d7 = daysAgo(7);
-    const today = todayStart();
 
-    const [
-      ordersToday, ordersWeek, ordersMonth,
-      montoTodayAggr, montoWeekAggr, montoMonthAggr,
-      scansToday, scansWeek,
-      correctionsMonth,
-      editsMonth,
-      devolutionsMonth
-    ] = await Promise.all([
-      LaboratoryOrder.countDocuments({ "createdBy.userId": userId, createdAt: { $gte: today } }),
-      LaboratoryOrder.countDocuments({ "createdBy.userId": userId, createdAt: { $gte: d7 } }),
-      LaboratoryOrder.countDocuments({ "createdBy.userId": userId, createdAt: { $gte: d30 } }),
-      LaboratoryOrder.aggregate([{ $match: { "createdBy.userId": userId, createdAt: { $gte: today } } }, { $group: { _id: null, total: { $sum: "$totalMonto" } } }]),
-      LaboratoryOrder.aggregate([{ $match: { "createdBy.userId": userId, createdAt: { $gte: d7 } } }, { $group: { _id: null, total: { $sum: "$totalMonto" } } }]),
-      LaboratoryOrder.aggregate([{ $match: { "createdBy.userId": userId, createdAt: { $gte: d30 } } }, { $group: { _id: null, total: { $sum: "$totalMonto" } } }]),
-      LaboratoryEvent.countDocuments({ type: "EXIT_SCAN", "actor.userId": userId, createdAt: { $gte: today } }),
-      LaboratoryEvent.countDocuments({ type: "EXIT_SCAN", "actor.userId": userId, createdAt: { $gte: d7 } }),
-      LaboratoryEvent.countDocuments({ type: "CORRECTION_REQUEST", "actor.userId": userId, createdAt: { $gte: d30 } }),
-      LaboratoryEvent.countDocuments({ type: "ORDER_EDIT", "actor.userId": userId, createdAt: { $gte: d30 } }),
-      Devolution.countDocuments({ "createdBy.userId": userId, createdAt: { $gte: d30 } }),
-    ]);
-
-    const myRevenue = {
-      today: montoTodayAggr[0]?.total || 0,
-      week: montoWeekAggr[0]?.total || 0,
-      month: montoMonthAggr[0]?.total || 0,
-    };
-
-    // Calcular ranking basado en órdenes cerradas en el mes
-    let ranking = null;
-    const rankingAggr = await LaboratoryOrder.aggregate([
-      { $match: { status: "cerrado", closedAt: { $gte: d30 } } },
-      { $group: { _id: "$createdBy.userId", totalOrders: { $sum: 1 } } },
-      { $sort: { totalOrders: -1 } }
-    ]);
-    
-    if (rankingAggr.length > 0) {
-      const pos = rankingAggr.findIndex(r => r._id === userId);
-      ranking = {
-        position: pos >= 0 ? pos + 1 : rankingAggr.length + 1,
-        totalUsers: rankingAggr.length,
-        totalOrders: pos >= 0 ? rankingAggr[pos].totalOrders : 0
-      };
-    }
-
-    const isHighRole = ["root", "eurovision", "supervisor"].includes(req.user.roleName);
-
-    res.json({
-      ok: true,
-      data: {
-        myOrders: { today: ordersToday, week: ordersWeek, month: ordersMonth },
-        myRevenue,
-        myScans: { today: scansToday, week: scansWeek },
-        myCorrections: { month: correctionsMonth },
-        myEdits: { month: editsMonth },
-        myDevolutions: { month: devolutionsMonth },
-        ranking: isHighRole ? ranking : null
-      }
-    });
-  } catch (e) {
-    console.error("GET /api/stats/my-performance error:", e);
-    res.status(500).json({ ok: false, message: "Error al cargar desempeño" });
-  }
-});
 
 module.exports = router;

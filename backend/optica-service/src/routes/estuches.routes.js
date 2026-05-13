@@ -8,7 +8,7 @@ const { logMovement } = require("../utils/logHelper");
 const { sanitizeMiddleware } = require("../utils/sanitizer");
 const { protect } = require("../utils/auth");
 const { broadcast } = require("../ws");
-const { handleAtomicSale } = require("../utils/saleHelper");
+
 
 const COLLECTION = "estuches";
 router.use(protect());
@@ -128,19 +128,7 @@ router.patch("/:id/stock", param("id").isMongoId(), body("stock").isInt({ min: 0
   }
 });
 
-// ── POST /estuches/:id/sale — Venta atómica ────────────────────────────────
-router.post("/:id/sale", param("id").isMongoId(), body("qty").optional().isInt({ min: 1 }), validate, async (req, res) => {
-  try {
-    const qty = req.body.qty || 1;
-    const actor = req.user;
-    const result = await handleAtomicSale(Estuche, COLLECTION, req.params.id, qty, actor);
-    if (!result.ok) return res.status(result.status).json({ ok: false, error: result.message, current: result.current });
-    return res.json({ ok: true, data: result.data });
-  } catch (err) {
-    console.error(`[OPTICA][${COLLECTION.toUpperCase()}] SALE error:`, err);
-    return res.status(500).json({ ok: false, error: err.message });
-  }
-});
+
 
 router.delete("/:id", param("id").isMongoId(), validate, async (req, res) => {
   try {

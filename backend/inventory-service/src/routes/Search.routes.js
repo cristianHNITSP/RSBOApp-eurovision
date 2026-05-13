@@ -23,7 +23,6 @@ const router       = express.Router();
 const { protect }  = require('../utils/auth');
 const InventorySheet     = require('../models/InventorySheet');
 const ContactLensesSheet = require('../models/ContactLensesSheet');
-const LaboratoryOrder    = require('../models/laboratory/LaboratoryOrder');
 
 // ── Mapa estático de rutas de la aplicación ──────────────────────────────────
 // Mantén sincronizado con src/router/index.js del frontend.
@@ -158,19 +157,9 @@ router.get('/', protect(), async (req, res) => {
       proveedor: 1, marca: 1, ranges: 1
     };
 
-    const orderQuery = {
-      status: { $ne: 'cancelado' },
-      $or: [
-        { folio:   regex },
-        { cliente: regex }
-      ]
-    };
-    const orderFields = { folio: 1, cliente: 1, status: 1 };
-
-    const [invSheets, clSheets, labOrders] = await Promise.all([
+    const [invSheets, clSheets] = await Promise.all([
       InventorySheet.find(invSheetQuery, sheetFields).lean().limit(limit),
-      ContactLensesSheet.find(clSheetQuery, sheetFields).lean().limit(limit),
-      LaboratoryOrder.find(orderQuery, orderFields).sort({ createdAt: -1 }).lean().limit(limit)
+      ContactLensesSheet.find(clSheetQuery, sheetFields).lean().limit(limit)
     ]);
 
     const mapSheet = (s, category) => ({
@@ -193,14 +182,7 @@ router.get('/', protect(), async (req, res) => {
       ...clSheets.map(s => mapSheet(s, 'Lentes de contacto'))
     ].slice(0, limit);
 
-    const ordersResult = labOrders.map(o => ({
-      id:      String(o._id),
-      folio:   o.folio,
-      cliente: o.cliente,
-      status:  o.status
-    }));
-
-    return res.json({ routes: matched, sheets: sheetsResult, orders: ordersResult });
+    return res.json({ routes: matched, sheets: sheetsResult });
 
   } catch (err) {
     console.error('Error en búsqueda global:', err);

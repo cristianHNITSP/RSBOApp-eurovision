@@ -23,26 +23,7 @@ const registerOpticaModels = (conn) => {
     deletedAt:Date,
   }, { timestamps: true }));
 
-  // ─── Sale ─────────────────────────────────────────────────────────────────
-  const Sale = conn.models.Sale || conn.model("Sale", new mongoose.Schema({
-    folio:        { type: String, required: true, unique: true },
-    cliente:      { type: String, required: true },
-    clientePhone: String,
-    items: [{
-      collection:  String,
-      documentId:  ObjectId,
-      sku:         String,
-      description: String,
-      qty:         Number,
-      precio:      Number
-    }],
-    total:        { type: Number, default: 0 },
-    pago:         [String],
-    actor: {
-      userId: String,
-      name:   String
-    }
-  }, { timestamps: true }));
+
 
   // ─── Lente de Contacto ─────────────────────────────────────────────────────
   const LenteContacto = conn.models.LenteContacto || conn.model("LenteContacto", new mongoose.Schema({
@@ -114,7 +95,7 @@ const registerOpticaModels = (conn) => {
     }
   }, { timestamps: true }));
 
-  return { Armazon, Sale, Accesorio, Estuche, Equipo, LenteContacto, Solucion, OpticaChangeLog };
+  return { Armazon, Accesorio, Estuche, Equipo, LenteContacto, Solucion, OpticaChangeLog };
 };
 
 module.exports = { registerOpticaModels };

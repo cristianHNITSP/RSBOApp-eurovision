@@ -57,16 +57,11 @@ app.get(APP_CONSTANTS.PATHS.HEALTH, (_req, res) => {
 });
 
 // Rutas
-app.use("/api/inventory/transactions", require("./routes/transactions.routes"));
 app.use("/api/inventory", require("./routes/inventory.routes"));
-app.use("/api/laboratory", require("./routes/laboratory.routes"));
 app.use("/api/search", require("./routes/Search.routes"));
 app.use("/api/contactlenses", require("./routes/contactlenses.routes"));
 app.use("/api/catalog", require("./routes/catalog.routes"));
 app.use("/api/stats", require("./routes/stats.routes"));
-app.use("/api/devolutions", require("./routes/devolutions.routes"));
-app.use("/api/mermas", require("./routes/merma.routes"));
-app.use("/api/inventory/cash-closures", require("./routes/cash-closure.routes"));
 
 app.use((err, _req, res, _next) => {
   console.error("[Inventory ERROR]", err);

@@ -155,18 +155,63 @@ const props = defineProps({
 })
 
 const userRef = toRef(props, 'user')
-const {
-  stats, loading: statsLoading, load: loadStats,
-  role, canSeeInventory, canSeeOrders, canSeeReports,
-  canSeeLab, canSeeMovements, canSeeDevolutions,
-  canExportReports, isRoot, isVentas, isSupervisor,
-} = useDashboardStats(userRef)
 
-const { opticaSummary, loading: opticaLoading, load: loadOpticaStats } = useOpticaStats()
+// MOCK DATA PARA "DATA ESTÁTICA"
+const stats = ref({
+  periodLabel: 'Período Estático (Demo)',
+  totalCombinations: 1250,
+  totalStock: 8500,
+  activeSheets: 24, // "Plantillas"
+  ordersPending: 12,
+  ordersClosed30d: 450,
+  ordersClosedToday: 15,
+  scansToday: 85,
+  serviceLevel: 98.5,
+  movementsTotal30d: 1200,
+  entries30d: 800,
+  exits30d: 400,
+  devolucionesTotal30d: 5,
+  devolucionesPendientes: 1,
+  devolucionesAprobadas: 4,
+  devolucionesTotal7d: 2,
+  corrections30d: 8,
+  corrections7d: 2,
+  ventasMontoMes: 125000,
+  ventasMontoSemana: 32000,
+  ventasMontoHoy: 4500,
+  criticalAlertsOptic: 3,
+  clActiveSheets: 12,
+  clTotalStock: 500,
+  clCoveragePct: 92
+})
+const opticaSummary = ref({
+  armazones: { total: 450, stock: 1200, agotados: 12, valor: 85000, stockBajo: 5 },
+  soluciones: { total: 24, stock: 150, agotados: 2, porVencer: 1 },
+  accesorios: { total: 85, stock: 400 },
+  estuches: { total: 32, stock: 120 },
+  equipos: { total: 8, operativos: 7, mantenimiento: 1, fueraServicio: 0 }
+})
+
+const role = ref('eurovision')
+const canSeeInventory = ref(true)
+const canSeeOrders = ref(true)
+const canSeeReports = ref(true)
+const canSeeLab = ref(true)
+const canSeeMovements = ref(true)
+const canSeeDevolutions = ref(true)
+const canExportReports = ref(true)
+const isRoot = ref(false)
+const isVentas = ref(false)
+const isSupervisor = ref(false)
 
 const s = computed(() => stats.value)
 const os = computed(() => opticaSummary.value)
-const isLoading = computed(() => props.loading || statsLoading.value)
+const isLoading = ref(false)
+const opticaLoading = ref(false)
+
+// Dummy functions to prevent runtime errors
+function loadStats() { console.log("Static mode: loadStats skipped"); }
+function loadOpticaStats() { console.log("Static mode: loadOpticaStats skipped"); }
 
 // ── Tabs ──
 const anTab = ref('inventario')
@@ -190,6 +235,8 @@ function debouncedRefresh() {
 }
 
 function onLabWs(e) {
+  // Real-time refreshes disabled in static mode
+  /*
   const type = e?.detail?.type
   const relevantTypes = [
     'LAB_ORDER_CREATE', 'LAB_ORDER_CANCEL', 'LAB_ORDER_SCAN', 
@@ -202,16 +249,17 @@ function onLabWs(e) {
   if (type === 'INV_CHANGE') {
     loadOpticaStats(true)
   }
+  */
 }
 
 onMounted(() => { 
-  loadStats();
-  if (canSeeInventory.value) loadOpticaStats();
-  window.addEventListener('lab:ws', onLabWs);
+  // loadStats();
+  // if (canSeeInventory.value) loadOpticaStats();
+  // window.addEventListener('lab:ws', onLabWs);
 })
 onActivated(() => { 
-  loadStats()
-  if (canSeeInventory.value) loadOpticaStats()
+  // loadStats()
+  // if (canSeeInventory.value) loadOpticaStats()
 })
 
 onUnmounted(() => {

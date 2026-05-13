@@ -4,7 +4,7 @@ const { build: buildLente }      = require("./lenteContacto.resource");
 const { build: buildEstuche }    = require("./estuche.resource");
 const { build: buildEquipo }     = require("./equipo.resource");
 const { build: buildSolucion }   = require("./solucion.resource");
-const { build: buildSale }       = require("./sale.resource");
+
 const { build: buildChangeLog }  = require("./opticaChangeLog.resource");
 
 const buildOpticaResources = (models) => {
@@ -16,7 +16,7 @@ const buildOpticaResources = (models) => {
     buildEstuche(models.Estuche),
     buildEquipo(models.Equipo),
     buildSolucion(models.Solucion),
-    buildSale(models.Sale),
+
     buildChangeLog(models.OpticaChangeLog),
   ];
 };

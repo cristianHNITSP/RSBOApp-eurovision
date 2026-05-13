@@ -9,7 +9,9 @@ export function listOrders(params = {}) {
 }
 
 export function getOrderCounts() {
-  return api.get(`${BASE}/orders/counts`);
+  // return api.get(`${BASE}/orders/counts`);
+  // Mocked for maintenance mode to avoid 404
+  return Promise.resolve({ data: { ok: true, data: { pendiente: 0, parcial: 0, cerrado: 0, cancelado: 0 } } });
 }
 
 export function getOrder(orderId) {

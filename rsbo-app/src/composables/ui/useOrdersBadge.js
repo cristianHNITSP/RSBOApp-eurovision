@@ -9,7 +9,8 @@ export function updatePendingCount(count) {
 
 export async function fetchPendingOrdersCount() {
   try {
-    const { data } = await getOrderCounts();
+    // MODO MANTENIMIENTO: Mocked to avoid 404
+    const data = { ok: true, data: { pendiente: 0, parcial: 0 } };
     if (data?.ok) {
       const counts = data.data;
       updatePendingCount((counts.pendiente || 0) + (counts.parcial || 0));

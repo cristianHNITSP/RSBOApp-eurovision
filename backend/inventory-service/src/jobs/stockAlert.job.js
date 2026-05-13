@@ -20,7 +20,6 @@
 
 const cron = require("node-cron");
 const { sweepAllSheets, cleanupLegacyPerCellNotifications } = require("../services/stockAlert.service");
-const { notifyPendingOrders } = require("../services/labNotification.service");
 
 const STARTUP_DELAY_MS = 8000;
 
@@ -31,7 +30,6 @@ function startStockAlertJob() {
     console.log("[STOCK_ALERT] Sweep inicial al arrancar...");
     await cleanupLegacyPerCellNotifications();
     await sweepAllSheets({ respectCooldown: true });
-    await notifyPendingOrders();
   })().catch((e) => console.error("[STOCK_ALERT] Error en sweep inicial:", e?.message));
 
   // ── Sweep Inteligente (Redis Pub/Sub) ───────────────────────────────────

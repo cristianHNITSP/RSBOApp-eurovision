@@ -68,27 +68,9 @@ const registerInventoryModels = (conn) => {
     allowedBases:      [String],
   }, { timestamps: true }));
 
-  // ─── LaboratoryOrder ──────────────────────────────────────────────────────
-  const LaboratoryOrder = conn.model("LaboratoryOrder", new mongoose.Schema({
-    folio:    { type: String, required: true, unique: true },
-    sheet:    { type: ObjectId, ref: "InventorySheet" },
-    cliente:  String,
-    note:     String,
-    status:   { type: String, enum: ["pendiente", "parcial", "cerrado", "cancelado"] },
-    lines:    Mixed,
-    createdBy:ActorSchema,
-    closedBy: ActorSchema,
-    closedAt: Date,
-  }, { timestamps: true }));
 
-  // ─── LaboratoryEvent ──────────────────────────────────────────────────────
-  const LaboratoryEvent = conn.model("LaboratoryEvent", new mongoose.Schema({
-    order:   { type: ObjectId, ref: "LaboratoryOrder" },
-    sheet:   { type: ObjectId, ref: "InventorySheet" },
-    type:    { type: String, enum: ["ORDER_CREATE", "EXIT_SCAN", "ORDER_CLOSE", "ORDER_RESET", "CORRECTION_REQUEST", "ORDER_CANCEL", "ORDER_EDIT"] },
-    details: { type: Object, default: {} },
-    actor:   ActorSchema,
-  }, { timestamps: true }));
+
+
 
   // ─── InventoryChangeLog ───────────────────────────────────────────────────
   const InventoryChangeLog = conn.model("InventoryChangeLog", new mongoose.Schema({
@@ -103,49 +85,7 @@ const registerInventoryModels = (conn) => {
     actor:   ActorSchema,
   }, { timestamps: true }));
 
-  // ─── CashClosure ─────────────────────────────────────────────────────────
-  const CashClosure = conn.model("CashClosure", new mongoose.Schema({
-    folio:     { type: String, required: true, unique: true },
-    startDate: Date,
-    endDate:   Date,
-    sales:     {
-      total: Number,
-      count: Number,
-      byMethod: { efec: Number, tarjeta: Number, trans: Number, credito: Number },
-    },
-    merma:     { totalValue: Number, count: Number, byReason: Mixed },
-    closedBy:  ActorSchema,
-    observations: String,
-    status:    { type: String, enum: ["closed"], default: "closed" },
-  }, { timestamps: true }));
 
-  // ─── Devolution ───────────────────────────────────────────────────────────
-  const Devolution = conn.model("Devolution", new mongoose.Schema({
-    folio:        { type: String, required: true, unique: true },
-    order:        { type: ObjectId, ref: "LaboratoryOrder" },
-    orderFolio:   String,
-    cliente:      { type: String, required: true },
-    clientePhone: String,
-    reason:       String,
-    status:       String,
-    items:        Mixed,
-    actor:        ActorSchema,
-    notes:        String,
-  }, { timestamps: true }));
-
-  // ─── MermaLog ─────────────────────────────────────────────────────────────
-  const MermaLog = conn.model("MermaLog", new mongoose.Schema({
-    folio:            { type: String, required: true, unique: true },
-    origin:           { type: String, enum: ["LAB", "VENTAS", "INVENTARIO", "DEVOLUCION"] },
-    laboratoryOrder:  { type: ObjectId, ref: "LaboratoryOrder" },
-    devolution:       { type: ObjectId, ref: "Devolution" },
-    sheet:            { type: ObjectId, ref: "InventorySheet" },
-    ventaFolio:       String,
-    qty:              Number,
-    reason:           String,
-    details:          Mixed,
-    actor:            ActorSchema,
-  }, { timestamps: true }));
 
   // ─── Sequence ─────────────────────────────────────────────────────────────
   const Sequence = conn.model("Sequence", new mongoose.Schema({
@@ -182,12 +122,7 @@ const registerInventoryModels = (conn) => {
     ContactLensesSheet,
     CatalogBase,
     CatalogTreatment,
-    LaboratoryOrder,
-    LaboratoryEvent,
     InventoryChangeLog,
-    CashClosure,
-    Devolution,
-    MermaLog,
     Sequence,
     MatrixBase,
     MatrixSphCyl,

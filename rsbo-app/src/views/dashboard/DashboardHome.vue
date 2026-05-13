@@ -141,24 +141,57 @@ const labToast = useLabToast()
 const props = defineProps({ user: Object, loading: Boolean })
 const userRef = toRef(props, 'user')
 
-const {
-  stats, loading: statsLoading, load: loadStats,
-  role, canSeeInventory, canSeeOrders, canSeeReports,
-  canSeeLab, canSeeMovements,
-  canSeeDevolutions, canManageDevolutions,
-  isRoot, isLab, isVentas, isSupervisor,
-} = useDashboardStats(userRef)
+// MOCK DATA PARA "DATA ESTÁTICA"
+const stats = ref({
+  activeSheets: 24, // "Plantillas"
+  ordersPending: 12,
+  devolucionesPendientes: 1,
+  devolucionesEnRevision: 1,
+  totalCombinations: 1250,
+  totalStock: 8500,
+  criticalAlertsOptic: 3,
+  criticalAlertsCL: 1,
+  serviceLevel: 98.5,
+  generatedAt: new Date().toISOString(),
+  clActiveSheets: 12,
+  clTotalStock: 500,
+  clCoveragePct: 92,
+  scansToday: 85,
+  ordersClosed30d: 450,
+  ordersClosedToday: 15,
+  devolucionesTotal30d: 5,
+  corrections7d: 2
+})
+const opticaSummary = ref({
+  totalProductos: 450,
+  totalPiezas: 1200,
+  totalAgotados: 12,
+  valorTotalTienda: 85000
+})
 
-const {
-  opticaSummary, loading: opticaStatsLoading, load: loadOpticaStats
-} = useOpticaStats()
+const role = ref('eurovision')
+const canSeeInventory = ref(true)
+const canSeeOrders = ref(true)
+const canSeeReports = ref(true)
+const canSeeLab = ref(true)
+const canSeeMovements = ref(true)
+const canSeeDevolutions = ref(true)
+const canManageDevolutions = ref(true)
+const isRoot = ref(false)
+const isLab = ref(false)
+const isVentas = ref(false)
+const isSupervisor = ref(false)
+const isEurovision = ref(true) // Defaulting to true for demo
+const isLaboratorio = ref(false)
 
-const isEurovision = computed(() => role.value === 'eurovision')
-const isLaboratorio = computed(() => role.value === 'laboratorio')
+const s = computed(() => stats.value)
+const os = computed(() => opticaSummary.value)
+const isLoading = ref(false)
+const opticaStatsLoading = ref(false)
 
-const s         = computed(() => stats.value)
-const os        = computed(() => opticaSummary.value)
-const isLoading = computed(() => props.loading || statsLoading.value || opticaStatsLoading.value)
+// Dummy functions to prevent runtime errors
+function loadStats() { console.log("Static mode: loadStats skipped"); }
+function loadOpticaStats() { console.log("Static mode: loadOpticaStats skipped"); }
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 const dashTab = ref('resumen')
@@ -202,18 +235,25 @@ const opticaStats = computed(() => {
 })
 
 async function loadOptica() {
-  optica.loading = true
-  try {
-    const [a, sol, acc, est, eqp] = await Promise.all([
-      armazonesService.list(), solucionesService.list(),
-      accesoriosService.list(), estuchesService.list(), equiposService.list(),
-    ])
-    optica.armazones  = a?.data?.data   || []
-    optica.soluciones = sol?.data?.data  || []
-    optica.accesorios = acc?.data?.data  || []
-    optica.estuches   = est?.data?.data  || []
-    optica.equipos    = eqp?.data?.data  || []
-  } catch { /* fail */ } finally { optica.loading = false }
+  // optica.loading = true
+  // try {
+  //   const [a, sol, acc, est, eqp] = await Promise.all([
+  //     armazonesService.list(), solucionesService.list(),
+  //     accesoriosService.list(), estuchesService.list(), equiposService.list(),
+  //   ])
+  //   optica.armazones  = a?.data?.data   || []
+  //   optica.soluciones = sol?.data?.data  || []
+  //   optica.accesorios = acc?.data?.data  || []
+  //   optica.estuches   = est?.data?.data  || []
+  //   optica.equipos    = eqp?.data?.data  || []
+  // } catch { /* fail */ } finally { optica.loading = false }
+  
+  // Static data for Optica Tab
+  optica.armazones = [{ id: 1, stock: 10, precio: 1500 }]
+  optica.soluciones = [{ id: 1, stock: 5, precio: 200 }]
+  optica.accesorios = [{ id: 1, stock: 20, precio: 50, categoria: 'Limpieza' }]
+  optica.estuches = [{ id: 1, stock: 15, precio: 100, tipo: 'Rígido' }]
+  optica.equipos = [{ id: 1, estado: 'Operativo', mantenimiento: new Date().toISOString() }]
 }
 
 // ── Real-time Refresh ────────────────────────────────────────────────────────
@@ -224,10 +264,11 @@ function debouncedRefresh() {
 }
 
 function onLabWs(e) {
-  const type = e?.detail?.type
-  const relevantTypes = ['LAB_ORDER_CREATE', 'LAB_ORDER_CANCEL', 'LAB_ORDER_SCAN', 'LAB_ORDER_RESET', 'LAB_ORDER_CLOSE', 'STOCK_ALERT', 'INVENTORY_CHUNK_SAVED']
-  if (relevantTypes.includes(type)) debouncedRefresh()
-  if (type === 'INV_CHANGE') loadOpticaStats(true)
+  // Real-time refreshes disabled in static mode
+  // const type = e?.detail?.type
+  // const relevantTypes = ['LAB_ORDER_CREATE', 'LAB_ORDER_CANCEL', 'LAB_ORDER_SCAN', 'LAB_ORDER_RESET', 'LAB_ORDER_CLOSE', 'STOCK_ALERT', 'INVENTORY_CHUNK_SAVED']
+  // if (relevantTypes.includes(type)) debouncedRefresh()
+  // if (type === 'INV_CHANGE') loadOpticaStats(true)
 }
 
 // ── Carga de datos ───────────────────────────────────────────────────────────
@@ -239,20 +280,23 @@ watch(canSeeInventory, (can) => {
 }, { immediate: true })
 
 onMounted(() => { 
-  loadStats(); 
-  loadPendingDevols(); 
-  loadCorrectionLogs(); 
-  window.addEventListener('lab:ws', onLabWs);
+  // loadStats(); 
+  // loadPendingDevols(); 
+  // loadCorrectionLogs(); 
+  // window.addEventListener('lab:ws', onLabWs);
+  loadOptica() // Initialize static optica data
+  loadPendingDevols() // Initialize static devols
+  loadCorrectionLogs() // Initialize static logs
 })
 
 onActivated(() => { 
-  loadStats(); 
-  loadPendingDevols(); 
-  loadCorrectionLogs(); 
-  if (canSeeInventory.value) {
-    loadOpticaStats();
-    loadOptica();
-  }
+  // loadStats(); 
+  // loadPendingDevols(); 
+  // loadCorrectionLogs(); 
+  // if (canSeeInventory.value) {
+  //   loadOpticaStats();
+  //   loadOptica();
+  // }
 })
 
 onUnmounted(() => {
@@ -310,22 +354,26 @@ const pendingDevols  = ref([])
 const loadingDevols  = ref(false)
 
 async function loadPendingDevols() {
-  if (!canManageDevolutions.value) return
-  loadingDevols.value = true
-  try {
-    const { data } = await fetchDevolutions({ limit: 4, page: 1, status: 'pendiente,en_revision' })
-    if (data?.ok) pendingDevols.value = data.data
-  } catch {} finally { loadingDevols.value = false }
+  // if (!canManageDevolutions.value) return
+  // loadingDevols.value = true
+  // try {
+  //   const { data } = await fetchDevolutions({ limit: 4, page: 1, status: 'pendiente,en_revision' })
+  //   if (data?.ok) pendingDevols.value = data.data
+  // } catch {} finally { loadingDevols.value = false }
+
+  pendingDevols.value = [
+    { _id: '1', folio: 'DEV-001', status: 'pendiente', createdAt: new Date().toISOString() }
+  ]
 }
 
 async function quickDevAction(dev, newStatus) {
   try {
-    await updateDevolutionStatus(dev._id, newStatus, '')
+    // await updateDevolutionStatus(dev._id, newStatus, '')
     pendingDevols.value = pendingDevols.value.filter(d => d._id !== dev._id)
     loadStats()
-    labToast.success(`Devolución ${dev.folio} → ${newStatus === 'aprobada' ? 'Aprobada' : newStatus === 'rechazada' ? 'Rechazada' : 'En revisión'}`)
+    labToast.success(`Devolución ${dev.folio} → ${newStatus === 'aprobada' ? 'Aprobada' : newStatus === 'rechazada' ? 'Rechazada' : 'En revisión'} (Simulado)`)
   } catch (e) {
-    labToast.danger(e?.response?.data?.error || 'Error al actualizar devolución')
+    labToast.danger('Error en modo estático')
   }
 }
 
@@ -334,12 +382,16 @@ const correctionLogs  = ref([])
 const loadingLogs     = ref(false)
 
 async function loadCorrectionLogs() {
-  if (!canManageDevolutions.value) return
-  loadingLogs.value = true
-  try {
-    const { data } = await listEvents({ type: 'CORRECTION_REQUEST,ORDER_EDIT', limit: 8 })
-    if (data?.ok) correctionLogs.value = data.data || []
-  } catch {} finally { loadingLogs.value = false }
+  // if (!canManageDevolutions.value) return
+  // loadingLogs.value = true
+  // try {
+  //   const { data } = await listEvents({ type: 'CORRECTION_REQUEST,ORDER_EDIT', limit: 8 })
+  //   if (data?.ok) correctionLogs.value = data.data || []
+  // } catch {} finally { loadingLogs.value = false }
+  
+  correctionLogs.value = [
+    { _id: '1', type: 'CORRECTION_REQUEST', createdAt: new Date().toISOString() }
+  ]
 }
 
 function fmtTimeAgo(d) {

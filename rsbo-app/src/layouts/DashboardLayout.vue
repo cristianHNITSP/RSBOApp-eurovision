@@ -43,7 +43,7 @@
       <!-- Contenido principal -->
       <main class="main-content p-0">
         <!-- Header -->
-        <section class="dashboard-header" ref="motionRef" :class="{ 'dashboard-header--mobile': isMobile }">
+        <section class="dashboard-header" :class="{ 'dashboard-header--mobile': isMobile }">
           <!-- DESKTOP TOOLBAR -->
           <DashboardToolbar
             v-if="!isMobile"

@@ -17,7 +17,7 @@ export function useAuth() {
       user.value = null
       const status = err?.response?.status
       if (status === 401 || status === 403 || status === 404) {
-        try { await api.post('/access/logout', {}) } catch {}
+        try { await api.post('/access/logout', {}) } catch { }
         window.location.href = '/'
       }
     }
@@ -58,11 +58,11 @@ export function useAuth() {
       type: 'is-danger',
       onConfirm: async () => {
         // Intentamos avisar al server, pero no bloqueamos la salida si el server tarda
-        api.post('/access/logout', {}).catch(() => {})
+        api.post('/access/logout', {}).catch(() => { })
 
         window.dispatchEvent(new CustomEvent('auth:session-expired'))
         user.value = null
-        
+
         // Redirigir inmediatamente
         window.location.href = '/'
         labToast.success('Sesión cerrada correctamente');

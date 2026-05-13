@@ -1,5 +1,5 @@
 // src/services/devolutions.js
-import { api } from "@/api/axios";
+import api from "@/api/axios";
 
 export const fetchDevolutions    = (params = {}) => api.get("/devolutions", { params });
 export const fetchDevolution     = (id)           => api.get(`/devolutions/${id}`);

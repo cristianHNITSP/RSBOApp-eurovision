@@ -10,6 +10,7 @@ const MatrixBase = require("../models/matrix/MatrixBase");
 const MatrixSphCyl = require("../models/matrix/MatrixSphCyl");
 const MatrixBifocal = require("../models/matrix/MatrixBifocal");
 const MatrixProgresivo = require("../models/matrix/MatrixProgresivo");
+const MatrixTorico = require("../models/contactlenses/CLMatrixTorico");
 const { protect } = require("../utils/auth");
 
 // Inventory modules
@@ -20,9 +21,9 @@ const { actorFromBody, normalizeParty, escapeRegExp } = require("../inventory/ut
 const { makeUniqueSheetSku, ensureSheetSku } = require("../inventory/utils/sku");
 const { to2, isDef, isMultipleOfStep } = require("../inventory/utils/numbers");
 const { clampRange } = require("../inventory/utils/ranges");
-const { parseKey, denormNum, keySphCyl, normalizeCylConvention } = require("../inventory/utils/keys");
+const { parseKey, denormNum, keyBase, keySphCyl, keyBifocal, keyProgresivo, normalizeCylConvention } = require("../inventory/utils/keys");
 const { makeSku, makeCodebar } = require("../inventory/utils/barcode");
-const { isFlatMatrix } = require("../utils/matrix");
+const { isFlatMatrix, getMatrixModel } = require("../utils/matrix");
 
 // Services
 const { broadcast } = require("../ws");
@@ -135,7 +136,7 @@ const parseOptionalNumber = (v) => {
 };
 
 // modelos agrupados
-const models = { MatrixBase, MatrixSphCyl, MatrixBifocal, MatrixProgresivo };
+const models = { MatrixBase, MatrixSphCyl, MatrixBifocal, MatrixProgresivo, MatrixTorico };
 
 /* ======================= SHEETS ======================= */
 
@@ -724,7 +725,39 @@ router.patch(
         if (isDef(req.body.meta.notas)) {
           sheet.meta.notas = String(req.body.meta.notas || "").replace(/<[^>]*>?/gm, '');
         }
-        if (req.body.meta.ranges && typeof req.body.meta.ranges === "object") sheet.meta.ranges = req.body.meta.ranges;
+        if (req.body.meta.ranges && typeof req.body.meta.ranges === "object") {
+          const oldRangesStr = JSON.stringify(sheet.meta.ranges || {});
+          const newRangesStr = JSON.stringify(req.body.meta.ranges);
+
+          if (oldRangesStr !== newRangesStr) {
+            if (req.body.confirmRangesChange !== true) {
+              const Model = getMatrixModel(sheet.tipo_matriz);
+              if (Model) {
+                const doc = await Model.findOne({ sheet: sheet._id }).lean();
+                let hasStock = false;
+                if (doc?.cells) {
+                  for (const cell of Object.values(doc.cells)) {
+                    if (sheet.tipo_matriz === "SPH_ADD" || sheet.tipo_matriz === "BASE_ADD") {
+                      if ((cell.OD && cell.OD.existencias > 0) || (cell.OI && cell.OI.existencias > 0)) {
+                        hasStock = true; break;
+                      }
+                    } else if (cell.existencias > 0) {
+                      hasStock = true; break;
+                    }
+                  }
+                }
+                if (hasStock) {
+                  return res.status(409).json({
+                    ok: false,
+                    requireConfirmation: true,
+                    message: "Modificar los rangos con stock existente puede causar problemas de compatibilidad. ¿Confirmas que deseas proceder?"
+                  });
+                }
+              }
+            }
+            sheet.meta.ranges = req.body.meta.ranges;
+          }
+        }
         sheet.markModified("meta");
       }
 
@@ -913,7 +946,7 @@ router.delete(
 
       const sheetId = sheet._id.toString();
       await cacheDel(KEYS.sheetMeta(sheetId));
-      await invalidatePattern("inv:*");
+      await invalidatePattern("inv:*:sheets");
       await invalidatePattern(`inv:sheet:${sheetId}:*`);
       await cacheDel(KEYS.stats());
       res.json({ ok: true, message: "Hoja eliminada (soft-delete)" });
@@ -952,7 +985,7 @@ router.patch(
 
       const sheetId = sheet._id.toString();
       await cacheDel(KEYS.sheetMeta(sheetId));
-      await invalidatePattern("inv:*");
+      await invalidatePattern("inv:*:sheets");
       await invalidatePattern(`inv:sheet:${sheetId}:*`);
       await cacheDel(KEYS.stats());
 
@@ -992,7 +1025,7 @@ router.delete(
 
       const sheetId = sheet._id.toString();
       await cacheDel(KEYS.sheetMeta(sheetId));
-      await invalidatePattern("inv:*");
+      await invalidatePattern("inv:*:sheets");
       await invalidatePattern(`inv:sheet:${sheetId}:*`);
       await cacheDel(KEYS.stats());
 
@@ -1018,6 +1051,9 @@ router.get(
       if (sheet.isDeleted) return res.status(410).json({ ok: false, message: "Sheet eliminada (soft-delete)" });
 
       const limit = Math.min(Number(req.query.limit ?? 5000), 20000);
+      const startRow = isDef(req.query.startRow) ? Math.max(0, parseInt(req.query.startRow)) : null;
+      const endRow = isDef(req.query.endRow) ? parseInt(req.query.endRow) : null;
+      const usePaging = startRow !== null && endRow !== null;
 
       if (sheet.tipo_matriz === "BASE") {
         const doc = await MatrixBase.findOne({ sheet: sheet._id });
@@ -1046,8 +1082,19 @@ router.get(
           }
         }
 
-        rows = rows.sort((a, b) => a.base - b.base).slice(0, limit);
-        return res.json({ ok: true, data: rows });
+        rows = rows.sort((a, b) => a.base - b.base);
+        const total = rows.length;
+        const paginatedRows = usePaging ? rows.slice(startRow, endRow) : rows.slice(0, limit);
+        return res.json({
+          ok: true,
+          data: paginatedRows,
+          meta: {
+            total,
+            startRow: usePaging ? startRow : 0,
+            endRow: usePaging ? startRow + paginatedRows.length : paginatedRows.length,
+            limit
+          }
+        });
       }
 
       if (sheet.tipo_matriz === "SPH_CYL") {
@@ -1091,8 +1138,19 @@ router.get(
           }
         }
 
-        rows = rows.sort((a, b) => (a.sph === b.sph ? a.cyl - b.cyl : a.sph - b.sph)).slice(0, limit);
-        return res.json({ ok: true, data: rows });
+        rows = rows.sort((a, b) => (a.sph === b.sph ? a.cyl - b.cyl : a.sph - b.sph));
+        const total = rows.length;
+        const paginatedRows = usePaging ? rows.slice(startRow, endRow) : rows.slice(0, limit);
+        return res.json({
+          ok: true,
+          data: paginatedRows,
+          meta: {
+            total,
+            startRow: usePaging ? startRow : 0,
+            endRow: usePaging ? startRow + paginatedRows.length : paginatedRows.length,
+            limit
+          }
+        });
       }
 
       if (sheet.tipo_matriz === "SPH_ADD") {
@@ -1136,8 +1194,19 @@ router.get(
           }
         }
 
-        rows = rows.sort((a, b) => (a.sph === b.sph ? a.add - b.add : a.sph - b.sph)).slice(0, limit);
-        return res.json({ ok: true, data: rows });
+        rows = rows.sort((a, b) => (a.sph === b.sph ? a.add - b.add : a.sph - b.sph));
+        const total = rows.length;
+        const paginatedRows = usePaging ? rows.slice(startRow, endRow) : rows.slice(0, limit);
+        return res.json({
+          ok: true,
+          data: paginatedRows,
+          meta: {
+            total,
+            startRow: usePaging ? startRow : 0,
+            endRow: usePaging ? startRow + paginatedRows.length : paginatedRows.length,
+            limit
+          }
+        });
       }
 
       if (sheet.tipo_matriz === "BASE_ADD") {
@@ -1184,8 +1253,17 @@ router.get(
         }
 
         const total = rows.length;
-        rows = rows.slice(0, limit);
-        return res.json({ ok: true, data: rows, meta: { total, limit } });
+        const paginatedRows = usePaging ? rows.slice(startRow, endRow) : rows.slice(0, limit);
+        return res.json({
+          ok: true,
+          data: paginatedRows,
+          meta: {
+            total,
+            startRow: usePaging ? startRow : 0,
+            endRow: usePaging ? startRow + paginatedRows.length : paginatedRows.length,
+            limit
+          }
+        });
       }
 
       return res.json({ ok: true, data: [] });
@@ -1266,12 +1344,16 @@ router.put(
 
       const key = keySphCyl(sph, cyl);
 
-      let doc = await MatrixSphCyl.findOne({ sheet: sheet._id });
-      if (!doc) doc = new MatrixSphCyl({ sheet: sheet._id, tipo_matriz: "SPH_CYL", cells: new Map() });
+      const doc = await MatrixSphCyl.findOneAndUpdate(
+        { sheet: sheet._id },
+        { $setOnInsert: { sheet: sheet._id, tipo_matriz: "SPH_CYL", cells: new Map() } },
+        { new: true, upsert: true }
+      );
 
-      doc.set("cells", doc.cells || new Map());
-
-      const prev = doc.cells.get(key) || { existencias: 0, sku: null, codebar: null, createdBy: actor };
+      const rawPrev = doc.cells?.get(key);
+      const prev = rawPrev
+        ? (typeof rawPrev.toObject === "function" ? rawPrev.toObject() : { ...rawPrev })
+        : { existencias: 0, sku: null, codebar: null, createdBy: actor };
       const before = Number(prev.existencias ?? 0);
 
       let after;
@@ -1288,9 +1370,10 @@ router.put(
 
       const nextCell = { ...prev, existencias: after, sku: finalSku, codebar: finalCodebar, createdBy: prev.createdBy || actor, updatedBy: actor };
 
-      doc.cells.set(key, nextCell);
-      doc.markModified("cells");
-      await doc.save();
+      await MatrixSphCyl.updateOne(
+        { sheet: sheet._id },
+        { $set: { [`cells.${key}`]: nextCell } }
+      );
 
       let axisExtended = false;
       let axisExtendError = null;
@@ -1311,16 +1394,285 @@ router.put(
         actor
       });
 
-      // Alerta de stock — no bloqueante, no afecta la respuesta HTTP
-      setImmediate(() => {
-        const { checkCellAlert } = require("../services/stockAlert.service");
-        checkCellAlert(sheet, "SPH_CYL", key, after, null);
-      });
+
+      await invalidatePattern(`inv:sheet:${sheet._id}:*`);
+      broadcast("INV_CHANGE", { sheetId: String(sheet._id), type: "cell_update", matrixKey: key });
 
       return res.json({ ok: true, key, before, after, cell: nextCell, axisExtended, axisExtendError });
     } catch (err) {
       console.error("PUT /sheets/:sheetId/sph-cyl/cell error:", err);
       return res.status(500).json({ ok: false, message: "Error interno", error: String(err?.message || err) });
+    }
+  }
+);
+
+/* ======================= UPDATE UNA CELDA BASE (esférico) ======================= */
+
+router.put(
+  "/sheets/:sheetId/base/cell",
+  param("sheetId").isMongoId(),
+  body("base").exists(),
+  body("existencias").optional(),
+  body("delta").optional(),
+  body("sku").optional(),
+  body("codebar").optional(),
+  body("actor").optional().isObject(),
+  handleValidation,
+  async (req, res) => {
+    const actor = actorFromBody(req) || { userId: null, name: "system" };
+    try {
+      const sheet = await InventorySheet.findById(req.params.sheetId);
+      if (!sheet || sheet.isDeleted) return res.status(404).json({ ok: false, message: "Hoja no encontrada" });
+      if (sheet.tipo_matriz !== "BASE") return res.status(400).json({ ok: false, message: "Esta hoja no es BASE" });
+
+      const base = to2(req.body.base);
+      if (!Number.isFinite(base)) return res.status(400).json({ ok: false, message: "BASE inválida" });
+
+      const key = keyBase(base);
+
+      const doc = await MatrixBase.findOneAndUpdate(
+        { sheet: sheet._id },
+        { $setOnInsert: { sheet: sheet._id, tipo_matriz: "BASE", cells: new Map() } },
+        { new: true, upsert: true }
+      );
+
+      const rawPrev = doc.cells?.get(key);
+      const prev = rawPrev
+        ? (typeof rawPrev.toObject === "function" ? rawPrev.toObject() : { ...rawPrev })
+        : { existencias: 0, sku: null, codebar: null, createdBy: actor };
+      const before = Number(prev.existencias ?? 0);
+
+      let after;
+      if (isDef(req.body.existencias)) after = Number(req.body.existencias);
+      else if (isDef(req.body.delta)) after = before + Number(req.body.delta);
+      else return res.status(400).json({ ok: false, message: "Envía existencias o delta" });
+
+      if (!Number.isFinite(after) || after < 0)
+        return res.status(400).json({ ok: false, message: "Existencias inválidas (<0)" });
+
+      let finalSku = isDef(req.body.sku) ? String(req.body.sku) : prev.sku || makeSku(sheet._id, "BASE", { base });
+      let finalCodebar = isDef(req.body.codebar) ? (req.body.codebar === null ? null : String(req.body.codebar)) : prev.codebar;
+      if (after > 0 && !finalCodebar) finalCodebar = makeCodebar(sheet._id, "BASE", { base });
+
+      const nextCell = { ...prev, existencias: after, sku: finalSku, codebar: finalCodebar, createdBy: prev.createdBy || actor, updatedBy: actor };
+
+      await MatrixBase.updateOne(
+        { sheet: sheet._id },
+        { $set: { [`cells.${key}`]: nextCell } }
+      );
+
+      await InventoryChangeLog.create({
+        sheet: sheet._id, tipo_matriz: "BASE", type: "CELL_UPDATE",
+        details: { key, before, after, delta: after - before }, actor
+      });
+
+      await invalidatePattern(`inv:sheet:${sheet._id}:*`);
+      broadcast("INV_CHANGE", { sheetId: String(sheet._id), type: "cell_update", matrixKey: key });
+
+      return res.json({ ok: true, key, before, after, cell: nextCell });
+    } catch (err) {
+      console.error("PUT /sheets/:sheetId/base/cell error:", err);
+      return res.status(500).json({ ok: false, message: "Error interno" });
+    }
+  }
+);
+
+/* ======================= UPDATE UNA CELDA SPH_ADD (bifocal) ======================= */
+
+router.put(
+  "/sheets/:sheetId/bifocal/cell",
+  param("sheetId").isMongoId(),
+  body("sph").exists(),
+  body("add").exists(),
+  body("eye").isIn(["OD", "OI"]),
+  body("existencias").optional(),
+  body("delta").optional(),
+  body("sku").optional(),
+  body("codebar").optional(),
+  body("base").optional(),
+  body("base_izq").optional(),
+  body("base_der").optional(),
+  body("actor").optional().isObject(),
+  handleValidation,
+  async (req, res) => {
+    const actor = actorFromBody(req) || { userId: null, name: "system" };
+    try {
+      const sheet = await InventorySheet.findById(req.params.sheetId);
+      if (!sheet || sheet.isDeleted) return res.status(404).json({ ok: false, message: "Hoja no encontrada" });
+      if (sheet.tipo_matriz !== "SPH_ADD") return res.status(400).json({ ok: false, message: "Esta hoja no es SPH_ADD (bifocal)" });
+
+      const sph = to2(req.body.sph);
+      const add = to2(req.body.add);
+      const eye = req.body.eye;
+
+      if (!Number.isFinite(sph) || !Number.isFinite(add))
+        return res.status(400).json({ ok: false, message: "SPH/ADD inválidos" });
+
+      const hasPair = isDef(req.body.base_izq) && isDef(req.body.base_der);
+      const hasSingle = isDef(req.body.base);
+      if (!hasPair && !hasSingle) {
+        return res.status(400).json({ ok: false, message: "Falta base (envía base o base_izq+base_der)" });
+      }
+      const base_izq = hasPair ? to2(req.body.base_izq) : to2(req.body.base);
+      const base_der = hasPair ? to2(req.body.base_der) : to2(req.body.base);
+      if (!Number.isFinite(base_izq) || !Number.isFinite(base_der)) {
+        return res.status(400).json({ ok: false, message: "base/base_izq/base_der inválidos" });
+      }
+
+      const key = keyBifocal(sph, add, base_izq, base_der);
+
+      const doc = await MatrixBifocal.findOneAndUpdate(
+        { sheet: sheet._id },
+        { $setOnInsert: { sheet: sheet._id, tipo_matriz: "SPH_ADD", cells: new Map() } },
+        { new: true, upsert: true }
+      );
+
+      const rawCell = doc.cells?.get(key);
+      const cell = rawCell
+        ? (typeof rawCell.toObject === "function" ? rawCell.toObject() : { ...rawCell })
+        : { base_izq, base_der, OD: { existencias: 0, sku: null, codebar: null }, OI: { existencias: 0, sku: null, codebar: null } };
+
+      const prevEye = cell[eye] || { existencias: 0, sku: null, codebar: null };
+      const before = Number(prevEye.existencias ?? 0);
+
+      let after;
+      if (isDef(req.body.existencias)) after = Number(req.body.existencias);
+      else if (isDef(req.body.delta)) after = before + Number(req.body.delta);
+      else return res.status(400).json({ ok: false, message: "Envía existencias o delta" });
+
+      if (!Number.isFinite(after) || after < 0)
+        return res.status(400).json({ ok: false, message: "Existencias inválidas (<0)" });
+
+      let finalSku = isDef(req.body.sku) ? String(req.body.sku) : prevEye.sku || makeSku(sheet._id, "SPH_ADD", { sph, add, eye, base_izq, base_der });
+      let finalCodebar = isDef(req.body.codebar) ? (req.body.codebar === null ? null : String(req.body.codebar)) : prevEye.codebar;
+      if (after > 0 && !finalCodebar) finalCodebar = makeCodebar(sheet._id, "SPH_ADD", { sph, add, eye, base_izq, base_der });
+
+      const nextEye = {
+        ...prevEye,
+        existencias: after,
+        sku: finalSku,
+        codebar: finalCodebar,
+        createdBy: prevEye.createdBy || actor,
+        updatedBy: actor
+      };
+
+      cell[eye] = nextEye;
+      cell.base_izq = base_izq;
+      cell.base_der = base_der;
+      cell.updatedBy = actor;
+      if (!cell.createdBy) cell.createdBy = actor;
+
+      await MatrixBifocal.updateOne(
+        { sheet: sheet._id },
+        { $set: { [`cells.${key}`]: cell } }
+      );
+
+      await InventoryChangeLog.create({
+        sheet: sheet._id, tipo_matriz: "SPH_ADD", type: "CELL_UPDATE",
+        details: { key, eye, before, after, delta: after - before }, actor
+      });
+
+      await invalidatePattern(`inv:sheet:${sheet._id}:*`);
+      broadcast("INV_CHANGE", { sheetId: String(sheet._id), type: "cell_update", matrixKey: key });
+
+      return res.json({ ok: true, key, eye, before, after, cell: nextEye });
+    } catch (err) {
+      console.error("PUT /sheets/:sheetId/bifocal/cell error:", err);
+      return res.status(500).json({ ok: false, message: "Error interno" });
+    }
+  }
+);
+
+/* ======================= UPDATE UNA CELDA BASE_ADD (progresivo) ======================= */
+
+router.put(
+  "/sheets/:sheetId/progresivo/cell",
+  param("sheetId").isMongoId(),
+  body("base_izq").exists(),
+  body("base_der").exists(),
+  body("add").exists(),
+  body("eye").isIn(["OD", "OI"]),
+  body("existencias").optional(),
+  body("delta").optional(),
+  body("sku").optional(),
+  body("codebar").optional(),
+  body("actor").optional().isObject(),
+  handleValidation,
+  async (req, res) => {
+    const actor = actorFromBody(req) || { userId: null, name: "system" };
+    try {
+      const sheet = await InventorySheet.findById(req.params.sheetId);
+      if (!sheet || sheet.isDeleted) return res.status(404).json({ ok: false, message: "Hoja no encontrada" });
+      if (sheet.tipo_matriz !== "BASE_ADD") return res.status(400).json({ ok: false, message: "Esta hoja no es BASE_ADD (progresivo)" });
+
+      const base_izq = to2(req.body.base_izq);
+      const base_der = to2(req.body.base_der);
+      const add = to2(req.body.add);
+      const eye = req.body.eye;
+
+      if (!Number.isFinite(base_izq) || !Number.isFinite(base_der) || !Number.isFinite(add))
+        return res.status(400).json({ ok: false, message: "BASE_IZQ/BASE_DER/ADD inválidos" });
+
+      const key = keyProgresivo(base_izq, base_der, add);
+
+      const doc = await MatrixProgresivo.findOneAndUpdate(
+        { sheet: sheet._id },
+        { $setOnInsert: { sheet: sheet._id, tipo_matriz: "BASE_ADD", cells: new Map() } },
+        { new: true, upsert: true }
+      );
+
+      const rawCell = doc.cells?.get(key);
+      const cell = rawCell
+        ? (typeof rawCell.toObject === "function" ? rawCell.toObject() : { ...rawCell })
+        : { base_izq, base_der, OD: { existencias: 0, sku: null, codebar: null }, OI: { existencias: 0, sku: null, codebar: null } };
+
+      const prevEye = cell[eye] || { existencias: 0, sku: null, codebar: null };
+      const before = Number(prevEye.existencias ?? 0);
+
+      let after;
+      if (isDef(req.body.existencias)) after = Number(req.body.existencias);
+      else if (isDef(req.body.delta)) after = before + Number(req.body.delta);
+      else return res.status(400).json({ ok: false, message: "Envía existencias o delta" });
+
+      if (!Number.isFinite(after) || after < 0)
+        return res.status(400).json({ ok: false, message: "Existencias inválidas (<0)" });
+
+      let finalSku = isDef(req.body.sku) ? String(req.body.sku) : prevEye.sku || makeSku(sheet._id, "BASE_ADD", { base_izq, base_der, add, eye });
+      let finalCodebar = isDef(req.body.codebar) ? (req.body.codebar === null ? null : String(req.body.codebar)) : prevEye.codebar;
+      if (after > 0 && !finalCodebar) finalCodebar = makeCodebar(sheet._id, "BASE_ADD", { base_izq, base_der, add, eye });
+
+      const nextEye = {
+        ...prevEye,
+        existencias: after,
+        sku: finalSku,
+        codebar: finalCodebar,
+        createdBy: prevEye.createdBy || actor,
+        updatedBy: actor
+      };
+
+      cell[eye] = nextEye;
+      cell.base_izq = base_izq;
+      cell.base_der = base_der;
+      cell.updatedBy = actor;
+      if (!cell.createdBy) cell.createdBy = actor;
+
+      await MatrixProgresivo.updateOne(
+        { sheet: sheet._id },
+        { $set: { [`cells.${key}`]: cell } }
+      );
+
+      await InventoryChangeLog.create({
+        sheet: sheet._id, tipo_matriz: "BASE_ADD", type: "CELL_UPDATE",
+        details: { key, eye, before, after, delta: after - before }, actor
+      });
+
+      await invalidatePattern(`inv:sheet:${sheet._id}:*`);
+      broadcast("INV_CHANGE", { sheetId: String(sheet._id), type: "cell_update", matrixKey: key });
+
+      return res.json({ ok: true, key, eye, before, after, cell: nextEye });
+    } catch (err) {
+      console.error("PUT /sheets/:sheetId/progresivo/cell error:", err);
+      return res.status(500).json({ ok: false, message: "Error interno" });
     }
   }
 );
@@ -1393,12 +1745,6 @@ router.post(
         type: "CHUNK_SAVE",
         details: { upserted: result.updated, rowsCount: rows.length, conflictsCount: conflicts.length, axisExtended, axisExtendError },
         actor
-      });
-
-      // Alerta de stock — barre toda la planilla, no bloqueante
-      setImmediate(() => {
-        const { checkSheetAlerts } = require("../services/stockAlert.service");
-        checkSheetAlerts(sheet);
       });
 
       // Invalidate cache for this sheet + stats

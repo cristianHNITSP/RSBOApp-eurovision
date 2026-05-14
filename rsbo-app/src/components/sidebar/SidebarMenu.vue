@@ -53,8 +53,9 @@
               :key="cIdx"
               :to="child.path"
               class="menu-item is-child"
-              active-class="is-active"
-              exact-active-class="is-exact-active"
+              :class="{ 'is-active': isActive(child.path) }"
+              active-class=""
+              exact-active-class=""
               @click.native="$emit('navigate')"
               @click="$emit('navigate')"
             >
@@ -76,8 +77,9 @@
         v-else
         :to="item.path"
         class="menu-item"
-        active-class="is-active"
-        exact-active-class="is-exact-active"
+        :class="{ 'is-active': isActive(item.path) }"
+        active-class=""
+        exact-active-class=""
         :title="isCollapsed ? item.label : ''"
         @click.native="$emit('navigate')"
         @click="$emit('navigate')"
@@ -106,6 +108,10 @@
 
 <script setup>
 import { ref } from 'vue';
+import { useRoute } from 'vue-router';
+
+const route = useRoute();
+const isActive = (path) => route.fullPath === path || route.path === path;
 
 const props = defineProps({
   menuItems: { type: Array, required: true },

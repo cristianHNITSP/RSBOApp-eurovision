@@ -28,6 +28,7 @@ const MatrixProgresivo = require("../models/matrix/MatrixProgresivo");
 const CLMatrixBase       = require("../models/contactlenses/CLMatrixEsferico");
 const CLMatrixColorido   = require("../models/contactlenses/CLMatrixColorido");
 const CLMatrixTorico     = require("../models/contactlenses/CLMatrixTorico");
+const CLMatrixBifocal    = require("../models/contactlenses/CLMatrixBifocal");
 const CLMatrixMultifocal = require("../models/contactlenses/CLMatrixMultifocal");
 
 // ============================================================================
@@ -54,6 +55,7 @@ function computeDistance(tipoMatriz, cellKey) {
     switch (tipoMatriz) {
       case "BASE":     return Math.abs(p[0] || 0);
       case "SPH_CYL":  return Math.abs(p[0] || 0) + Math.abs(p[1] || 0);
+      case "SPH_CYL_AXIS": return Math.abs(p[0] || 0) + Math.abs(p[1] || 0);
       case "SPH_ADD":  return Math.abs(p[0] || 0);
       case "BASE_ADD": return Math.abs(p[0] || 0) + Math.abs(p[1] || 0);
       default:         return 0;
@@ -98,7 +100,7 @@ function getMatrixModel(tipoMatriz, isContactLens = false) {
       case "BASE":           return CLMatrixBase;
       case "SPH_CYL":        return CLMatrixColorido;
       case "SPH_CYL_AXIS":   return CLMatrixTorico;
-      case "SPH_ADD":        return CLMatrixTorico;
+      case "SPH_ADD":        return CLMatrixBifocal;
       case "BASE_ADD":       return CLMatrixMultifocal;
       default:               return null;
     }

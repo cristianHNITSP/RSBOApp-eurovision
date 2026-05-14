@@ -41,14 +41,18 @@ const normalizeCylConvention = (cyl) => {
   return c > 0 ? to2(-Math.abs(c)) : c;
 };
 
+const keySphAdd = keySphCyl; // alias semántico: formato idéntico sph|add
+
 module.exports = {
   normNum,
   normStr,
   denormNum,
   keyBase,
   keySphCyl,
+  keySphAdd,
   keyBifocal,
   keyProg,
+  keyProgresivo: keyProg,
   keyTorico,
   parseKey,
   normalizeCylConvention,

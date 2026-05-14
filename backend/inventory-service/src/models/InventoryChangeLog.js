@@ -10,6 +10,7 @@ const InventoryChangeLogSchema = new mongoose.Schema({
   cyl:  { type: Number, default: null },
   add:  { type: Number, default: null },
   base: { type: Number, default: null },
+  matrixKey: { type: String, default: null, index: true },
   eye:  { type: String, enum: ['OD', 'OI', null], default: null },
   base_izq: { type: Number, default: null },
   base_der: { type: Number, default: null },

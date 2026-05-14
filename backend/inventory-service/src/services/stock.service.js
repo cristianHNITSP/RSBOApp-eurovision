@@ -65,6 +65,9 @@ async function mutateMatrixCell(args) {
   if (!sheet || !sheet._id || !sheet.tipo_matriz) {
     throw new StockError("BAD_SHEET", "sheet (o sheetId) válido requerido");
   }
+  if (sheet.isDeleted) {
+    throw new StockError("SHEET_DELETED", `La planilla ${sheet._id} está eliminada`, 410);
+  }
 
   const tipo = sheet.tipo_matriz;
   const Model = getMatrixModel(tipo);
@@ -134,6 +137,8 @@ async function mutateMatrixCell(args) {
       sheet:       sheet._id,
       tipo_matriz: tipo,
       type,
+      matrixKey:   key,
+      eye:         eye || null,
       details: { codebar, qty: Math.abs(d), delta: d, before: stockBefore, after: stockAfter, matrixKey: key, eye, ...details },
       actor: { userId: actor?.userId || null, name: actor?.name || null },
     };
@@ -151,8 +156,7 @@ async function mutateMatrixCell(args) {
     setImmediate(() => {
       try {
         const { checkCellAlert } = require("./stockAlert.service");
-        const eyeArg = isFlatMatrix(tipo) ? null : (eye || null);
-        checkCellAlert(sheet, tipo, key, stockAfter, eyeArg);
+        checkCellAlert(sheet);
       } catch (_) { /* noop */ }
     });
   }

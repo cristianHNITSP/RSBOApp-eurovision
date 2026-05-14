@@ -25,13 +25,18 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import DynamicTabs from '@/components/DynamicTabs.vue';
 
+const router = useRouter();
+const route = useRoute();
+
 const VENTAS_TABS = [
-  { key: 'armazones',       label: 'Armazones',       icon: 'glasses' },
+  { key: 'bases-micas',     label: 'Bases y Micas',   icon: 'glasses' },
+  { key: 'optica',          label: 'Óptica',          icon: 'eye' },
+  { key: 'lentes-contacto', label: 'Lentes Contacto', icon: 'circle' },
   { key: 'soluciones',      label: 'Soluciones',      icon: 'droplet' },
-  { key: 'lentes-contacto', label: 'Lentes Contacto', icon: 'eye' },
   { key: 'accesorios',      label: 'Accesorios',      icon: 'briefcase' },
   { key: 'estuches',        label: 'Estuches',        icon: 'box-open' },
   { key: 'equipos',         label: 'Equipos',         icon: 'microscope' },
@@ -39,7 +44,21 @@ const VENTAS_TABS = [
   { key: 'cortes',          label: 'Cortes Caja',     icon: 'calculator' },
 ];
 
-const activeTab = ref('armazones');
+const activeTab = ref('bases-micas');
+
+// Sincronizar tab activa con query params (al CARGAR o navegar desde sidebar)
+watch(() => route.query.tab, (newTab) => {
+  if (newTab && VENTAS_TABS.some(t => t.key === newTab)) {
+    activeTab.value = newTab;
+  }
+}, { immediate: true });
+
+// Sincronizar URL con tab activa (al HACER CLICK en las tabs)
+watch(activeTab, (newVal) => {
+  if (route.query.tab !== newVal) {
+    router.replace({ query: { ...route.query, tab: newVal } });
+  }
+});
 
 defineProps({
   user: { type: Object, default: null }

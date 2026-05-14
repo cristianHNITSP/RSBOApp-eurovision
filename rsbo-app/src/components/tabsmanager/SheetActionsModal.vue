@@ -51,9 +51,9 @@
               :can-save="canRename" @save="$emit('save-rename')" />
 
             <!-- VENDOR -->
-            <ActionVendorEdit :proveedor="editProveedorName"
-              @update:proveedor="$emit('update:edit-proveedor-name', $event)" :marca="editMarcaName"
-              @update:marca="$emit('update:edit-marca-name', $event)" :filtered-proveedores="filteredProveedores"
+            <ActionVendorEdit :proveedor-name="editProveedorName"
+              @update:proveedor-name="$emit('update:edit-proveedor-name', $event)" :marca-name="editMarcaName"
+              @update:marca-name="$emit('update:edit-marca-name', $event)" :filtered-proveedores="filteredProveedores"
               :filtered-marcas="filteredMarcas" :loading="savingVendor" :status="vendorStatus"
               :message="vendorStatusMessage" :glow="vendorGlow" :can-save="canSaveVendor"
               @save="$emit('save-vendor')" />

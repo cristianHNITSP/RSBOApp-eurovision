@@ -92,7 +92,8 @@ const props = defineProps({
   catalogBasesMap:  { type: Object,  required: true },
   catalogTreatmentsMap: { type: Object, required: true },
   createSheet:      { type: Function, required: true },
-  actorRef:         { type: Object,  default: null }
+  actorRef:         { type: Object,  default: null },
+  apiType:          { type: String,  default: "inventory" }
 });
 
 const emit = defineEmits(["crear", "update:active"]);
@@ -115,7 +116,7 @@ const {
 } = selection;
 
 // 2. Autocomplete de proveedores
-const { proveedorOptions, marcaOptions, createFilteredOptions } = useVendorAutocomplete(computed(() => props.sheets));
+const { proveedorOptions, marcaOptions, createFilteredOptions } = useVendorAutocomplete(computed(() => props.sheets), props.apiType);
 
 // 3. Lógica de creación
 const createLogic = useCreateSheet({

@@ -39,6 +39,7 @@
           :catalog-treatments-map="catalogTreatmentsMap"
           :create-sheet="createSheet"
           :actor-ref="actorRef"
+          :api-type="apiType"
           @crear="handleSheetCreated"
           @update:active="setActiveTab"
         />

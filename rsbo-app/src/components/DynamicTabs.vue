@@ -35,6 +35,15 @@ function syncIndicator() {
   indLeft.value = el.offsetLeft;
   indWidth.value = el.offsetWidth;
   indReady.value = true;
+
+  // Auto-scroll to centered position
+  if (barRef.value) {
+    const scrollTarget = el.offsetLeft - (barRef.value.offsetWidth / 2) + (el.offsetWidth / 2);
+    barRef.value.scrollTo({
+      left: scrollTarget,
+      behavior: 'smooth'
+    });
+  }
 }
 
 let ro;

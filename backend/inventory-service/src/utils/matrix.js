@@ -4,8 +4,9 @@ const MatrixBase       = require("../models/matrix/MatrixBase");
 const MatrixSphCyl     = require("../models/matrix/MatrixSphCyl");
 const MatrixBifocal    = require("../models/matrix/MatrixBifocal");
 const MatrixProgresivo = require("../models/matrix/MatrixProgresivo");
+const MatrixTorico     = require("../models/contactlenses/CLMatrixTorico");
 
-const FLAT_TYPES   = new Set(["BASE", "SPH_CYL"]);
+const FLAT_TYPES   = new Set(["BASE", "SPH_CYL", "SPH_CYL_AXIS"]);
 const PER_EYE_TYPES = new Set(["SPH_ADD", "BASE_ADD"]);
 
 function getMatrixModel(tipo) {
@@ -14,6 +15,7 @@ function getMatrixModel(tipo) {
     case "SPH_CYL":  return MatrixSphCyl;
     case "SPH_ADD":  return MatrixBifocal;
     case "BASE_ADD": return MatrixProgresivo;
+    case "SPH_CYL_AXIS": return MatrixTorico;
     default:         return null;
   }
 }

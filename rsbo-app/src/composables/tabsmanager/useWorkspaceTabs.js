@@ -54,12 +54,33 @@ if (typeof window !== "undefined") {
   });
 }
 
-const normalizeTemplateBase = (t) => ({
-  id: normalizeId(t),
-  name: t?.name ?? t?.nombre ?? "",
-  sku: t?.sku ?? null,
-  tipo_matriz: t?.tipo_matriz
-});
+const normalizeTemplateBase = (t) => {
+  if (!t) return null;
+  return {
+    id: normalizeId(t),
+    name: t?.name ?? t?.nombre ?? "",
+    sku: t?.sku ?? t?.SKU ?? null,
+    tipo_matriz: t?.tipo_matriz,
+    proveedor: (t?.proveedor && typeof t.proveedor === 'object')
+      ? { id: t.proveedor.id ?? null, name: String(t.proveedor.name ?? "") }
+      : { id: null, name: String(t?.proveedor || "") },
+    marca: (t?.marca && typeof t.marca === 'object')
+      ? { id: t.marca.id ?? null, name: String(t.marca.name ?? "") }
+      : { id: null, name: String(t?.marca || "") },
+    material: t?.material ?? "",
+    tratamiento: t?.tratamiento ?? null,
+    variante: t?.variante ?? null,
+    tratamientos: Array.isArray(t?.tratamientos) ? [...t.tratamientos] : [],
+    fechaCreacion: t?.fechaCreacion ?? t?.createdAt ?? null,
+    fechaCaducidad: t?.fechaCaducidad ?? null,
+    fechaCompra: t?.fechaCompra ?? null,
+    numFactura: t?.numFactura ?? "",
+    loteProducto: t?.loteProducto ?? "",
+    precioVenta: t?.precioVenta ?? null,
+    precioCompra: t?.precioCompra ?? null,
+    meta: t?.meta ? { ...t.meta } : { observaciones: "", notas: "" }
+  };
+};
 
 const toOpenTab = (t) => ({
   ...normalizeTemplateBase(t),

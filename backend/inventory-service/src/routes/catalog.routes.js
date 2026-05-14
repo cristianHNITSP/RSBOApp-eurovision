@@ -15,12 +15,12 @@
 const router = require('express').Router();
 const { protect } = require('../utils/auth');
 
-const CatalogBase      = require('../models/CatalogBase');
+const CatalogBase = require('../models/CatalogBase');
 const CatalogTreatment = require('../models/CatalogTreatment');
-const InventorySheet   = require('../models/InventorySheet');
+const InventorySheet = require('../models/InventorySheet');
 const ContactLensesSheet = require('../models/ContactLensesSheet');
 
-const ADMIN_ROLES   = ['root', 'eurovision'];
+const ADMIN_ROLES = ['root', 'eurovision'];
 
 // ── Auth middleware (only for write operations) ──────────────────────────────
 const requireAdmin = protect(ADMIN_ROLES);
@@ -60,18 +60,29 @@ router.get('/treatments', protect(), async (_req, res) => {
 });
 
 // ── GET /api/catalog/vendors ─────────────────────────────────────────────────
-router.get('/vendors', protect(), async (_req, res) => {
+router.get('/vendors', protect(), async (req, res) => {
+  const { type } = req.query;
   try {
-    const [invProv, invMarca, clProv, clMarca] = await Promise.all([
-      InventorySheet.distinct('proveedor.name', { 'proveedor.name': { $ne: null, $ne: '' } }),
-      InventorySheet.distinct('marca.name', { 'marca.name': { $ne: null, $ne: '' } }),
-      ContactLensesSheet.distinct('proveedor.name', { 'proveedor.name': { $ne: null, $ne: '' } }),
-      ContactLensesSheet.distinct('marca.name', { 'marca.name': { $ne: null, $ne: '' } })
-    ]);
+    const tasks = [];
+    if (!type || type === 'inventory') {
+      tasks.push(InventorySheet.distinct('proveedor.name', { 'proveedor.name': { $ne: null, $ne: '' } }));
+      tasks.push(InventorySheet.distinct('marca.name', { 'marca.name': { $ne: null, $ne: '' } }));
+    } else {
+      tasks.push(Promise.resolve([]), Promise.resolve([]));
+    }
+    if (!type || type === 'contactlenses') {
+      tasks.push(ContactLensesSheet.distinct('proveedor.name', { 'proveedor.name': { $ne: null, $ne: '' } }));
+      tasks.push(ContactLensesSheet.distinct('marca.name', { 'marca.name': { $ne: null, $ne: '' } }));
+    } else {
+      tasks.push(Promise.resolve([]), Promise.resolve([]));
+    }
+
+    const [invProv, invMarca, clProv, clMarca] = await Promise.all(tasks);
 
     const normalizeNames = (arrList) => {
       const set = new Set();
       for (const arr of arrList) {
+        if (!Array.isArray(arr)) continue;
         for (const name of arr) {
           if (name && typeof name === 'string') {
             const pretty = name.trim();
@@ -84,11 +95,10 @@ router.get('/vendors', protect(), async (_req, res) => {
 
     const proveedores = normalizeNames([invProv, clProv]);
     const marcas = normalizeNames([invMarca, clMarca]);
-
     res.json({ ok: true, data: { proveedores, marcas } });
   } catch (err) {
     console.error('GET /catalog/vendors:', err);
-    res.status(500).json({ error: 'Error interno al obtener proveedores y marcas' });
+    res.status(500).json({ error: 'Error interno' });
   }
 });
 

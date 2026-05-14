@@ -121,6 +121,8 @@ router.get('/', protect(), async (req, res) => {
       { 'proveedor.name': regex },
       { 'marca.name':     regex },
       { tipo_matriz:      regex },
+      { numFactura:       regex },
+      { loteProducto:     regex },
     ];
 
     if (matchingTipos.length) {

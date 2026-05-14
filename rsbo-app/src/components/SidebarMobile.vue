@@ -114,7 +114,7 @@ export default {
       this.$router.push(path);
       this.$emit('close');
     },
-    isActive(path) { return this.$route.path === path; },
+    isActive(path) { return this.$route.fullPath === path || this.$route.path === path; },
     isChildActive(children) { return children.some((child) => this.isActive(child.path)); },
   }
 };

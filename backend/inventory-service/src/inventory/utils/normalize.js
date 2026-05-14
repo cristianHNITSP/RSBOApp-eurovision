@@ -13,22 +13,23 @@ const sanitizeString = (s) => {
 
 const actorFromBody = (req) => {
   const a = req?.body?.actor;
-  return a && typeof a === "object"
-    ? {
-        userId: isDef(a.userId)
-          ? sanitizeString(String(a.userId))
-          : isDef(a.id)
-          ? sanitizeString(String(a.id))
-          : isDef(a._id)
-          ? sanitizeString(String(a._id))
-          : null,
-        name: isDef(a.name)
-          ? sanitizeString(String(a.name))
-          : isDef(a.email)
-          ? sanitizeString(String(a.email))
-          : null,
-      }
-    : null;
+  if (a && typeof a === "object") {
+    return {
+      userId: isDef(a.userId) ? sanitizeString(String(a.userId)) : isDef(a.id) ? sanitizeString(String(a.id)) : isDef(a._id) ? sanitizeString(String(a._id)) : null,
+      name: isDef(a.name) ? sanitizeString(String(a.name)) : isDef(a.email) ? sanitizeString(String(a.email)) : null,
+    };
+  }
+
+  // Fallback: extraer del usuario autenticado (req.user inyectado por protect())
+  const u = req?.user;
+  if (u && typeof u === "object") {
+    return {
+      userId: isDef(u.userId) ? sanitizeString(String(u.userId)) : isDef(u.id) ? sanitizeString(String(u.id)) : isDef(u._id) ? sanitizeString(String(u._id)) : null,
+      name: isDef(u.name) ? sanitizeString(String(u.name)) : isDef(u.email) ? sanitizeString(String(u.email)) : null,
+    };
+  }
+
+  return null;
 };
 
 // ✅ Normalizador proveedor/marca

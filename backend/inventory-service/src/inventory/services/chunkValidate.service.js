@@ -78,7 +78,13 @@ const validateChunkRows = (tipo, rows, ranges = {}) => {
       if (!["OD", "OI"].includes(eye))
         errors.push({ path: `${path}.eye`, msg: "eye debe ser OD u OI" });
 
-      ["base_izq", "base_der"].forEach((field) => {
+      const hasPair = isDef(row.base_izq) && isDef(row.base_der);
+      const hasSingle = isDef(row.base);
+      if (!hasPair && !hasSingle) {
+        errors.push({ path: `${path}.base`, msg: "falta base (envía base o base_izq+base_der)" });
+      }
+
+      ["base", "base_izq", "base_der"].forEach((field) => {
         if (!isDef(row[field])) return;
         const num = Number(row[field]);
         if (!Number.isFinite(num)) {
@@ -134,6 +140,12 @@ const validateChunkRows = (tipo, rows, ranges = {}) => {
       const eye = String(row.eye || "").toUpperCase();
       if (!["OD", "OI"].includes(eye))
         errors.push({ path: `${path}.eye`, msg: "eye debe ser OD u OI" });
+
+      const hasPair = isDef(row.base_izq) && isDef(row.base_der);
+      const hasSingle = isDef(row.base);
+      if (!hasPair && !hasSingle) {
+        errors.push({ path: `${path}.base`, msg: "falta base (envía base o base_izq+base_der)" });
+      }
 
       ["base", "base_izq", "base_der"].forEach((field) => {
         if (!isDef(row[field])) return;

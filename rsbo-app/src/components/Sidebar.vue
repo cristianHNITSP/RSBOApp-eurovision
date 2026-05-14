@@ -210,7 +210,8 @@ export default {
       this.activeSubmenu = null;
     },
     isActive(path) {
-      return this.$route.path === path;
+      // Usar fullPath para que coincidan rutas con query params (como ?tab=...)
+      return this.$route.fullPath === path || this.$route.path === path;
     },
     isChildActive(children) {
       return children.some((child) => this.isActive(child.path));

@@ -1,16 +1,13 @@
-/**
- * rsbo-app/src/composables/tabsmanager/useVendorAutocomplete.js
- * Extrae las opciones únicas de proveedor y marca desde las planillas existentes.
- */
-import { ref, computed } from "vue";
+import { ref, computed, reactive } from "vue";
 import { getGlobalVendors } from "@/services/inventory";
 
-// Global cache to avoid fetching multiple times during the session
-const globalProveedores = ref([]);
-const globalMarcas = ref([]);
-const hasFetchedGlobal = ref(false);
+// Cache por tipo para evitar peticiones redundantes
+const globalCache = reactive({
+  inventory: { proveedores: [], marcas: [], fetched: false },
+  contactlenses: { proveedores: [], marcas: [], fetched: false }
+});
 
-export function useVendorAutocomplete(sheets) {
+export function useVendorAutocomplete(sheets, apiType = "inventory") {
   const normTxt = (s) =>
     String(s || "")
       .trim()
@@ -18,27 +15,33 @@ export function useVendorAutocomplete(sheets) {
       .replace(/[\u0300-\u036f]/g, "")
       .toLowerCase();
 
-  // Fetch global vendors exactly once
+  const type = apiType || "inventory";
+
+  // Fetch global vendors para el tipo específico
   const fetchGlobalVendors = async () => {
-    if (hasFetchedGlobal.value) return;
+    if (globalCache[type].fetched) return;
+    globalCache[type].fetched = true;
     try {
-      const res = await getGlobalVendors();
+      const res = await getGlobalVendors(type);
       if (res?.data?.data) {
-        globalProveedores.value = res.data.data.proveedores || [];
-        globalMarcas.value = res.data.data.marcas || [];
-        hasFetchedGlobal.value = true;
+        globalCache[type].proveedores = res.data.data.proveedores || [];
+        globalCache[type].marcas = res.data.data.marcas || [];
+      } else {
+        globalCache[type].fetched = false;
       }
     } catch (e) {
-      console.warn("[INV] Error fetching global vendors:", e);
+      console.warn(`[INV] Error fetching global vendors for ${type}:`, e);
+      globalCache[type].fetched = false;
     }
   };
 
-  // Trigger fetch asynchronously
-  fetchGlobalVendors();
+  // Disparar carga si no se ha hecho
+  if (!globalCache[type].fetched) fetchGlobalVendors();
 
   const uniqueNamesFromSheets = (getter) => {
     const set = new Map();
-    for (const sh of sheets.value || []) {
+    const list = (sheets && sheets.value) ? sheets.value : Array.isArray(sheets) ? sheets : [];
+    for (const sh of list) {
       if (sh?.id === "nueva") continue;
       const raw = getter(sh);
       const pretty = String(raw || "").trim();
@@ -65,17 +68,14 @@ export function useVendorAutocomplete(sheets) {
 
   const proveedorOptions = computed(() => {
     const local = uniqueNamesFromSheets((s) => s?.proveedor?.name);
-    return mergeAndSort(local, globalProveedores.value);
+    return mergeAndSort(local, globalCache[type].proveedores);
   });
 
   const marcaOptions = computed(() => {
     const local = uniqueNamesFromSheets((s) => s?.marca?.name);
-    return mergeAndSort(local, globalMarcas.value);
+    return mergeAndSort(local, globalCache[type].marcas);
   });
 
-  /**
-   * Factory para crear un computed filtrado basado en un ref de entrada.
-   */
   const createFilteredOptions = (inputRef, optionsRef) => {
     return computed(() => {
       const q = normTxt(inputRef.value);

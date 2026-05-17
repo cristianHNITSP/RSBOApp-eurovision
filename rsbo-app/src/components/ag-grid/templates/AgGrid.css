@@ -338,10 +338,18 @@
   padding: 0 6px !important;
   background: transparent !important;
   border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
   color: var(--text-primary) !important;
   font-weight: 800 !important;
   box-sizing: border-box !important;
   text-align: right; /* Para celdas numéricas */
+}
+
+.ag-grid-glass :deep(.ag-cell-inline-editing input:focus),
+.ag-grid-glass :deep(.ag-cell-inline-editing input:focus-visible) {
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 [data-theme="dark"] .ag-grid-glass :deep(.ag-cell-inline-editing) {

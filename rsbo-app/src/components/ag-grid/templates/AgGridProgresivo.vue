@@ -63,6 +63,15 @@
           :suppressHorizontalScroll="false" @cellClicked="onCellClicked" @cellValueChanged="onCellValueChanged"
           @grid-ready="onGridReady" style="width: 100%; height: 100%;" />
       </div>
+
+      <div class="grid-footer">
+        <span class="grid-footer__count">
+          <span class="grid-footer__metric">Filas: {{ rowsInCacheCount }} / {{ totalRows }}</span>
+          <span class="grid-footer__sep">·</span>
+          <span class="grid-footer__metric">Columnas: {{ activeAddValues.length }} / {{ allAddValues.length }}</span>
+        </span>
+        <span v-if="loadingRowsCount > 0" class="grid-footer__loading">Cargando {{ loadingRowsCount }} fila(s)…</span>
+      </div>
     </main>
   </div>
 </template>
@@ -219,14 +228,14 @@ const { formulaValue, onCellClicked, onCellValueChanged, onFxInput, onFxCommit }
 // ─── Columns ─────────────────────────────────────────────────────
 function makeAddLeaf(field, header, add, eye) {
   return {
-    field, headerName: header, editable: (p) => !p.data?.__loading,
+    field, headerName: header, editable: (p) => !(p.data?.__loading || !p.data),
     filter: false, minWidth: 90, maxWidth: 110,
     cellClass: ["ag-cell--compact", "ag-cell--numeric"],
     headerClass: ["ag-header-cell--compact"],
-    cellClassRules: { ...stockCellClassRules.value, "ag-cell--loading": (p) => !!p.data?.__loading },
-    cellRenderer: (p) => p.data?.__loading ? '<span class="skeleton-cell skeleton-cell--add"></span>' : (p.value !== undefined && p.value !== null ? String(p.value) : "0"),
+    cellClassRules: { ...stockCellClassRules.value, "ag-cell--loading": (p) => !!(p.data?.__loading || !p.data) },
+    cellRenderer: (p) => (p.data?.__loading || !p.data) ? '<span class="skeleton-cell skeleton-cell--add"></span>' : (p.value !== undefined && p.value !== null ? String(p.value) : "0"),
     valueSetter: (p) => {
-      if (p.data?.__loading) return false;
+      if ((p.data?.__loading || !p.data)) return false;
       const newVal = isNumeric(p.newValue) ? Number(p.newValue) : 0;
       const oldVal = Number(p.oldValue ?? 0);
       p.data[field] = newVal;
@@ -246,11 +255,11 @@ const columns = computed(() => [
       comparator: (a, b) => Number(a) - Number(b), filter: false, cellClass: ["ag-cell--compact", "ag-cell--numeric", "ag-cell--pinned"],
       headerClass: ["ag-header-cell--compact", "ag-header-cell--pinned"],
       valueFormatter: (p) => {
-        if (p.data?.__loading) return "";
+        if ((p.data?.__loading || !p.data)) return "";
         const bi = Number(p.data?.base_izq), bd = Number(p.data?.base_der);
         return Number.isFinite(bd) && bd !== bi ? `${fmtSigned(bi)} / ${fmtSigned(bd)}` : fmtSigned(bi);
       },
-      cellRenderer: (p) => p.data?.__loading ? '<span class="skeleton-cell"></span>' : (p.valueFormatted ?? String(p.value ?? "")),
+      cellRenderer: (p) => (p.data?.__loading || !p.data) ? '<span class="skeleton-cell"></span>' : (p.valueFormatted ?? String(p.value ?? "")),
     }],
   },
   {
@@ -269,13 +278,9 @@ const { datasource, loadingRowsCount, rowsInCacheCount } = useAgGridPivotLoader(
   baseAxis: rowAxis, getRowCache, fetchItems, sheetId, viewId: sphType,
   buildFetchQuery: (pageKeys) => { const allBi = pageKeys.map(k => Number(k.split("|")[0])); return { addMin: phys.value.addMin, addMax: phys.value.addMax, baseMin: Math.min(...allBi), baseMax: Math.max(...allBi), limit: 5000 }; },
   normalizeItem: (i) => ({ base_izq: to2(i.base_izq ?? 0), base_der: to2(i.base_der ?? 0), add: to2(i.add), eye: String(i.eye || "OD").toUpperCase(), existencias: Number(i.existencias ?? 0) }),
-  buildPivotPage: (pageKeys, items, { loading, pendingChanges }) => {
+  buildPivotPage: (pageKeys, items, { pendingChanges }) => {
     const addAll = allAddValues.value; const eyes = ["OD", "OI"];
-    if (loading) {
-      const nullFields = Object.fromEntries(addAll.flatMap(a => eyes.map(eye => [`add_${norm(a)}_${eye}`, null])));
-      return pageKeys.map(rk => { const [bi, bd] = rk.split("|").map(Number); return { base_izq: bi, base_der: bd, base: bi, __loading: true, ...nullFields }; });
-    }
-    // Pre-indexar items en Map para O(1) lookup
+
     const itemMap = new Map();
     items.forEach(it => itemMap.set(`${to2(it.base_izq)}|${to2(it.base_der)}|${to2(it.add)}|${it.eye}`, it.existencias));
 
@@ -292,7 +297,7 @@ const { datasource, loadingRowsCount, rowsInCacheCount } = useAgGridPivotLoader(
       return row;
     });
   },
-  gridApi, rowIdGetter: (r) => rowKey(r.base_izq, r.base_der), pendingChanges, DEV_DELAY_MS, LOG_ROWS,
+  rowIdGetter: (r) => rowKey(r.base_izq, r.base_der), pendingChanges, DEV_DELAY_MS, LOG_ROWS,
 });
 
 // ─── Loaders ─────────────────────────────────────────────────────
@@ -340,13 +345,17 @@ async function _refreshCachedRows() {
   try {
     const { data } = await fetchItems(props.sheetId, { addMin: phys.value.addMin, addMax: phys.value.addMax, baseMin: Math.min(...pageKeys.map(k => Number(k.split("|")[0]))), baseMax: Math.max(...pageKeys.map(k => Number(k.split("|")[0]))), limit: 5000 });
     const items = (data?.data || []).map(i => ({ base_izq: to2(i.base_izq ?? 0), base_der: to2(i.base_der ?? 0), add: to2(i.add), eye: String(i.eye || "OD").toUpperCase(), existencias: Number(i.existencias ?? 0) }));
+    const pc = pendingChanges.value;
     pageKeys.forEach(rk => {
       const row = cache.get(rk); if (!row) return;
       const [bi, bd] = rk.split("|").map(Number);
-      items.filter(i => i.base_izq === bi && i.base_der === bd).forEach(i => { row[`add_${norm(i.add)}_${i.eye}`] = i.existencias; });
-      const node = gridApi.value?.getRowNode(rk);
-      if (node) { node.setData({ ...row }); gridApi.value.refreshCells({ rowNodes: [node], force: true }); }
+      items.filter(i => i.base_izq === bi && i.base_der === bd).forEach(i => {
+        const field = `add_${norm(i.add)}_${i.eye}`;
+        const pk = `${to2(bi)}|${to2(bd)}|${to2(i.add)}|${i.eye}`;
+        row[field] = pc.has(pk) ? pc.get(pk).existencias : i.existencias;
+      });
     });
+    gridApi.value.refreshInfiniteCache();
   } catch (e) { console.error("[Progresivo] _refreshCachedRows error:", e); }
 }
 

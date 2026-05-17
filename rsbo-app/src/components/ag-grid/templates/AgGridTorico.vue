@@ -116,6 +116,15 @@
           style="width: 100%; height: 100%;"
         />
       </div>
+
+      <div class="grid-footer">
+        <span class="grid-footer__count">
+          <span class="grid-footer__metric">Filas: {{ rowsInCacheCount }} / {{ totalRows }}</span>
+          <span class="grid-footer__sep">·</span>
+          <span class="grid-footer__metric">Columnas: {{ activeCylValues.length }} / {{ allCylValues.length }}</span>
+        </span>
+        <span v-if="loadingRowsCount > 0" class="grid-footer__loading">Cargando {{ loadingRowsCount }} fila(s)…</span>
+      </div>
     </main>
   </div>
 </template>
@@ -286,20 +295,20 @@ const columns = computed(() => [
       field: "sph", headerName: "SPH", width: 90, minWidth: 86, maxWidth: 96, pinned: "left", editable: false, sortable: false,
       comparator: (a, b) => Number(a) - Number(b), filter: false, cellClass: ["ag-cell--compact", "ag-cell--numeric", "ag-cell--pinned"],
       headerClass: ["ag-header-cell--compact", "ag-header-cell--pinned"],
-      valueFormatter: (p) => { if (p.data?.__loading) return ""; const v = Number(p.value); return Number.isFinite(v) ? fmtSigned(v) : (p.value ?? ""); },
-      cellRenderer: (p) => p.data?.__loading ? '<span class="skeleton-cell"></span>' : (p.valueFormatted ?? String(p.value ?? "")),
+      valueFormatter: (p) => { if ((p.data?.__loading || !p.data)) return ""; const v = Number(p.value); return Number.isFinite(v) ? fmtSigned(v) : (p.value ?? ""); },
+      cellRenderer: (p) => (p.data?.__loading || !p.data) ? '<span class="skeleton-cell"></span>' : (p.valueFormatted ?? String(p.value ?? "")),
     }],
   },
   {
     headerName: `CYL (-) | Eje ${selectedDegree.value}°`,
     children: activeCylValues.value.map((cDisp) => ({
-      field: `cyl_${norm(cDisp)}`, headerName: fmtCylHeader(cDisp), editable: (p) => !p.data?.__loading,
+      field: `cyl_${norm(cDisp)}`, headerName: fmtCylHeader(cDisp), editable: (p) => !(p.data?.__loading || !p.data),
       filter: false, minWidth: 80, maxWidth: 110, resizable: true,
       cellClass: ["ag-cell--compact", "ag-cell--numeric"], headerClass: ["ag-header-cell--compact"],
-      cellClassRules: { ...stockCellClassRules.value, "ag-cell--loading": (p) => !!p.data?.__loading },
-      cellRenderer: (p) => p.data?.__loading ? '<span class="skeleton-cell skeleton-cell--cyl"></span>' : (p.value !== undefined && p.value !== null ? String(p.value) : "0"),
+      cellClassRules: { ...stockCellClassRules.value, "ag-cell--loading": (p) => !!(p.data?.__loading || !p.data) },
+      cellRenderer: (p) => (p.data?.__loading || !p.data) ? '<span class="skeleton-cell skeleton-cell--cyl"></span>' : (p.value !== undefined && p.value !== null ? String(p.value) : "0"),
       valueSetter: (p) => {
-        if (p.data?.__loading) return false;
+        if ((p.data?.__loading || !p.data)) return false;
         const newVal = isNumeric(p.newValue) ? Number(p.newValue) : 0;
         const oldVal = Number(p.oldValue ?? 0);
         p.data[p.colDef.field] = newVal;
@@ -319,11 +328,9 @@ const { datasource, loadingRowsCount, rowsInCacheCount } = useAgGridPivotLoader(
   viewId: () => `${props.sphType}|${selectedDegree.value}`,
   buildFetchQuery: (pageSphs) => ({ sphMin: Math.min(...pageSphs), sphMax: Math.max(...pageSphs), cylMin: phys.value.cylMin, cylMax: 0, limit: 5000 }),
   normalizeItem: (i) => { let cyl = to2(i.cyl); if (Number.isFinite(cyl) && cyl > 0) cyl = -Math.abs(cyl); return { sph: to2(i.sph), cyl, axis: Number(i.axis ?? 180), existencias: Number(i.existencias ?? 0) }; },
-  buildPivotPage: (pageSphs, items, { loading, pendingChanges }) => {
+  buildPivotPage: (pageSphs, items, { pendingChanges }) => {
     const deg = selectedDegree.value; const cylAll = allCylValues.value;
-    if (loading) { return pageSphs.map(sph => ({ sph, __loading: true, ...Object.fromEntries(cylAll.map(c => [`cyl_${norm(c)}`, null])) })); }
 
-    // Merge fresh items into itemsCache
     if (items?.length > 0) {
       items.forEach(i => {
         itemsCache.set(`${i.sph}|${i.cyl}|${i.axis}`, i.existencias);
@@ -336,20 +343,19 @@ const { datasource, loadingRowsCount, rowsInCacheCount } = useAgGridPivotLoader(
         const field = `cyl_${norm(cDisp)}`;
         const cyl = -Math.abs(cDisp);
         row[field] = itemsCache.get(`${to2(sph)}|${to2(cyl)}|${deg}`) ?? 0;
-        
+
         const pk = `${to2(sph)}|${cDisp}|${deg}`;
         if (pendingChanges?.has(pk)) row[field] = pendingChanges.get(pk).existencias;
       });
       return row;
     });
   },
-  gridApi, 
   rowIdGetter: (r) => {
     const s = to2(r.sph);
     return Number.isFinite(s) ? String(s) : `loading-${Math.random()}`;
-  }, 
-  pendingChanges, 
-  DEV_DELAY_MS, 
+  },
+  pendingChanges,
+  DEV_DELAY_MS,
   LOG_ROWS,
 });
 
@@ -465,20 +471,31 @@ let _wsPending       = false;
 let _wsTimer         = null;
 
 async function _doWsRefreshNow() {
-  const cache = getRowCache();
-  if (!cache.size || !gridApi.value) return;
+  if (!gridApi.value) return;
 
-  const pageSphs = [...cache.keys()].map(k => to2(Number(k)));
-  const deg = selectedDegree.value;
+  // Reunir la UNIÓN de SPHs de TODOS los grados vivos en el LRU.
+  // Si solo usaramos getRowCache() (grado activo), no refrescariamos
+  // los rangos que el usuario visitó en otros grados, dejando stale
+  // ese subset cuando vuelva a esos grados.
+  const lruEntries = degreeLRU.value
+    .map(lruDeg => ({ lruDeg, lruCache: rowCaches.get(`${props.sphType}|${lruDeg}`) }))
+    .filter(e => e.lruCache && e.lruCache.size);
+
+  if (!lruEntries.length) return;
+
+  const unionSphs = new Set();
+  lruEntries.forEach(({ lruCache }) => {
+    lruCache.forEach((_v, k) => unionSphs.add(to2(Number(k))));
+  });
+  const sphArr = [...unionSphs];
 
   try {
-    const isNeg = props.sphType === "sph-neg";
     const P = phys.value;
 
-    // Fetch quirúrgico de las filas en caché
+    // Fetch cubriendo el rango UNIÓN de SPHs visitados en cualquier grado
     const { data } = await fetchItems(props.sheetId, {
-      sphMin: Math.min(...pageSphs),
-      sphMax: Math.max(...pageSphs),
+      sphMin: Math.min(...sphArr),
+      sphMax: Math.max(...sphArr),
       cylMin: P.cylMin,
       cylMax: 0,
       limit: 5000
@@ -490,36 +507,29 @@ async function _doWsRefreshNow() {
       return { sph: to2(i.sph), cyl, axis: Number(i.axis ?? 180), existencias: Number(i.existencias ?? 0) };
     });
 
-    // Actualizar itemsCache global
+    // Actualizar itemsCache global (multi-eje, fuente de verdad para rebuild)
     if (items.length > 0) {
       items.forEach(i => {
         itemsCache.set(`${i.sph}|${i.cyl}|${i.axis}`, i.existencias);
       });
     }
 
-    // Actualizar TODOS los grados vivos en el LRU que coincidan con estos SPHs
-    degreeLRU.value.forEach(lruDeg => {
-      const lruCache = rowCaches.get(`${props.sphType}|${lruDeg}`);
-      if (!lruCache) return;
-
-      pageSphs.forEach(sph => {
-        const row = lruCache.get(String(sph));
-        if (!row) return;
-
+    // Actualizar cada grado del LRU iterando SUS PROPIOS SPHs (no los del
+    // grado activo). Re-aplicar pendingChanges para no pisar edits.
+    const pc = pendingChanges.value;
+    lruEntries.forEach(({ lruDeg, lruCache }) => {
+      lruCache.forEach((row, sphKey) => {
+        const sph = to2(Number(sphKey));
         items.filter(i => i.sph === sph && i.axis === lruDeg).forEach(i => {
-          row[`cyl_${norm(Math.abs(i.cyl))}`] = i.existencias;
+          const cDisp = Math.abs(i.cyl);
+          const field = `cyl_${norm(cDisp)}`;
+          const pk = `${to2(sph)}|${cDisp}|${lruDeg}`;
+          row[field] = pc.has(pk) ? pc.get(pk).existencias : i.existencias;
         });
-
-        // Si es el grado visible, actualizar nodos del grid
-        if (lruDeg === deg) {
-          const node = gridApi.value.getRowNode(String(sph));
-          if (node) {
-            node.setData({ ...row });
-            gridApi.value.refreshCells({ rowNodes: [node], force: true });
-          }
-        }
       });
     });
+
+    gridApi.value.refreshInfiniteCache();
 
   } catch (e) {
     console.error("[Torico] WS Refresh error:", e);

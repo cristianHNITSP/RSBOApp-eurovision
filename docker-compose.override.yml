@@ -43,6 +43,7 @@ services:
     depends_on:
       gateway: { condition: service_healthy }
     networks: [ rsbo-net ]
+    restart: unless-stopped
 
   # ─── MONGO EXPRESS ────────────────────────────────────────
   mongo-express:
@@ -58,6 +59,7 @@ services:
     depends_on:
       mongo: { condition: service_healthy }
     networks: [ rsbo-net ]
+    restart: unless-stopped
 
   # ─── BACKEND OVERRIDES (Puertos y Volúmenes) ──────────────
   gateway:

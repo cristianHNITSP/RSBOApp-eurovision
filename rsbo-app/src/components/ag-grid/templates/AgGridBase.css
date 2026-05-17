@@ -510,11 +510,19 @@
   padding: 0 6px !important;
   background: transparent !important;
   border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
   color: var(--text-primary) !important;
   font-weight: 800 !important;
   box-sizing: border-box !important;
   text-align: right;
   /* Para celdas numéricas */
+}
+
+.ag-grid-glass :deep(.ag-cell-inline-editing input:focus),
+.ag-grid-glass :deep(.ag-cell-inline-editing input:focus-visible) {
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 [data-theme="dark"] .ag-grid-glass :deep(.ag-cell-inline-editing) {
@@ -577,4 +585,61 @@
     opacity 180ms ease,
     transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1),
     filter 180ms ease;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   GRID FOOTER — progreso de carga "X de Y filas"
+   ═══════════════════════════════════════════════════════════════ */
+.grid-footer {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.4rem;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  color: var(--c-muted, #6b7280);
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(121, 87, 213, 0.12);
+  border-radius: var(--radius-md, 8px);
+  backdrop-filter: blur(8px) saturate(1.2);
+  -webkit-backdrop-filter: blur(8px) saturate(1.2);
+  user-select: none;
+}
+
+.grid-footer__count {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+
+.grid-footer__metric {
+  white-space: nowrap;
+}
+
+.grid-footer__sep {
+  opacity: 0.4;
+  font-weight: 700;
+}
+
+.grid-footer__loading {
+  font-style: italic;
+  opacity: 0.85;
+  color: rgba(121, 87, 213, 0.9);
+  font-variant-numeric: tabular-nums;
+}
+
+[data-theme="dark"] .grid-footer {
+  background: rgba(20, 22, 45, 0.55);
+  border-color: rgba(167, 139, 250, 0.18);
+  color: rgba(220, 220, 240, 0.7);
+}
+
+[data-theme="dark"] .grid-footer__loading {
+  color: rgba(167, 139, 250, 0.95);
 }

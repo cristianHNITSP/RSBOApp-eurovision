@@ -28,6 +28,7 @@ services:
     user: "node"
     healthcheck: *node-healthcheck
     logging: *default-logging
+    restart: unless-stopped
 
   # ─── AUTH SERVICE (Includes AdminJS) ──────────────────────
   auth-service:
@@ -46,6 +47,7 @@ services:
     user: "node"
     healthcheck: *node-healthcheck
     logging: *default-logging
+    restart: unless-stopped
 
   # ─── INVENTORY SERVICE ────────────────────────────────────
   inventory-service:
@@ -64,6 +66,7 @@ services:
     user: "node"
     healthcheck: *node-healthcheck
     logging: *default-logging
+    restart: unless-stopped
 
   # ─── OPTICA SERVICE ───────────────────────────────────────
   optica-service:
@@ -79,6 +82,7 @@ services:
     user: "node"
     healthcheck: *node-healthcheck
     logging: *default-logging
+    restart: unless-stopped
 
   # ─── BACKORDER SERVICE ────────────────────────────────────
   backorder-service:
@@ -95,6 +99,7 @@ services:
     user: "node"
     healthcheck: *node-healthcheck
     logging: *default-logging
+    restart: unless-stopped
 
   # ─── NOTIFICATION SERVICE ─────────────────────────────────
   notification-service:
@@ -112,6 +117,7 @@ services:
     user: "node"
     healthcheck: *node-healthcheck
     logging: *default-logging
+    restart: unless-stopped
 
   # ─── INFRASTRUCTURE ───────────────────────────────────────
   redis:
@@ -125,6 +131,7 @@ services:
       timeout: 3s
       retries: 5
     logging: *default-logging
+    restart: unless-stopped
 
   mongo:
     image: mongo:6
@@ -142,6 +149,7 @@ services:
       timeout: 5s
       retries: 5
     logging: *default-logging
+    restart: unless-stopped
 
 networks:
   rsbo-net:

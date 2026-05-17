@@ -130,6 +130,7 @@ const BASES_CONFIG = {
     tratamientos: ['BCO', 'AR', 'ANTIBLE', 'FOTO', 'FOTO_ANTIBLE', 'TRANSITIONS', 'POLAR', 'POLAR_ESPEJO'],
     materialTreatmentOverrides: [],
   },
+  /*
   bifocal: {
     key:          'bifocal',
     label:        'Bifocal (SPH + ADD)',
@@ -139,6 +140,7 @@ const BASES_CONFIG = {
     tratamientos: ['BCO', 'AR', 'ANTIBLE', 'FOTO', 'FOTO_ANTIBLE', 'TRANSITIONS'],
     materialTreatmentOverrides: [],
   },
+  */
   bifocalFT: {
     key:          'bifocalFT',
     label:        'Bifocal Flat Top (SPH + ADD)',

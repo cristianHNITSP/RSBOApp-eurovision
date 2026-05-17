@@ -94,6 +94,15 @@
           style="width: 100%; height: 100%;"
         />
       </div>
+
+      <div class="grid-footer">
+        <span class="grid-footer__count">
+          <span class="grid-footer__metric">Filas: {{ rowsInCacheCount }} / {{ totalRows }}</span>
+          <span class="grid-footer__sep">·</span>
+          <span class="grid-footer__metric">Columnas: 1 / 1</span>
+        </span>
+        <span v-if="loadingRowsCount > 0" class="grid-footer__loading">Cargando {{ loadingRowsCount }} fila(s)…</span>
+      </div>
     </main>
   </div>
 </template>
@@ -248,21 +257,21 @@ const columns = computed(() => [
       filter: false, resizable: false,
       cellClass: ["ag-cell--compact", "ag-cell--numeric", "ag-cell--pinned"],
       headerClass: ["ag-header-cell--compact", "ag-header-cell--pinned"],
-      valueFormatter: (p) => { if (p.data?.__loading) return ""; return fmtSigned(p.value); },
-      cellRenderer: (p) => p.data?.__loading ? '<span class="skeleton-cell"></span>' : (p.valueFormatted ?? String(p.value ?? "")),
+      valueFormatter: (p) => { if ((p.data?.__loading || !p.data)) return ""; return fmtSigned(p.value); },
+      cellRenderer: (p) => (p.data?.__loading || !p.data) ? '<span class="skeleton-cell"></span>' : (p.valueFormatted ?? String(p.value ?? "")),
     }],
   },
   {
     headerName: "EXISTENCIAS",
     children: [{
-      field: "existencias", headerName: "Stock", editable: (p) => !p.data?.__loading,
+      field: "existencias", headerName: "Stock", editable: (p) => !(p.data?.__loading || !p.data),
       minWidth: 110, maxWidth: 140, filter: false,
       cellClass: ["ag-cell--compact", "ag-cell--numeric"],
       headerClass: ["ag-header-cell--compact"],
-      cellClassRules: { ...stockCellClassRules.value, "ag-cell--loading": (p) => !!p.data?.__loading },
-      cellRenderer: (p) => p.data?.__loading ? '<span class="skeleton-cell skeleton-cell--stock"></span>' : (p.value !== undefined && p.value !== null ? String(p.value) : "0"),
+      cellClassRules: { ...stockCellClassRules.value, "ag-cell--loading": (p) => !!(p.data?.__loading || !p.data) },
+      cellRenderer: (p) => (p.data?.__loading || !p.data) ? '<span class="skeleton-cell skeleton-cell--stock"></span>' : (p.value !== undefined && p.value !== null ? String(p.value) : "0"),
       valueSetter: (p) => {
-        if (p.data?.__loading) return false;
+        if ((p.data?.__loading || !p.data)) return false;
         const raw = String(p.newValue ?? "").trim();
         const newVal = isNumeric(raw) ? Number(raw) : 0;
         const oldVal = Number(p.oldValue ?? 0);
@@ -283,8 +292,7 @@ const { datasource, loadingRowsCount, rowsInCacheCount } = useAgGridPivotLoader(
   baseAxis, getRowCache, fetchItems, sheetId, viewId: sphType,
   buildFetchQuery: (pageBases) => ({ baseMin: Math.min(...pageBases), baseMax: Math.max(...pageBases), limit: 5000 }),
   normalizeItem: (i) => ({ base: to2(i.base), existencias: Number(i.existencias ?? 0) }),
-  buildPivotPage: (pageBases, items, { loading, pendingChanges }) => {
-    if (loading) return pageBases.map(base => ({ base, existencias: null, __loading: true }));
+  buildPivotPage: (pageBases, items, { pendingChanges }) => {
     const map = new Map(items.map(i => [String(to2(i.base)), i.existencias]));
     return pageBases.map(base => {
       const key = String(to2(base));
@@ -293,7 +301,7 @@ const { datasource, loadingRowsCount, rowsInCacheCount } = useAgGridPivotLoader(
       return row;
     });
   },
-  gridApi, rowIdGetter: (r) => String(to2(r.base)), pendingChanges, DEV_DELAY_MS, LOG_ROWS,
+  rowIdGetter: (r) => String(to2(r.base)), pendingChanges, DEV_DELAY_MS, LOG_ROWS,
 });
 
 // ─── Loaders ─────────────────────────────────────────────────────
@@ -335,14 +343,14 @@ async function _refreshCachedRows() {
     const { data } = await fetchItems(props.sheetId, { baseMin: Math.min(...bases), baseMax: Math.max(...bases), limit: 5000 });
     const items = (data?.data || []).map(i => ({ base: to2(i.base), existencias: Number(i.existencias ?? 0) }));
     const map = new Map(items.map(i => [String(to2(i.base)), i.existencias]));
+    const pc = pendingChanges.value;
     bases.forEach(base => {
       const key = String(to2(base));
       const row = cache.get(key);
       if (!row) return;
-      row.existencias = map.get(key) ?? row.existencias;
-      const node = gridApi.value?.getRowNode(key);
-      if (node) { node.setData({ ...row }); gridApi.value.refreshCells({ rowNodes: [node], force: true }); }
+      row.existencias = pc.has(key) ? pc.get(key).existencias : (map.get(key) ?? row.existencias);
     });
+    gridApi.value.refreshInfiniteCache();
   } catch (e) { console.error("[Base] _refreshCachedRows error:", e); }
 }
 

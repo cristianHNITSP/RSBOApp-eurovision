@@ -1,6 +1,11 @@
 /**
  * useAgGridPivotLoader.js
- * Factory para el datasource de AgGrid Infinite Row Model con soporte para carga en dos fases (skeletons + items reales).
+ * Factory para el datasource de AgGrid Infinite Row Model.
+ *
+ * Patrón nativo de AG Grid: un solo `successCallback(rows, lastRow)` por
+ * petición. El `rowCaches` Map del template preserva filas entre cambios
+ * de eje (sphType/degree) — separado del cache interno de AG Grid que
+ * sólo conoce el eje actual.
  */
 
 import { computed, ref } from "vue";
@@ -15,7 +20,6 @@ export function useAgGridPivotLoader({
   buildFetchQuery,
   normalizeItem,
   buildPivotPage,
-  gridApi,
   rowIdGetter,
   pendingChanges,
   DEV_DELAY_MS = 0,
@@ -27,11 +31,12 @@ export function useAgGridPivotLoader({
     if (typeof viewId === "object" && "value" in viewId) return viewId.value;
     return viewId;
   };
+
   const loadingRowsCount = ref(0);
   const rowsInCacheCount = ref(0);
 
   const datasource = computed(() => ({
-    getRows({ startRow, endRow, successCallback }) {
+    async getRows({ startRow, endRow, successCallback, failCallback }) {
       const axis = baseAxis.value;
       const pageKeys = axis.slice(startRow, endRow);
 
@@ -42,79 +47,59 @@ export function useAgGridPivotLoader({
         return;
       }
 
-      // ── Cache-first ──
       const cache = getRowCache();
-      rowsInCacheCount.value = cache.size; // Actualizar conteo
+      rowsInCacheCount.value = cache.size;
 
+      // Cache-first (cross-axis preservation)
       if (pageKeys.every(k => cache.has(String(k)))) {
         LOG_ROWS(`getRows [${startRow}–${endRow}]: cache hit total.`);
         successCallback(pageKeys.map(k => cache.get(String(k))), axis.length);
         return;
       }
 
-      // FASE 1: placeholders inmediatos
-      const loadingRows = buildPivotPage(pageKeys, [], { loading: true });
-      successCallback(loadingRows, axis.length);
-      LOG_ROWS(`FASE 1: ${loadingRows.length} placeholders enviados.`);
-
-      // FASE 2: fetch real
       loadingRowsCount.value += pageKeys.length;
-
-      (async () => {
-        try {
-          if (DEV_DELAY_MS > 0) {
-            LOG_ROWS(`FASE 2: delay ${DEV_DELAY_MS}ms...`);
-            await sleep(DEV_DELAY_MS);
-          }
-
-          const query = buildFetchQuery(pageKeys);
-          LOG_ROWS("FASE 2: query →", query);
-          const requestSheetId = sheetId.value;
-          const requestViewId = readViewId();
-          const { data } = await fetchItems(requestSheetId, query);
-
-          if (sheetId.value !== requestSheetId) {
-            LOG_ROWS(`FASE 2 abortada: el sheetId cambió`);
-            return;
-          }
-          if (requestViewId !== null && readViewId() !== requestViewId) {
-            LOG_ROWS(`FASE 2 abortada: el viewId cambió (${requestViewId} → ${readViewId()})`);
-            return;
-          }
-
-          const items = (data?.data || []).map(normalizeItem);
-          LOG_ROWS(`FASE 2: ${items.length} items recibidos.`);
-
-          const realRows = buildPivotPage(pageKeys, items, { loading: false, pendingChanges: pendingChanges.value });
-
-          // Guardar en caché
-          realRows.forEach(row => {
-            const id = rowIdGetter(row);
-            cache.set(String(id), row);
-          });
-          rowsInCacheCount.value = cache.size;
-
-          // Actualizar nodos en el grid en lote
-          if (gridApi.value) {
-            const nodesToRefresh = [];
-            realRows.forEach(row => {
-              const id = rowIdGetter(row);
-              const node = gridApi.value.getRowNode(String(id));
-              if (node) {
-                node.setData(row);
-                nodesToRefresh.push(node);
-              }
-            });
-            if (nodesToRefresh.length > 0) {
-              gridApi.value.refreshCells({ rowNodes: nodesToRefresh, force: true });
-            }
-          }
-        } catch (e) {
-          console.error("[PivotLoader] FASE 2 error:", e);
-        } finally {
-          loadingRowsCount.value = Math.max(0, loadingRowsCount.value - pageKeys.length);
+      try {
+        if (DEV_DELAY_MS > 0) {
+          LOG_ROWS(`delay ${DEV_DELAY_MS}ms...`);
+          await sleep(DEV_DELAY_MS);
         }
-      })();
+
+        const query = buildFetchQuery(pageKeys);
+        LOG_ROWS("query →", query);
+
+        const requestSheetId = sheetId.value;
+        const requestViewId  = readViewId();
+        const { data } = await fetchItems(requestSheetId, query);
+
+        if (sheetId.value !== requestSheetId) {
+          LOG_ROWS("abortado: el sheetId cambió");
+          failCallback();
+          return;
+        }
+        if (requestViewId !== null && readViewId() !== requestViewId) {
+          LOG_ROWS(`abortado: el viewId cambió (${requestViewId} → ${readViewId()})`);
+          failCallback();
+          return;
+        }
+
+        const items = (data?.data || []).map(normalizeItem);
+        LOG_ROWS(`${items.length} items recibidos.`);
+
+        const realRows = buildPivotPage(pageKeys, items, { pendingChanges: pendingChanges.value });
+
+        realRows.forEach(row => {
+          const id = rowIdGetter(row);
+          cache.set(String(id), row);
+        });
+        rowsInCacheCount.value = cache.size;
+
+        successCallback(realRows, axis.length);
+      } catch (e) {
+        console.error("[PivotLoader] fetch error:", e);
+        failCallback();
+      } finally {
+        loadingRowsCount.value = Math.max(0, loadingRowsCount.value - pageKeys.length);
+      }
     },
   }));
 

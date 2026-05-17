@@ -101,6 +101,15 @@
           style="width: 100%; height: 100%;"
         />
       </div>
+
+      <div class="grid-footer">
+        <span class="grid-footer__count">
+          <span class="grid-footer__metric">Filas: {{ rowsInCacheCount }} / {{ totalRows }}</span>
+          <span class="grid-footer__sep">·</span>
+          <span class="grid-footer__metric">Columnas: {{ activeCylValues.length }} / {{ allCylValues.length }}</span>
+        </span>
+        <span v-if="loadingRowsCount > 0" class="grid-footer__loading">Cargando {{ loadingRowsCount }} fila(s)…</span>
+      </div>
     </main>
   </div>
 </template>
@@ -257,20 +266,20 @@ const columns = computed(() => [
       field: "sph", headerName: "SPH", width: 90, minWidth: 86, maxWidth: 96, pinned: "left", editable: false, sortable: false,
       comparator: (a, b) => Number(a) - Number(b), filter: false, cellClass: ["ag-cell--compact", "ag-cell--numeric", "ag-cell--pinned"],
       headerClass: ["ag-header-cell--compact", "ag-header-cell--pinned"],
-      valueFormatter: (p) => { if (p.data?.__loading) return ""; const v = Number(p.value); return Number.isFinite(v) ? fmtSigned(v) : (p.value ?? ""); },
-      cellRenderer: (p) => p.data?.__loading ? '<span class="skeleton-cell"></span>' : (p.valueFormatted ?? String(p.value ?? "")),
+      valueFormatter: (p) => { if ((p.data?.__loading || !p.data)) return ""; const v = Number(p.value); return Number.isFinite(v) ? fmtSigned(v) : (p.value ?? ""); },
+      cellRenderer: (p) => (p.data?.__loading || !p.data) ? '<span class="skeleton-cell"></span>' : (p.valueFormatted ?? String(p.value ?? "")),
     }],
   },
   {
     headerName: "CYL (-)",
     children: activeCylValues.value.map((cDisp) => ({
-      field: `cyl_${norm(cDisp)}`, headerName: fmtCylHeader(cDisp), editable: (p) => !p.data?.__loading,
+      field: `cyl_${norm(cDisp)}`, headerName: fmtCylHeader(cDisp), editable: (p) => !(p.data?.__loading || !p.data),
       filter: false, minWidth: 80, maxWidth: 110, resizable: true,
       cellClass: ["ag-cell--compact", "ag-cell--numeric"], headerClass: ["ag-header-cell--compact"],
-      cellClassRules: { ...stockCellClassRules.value, "ag-cell--loading": (p) => !!p.data?.__loading },
-      cellRenderer: (p) => p.data?.__loading ? '<span class="skeleton-cell skeleton-cell--cyl"></span>' : (p.value !== undefined && p.value !== null ? String(p.value) : "0"),
+      cellClassRules: { ...stockCellClassRules.value, "ag-cell--loading": (p) => !!(p.data?.__loading || !p.data) },
+      cellRenderer: (p) => (p.data?.__loading || !p.data) ? '<span class="skeleton-cell skeleton-cell--cyl"></span>' : (p.value !== undefined && p.value !== null ? String(p.value) : "0"),
       valueSetter: (p) => {
-        if (p.data?.__loading) return false;
+        if ((p.data?.__loading || !p.data)) return false;
         const newVal = isNumeric(p.newValue) ? Number(p.newValue) : 0;
         const oldVal = Number(p.oldValue ?? 0);
         p.data[p.colDef.field] = newVal;
@@ -289,11 +298,9 @@ const { datasource, loadingRowsCount, rowsInCacheCount } = useAgGridPivotLoader(
   baseAxis: sphAxis, getRowCache, fetchItems, sheetId, viewId: sphType,
   buildFetchQuery: (pageSphs) => ({ sphMin: Math.min(...pageSphs), sphMax: Math.max(...pageSphs), cylMin: phys.value.cylMin, cylMax: 0, limit: 5000 }),
   normalizeItem: (i) => { let cyl = to2(i.cyl); if (Number.isFinite(cyl) && cyl > 0) cyl = -Math.abs(cyl); return { sph: to2(i.sph), cyl, existencias: Number(i.existencias ?? 0) }; },
-  buildPivotPage: (pageSphs, items, { loading, pendingChanges }) => {
+  buildPivotPage: (pageSphs, items, { pendingChanges }) => {
     const cylAll = allCylValues.value;
-    if (loading) { return pageSphs.map(sph => ({ sph, __loading: true, ...Object.fromEntries(cylAll.map(c => [`cyl_${norm(c)}`, null])) })); }
-    
-    // Pre-indexar items en Map para O(1) lookup
+
     const itemMap = new Map();
     items.forEach(it => itemMap.set(`${it.sph}|${to2(Math.abs(it.cyl))}`, it.existencias));
 
@@ -308,7 +315,7 @@ const { datasource, loadingRowsCount, rowsInCacheCount } = useAgGridPivotLoader(
       return row;
     });
   },
-  gridApi, rowIdGetter: (r) => String(to2(r.sph)), pendingChanges, DEV_DELAY_MS, LOG_ROWS,
+  rowIdGetter: (r) => String(to2(r.sph)), pendingChanges, DEV_DELAY_MS, LOG_ROWS,
 });
 
 // ─── Loaders ─────────────────────────────────────────────────────
@@ -351,13 +358,18 @@ async function _refreshCachedRows() {
   try {
     const { data } = await fetchItems(props.sheetId, { sphMin: Math.min(...pageSphs), sphMax: Math.max(...pageSphs), cylMin: phys.value.cylMin, cylMax: 0, limit: 5000 });
     const items = (data?.data || []).map(i => { let cyl = to2(i.cyl); if (Number.isFinite(cyl) && cyl > 0) cyl = -Math.abs(cyl); return { sph: to2(i.sph), cyl, existencias: Number(i.existencias ?? 0) }; });
+    const pc = pendingChanges.value;
     pageSphs.forEach(sph => {
       const key = String(sph);
       const row = cache.get(key); if (!row) return;
-      items.filter(it => it.sph === sph).forEach(it => { row[`cyl_${norm(Math.abs(it.cyl))}`] = it.existencias; });
-      const node = gridApi.value?.getRowNode(key);
-      if (node) { node.setData({ ...row }); gridApi.value.refreshCells({ rowNodes: [node], force: true }); }
+      items.filter(it => it.sph === sph).forEach(it => {
+        const cDisp = Math.abs(it.cyl);
+        const field = `cyl_${norm(cDisp)}`;
+        const pk = `${to2(sph)}|${cDisp}`;
+        row[field] = pc.has(pk) ? pc.get(pk).existencias : it.existencias;
+      });
     });
+    gridApi.value.refreshInfiniteCache();
   } catch (e) { console.error("[Monofocal] _refreshCachedRows error:", e); }
 }
 

@@ -1,6 +1,6 @@
 .services {
   padding: var(--space-16) 0;
-  background: #fff;
+  background: var(--color-white);
   scroll-snap-align: start;
 }
 
@@ -44,14 +44,14 @@
   background: transparent;
 }
 [data-theme="oscuro"] .services__title {
-  color: #ffffff;
+  color: var(--color-white);
 }
 [data-theme="oscuro"] .service-item__icon {
-  background: rgba(139, 92, 246, 0.15);
+  background: rgba(var(--color-purple-500-rgb), 0.15);
   color: var(--color-purple-400);
 }
 [data-theme="oscuro"] .service-item__title {
-  color: #ffffff;
+  color: var(--color-white);
 }
 [data-theme="oscuro"] .service-item__desc {
   color: var(--color-gray-400);

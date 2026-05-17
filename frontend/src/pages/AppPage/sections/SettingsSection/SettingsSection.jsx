@@ -5,6 +5,8 @@ import { IconSettings } from '../../../../components/icons/Icons.jsx';
 import PerfilTab from './PerfilTab.jsx';
 import PreferenciasTab from './PreferenciasTab.jsx';
 import SeguridadTab from './SeguridadTab.jsx';
+import SettingsSectionSkeleton from './SettingsSectionSkeleton.jsx';
+import useSectionLoading from '../../../../composables/useSectionLoading.js';
 import './SettingsSection.css';
 
 export const searchConfig = {
@@ -24,8 +26,11 @@ const TABS = [
 
 const SettingsSection = ({ activeSubSection, openAvatarModal, commitGlobalAvatar, user }) => {
   const [activeTab, setActiveTab] = useState(activeSubSection || 'perfil');
+  const { loading } = useSectionLoading(`ajustes-${activeSubSection || 'perfil'}`);
 
   useEffect(() => { if (activeSubSection) setActiveTab(activeSubSection); }, [activeSubSection]);
+
+  if (loading) return <SettingsSectionSkeleton activeSubSection={activeTab} />;
 
   return (
     <div className="settings-section">

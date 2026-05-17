@@ -13,7 +13,7 @@
 .section-banner__overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+  background: linear-gradient(135deg, rgba(var(--color-white-rgb), 0.1), transparent);
   pointer-events: none;
 }
 
@@ -29,9 +29,9 @@
 .section-banner__tags { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
 
 .section-banner__tag {
-  color: #fff;
+  color: var(--color-white);
   font-size: var(--font-size-lg);
-  background: rgba(255,255,255,0.2);
+  background: rgba(var(--color-white-rgb), 0.2);
   backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */
   -webkit-backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */ /* backdrop-filter causa parpadeo GPU — desactivado */
   padding: var(--space-2) var(--space-4);
@@ -43,13 +43,13 @@
 
 .section-banner__tag--sm {
   font-size: var(--font-size-sm);
-  background: rgba(255,255,255,0.3);
+  background: rgba(var(--color-white-rgb), 0.3);
   padding: var(--space-1) var(--space-3);
   font-weight: 500;
 }
 
 .section-banner__subtitle { 
-  color: rgba(255,255,255,0.9); 
+  color: rgba(var(--color-white-rgb), 0.9); 
   font-size: var(--font-size-sm); 
   margin-top: var(--space-3); 
 }

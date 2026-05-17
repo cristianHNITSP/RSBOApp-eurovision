@@ -4,6 +4,7 @@ import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
 
 import { usePreferences } from '../../composables/usePreferences.js';
 import { INSTANT } from '../../composables/useMotionTransition.js';
+import useSectionLoading from '../../composables/useSectionLoading.js';
 import Sidebar from '../../components/reusable/Sidebar/Sidebar.jsx';
 import Header from '../../components/reusable/Header/Header.jsx';
 import NotificationPanel from '../../components/reusable/NotificationPanel/NotificationPanel.jsx';
@@ -40,6 +41,7 @@ const AppPage = () => {
   const { notifications, count, isPanelOpen, openPanel, closePanel } = useNotifications();
   const { isMobile, isTablet } = useBreakpoint();
   const navigate = useNavigate();
+  const { loading: bootLoading } = useSectionLoading('__boot__', { bootstrap: 700, change: 0 });
 
   const openAvatarModal = (onSelect) => setAvatarModal({ isOpen: true, onSelect });
   const closeAvatarModal = () => setAvatarModal({ isOpen: false, onSelect: null });
@@ -119,6 +121,7 @@ const AppPage = () => {
             activeSection={activeSection}
             onSectionChange={handleSectionChange}
             userInfo={user}
+            loading={bootLoading}
           />
         )}
 
@@ -131,6 +134,7 @@ const AppPage = () => {
             onUserClick={handleUserClick}
             onNavigate={handleSectionChange}
             showSearch={true}
+            loading={bootLoading}
           />
           <div className="app-page__content">
             <AnimatePresence mode="wait" custom={direction}>
@@ -158,6 +162,7 @@ const AppPage = () => {
           isOpen={isPanelOpen}
           onClose={closePanel}
           notifications={notifications}
+          loading={bootLoading}
         />
 
         <AvatarSelectorModal

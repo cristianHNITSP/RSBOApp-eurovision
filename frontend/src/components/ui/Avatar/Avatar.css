@@ -11,7 +11,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--color-white);
   font-weight: 600;
   overflow: hidden;
   border-radius: var(--radius-subtle);
@@ -39,7 +39,7 @@
   width: 12px;
   height: 12px;
   border-radius: 50% !important;
-  border: 2px solid #fff;
+  border: 2px solid var(--color-white);
 }
 
 .avatar__status--online { background: var(--color-green-500); }

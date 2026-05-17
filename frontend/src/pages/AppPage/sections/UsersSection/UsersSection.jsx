@@ -1,14 +1,27 @@
-import { useState, useRef } from 'react';
+import { useRef, useState } from 'react';
 import Avatar from '../../../../components/ui/Avatar/Avatar.jsx';
 import Badge from '../../../../components/ui/Badge/Badge.jsx';
 import Button from '../../../../components/ui/Button/Button.jsx';
 import Input, { Select } from '../../../../components/ui/Input/Input.jsx';
 import EditModal from '../../../../components/reusable/EditModal/EditModal.jsx';
 import QuickActionCard from '../../../../components/reusable/QuickActionCard/QuickActionCard.jsx';
-import { IconUsers, IconSearch, IconAt, IconPlus, IconRefresh, IconInfo, IconEdit, IconKey, IconTrash } from '../../../../components/icons/Icons.jsx';
+import UsersTable from '../../../../components/reusable/UsersTable/UsersTable.jsx';
+import {
+  IconUsers,
+  IconSearch,
+  IconAt,
+  IconPlus,
+  IconRefresh,
+  IconInfo,
+  IconEdit,
+  IconKey,
+  IconTrash,
+} from '../../../../components/icons/Icons.jsx';
 import { systemUsers, userRoles, userStatuses } from '../../../../data/users.js';
 import SectionBanner from '../../../../components/reusable/SectionBanner/SectionBanner.jsx';
 import useBreakpoint from '../../../../composables/useBreakpoint.js';
+import useSectionLoading from '../../../../composables/useSectionLoading.js';
+import UsersSectionSkeleton from './UsersSectionSkeleton.jsx';
 import './UsersSection.css';
 
 export const searchConfig = {
@@ -29,6 +42,9 @@ const UsersSection = ({ openAvatarModal, commitGlobalAvatar }) => {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const bannerRef = useRef(null);
   const { isMobile, isTablet } = useBreakpoint();
+  const { loading } = useSectionLoading('usuarios');
+
+  if (loading) return <UsersSectionSkeleton />;
 
   const selectUserFromTable = (user) => {
     setBannerUser(user);
@@ -116,51 +132,11 @@ const UsersSection = ({ openAvatarModal, commitGlobalAvatar }) => {
           ))}
         </div>
 
-        <div className="users-table">
-          <table className="users-table__el">
-            <thead>
-              <tr className="users-table__head">
-                <th>Usuario</th>
-                <th>Nombre de usuario</th>
-                <th>Último acceso</th>
-                <th>Estado</th>
-                <th>Alta</th>
-              </tr>
-            </thead>
-            <tbody>
-              {systemUsers.map((user) => (
-                <tr
-                  key={user.id}
-                  className={`users-table__row ${bannerUser.id === user.id ? 'users-table__row--selected' : ''}`}
-                  onClick={() => selectUserFromTable(user)}
-                >
-                  <td className="users-table__cell">
-                    <div className="users-table__user">
-                      <Avatar src={user.avatar} size="medium" />
-                      <div>
-                        <div className="users-table__user-name">
-                          {user.name}
-                          {user.isCurrentUser && <span className="users-table__you">Yo</span>}
-                        </div>
-                        <div className="users-table__user-role">{user.role}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="users-table__cell">
-                    <div className="users-table__username">
-                      <IconAt width={14} height={14} /> {user.username}
-                    </div>
-                  </td>
-                  <td className="users-table__cell">{user.lastAccess}</td>
-                  <td className="users-table__cell">
-                    <Badge variant={user.status === 'Activo' ? 'success' : 'danger'}>{user.status}</Badge>
-                  </td>
-                  <td className="users-table__cell">{user.createdDate}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <UsersTable
+          users={systemUsers}
+          selectedUserId={bannerUser.id}
+          onSelectUser={selectUserFromTable}
+        />
       </div>
 
       {isEditOpen && selectedUser && (

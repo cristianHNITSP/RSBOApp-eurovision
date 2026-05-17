@@ -36,7 +36,7 @@
 /* Variants */
 .btn--primary {
   background: var(--gradient-primary);
-  color: #fff;
+  color: var(--color-white);
   box-shadow: var(--shadow-lg);
 }
 
@@ -46,36 +46,36 @@
 }
 
 .btn--secondary {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(var(--color-white-rgb), 0.1);
   backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */
   -webkit-backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */ /* backdrop-filter causa parpadeo GPU — desactivado */
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(var(--color-white-rgb), 0.2);
   color: var(--color-gray-700);
 }
 
 .btn--secondary:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(var(--color-white-rgb), 0.2);
 }
 
 .btn--success {
-  background: linear-gradient(135deg, var(--color-green-500), #059669);
-  color: #fff;
+  background: linear-gradient(135deg, var(--color-green-500), var(--color-emerald-600));
+  color: var(--color-white);
   box-shadow: var(--shadow-lg);
 }
 
 .btn--success:hover {
-  background: linear-gradient(135deg, #16a34a, #047857);
+  background: linear-gradient(135deg, var(--color-green-600), var(--color-emerald-700));
   box-shadow: var(--shadow-xl);
 }
 
 .btn--danger {
-  background: linear-gradient(135deg, var(--color-red-500), #dc2626);
-  color: #fff;
+  background: linear-gradient(135deg, var(--color-red-500), var(--icon-color-danger));
+  color: var(--color-white);
   box-shadow: var(--shadow-lg);
 }
 
 .btn--danger:hover {
-  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  background: linear-gradient(135deg, var(--icon-color-danger), var(--color-red-700));
   box-shadow: var(--shadow-xl);
 }
 
@@ -85,19 +85,19 @@
 }
 
 .btn--ghost:hover {
-  background: rgba(0, 0, 0, 0.05);
+  background: rgba(var(--color-black-rgb), 0.05);
 }
 
 .btn--glass {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(var(--color-white-rgb), 0.1);
   backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */
   -webkit-backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */ /* backdrop-filter causa parpadeo GPU — desactivado */
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(var(--color-white-rgb), 0.2);
   color: var(--color-white-90);
 }
 
 .btn--glass:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(var(--color-white-rgb), 0.2);
 }
 
 .btn__icon {

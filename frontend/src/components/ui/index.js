@@ -6,3 +6,5 @@ export { default as Avatar } from './Avatar/Avatar.jsx';
 export { default as Divider } from './Divider/Divider.jsx';
 export { default as Dropdown, DropdownItem } from './Dropdown/Dropdown.jsx';
 export { default as Toggle } from './Toggle/Toggle.jsx';
+export { default as Skeleton } from './Skeleton/Skeleton.jsx';
+export { default as Spinner } from './Spinner/Spinner.jsx';

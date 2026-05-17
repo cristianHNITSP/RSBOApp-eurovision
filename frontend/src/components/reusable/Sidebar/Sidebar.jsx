@@ -4,18 +4,19 @@ import Avatar from '../../ui/Avatar/Avatar.jsx';
 import { getIcon, IconChevronDown, IconChevronRight, IconChevronLeft } from '../../icons/Icons.jsx';
 import { menuSections } from '../../../data/menuItems.js';
 import useBreakpoint from '../../../composables/useBreakpoint.js';
+import SidebarSkeleton from './SidebarSkeleton.jsx';
 import './Sidebar.css';
 
 /* ── Typewriter component for real-time 60fps typing effect ── */
 const TypewriterText = ({ text, speed = 20 }) => {
-  const [displayedText, setDisplayedText] = useState('');
+  const [charCount, setCharCount] = useState(0);
 
   useEffect(() => {
     let index = 0;
-    setDisplayedText('');
+    setCharCount(0);
     const interval = setInterval(() => {
       index++;
-      setDisplayedText(text.substring(0, index));
+      setCharCount(index);
       if (index >= text.length) {
         clearInterval(interval);
       }
@@ -24,7 +25,19 @@ const TypewriterText = ({ text, speed = 20 }) => {
     return () => clearInterval(interval);
   }, [text, speed]);
 
-  return <span>{displayedText}</span>;
+  const visible = text.substring(0, charCount);
+  const hidden = text.substring(charCount);
+
+  return (
+    <>
+      {visible}
+      {hidden && (
+        <span style={{ visibility: 'hidden' }} aria-hidden="true">
+          {hidden}
+        </span>
+      )}
+    </>
+  );
 };
 
 
@@ -84,12 +97,14 @@ const CollapsedTooltip = ({ label }) => (
 );
 
 /* ── Component ──────────────────────────────────────────────── */
-const Sidebar = ({ collapsed, onToggle, activeSection, onSectionChange, userInfo }) => {
+const Sidebar = ({ collapsed, onToggle, activeSection, onSectionChange, userInfo, loading = false }) => {
   const [expandedMenus, setExpandedMenus] = useState({});
   const [hoveredItem, setHoveredItem] = useState(null);
   const { isTablet } = useBreakpoint();
 
   const effectiveCollapsed = isTablet ? true : collapsed;
+
+  if (loading) return <SidebarSkeleton collapsed={effectiveCollapsed} />;
 
   const toggleSubmenu = (id) =>
     setExpandedMenus((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -113,13 +128,28 @@ const Sidebar = ({ collapsed, onToggle, activeSection, onSectionChange, userInfo
         <div className="sidebar__header">
           <div className="sidebar__header-row">
             <div className={`sidebar__brand ${effectiveCollapsed ? 'sidebar__brand--hidden' : ''}`}>
-              <div className="sidebar__brand-name">
-                {!effectiveCollapsed ? <TypewriterText text="RSBO" speed={45} /> : ''}
-              </div>
-              <div className="sidebar__brand-sub">
-                {!effectiveCollapsed ? <TypewriterText text="Laboratorio Eurovisión" speed={20} /> : ''}
+              <div className="sidebar__brand-main">
+                {!effectiveCollapsed && (
+                  <div className="sidebar__brand-logo">
+                    <img src="/favicon.svg" alt="Logo empresarial" />
+                  </div>
+                )}
+                <div className="sidebar__brand-text">
+                  <div className="sidebar__brand-name">
+                    {!effectiveCollapsed ? <TypewriterText text="RSBO" speed={45} /> : ''}
+                  </div>
+                  <div className="sidebar__brand-sub">
+                    {!effectiveCollapsed ? <TypewriterText text="Laboratorio Eurovisión" speed={20} /> : ''}
+                  </div>
+                </div>
               </div>
             </div>
+
+            {effectiveCollapsed && isTablet && (
+              <div className="sidebar__logo-placeholder">
+                <img src="/favicon.svg" alt="Logo empresarial" />
+              </div>
+            )}
 
             {!isTablet && (
               <button

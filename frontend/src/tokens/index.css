@@ -8,8 +8,90 @@
   --color-purple-600: #7c3aed;
   --color-purple-700: #6d28d9;
   --color-purple-900: #4c1d95;
+  --color-purple-300: #c084fc;
+
+  /* Base colors */
+  --color-white: #ffffff;
+  --color-black: #000000;
+  --color-gray-950: #09090b;
+  --color-slate-950: #1a1528;
+
+  --color-white-rgb: 255, 255, 255;
+  --color-black-rgb: 0, 0, 0;
+  --color-purple-50-rgb: 250, 245, 255;
+  --color-purple-100-rgb: 237, 233, 254;
+  --color-purple-400-rgb: 167, 139, 250;
+  --color-purple-500-rgb: 139, 92, 246;
+  --color-purple-600-rgb: 124, 58, 237;
+  --color-purple-700-rgb: 109, 40, 217;
+  --color-purple-900-rgb: 76, 29, 149;
+  --color-pink-50-rgb: 253, 242, 248;
+  --color-pink-500-rgb: 236, 72, 153;
+  --color-pink-600-rgb: 219, 39, 119;
+  --color-orange-100-rgb: 255, 237, 213;
+  --color-orange-500-rgb: 249, 115, 22;
+  --color-red-100: #fee2e2;
+  --color-red-100-rgb: 254, 226, 226;
+  --color-yellow-50: #fffbeb;
+  --color-yellow-50-rgb: 255, 251, 235;
+  --color-yellow-400: #fbbf24;
+  --color-yellow-400-rgb: 251, 191, 36;
+  --color-blue-50-rgb: 239, 246, 255;
+  --color-blue-100-rgb: 219, 234, 254;
+  --color-blue-400: #60a5fa;
+  --color-blue-400-rgb: 96, 165, 250;
+  --color-cyan-100-rgb: 207, 250, 254;
+  --color-green-100-rgb: 220, 252, 231;
+  --color-green-600: #16a34a;
+  --color-green-600-rgb: 22, 163, 74;
+  --color-amber-600: #b45309;
+  --color-amber-600-rgb: 180, 83, 9;
+  --color-amber-700: #92400e;
+  --color-amber-700-rgb: 146, 64, 14;
+  --color-emerald-600: #059669;
+  --color-emerald-600-rgb: 5, 150, 105;
+  --color-emerald-700: #047857;
+  --color-emerald-700-rgb: 4, 120, 87;
+  --color-gray-300: #d1d5db;
+  --color-gray-300-rgb: 209, 213, 219;
+  --color-charcoal-900: #2a2c32;
+  --color-charcoal-900-rgb: 42, 44, 50;
+  --color-charcoal-950: #16161a;
+  --color-charcoal-950-rgb: 22, 22, 26;
+  --color-charcoal-930: #31333a;
+  --color-charcoal-930-rgb: 49, 51, 58;
+  --color-charcoal-800: #30323a;
+  --color-charcoal-800-rgb: 48, 50, 58;
+  --color-charcoal-700: #32343a;
+  --color-charcoal-700-rgb: 50, 52, 58;
+  --color-charcoal-600: #4b4d5a;
+  --color-charcoal-600-rgb: 75, 77, 90;
+  --color-charcoal-500: #50525a;
+  --color-charcoal-500-rgb: 80, 82, 90;
+  --color-charcoal-400: #5f616e;
+  --color-charcoal-400-rgb: 95, 97, 110;
+  --color-ink-950: #0f0c1e;
+  --color-ink-950-rgb: 15, 12, 30;
+  --color-gray-250: #d5dad5;
+  --color-gray-250-rgb: 213, 218, 213;
+  --color-slate-100: #e5e0f0;
+  --color-slate-100-rgb: 229, 224, 240;
+  --color-green-50: #f0fdf4;
+  --color-green-50-rgb: 240, 253, 244;
+  --color-pink-400-rgb: 244, 114, 182;
+  --color-green-200: #bbf7d0;
+  --color-green-200-rgb: 187, 247, 208;
+  --color-violet-200: #c4b5fd;
+  --color-violet-200-rgb: 196, 181, 253;
+  --color-yellow-200: #fde68a;
+  --color-yellow-200-rgb: 253, 230, 138;
+  --color-red-200: #fecaca;
+  --color-red-200-rgb: 254, 202, 202;
+  --color-mist-50: #fcfaff;
+  --color-mist-50-rgb: 252, 250, 255;
 
   /* Pink palette */
+  --color-pink-50: #fdf2f8;
   --color-pink-400: #f472b6;
   --color-pink-500: #ec4899;
   --color-pink-600: #db2777;
@@ -30,6 +112,7 @@
   --color-green-900: #14532d;
 
   /* Blue palette */
+  --color-blue-50: #eff6ff;
   --color-blue-100: #dbeafe;
   --color-blue-500: #3b82f6;
   --color-blue-600: #2563eb;
@@ -147,6 +230,17 @@
 
   /* Mobile chrome */
   --bottom-nav-height: 64px;
+
+  /* Skeleton & Loader (liquid glass) */
+  --skel-bone-bg: rgba(var(--color-purple-100-rgb), 0.55);
+  --skel-bone-border: rgba(var(--color-purple-400-rgb), 0.18);
+  --skel-shimmer: rgba(var(--color-white-rgb), 0.65);
+  --skel-radius-text: 6px;
+  --skel-radius-rect: 12px;
+  --skel-radius-pill: 999px;
+  --spinner-track: rgba(var(--color-purple-500-rgb), 0.15);
+  --spinner-stroke: var(--color-purple-600);
+  --spinner-glow: rgba(var(--color-purple-500-rgb), 0.35);
 }
 
 /* ──────────────────────────────────────────────────────────────
@@ -201,6 +295,14 @@
   --notif-panel-header-bg: linear-gradient(135deg, rgba(59, 130, 246, 0.25), rgba(34, 211, 238, 0.15), rgba(236, 72, 153, 0.12));
   --notif-panel-accent: rgba(96, 165, 250, 0.6);
   --notif-backdrop: rgba(0, 0, 0, 0.4);
+
+  /* Skeleton & Loader Dark — matte slate (keratoconus-safe) */
+  --skel-bone-bg: rgba(var(--color-white-rgb), 0.05);
+  --skel-bone-border: rgba(var(--color-white-rgb), 0.07);
+  --skel-shimmer: rgba(var(--color-purple-400-rgb), 0.18);
+  --spinner-track: rgba(var(--color-white-rgb), 0.08);
+  --spinner-stroke: var(--color-purple-400);
+  --spinner-glow: rgba(var(--color-purple-400-rgb), 0.25);
 }
 
 /* ── Dark: overrides de componentes con rgba hardcodeados ──── */

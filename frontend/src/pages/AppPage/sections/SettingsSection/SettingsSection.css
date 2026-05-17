@@ -1,15 +1,15 @@
 .settings-section {
   min-height: 100%;
-  background: linear-gradient(135deg, rgba(250, 245, 255, 0.3), rgba(253, 242, 248, 0.2), rgba(239, 246, 255, 0.3));
+  background: linear-gradient(135deg, rgba(var(--color-purple-50-rgb), 0.3), rgba(var(--color-pink-50-rgb), 0.2), rgba(var(--color-blue-50-rgb), 0.3));
   padding: var(--space-8);
   scroll-snap-align: start;
 }
 
 .settings-content {
-  background: rgba(255, 255, 255, 0.6);
+  background: rgba(var(--color-white-rgb), 0.6);
   backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */
   -webkit-backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */ /* backdrop-filter causa parpadeo GPU — desactivado */
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  border: 1px solid rgba(var(--color-white-rgb), 0.4);
   padding: var(--space-8);
   scroll-snap-align: start;
 }
@@ -53,10 +53,10 @@
 }
 
 .settings-profile-card {
-  background: linear-gradient(135deg, rgba(237, 233, 254, 0.6), rgba(255, 255, 255, 0.6));
+  background: linear-gradient(135deg, rgba(var(--color-purple-100-rgb), 0.6), rgba(var(--color-white-rgb), 0.6));
   backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */
   -webkit-backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */ /* backdrop-filter causa parpadeo GPU — desactivado */
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  border: 1px solid rgba(var(--color-white-rgb), 0.4);
   padding: var(--space-6);
   will-change: transform;
   transform: translate3d(0, 0, 0);
@@ -83,7 +83,7 @@
 .settings-profile-card__avatar-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(var(--color-black-rgb), 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -92,7 +92,7 @@
 }
 
 .settings-profile-card__avatar-overlay span {
-  color: #fff;
+  color: var(--color-white);
   font-size: var(--font-size-sm);
   font-weight: 600;
 }
@@ -134,7 +134,7 @@
 }
 
 .settings-stat-box {
-  background: rgba(255, 255, 255, 0.6);
+  background: rgba(var(--color-white-rgb), 0.6);
   backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */
   -webkit-backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */ /* backdrop-filter causa parpadeo GPU — desactivado */
   padding: var(--space-4);
@@ -152,10 +152,10 @@
 }
 
 .settings-form-card {
-  background: rgba(237, 233, 254, 0.4);
+  background: rgba(var(--color-purple-100-rgb), 0.4);
   backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */
   -webkit-backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */ /* backdrop-filter causa parpadeo GPU — desactivado */
-  border: 1px solid rgba(196, 181, 253, 0.5);
+  border: 1px solid rgba(var(--color-violet-200-rgb), 0.5);
   padding: var(--space-6);
   will-change: transform;
   transform: translate3d(0, 0, 0);
@@ -208,7 +208,7 @@
   justify-content: space-between;
   gap: var(--space-4);
   padding: var(--space-3) 0;
-  border-bottom: 1px solid rgba(229, 231, 235, 0.5);
+  border-bottom: 1px solid rgba(var(--color-gray-200-rgb), 0.5);
 }
 
 .settings-toggle-row:last-child {
@@ -244,8 +244,8 @@
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-3);
-  border: 1.5px solid rgba(229, 231, 235, 0.6);
-  background: rgba(255, 255, 255, 0.5);
+  border: 1.5px solid rgba(var(--color-gray-200-rgb), 0.6);
+  background: rgba(var(--color-white-rgb), 0.5);
   cursor: pointer;
   text-align: left;
   transition: border-color var(--transition-base), background var(--transition-base);
@@ -254,7 +254,7 @@
 
 .settings-theme-card--active {
   border-color: var(--color-purple-400);
-  background: rgba(237, 233, 254, 0.4);
+  background: rgba(var(--color-purple-100-rgb), 0.4);
 }
 
 .settings-theme-preview {
@@ -266,15 +266,15 @@
 
 .settings-theme-preview--glass {
   /* NO DEBEN CAMBIARSE BAJO NINGUNA CIRCUNSTANCIA para representar de forma fidedigna los colores del tema a seleccionar */
-  background: linear-gradient(135deg, #edecee 0%, #e1dee6 50%, #d5dad5 100%) !important;
-  border: 1px solid #d1ced7 !important;
+  background: linear-gradient(135deg, var(--color-gray-300) 0%, var(--color-gray-300) 50%, var(--color-gray-250) 100%) !important;
+  border: 1px solid var(--color-gray-300) !important;
   box-shadow: none !important;
 }
 
 .settings-theme-preview--oscuro {
   /* NO DEBEN CAMBIARSE BAJO NINGUNA CIRCUNSTANCIA para representar de forma fidedigna los colores del tema a seleccionar */
-  background: linear-gradient(135deg, #2d2f34 0%, #353340 50%, #232529 100%) !important;
-  border: 1px solid #25262a !important;
+  background: linear-gradient(135deg, var(--color-charcoal-900) 0%, var(--color-charcoal-800) 50%, var(--color-charcoal-950) 100%) !important;
+  border: 1px solid var(--color-charcoal-900) !important;
   box-shadow: none !important;
 }
 
@@ -314,7 +314,7 @@
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-3) 0;
-  border-bottom: 1px solid rgba(229, 231, 235, 0.5);
+  border-bottom: 1px solid rgba(var(--color-gray-200-rgb), 0.5);
 }
 
 .settings-session-row:last-child {
@@ -334,7 +334,7 @@
 }
 
 .settings-session-row__dot--active {
-  background: var(--color-green-500, #22c55e);
+  background: var(--color-green-500, var(--color-green-500));
 }
 
 .settings-session-row__info {

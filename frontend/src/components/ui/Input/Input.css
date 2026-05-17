@@ -21,10 +21,10 @@
 .input-field {
   width: 100%;
   padding: 10px var(--space-4);
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(var(--color-white-rgb), 0.5);
   backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */
   -webkit-backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */ /* backdrop-filter causa parpadeo GPU — desactivado */
-  border: 1px solid rgba(229, 231, 235, 0.5);
+  border: 1px solid rgba(var(--color-gray-200-rgb), 0.5);
   border-radius: var(--radius-subtle);
   color: var(--color-gray-700);
   font-family: var(--font-family);
@@ -39,7 +39,7 @@
 
 .input-field:focus {
   border-color: var(--color-purple-400);
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(var(--color-white-rgb), 0.8);
   box-shadow: var(--shadow-lg);
 }
 
@@ -56,14 +56,14 @@
 .input-select {
   width: 100%;
   padding: 10px calc(var(--space-4) + 20px) 10px var(--space-4);
-  background-color: rgba(255, 255, 255, 0.5);
+  background-color: rgba(var(--color-white-rgb), 0.5);
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
   background-repeat: no-repeat;
   background-position: right var(--space-3) center;
   background-size: 12px 12px;
   backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */
   -webkit-backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */ /* backdrop-filter causa parpadeo GPU — desactivado */
-  border: 1px solid rgba(229, 231, 235, 0.5);
+  border: 1px solid rgba(var(--color-gray-200-rgb), 0.5);
   border-radius: var(--radius-subtle);
   color: var(--color-gray-700);
   font-family: var(--font-family);
@@ -81,7 +81,7 @@
 
 .input-select:focus {
   border-color: var(--color-purple-400);
-  background-color: rgba(255, 255, 255, 0.8);
+  background-color: rgba(var(--color-white-rgb), 0.8);
 }
 
 /* Dark mode: lighter chevron + adapted bg */

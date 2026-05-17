@@ -45,6 +45,7 @@ export const IconGlasses = (p) => <svg {...props} {...p}><circle cx="6" cy="15" 
 export const IconTruck = (p) => <svg {...props} {...p}><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>;
 export const IconError = (p) => <svg {...props} {...p}><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>;
 export const IconLogout = (p) => <svg {...props} {...p}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>;
+export const IconCalendar = (p) => <svg {...props} {...p}><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>;
 export const IconCommand = (p) => <svg {...props} {...p}><path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"/></svg>;
 export const IconCornerDownLeft = (p) => <svg {...props} {...p}><polyline points="9 10 4 15 9 20"/><path d="M20 4v7a4 4 0 0 1-4 4H4"/></svg>;
 export const IconArrowUp = (p) => <svg {...props} {...p}><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>;
@@ -92,6 +93,7 @@ export const iconMap = {
   logout: IconLogout,
   command: IconCommand,
   cornerDownLeft: IconCornerDownLeft,
+  calendar: IconCalendar,
   arrowUp: IconArrowUp,
   arrowDown: IconArrowDown,
   clock: IconClock,

@@ -11,21 +11,21 @@
 .modal__backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(var(--color-black-rgb), 0.4);
   backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */
   -webkit-backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */ /* backdrop-filter causa parpadeo GPU — desactivado */
 }
 
 .modal {
   position: relative;
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(var(--color-white-rgb), 0.95);
   backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */
   -webkit-backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */ /* backdrop-filter causa parpadeo GPU — desactivado */
   box-shadow: var(--shadow-2xl);
   width: 100%;
   max-height: 90vh;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  border: 1px solid rgba(var(--color-white-rgb), 0.4);
   animation: scale-in 0.3s ease-out;
   display: flex;
   flex-direction: column;
@@ -38,8 +38,8 @@
 
 .modal__header {
   padding: var(--space-6);
-  border-bottom: 1px solid rgba(229, 231, 235, 0.5);
-  background: linear-gradient(135deg, rgba(237,233,254,0.5), rgba(255,255,255,0.5));
+  border-bottom: 1px solid rgba(var(--color-gray-200-rgb), 0.5);
+  background: linear-gradient(135deg, rgba(var(--color-purple-100-rgb),0.5), rgba(var(--color-white-rgb), 0.5));
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -60,7 +60,7 @@
   color: var(--color-gray-400);
   transition: all var(--transition-fast);
 }
-.modal__close:hover { color: var(--color-gray-700); background: rgba(0,0,0,0.05); }
+.modal__close:hover { color: var(--color-gray-700); background: rgba(var(--color-black-rgb), 0.05); }
 
 .modal__body {
   flex: 1;

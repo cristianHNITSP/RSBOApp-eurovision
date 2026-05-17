@@ -5,6 +5,7 @@ import Dropdown, { DropdownItem } from '../../ui/Dropdown/Dropdown.jsx';
 import CommandPalette from '../CommandPalette/CommandPalette.jsx';
 import useCommandPalette from '../../../composables/useCommandPalette.js';
 import useBreakpoint from '../../../composables/useBreakpoint.js';
+import HeaderSkeleton from './HeaderSkeleton.jsx';
 import {
   IconBell,
   IconUser,
@@ -29,12 +30,15 @@ const Header = ({
   onUserClick,
   onNavigate,
   showSearch = false,
+  loading = false,
 }) => {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const palette = useCommandPalette();
   const isMac = useMemo(() => isMacPlatform(), []);
   const { isMobileOrTablet } = useBreakpoint();
   const showCompactTrigger = isMobileOrTablet;
+
+  if (loading) return <HeaderSkeleton showSearch={showSearch} />;
 
   return (
     <header className="app-header">

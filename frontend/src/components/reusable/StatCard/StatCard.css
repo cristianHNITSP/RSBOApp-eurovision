@@ -4,7 +4,7 @@
   padding: var(--space-6);
   backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */
   -webkit-backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */ /* backdrop-filter causa parpadeo GPU — desactivado */
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  border: 1px solid rgba(var(--color-white-rgb), 0.4);
   transition:
     box-shadow var(--transition-slow),
     border-color var(--transition-slow);
@@ -13,14 +13,14 @@
 
 .stat-card:hover {
   box-shadow: var(--shadow-xl);
-  border-color: rgba(255, 255, 255, 0.6);
+  border-color: rgba(var(--color-white-rgb), 0.6);
 }
 
 /* Hover glass overlay */
 .stat-card__overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,0.2), transparent);
+  background: linear-gradient(135deg, rgba(var(--color-white-rgb), 0.2), transparent);
   opacity: 0;
   transition: opacity var(--transition-slow);
   pointer-events: none;
@@ -76,19 +76,19 @@
 }
 
 /* Color variants */
-.stat-card--default { background: rgba(255, 255, 255, 0.6); }
-.stat-card--purple { background: rgba(237, 233, 254, 0.6); }
-.stat-card--blue { background: rgba(219, 234, 254, 0.6); }
-.stat-card--green { background: rgba(220, 252, 231, 0.6); }
-.stat-card--orange { background: rgba(255, 237, 213, 0.6); }
-.stat-card--cyan { background: rgba(207, 250, 254, 0.6); }
-.stat-card--red { background: rgba(254, 226, 226, 0.6); }
+.stat-card--default { background: rgba(var(--color-white-rgb), 0.6); }
+.stat-card--purple { background: rgba(var(--color-purple-100-rgb), 0.6); }
+.stat-card--blue { background: rgba(var(--color-blue-100-rgb), 0.6); }
+.stat-card--green { background: rgba(var(--color-green-100-rgb), 0.6); }
+.stat-card--orange { background: rgba(var(--color-orange-100-rgb), 0.6); }
+.stat-card--cyan { background: rgba(var(--color-cyan-100-rgb), 0.6); }
+.stat-card--red { background: rgba(var(--color-red-100-rgb), 0.6); }
 
 /* Icon colors */
 .stat-card--default .stat-card__icon,
 .stat-card--purple .stat-card__icon { background: var(--color-purple-100); color: var(--color-purple-600); }
 .stat-card--blue .stat-card__icon { background: var(--color-blue-100); color: var(--color-blue-600); }
 .stat-card--green .stat-card__icon { background: var(--color-green-100); color: var(--color-green-700); }
-.stat-card--orange .stat-card__icon { background: var(--color-orange-100); color: #c2410c; }
+.stat-card--orange .stat-card__icon { background: var(--color-orange-100); color: var(--color-orange-700); }
 .stat-card--cyan .stat-card__icon { background: var(--color-cyan-100); color: var(--color-cyan-600); }
 .stat-card--red .stat-card__icon { background: var(--color-red-100); color: var(--color-red-700); }

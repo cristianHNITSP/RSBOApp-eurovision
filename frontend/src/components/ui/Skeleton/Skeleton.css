@@ -1,0 +1,59 @@
+.skeleton {
+  display: inline-block;
+  position: relative;
+  overflow: hidden;
+  background-color: var(--skel-bone-bg);
+  background-image: linear-gradient(
+    110deg,
+    transparent 0%,
+    transparent 35%,
+    var(--skel-shimmer) 50%,
+    transparent 65%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  background-position: -200% 0;
+  border: 1px solid var(--skel-bone-border);
+  animation: shimmer-liquid 1.6s linear infinite;
+  vertical-align: middle;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  isolation: isolate;
+}
+
+.skeleton--text {
+  display: block;
+  height: 14px;
+  border-radius: var(--skel-radius-text);
+  border-color: transparent;
+}
+
+.skeleton--circle {
+  border-radius: 50%;
+  border-color: var(--skel-bone-border);
+}
+
+.skeleton--rect {
+  display: block;
+  border-radius: var(--skel-radius-rect);
+}
+
+.skeleton--badge {
+  height: 20px;
+  min-width: 48px;
+  border-radius: var(--skel-radius-pill);
+  border-color: transparent;
+}
+
+.skeleton-stack {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+/* Accessibility — reduce motion stops the shimmer; bone stays as silent placeholder */
+[data-reduce-motion="true"] .skeleton {
+  animation: skeleton-breath 2.4s ease-in-out infinite;
+  background-image: none;
+}

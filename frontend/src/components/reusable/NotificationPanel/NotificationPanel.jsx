@@ -2,12 +2,13 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import useMotionTransition from '../../../composables/useMotionTransition.js';
 import NotificationItem from '../NotificationItem/NotificationItem.jsx';
+import NotificationItemSkeleton from '../NotificationItem/NotificationItemSkeleton.jsx';
 import { IconBell, IconClose, IconCheck } from '../../icons/Icons.jsx';
 import './NotificationPanel.css';
 
 const SPRING = { type: "spring", stiffness: 250, damping: 20, mass: 1 };
 
-const NotificationPanel = ({ isOpen, onClose, notifications = [] }) => {
+const NotificationPanel = ({ isOpen, onClose, notifications = [], loading = false }) => {
   const transition = useMotionTransition(SPRING);
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
 
@@ -43,7 +44,14 @@ const NotificationPanel = ({ isOpen, onClose, notifications = [] }) => {
         </div>
       </div>
       <div className="notif-panel__body">
-        {notifications.length > 0 ? (
+        {loading ? (
+          <>
+            <NotificationItemSkeleton />
+            <NotificationItemSkeleton />
+            <NotificationItemSkeleton />
+            <NotificationItemSkeleton />
+          </>
+        ) : notifications.length > 0 ? (
           notifications.map((notif, idx) => (
             <NotificationItem key={idx} {...notif} />
           ))

@@ -3,7 +3,7 @@
   width: 44px;
   height: 24px;
   border-radius: 12px;
-  background: rgba(209, 213, 219, 0.8);
+  background: rgba(var(--color-gray-300-rgb), 0.8);
   border: none;
   cursor: pointer;
   padding: 2px;
@@ -16,8 +16,8 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+  background: var(--color-white);
+  box-shadow: 0 1px 4px rgba(var(--color-black-rgb), 0.18);
   transition: transform var(--transition-base);
 }
 .toggle--on .toggle__thumb { transform: translateX(20px); }

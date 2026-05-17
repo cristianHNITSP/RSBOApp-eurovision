@@ -1,6 +1,6 @@
 .dashboard {
   min-height: 100%;
-  background: linear-gradient(135deg, rgba(250,245,255,0.3), rgba(253,242,248,0.2), rgba(239,246,255,0.3));
+  background: linear-gradient(135deg, rgba(var(--color-purple-50-rgb),0.3), rgba(var(--color-pink-50-rgb),0.2), rgba(var(--color-blue-50-rgb),0.3));
 }
 
 .dashboard__hero { padding: var(--space-8); scroll-snap-align: start; }
@@ -17,10 +17,10 @@
 
 .dashboard__tab-content {
   margin-top: var(--space-6);
-  background: rgba(255, 255, 255, 0.6);
+  background: rgba(var(--color-white-rgb), 0.6);
   backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */
   -webkit-backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */ /* backdrop-filter causa parpadeo GPU — desactivado */
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  border: 1px solid rgba(var(--color-white-rgb), 0.4);
   padding: var(--space-8);
   min-height: 200px;
   display: flex;

@@ -53,15 +53,15 @@ textarea {
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.05);
+  background: rgba(var(--color-black-rgb), 0.05);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(139, 92, 246, 0.3);
+  background: rgba(var(--color-purple-500-rgb), 0.3);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(139, 92, 246, 0.5);
+  background: rgba(var(--color-purple-500-rgb), 0.5);
 }
 
 /* ─── Animations ─────────────────────────────────────────── */
@@ -188,6 +188,43 @@ textarea {
   }
 }
 
+@keyframes shimmer-liquid {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes liquid-glass-spin {
+  0% {
+    transform: rotate(0deg) scale(1);
+    opacity: 0.85;
+  }
+
+  50% {
+    transform: rotate(180deg) scale(1.04);
+    opacity: 1;
+  }
+
+  100% {
+    transform: rotate(360deg) scale(1);
+    opacity: 0.85;
+  }
+}
+
+@keyframes skeleton-breath {
+  0%, 100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.75;
+  }
+}
+
 .animate-liquid-float {
   animation: liquid-float 6s ease-in-out infinite;
 }
@@ -217,10 +254,10 @@ textarea {
 }
 
 .glass-strong {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(var(--color-white-rgb), 0.25);
   backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */
   -webkit-backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */ /* backdrop-filter causa parpadeo GPU — desactivado */
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 1px solid rgba(var(--color-white-rgb), 0.3);
 }
 
 /* ─── Layout ─────────────────────────────────────────────── */

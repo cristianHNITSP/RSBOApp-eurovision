@@ -1,8 +1,8 @@
 .app-header {
-  background: rgba(255, 255, 255, 0.6);
+  background: rgba(var(--color-white-rgb), 0.6);
   backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */
   -webkit-backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */ /* backdrop-filter causa parpadeo GPU — desactivado */
-  border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+  border-bottom: 1px solid rgba(var(--color-white-rgb), 0.4);
   padding: var(--space-4) var(--space-8);
   position: sticky;
   top: 0;
@@ -73,14 +73,14 @@
 }
 
 .app-header__search-trigger:hover {
-  border-color: rgba(167, 139, 250, 0.5);
-  background: rgba(255, 255, 255, 0.8);
+  border-color: rgba(var(--color-purple-400-rgb), 0.5);
+  background: rgba(var(--color-white-rgb), 0.8);
 }
 
 .app-header__search-trigger:focus-visible {
   outline: none;
-  border-color: rgba(139, 92, 246, 0.7);
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.18);
+  border-color: rgba(var(--color-purple-500-rgb), 0.7);
+  box-shadow: 0 0 0 3px rgba(var(--color-purple-500-rgb), 0.18);
 }
 
 .app-header__search-trigger-icon {
@@ -106,21 +106,21 @@
   font-weight: 600;
   color: var(--color-gray-500);
   padding: 3px 8px;
-  background: rgba(255, 255, 255, 0.7);
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: rgba(var(--color-white-rgb), 0.7);
+  border: 1px solid rgba(var(--color-black-rgb), 0.06);
   border-radius: var(--radius-subtle);
   letter-spacing: 0.03em;
 }
 
 [data-theme="oscuro"] .app-header__search-trigger {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(var(--color-white-rgb), 0.05);
+  border-color: rgba(var(--color-white-rgb), 0.08);
   color: var(--color-gray-500);
 }
 
 [data-theme="oscuro"] .app-header__search-trigger:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(139, 92, 246, 0.45);
+  background: rgba(var(--color-white-rgb), 0.08);
+  border-color: rgba(var(--color-purple-500-rgb), 0.45);
 }
 
 [data-theme="oscuro"] .app-header__search-trigger-text {
@@ -128,8 +128,8 @@
 }
 
 [data-theme="oscuro"] .app-header__search-trigger-kbd {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(var(--color-white-rgb), 0.08);
+  border-color: rgba(var(--color-white-rgb), 0.1);
   color: var(--color-gray-600);
 }
 
@@ -152,7 +152,7 @@
   width: 20px;
   height: 20px;
   background: var(--color-purple-600);
-  color: #fff;
+  color: var(--color-white);
   font-size: var(--font-size-xs);
   font-weight: 700;
   display: flex;

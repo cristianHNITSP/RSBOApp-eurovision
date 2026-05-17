@@ -1,10 +1,25 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Button from '../../ui/Button/Button.jsx';
 import IconButton from '../../ui/IconButton/IconButton.jsx';
 import Dropdown, { DropdownItem } from '../../ui/Dropdown/Dropdown.jsx';
-import SearchBar from '../SearchBar/SearchBar.jsx';
-import { IconBell, IconUser, IconPalette, IconShield, IconLogout } from '../../icons/Icons.jsx';
+import CommandPalette from '../CommandPalette/CommandPalette.jsx';
+import useCommandPalette from '../../../composables/useCommandPalette.js';
+import useBreakpoint from '../../../composables/useBreakpoint.js';
+import {
+  IconBell,
+  IconUser,
+  IconPalette,
+  IconShield,
+  IconLogout,
+  IconSearch,
+  IconCommand,
+} from '../../icons/Icons.jsx';
 import './Header.css';
+
+const isMacPlatform = () => {
+  if (typeof navigator === 'undefined') return false;
+  return /Mac|iPhone|iPad|iPod/.test(navigator.platform || '');
+};
 
 const Header = ({
   title,
@@ -12,11 +27,14 @@ const Header = ({
   onNotificationClick,
   notificationCount = 0,
   onUserClick,
-  onSearchChange,
-  searchValue,
+  onNavigate,
   showSearch = false,
 }) => {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const palette = useCommandPalette();
+  const isMac = useMemo(() => isMacPlatform(), []);
+  const { isMobileOrTablet } = useBreakpoint();
+  const showCompactTrigger = isMobileOrTablet;
 
   return (
     <header className="app-header">
@@ -35,13 +53,37 @@ const Header = ({
           <h1 className="app-header__title">{title}</h1>
         </div>
 
-        {showSearch && (
+        {showSearch && !showCompactTrigger && (
           <div className="app-header__search">
-            <SearchBar placeholder="Buscar..." value={searchValue} onChange={onSearchChange} />
+            <button
+              type="button"
+              className="app-header__search-trigger command-palette-anchor"
+              onClick={palette.open}
+              aria-label="Abrir buscador (Ctrl+K)"
+            >
+              <span className="app-header__search-trigger-icon">
+                <IconSearch width={18} height={18} />
+              </span>
+              <span className="app-header__search-trigger-text">Buscar secciones…</span>
+              <span className="app-header__search-trigger-kbd">
+                {isMac ? <IconCommand width={11} height={11} /> : 'Ctrl'}
+                <span>+ K</span>
+              </span>
+            </button>
           </div>
         )}
 
         <div className="app-header__right">
+          {showSearch && showCompactTrigger && (
+            <IconButton
+              icon={<IconSearch width={20} height={20} />}
+              variant="glass"
+              onClick={palette.open}
+              className="command-palette-anchor"
+              title="Buscar (Ctrl+K)"
+            />
+          )}
+
           <div className="app-header__notif">
             <IconButton
               icon={<IconBell width={20} height={20} />}
@@ -80,6 +122,13 @@ const Header = ({
           </Dropdown>
         </div>
       </div>
+
+      <CommandPalette
+        isOpen={palette.isOpen}
+        onClose={palette.close}
+        onNavigate={onNavigate}
+        anchorSelector=".command-palette-anchor"
+      />
     </header>
   );
 };

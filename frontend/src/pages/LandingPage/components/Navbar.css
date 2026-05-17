@@ -1,7 +1,7 @@
 .landing-nav {
   background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */
+  -webkit-backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */ /* backdrop-filter causa parpadeo GPU — desactivado */
   border-bottom: 1px solid var(--color-gray-200);
   position: sticky;
   top: 0;
@@ -73,8 +73,8 @@
   gap: var(--space-2);
   padding: var(--space-4);
   background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */
+  -webkit-backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */ /* backdrop-filter causa parpadeo GPU — desactivado */
   border-top: 1px solid var(--color-gray-200);
   animation: slideUpSheet 0.25s cubic-bezier(0.32, 0.72, 0, 1);
 }
@@ -97,4 +97,46 @@
   .landing-nav__inner { padding: var(--space-3) var(--space-4); }
   .landing-nav__name { font-size: var(--font-size-base); }
   .landing-nav__logo { width: 36px; height: 36px; }
+}
+
+/* Modo oscuro Navbar */
+[data-theme="oscuro"] .landing-nav {
+  background: rgba(18, 18, 22, 0.85);
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+}
+[data-theme="oscuro"] .landing-nav__name {
+  color: #ffffff;
+}
+[data-theme="oscuro"] .landing-nav__link {
+  color: var(--color-gray-300);
+}
+[data-theme="oscuro"] .landing-nav__link:hover {
+  color: var(--color-purple-400);
+}
+[data-theme="oscuro"] .landing-nav__link--active {
+  background: rgba(139, 92, 246, 0.15);
+  color: var(--color-purple-400);
+}
+[data-theme="oscuro"] .landing-nav__toggle {
+  color: var(--color-purple-400);
+  background: rgba(139, 92, 246, 0.12);
+}
+[data-theme="oscuro"] .landing-nav__toggle:hover {
+  background: rgba(139, 92, 246, 0.2);
+}
+[data-theme="oscuro"] .landing-nav__mobile-panel {
+  background: rgba(22, 22, 26, 0.95);
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+[data-theme="oscuro"] .landing-nav__mobile-link {
+  color: var(--color-gray-300);
+}
+[data-theme="oscuro"] .landing-nav__mobile-link:hover {
+  background: rgba(139, 92, 246, 0.1);
+  color: var(--color-purple-400);
+}
+[data-theme="oscuro"] .landing-nav__mobile-link--active {
+  background: rgba(139, 92, 246, 0.15);
+  color: var(--color-purple-400);
 }

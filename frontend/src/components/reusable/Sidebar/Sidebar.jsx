@@ -1,91 +1,239 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import Avatar from '../../ui/Avatar/Avatar.jsx';
 import { getIcon, IconChevronDown, IconChevronRight, IconChevronLeft } from '../../icons/Icons.jsx';
 import { menuSections } from '../../../data/menuItems.js';
 import useBreakpoint from '../../../composables/useBreakpoint.js';
 import './Sidebar.css';
 
+/* ── Typewriter component for real-time 60fps typing effect ── */
+const TypewriterText = ({ text, speed = 20 }) => {
+  const [displayedText, setDisplayedText] = useState('');
+
+  useEffect(() => {
+    let index = 0;
+    setDisplayedText('');
+    const interval = setInterval(() => {
+      index++;
+      setDisplayedText(text.substring(0, index));
+      if (index >= text.length) {
+        clearInterval(interval);
+      }
+    }, speed);
+
+    return () => clearInterval(interval);
+  }, [text, speed]);
+
+  return <span>{displayedText}</span>;
+};
+
+
+const labelVariants = {
+  hidden: { opacity: 0, x: -8, width: 0 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    width: 'auto',
+    transition: { type: 'spring', stiffness: 380, damping: 28, delay: 0.05 },
+  },
+  exit: {
+    opacity: 0,
+    x: -6,
+    width: 0,
+    transition: { duration: 0.15 },
+  },
+};
+
+const sectionVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.04 } },
+};
+
+const sectionItemVariant = {
+  hidden: { opacity: 0, x: -10 },
+  visible: { opacity: 1, x: 0, transition: { type: 'spring', stiffness: 400, damping: 28 } },
+};
+
+/* ── Tooltip for collapsed icons ────────────────────────────── */
+const CollapsedTooltip = ({ label }) => (
+  <motion.span
+    className="sidebar__tooltip"
+    initial={{ opacity: 0, x: -6, scale: 0.92 }}
+    animate={{ opacity: 1, x: 0, scale: 1 }}
+    exit={{ opacity: 0, x: -4, scale: 0.94 }}
+    transition={{ duration: 0.15 }}
+    style={{
+      position: 'fixed',
+      left: 88,
+      pointerEvents: 'none',
+      background: 'linear-gradient(135deg, rgba(109,40,217,0.95), rgba(139,92,246,0.9))',
+      color: '#fff',
+      fontSize: 12,
+      fontWeight: 600,
+      padding: '5px 10px',
+      borderRadius: 8,
+      whiteSpace: 'nowrap',
+      boxShadow: '0 4px 16px rgba(109,40,217,0.35), 0 1px 4px rgba(0,0,0,0.2)',
+      border: '1px solid rgba(255,255,255,0.15)',
+      backdropFilter: 'blur(8px)',
+      zIndex: 9999,
+    }}
+  >
+    {label}
+  </motion.span>
+);
+
+/* ── Component ──────────────────────────────────────────────── */
 const Sidebar = ({ collapsed, onToggle, activeSection, onSectionChange, userInfo }) => {
   const [expandedMenus, setExpandedMenus] = useState({});
+  const [hoveredItem, setHoveredItem] = useState(null);
   const { isTablet } = useBreakpoint();
 
   const effectiveCollapsed = isTablet ? true : collapsed;
 
-  const toggleSubmenu = (id) => setExpandedMenus(prev => ({ ...prev, [id]: !prev[id] }));
+  const toggleSubmenu = (id) =>
+    setExpandedMenus((prev) => ({ ...prev, [id]: !prev[id] }));
+
+  const handleItemClick = (item) => {
+    onSectionChange(item.id);
+    if (item.hasSubmenu) toggleSubmenu(item.id);
+  };
 
   return (
-    <aside className={`sidebar ${effectiveCollapsed ? 'sidebar--collapsed' : 'sidebar--expanded'}`}>
+    <aside
+      className={`sidebar ${effectiveCollapsed ? 'sidebar--collapsed' : 'sidebar--expanded'}`}
+    >
+      {/* Liquid glass background */}
       <div className="sidebar__bg" />
+      <div className="sidebar__orb-2" />
+
       <div className="sidebar__inner">
 
-        {/* Brand header */}
+        {/* ── Brand header ── */}
         <div className="sidebar__header">
           <div className="sidebar__header-row">
             <div className={`sidebar__brand ${effectiveCollapsed ? 'sidebar__brand--hidden' : ''}`}>
-              <div className="sidebar__brand-name">RSBO</div>
-              <div className="sidebar__brand-sub">Laboratorio Eurovisión</div>
+              <div className="sidebar__brand-name">
+                {!effectiveCollapsed ? <TypewriterText text="RSBO" speed={45} /> : ''}
+              </div>
+              <div className="sidebar__brand-sub">
+                {!effectiveCollapsed ? <TypewriterText text="Laboratorio Eurovisión" speed={20} /> : ''}
+              </div>
             </div>
+
             {!isTablet && (
               <button
                 className="sidebar__toggle"
                 onClick={onToggle}
                 title={effectiveCollapsed ? 'Expandir' : 'Colapsar'}
               >
-                {effectiveCollapsed ? <IconChevronRight width={18} height={18} /> : <IconChevronLeft width={18} height={18} />}
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.span
+                    key={effectiveCollapsed ? 'right' : 'left'}
+                    initial={{ opacity: 0, rotate: -30, scale: 0.7 }}
+                    animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                    exit={{ opacity: 0, rotate: 30, scale: 0.7 }}
+                    transition={{ duration: 0.2 }}
+                    style={{ display: 'flex' }}
+                  >
+                    {effectiveCollapsed
+                      ? <IconChevronRight width={18} height={18} />
+                      : <IconChevronLeft width={18} height={18} />
+                    }
+                  </motion.span>
+                </AnimatePresence>
               </button>
             )}
           </div>
         </div>
 
-        {/* Navigation */}
+        {/* ── Navigation ── */}
         <nav className="sidebar__nav">
-          {menuSections.map((section) => (
-            <div key={section.id} className="sidebar__section">
-              {effectiveCollapsed ? (
-                <div className="sidebar__section-divider" title={section.label} />
-              ) : (
-                <div className="sidebar__section-label">{section.label}</div>
-              )}
-              {section.items.map((item) => (
-                <motion.button
-                  key={item.id}
-                  onClick={() => { onSectionChange(item.id); if (item.hasSubmenu) toggleSubmenu(item.id); }}
-                  className={`sidebar__item ${activeSection === item.id ? 'sidebar__item--active' : ''}`}
-                >
-                  <div className="sidebar__item-left">
-                    <span className="sidebar__item-icon sidebar__item-icon--lg">
-                      {getIcon(item.icon, { width: 20, height: 20 })}
-                    </span>
-                    {!effectiveCollapsed && <span className="sidebar__item-label">{item.label}</span>}
-                  </div>
-                  {!effectiveCollapsed && (
-                    <div className="sidebar__item-right">
-                      {item.badge && (
-                        <span className={`sidebar__item-badge sidebar__item-badge--${item.badgeColor || 'orange'}`}>
-                          {item.badge}
+          {menuSections.map((section, si) => (
+            <motion.div
+              key={section.id}
+              className="sidebar__section"
+              variants={sectionVariants}
+              initial="hidden"
+              animate="visible"
+              custom={si}
+            >
+              {effectiveCollapsed
+                ? <div className="sidebar__section-divider" title={section.label} />
+                : (
+                  <motion.div
+                    className="sidebar__section-label"
+                    variants={sectionItemVariant}
+                  >
+                    {section.label}
+                  </motion.div>
+                )
+              }
+
+              {section.items.map((item) => {
+                const isActive = activeSection === item.id;
+                const isExpanded = expandedMenus[item.id];
+                const showTooltip = effectiveCollapsed && hoveredItem === item.id;
+
+                return (
+                  <motion.div
+                    key={item.id}
+                    variants={sectionItemVariant}
+                    style={{ position: 'relative' }}
+                    onHoverStart={() => setHoveredItem(item.id)}
+                    onHoverEnd={() => setHoveredItem(null)}
+                  >
+                    <motion.button
+                      onClick={() => handleItemClick(item)}
+                      className={`sidebar__item${isActive ? ' sidebar__item--active' : ''}`}
+                    >
+                      {/* Left */}
+                      <div className="sidebar__item-left">
+                        <span className="sidebar__item-icon">
+                          {getIcon(item.icon, { width: 20, height: 20 })}
                         </span>
-                      )}
-                      {item.hasSubmenu && (
-                        <span className={`sidebar__item-chevron ${expandedMenus[item.id] ? 'sidebar__item-chevron--open' : ''}`}>
-                          <IconChevronDown width={12} height={12} />
+                        <span className={`sidebar__item-label ${effectiveCollapsed ? 'sidebar__item-label--hidden' : ''}`}>
+                          {!effectiveCollapsed ? <TypewriterText text={item.label} speed={20} /> : ''}
                         </span>
-                      )}
-                    </div>
-                  )}
-                </motion.button>
-              ))}
-            </div>
+                      </div>
+
+                      {/* Right — badge + chevron */}
+                      <div className={`sidebar__item-right ${effectiveCollapsed ? 'sidebar__item-right--hidden' : ''}`}>
+                        {item.badge && (
+                          <span className={`sidebar__item-badge sidebar__item-badge--${item.badgeColor || 'orange'}`}>
+                            {item.badge}
+                          </span>
+                        )}
+                        {item.hasSubmenu && (
+                          <span className={`sidebar__item-chevron ${isExpanded ? 'sidebar__item-chevron--open' : ''}`}>
+                            <IconChevronDown width={12} height={12} />
+                          </span>
+                        )}
+                      </div>
+                    </motion.button>
+
+                    {/* Tooltip in collapsed mode */}
+                    <AnimatePresence>
+                      {showTooltip && <CollapsedTooltip label={item.label} />}
+                    </AnimatePresence>
+                  </motion.div>
+                );
+              })}
+            </motion.div>
           ))}
         </nav>
 
-        {/* User footer */}
+        {/* ── User footer ── */}
         <div className="sidebar__footer">
           <div className="sidebar__user">
             <Avatar src={userInfo?.avatar} size="large" status="online" />
             <div className={`sidebar__user-info ${effectiveCollapsed ? 'sidebar__user-info--hidden' : ''}`}>
-              <div className="sidebar__user-name">{userInfo?.name || 'Luis Angel Chable'}</div>
-              <div className="sidebar__user-username">{userInfo?.username || 'eurovision'}</div>
+              <div className="sidebar__user-name">
+                {!effectiveCollapsed ? <TypewriterText text={userInfo?.name || 'Luis Angel Chable'} speed={20} /> : ''}
+              </div>
+              <div className="sidebar__user-username">
+                {!effectiveCollapsed ? <TypewriterText text={`@${userInfo?.username || 'eurovision'}`} speed={25} /> : ''}
+              </div>
             </div>
           </div>
         </div>

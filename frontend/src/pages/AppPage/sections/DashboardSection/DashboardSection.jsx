@@ -1,11 +1,20 @@
 import { useState, useEffect, useRef } from 'react';
 import UserProfileCard from '../../../../components/reusable/UserProfileCard/UserProfileCard.jsx';
 import StatCard from '../../../../components/reusable/StatCard/StatCard.jsx';
-import TabNav, { TabNavProvider, TabPanel } from '../../../../components/reusable/TabNav/TabNav.jsx';
+import TabNav, { TabNavProvider, TabPanels, TabPanel } from '../../../../components/reusable/TabNav/TabNav.jsx';
 import { dashboardStats, dashboardTabs } from '../../../../data/statsCards.js';
 import { currentUser } from '../../../../data/users.js';
 import { showToast } from '../../../../composables/useToast.js';
 import './DashboardSection.css';
+
+export const searchConfig = {
+  id: 'dashboard',
+  title: 'Panel de Control',
+  description: 'Resumen del sistema, métricas y atajos rápidos',
+  icon: 'dashboard',
+  group: 'principal',
+  tags: ['inicio', 'home', 'resumen', 'métricas', 'estadísticas', 'panel'],
+};
 
 const DashboardSection = ({ onAdminProfile, user = currentUser }) => {
   const [activeTab, setActiveTab] = useState('resumen');
@@ -41,14 +50,16 @@ const DashboardSection = ({ onAdminProfile, user = currentUser }) => {
         <TabNavProvider tabs={dashboardTabs} activeTab={activeTab} onChange={setActiveTab}>
           <TabNav />
           <div className="dashboard__tab-content">
-            {dashboardTabs.map((tab) => (
-              <TabPanel key={tab.id} tabId={tab.id}>
-                <div className="dashboard__tab-placeholder">
-                  Contenido de la pestaña:{' '}
-                  <span className="dashboard__tab-placeholder-label">{tab.label}</span>
-                </div>
-              </TabPanel>
-            ))}
+            <TabPanels>
+              {dashboardTabs.map((tab) => (
+                <TabPanel key={tab.id} tabId={tab.id}>
+                  <div className="dashboard__tab-placeholder">
+                    Contenido de la pestaña:{' '}
+                    <span className="dashboard__tab-placeholder-label">{tab.label}</span>
+                  </div>
+                </TabPanel>
+              ))}
+            </TabPanels>
           </div>
         </TabNavProvider>
       </div>

@@ -4,6 +4,15 @@ import Button from '../../../../components/ui/Button/Button.jsx';
 import Input from '../../../../components/ui/Input/Input.jsx';
 import { IconShield, IconLock, IconKey, IconClock, IconCheck } from '../../../../components/icons/Icons.jsx';
 
+export const searchConfig = {
+  id: 'ajustes-seguridad',
+  title: 'Seguridad',
+  description: 'Contraseña, sesiones activas y 2FA',
+  icon: 'shield',
+  group: 'otros',
+  tags: ['contraseña', 'password', 'sesiones', '2fa', 'autenticación', 'login', 'cerrar sesión'],
+};
+
 const SESSIONS = [
   { id: 1, device: 'Chrome · Windows',  location: 'Mérida, MX', time: 'Ahora mismo',   active: true },
   { id: 2, device: 'Safari · iPhone',   location: 'Mérida, MX', time: 'Hace 2 horas',  active: false },

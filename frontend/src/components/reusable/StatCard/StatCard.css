@@ -2,8 +2,8 @@
   position: relative;
   overflow: hidden;
   padding: var(--space-6);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */
+  -webkit-backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */ /* backdrop-filter causa parpadeo GPU — desactivado */
   border: 1px solid rgba(255, 255, 255, 0.4);
   transition:
     box-shadow var(--transition-slow),

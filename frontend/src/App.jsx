@@ -1,5 +1,11 @@
+import GradientDefs from './components/icons/GradientDefs.jsx';
 import AppRouter from './routes/AppRouter.jsx';
 
-const App = () => <AppRouter />;
+const App = () => (
+  <>
+    <GradientDefs />
+    <AppRouter />
+  </>
+);
 
 export default App;

@@ -36,16 +36,22 @@ const AppPage = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeSection, setActiveSection] = useState('dashboard');
   const [direction, setDirection] = useState(0);
-  const [avatarModalOpen, setAvatarModalOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [avatarModal, setAvatarModal] = useState({ isOpen: false, onSelect: null });
   const { notifications, count, isPanelOpen, openPanel, closePanel } = useNotifications();
   const { isMobile, isTablet } = useBreakpoint();
   const navigate = useNavigate();
 
-  const handleAvatarSelect = (av) => {
+  const openAvatarModal = (onSelect) => setAvatarModal({ isOpen: true, onSelect });
+  const closeAvatarModal = () => setAvatarModal({ isOpen: false, onSelect: null });
+
+  const handleModalAvatarSelect = (av) => {
+    avatarModal.onSelect?.(av);
+    closeAvatarModal();
+  };
+
+  const commitGlobalAvatar = (av) => {
     currentUser.avatar = av;
     setUser({ ...currentUser });
-    setAvatarModalOpen(false);
   };
 
   useEffect(() => {
@@ -77,9 +83,9 @@ const AppPage = () => {
 
   const sectionTransition = prefs.animacion ? INSTANT : LIQUID_SPRING;
   const sectionVariants = {
-    initial: (dir) => ({ opacity: 0, y: prefs.animacion ? 0 : (dir > 0 ? 60 : -60) }),
+    initial: (dir) => ({ opacity: 0, y: prefs.animacion ? 0 : (dir > 0 ? 12 : -12) }),
     animate: { opacity: 1, y: 0, transition: sectionTransition },
-    exit:    (dir) => ({ opacity: 0, y: prefs.animacion ? 0 : (dir > 0 ? -60 : 60), transition: prefs.animacion ? INSTANT : { duration: 0.15 } }),
+    exit:    (dir) => ({ opacity: 0, y: prefs.animacion ? 0 : (dir > 0 ? -12 : 12), transition: prefs.animacion ? INSTANT : { duration: 0.15 } }),
   };
 
   const renderSection = () => {
@@ -87,11 +93,18 @@ const AppPage = () => {
       return <DashboardSection onAdminProfile={() => changeSection('ajustes-perfil')} user={user} />;
     }
     if (activeSection === 'usuarios') {
-      return <UsersSection onOpenAvatarModal={() => setAvatarModalOpen(true)} />;
+      return <UsersSection openAvatarModal={openAvatarModal} commitGlobalAvatar={commitGlobalAvatar} />;
     }
     if (activeSection.startsWith('ajustes')) {
       const sub = activeSection === 'ajustes' ? 'perfil' : activeSection.replace('ajustes-', '');
-      return <SettingsSection activeSubSection={sub} onOpenAvatarModal={() => setAvatarModalOpen(true)} />;
+      return (
+        <SettingsSection
+          activeSubSection={sub}
+          openAvatarModal={openAvatarModal}
+          commitGlobalAvatar={commitGlobalAvatar}
+          user={user}
+        />
+      );
     }
     return <DashboardSection onAdminProfile={() => changeSection('ajustes-perfil')} />;
   };
@@ -116,9 +129,8 @@ const AppPage = () => {
             onNotificationClick={openPanel}
             notificationCount={count}
             onUserClick={handleUserClick}
+            onNavigate={handleSectionChange}
             showSearch={true}
-            searchValue={searchQuery}
-            onSearchChange={(e) => setSearchQuery(e.target.value)}
           />
           <div className="app-page__content">
             <AnimatePresence mode="wait" custom={direction}>
@@ -129,17 +141,18 @@ const AppPage = () => {
                 initial="initial"
                 animate="animate"
                 exit="exit"
+                onAnimationStart={() => document.querySelector('.app-page__content')?.classList.add('is-transitioning')}
+                onAnimationComplete={() => document.querySelector('.app-page__content')?.classList.remove('is-transitioning')}
                 style={{ height: '100%' }}
               >
                 {renderSection()}
               </motion.div>
             </AnimatePresence>
           </div>
+          {isMobile && (
+            <BottomNav activeSection={activeSection} onSectionChange={handleSectionChange} />
+          )}
         </div>
-
-        {isMobile && (
-          <BottomNav activeSection={activeSection} onSectionChange={handleSectionChange} />
-        )}
 
         <NotificationPanel
           isOpen={isPanelOpen}
@@ -148,9 +161,9 @@ const AppPage = () => {
         />
 
         <AvatarSelectorModal
-          isOpen={avatarModalOpen}
-          onClose={() => setAvatarModalOpen(false)}
-          onSelect={handleAvatarSelect}
+          isOpen={avatarModal.isOpen}
+          onClose={closeAvatarModal}
+          onSelect={handleModalAvatarSelect}
         />
 
         <ToastContainer />

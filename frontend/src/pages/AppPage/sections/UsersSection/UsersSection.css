@@ -8,8 +8,8 @@
 
 .users-content {
   background: rgba(255,255,255,0.6);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */
+  -webkit-backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */ /* backdrop-filter causa parpadeo GPU — desactivado */
   border: 1px solid rgba(255,255,255,0.4);
   padding: var(--space-8);
   scroll-snap-align: start;
@@ -66,9 +66,14 @@
 .users-table__row {
   border-bottom: 1px solid var(--color-gray-100);
   cursor: pointer;
-  transition: background var(--transition-fast);
+  transition: background var(--transition-fast), box-shadow var(--transition-fast);
 }
 .users-table__row:hover { background: rgba(237,233,254,0.5); }
+.users-table__row--selected {
+  background: rgba(167, 139, 250, 0.18);
+  box-shadow: inset 3px 0 0 var(--color-purple-500);
+}
+.users-table__row--selected:hover { background: rgba(167, 139, 250, 0.24); }
 
 .users-table__cell { padding: var(--space-4); color: var(--color-gray-700); }
 

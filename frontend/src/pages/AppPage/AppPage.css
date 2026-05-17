@@ -21,13 +21,13 @@
   scroll-padding-top: var(--space-4);
 }
 
+.app-page__content.is-transitioning {
+  scroll-snap-type: none !important;
+}
+
 [data-reduce-motion="true"] .app-page__content {
   scroll-behavior: auto;
   scroll-snap-type: none;
 }
 
-@media (max-width: 639px) {
-  .app-page--mobile .app-page__content {
-    padding-bottom: var(--bottom-nav-height);
-  }
-}
+

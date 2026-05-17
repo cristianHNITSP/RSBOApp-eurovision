@@ -9,6 +9,15 @@ import useLanguage from '../../../../composables/useLanguage.js';
 import usePreferenceToggle from '../../../../composables/usePreferenceToggle.js';
 import useTranslation from '../../../../composables/useTranslation.js';
 
+export const searchConfig = {
+  id: 'ajustes-preferencias',
+  title: 'Preferencias',
+  description: 'Tema, tipografía, idioma, sonido y accesibilidad',
+  icon: 'palette',
+  group: 'otros',
+  tags: ['tema', 'oscuro', 'claro', 'fuente', 'tamaño', 'idioma', 'sonido', 'accesibilidad', 'animación', 'compacto'],
+};
+
 const ToggleRow = ({ id, label, desc }) => {
   const { value, setValue } = usePreferenceToggle(id);
   return (

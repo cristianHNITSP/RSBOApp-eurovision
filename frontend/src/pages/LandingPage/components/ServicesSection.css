@@ -14,11 +14,14 @@
   width: 64px;
   height: 64px;
   background: var(--color-purple-100);
-  color: var(--color-purple-600);
+  color: var(--icon-color-brand);
   margin: 0 auto var(--space-4);
   display: flex;
   align-items: center;
   justify-content: center;
+}
+.service-item__icon svg {
+  stroke: url(#icon-grad-brand) var(--icon-color-brand);
 }
 
 .service-item__title { font-weight: 700; margin-bottom: var(--space-2); color: var(--color-gray-900); font-size: var(--font-size-base); }
@@ -34,4 +37,22 @@
   .services { padding: var(--space-10) 0; }
   .services__grid { grid-template-columns: 1fr; gap: var(--space-5); }
   .service-item__icon { width: 56px; height: 56px; margin-bottom: var(--space-3); }
+}
+
+/* Modo oscuro ServicesSection */
+[data-theme="oscuro"] .services {
+  background: transparent;
+}
+[data-theme="oscuro"] .services__title {
+  color: #ffffff;
+}
+[data-theme="oscuro"] .service-item__icon {
+  background: rgba(139, 92, 246, 0.15);
+  color: var(--color-purple-400);
+}
+[data-theme="oscuro"] .service-item__title {
+  color: #ffffff;
+}
+[data-theme="oscuro"] .service-item__desc {
+  color: var(--color-gray-400);
 }

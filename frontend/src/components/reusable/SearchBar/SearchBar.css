@@ -8,18 +8,21 @@
   left: var(--space-4);
   top: 50%;
   transform: translateY(-50%);
-  color: var(--color-gray-400);
+  color: var(--icon-color-ui);
   display: flex;
   align-items: center;
   pointer-events: none;
+}
+.search-bar__icon svg {
+  stroke: url(#icon-grad-ui) var(--icon-color-ui);
 }
 
 .search-bar__input {
   width: 100%;
   padding: var(--space-3) var(--space-4) var(--space-3) 44px;
   background: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */
+  -webkit-backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */ /* backdrop-filter causa parpadeo GPU — desactivado */
   border: 1px solid rgba(229, 231, 235, 0.5);
   color: var(--color-gray-700);
   font-family: var(--font-family);

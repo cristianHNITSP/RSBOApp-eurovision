@@ -1,18 +1,15 @@
 .bottom-nav {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  position: relative;
   z-index: 45;
   height: var(--bottom-nav-height);
   display: flex;
   align-items: stretch;
   justify-content: space-around;
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-top: 1px solid rgba(255, 255, 255, 0.6);
-  box-shadow: 0 -6px 24px rgba(76, 29, 149, 0.08);
+  background: var(--bottom-nav-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid var(--bottom-nav-border);
+  box-shadow: var(--bottom-nav-icon-shadow);
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
 
@@ -41,7 +38,7 @@
 }
 
 .bottom-nav__item--active .bottom-nav__icon {
-  background: rgba(139, 92, 246, 0.12);
+  background: var(--bottom-nav-icon-bg);
 }
 
 .bottom-nav__icon {

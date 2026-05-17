@@ -46,3 +46,26 @@
 .site-footer__social:hover { background: rgba(255, 255, 255, 0.2); }
 
 .site-footer__legal { font-size: var(--font-size-sm); text-align: right; line-height: 1.8; opacity: 0.75; }
+
+/* Modo oscuro SiteFooter */
+[data-theme="oscuro"] .site-footer {
+  background: #09090b;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+[data-theme="oscuro"] .site-footer__brand-sub {
+  color: var(--color-gray-400);
+}
+[data-theme="oscuro"] .site-footer__contact {
+  color: var(--color-gray-400);
+}
+[data-theme="oscuro"] .site-footer__legal {
+  color: var(--color-gray-500);
+}
+[data-theme="oscuro"] .site-footer__social {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--color-gray-300);
+}
+[data-theme="oscuro"] .site-footer__social:hover {
+  background: rgba(139, 92, 246, 0.25);
+  color: var(--color-purple-400);
+}

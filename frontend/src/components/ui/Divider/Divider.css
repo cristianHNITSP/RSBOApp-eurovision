@@ -1,0 +1,5 @@
+.divider {
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--color-gray-200), transparent);
+  border: none;
+}

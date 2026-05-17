@@ -1,0 +1,130 @@
+.app-header {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+  padding: var(--space-4) var(--space-8);
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  box-shadow: var(--shadow-sm);
+  height: 76px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.app-header__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.app-header__left {
+  flex: 1;
+}
+
+.app-header__breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-purple-600);
+}
+
+.app-header__breadcrumb-sep {
+  color: var(--color-gray-400);
+}
+
+.app-header__breadcrumb-last {
+  color: var(--color-gray-500);
+}
+
+.app-header__title {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  color: var(--color-gray-900);
+  letter-spacing: -0.02em;
+  margin-bottom: 0;
+}
+
+.app-header__search {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  padding: 0 var(--space-6);
+  max-width: 600px;
+}
+
+.app-header__right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.app-header__notif {
+  position: relative;
+}
+
+.app-header__notif-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 20px;
+  height: 20px;
+  background: var(--color-purple-600);
+  color: #fff;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50% !important;
+}
+
+/* Tablet: compact search */
+@media (max-width: 1023px) {
+  .app-header {
+    padding: var(--space-3) var(--space-5);
+  }
+
+  .app-header__search {
+    padding: 0 var(--space-3);
+    max-width: 320px;
+  }
+
+  .app-header__right {
+    gap: var(--space-3);
+  }
+}
+
+/* Mobile: hide breadcrumbs + search, compact header */
+@media (max-width: 639px) {
+  .app-header {
+    height: 60px;
+    padding: var(--space-2) var(--space-4);
+  }
+
+  .app-header__breadcrumbs {
+    display: none;
+  }
+
+  .app-header__search {
+    display: none;
+  }
+
+  .app-header__title {
+    font-size: var(--font-size-lg);
+  }
+
+  .app-header__right {
+    gap: var(--space-2);
+  }
+
+  .app-header__right .btn {
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--font-size-sm);
+  }
+}

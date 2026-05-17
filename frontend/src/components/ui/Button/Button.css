@@ -1,0 +1,109 @@
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-family);
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  border: none;
+  transition:
+    background-color var(--transition-base),
+    box-shadow var(--transition-base),
+    border-color var(--transition-base),
+    color var(--transition-base);
+  border-radius: var(--radius-subtle);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Sizes */
+.btn--sm {
+  padding: 6px var(--space-3);
+  font-size: var(--font-size-sm);
+}
+
+.btn--md {
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-base);
+}
+
+.btn--lg {
+  padding: var(--space-3) var(--space-6);
+  font-size: var(--font-size-lg);
+}
+
+/* Variants */
+.btn--primary {
+  background: var(--gradient-primary);
+  color: #fff;
+  box-shadow: var(--shadow-lg);
+}
+
+.btn--primary:hover {
+  background: linear-gradient(135deg, var(--color-purple-600), var(--color-purple-700));
+  box-shadow: var(--shadow-xl);
+}
+
+.btn--secondary {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--color-gray-700);
+}
+
+.btn--secondary:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.btn--success {
+  background: linear-gradient(135deg, var(--color-green-500), #059669);
+  color: #fff;
+  box-shadow: var(--shadow-lg);
+}
+
+.btn--success:hover {
+  background: linear-gradient(135deg, #16a34a, #047857);
+  box-shadow: var(--shadow-xl);
+}
+
+.btn--danger {
+  background: linear-gradient(135deg, var(--color-red-500), #dc2626);
+  color: #fff;
+  box-shadow: var(--shadow-lg);
+}
+
+.btn--danger:hover {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  box-shadow: var(--shadow-xl);
+}
+
+.btn--ghost {
+  background: transparent;
+  color: var(--color-gray-700);
+}
+
+.btn--ghost:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.btn--glass {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--color-white-90);
+}
+
+.btn--glass:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.btn__icon {
+  display: flex;
+  align-items: center;
+  font-size: 1.1em;
+  width: 1.2em;
+  height: 1.2em;
+}

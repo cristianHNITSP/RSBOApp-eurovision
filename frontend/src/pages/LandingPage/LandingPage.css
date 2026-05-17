@@ -1,0 +1,14 @@
+.landing-page {
+  height: 100vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  scroll-snap-type: y proximity;
+  scroll-behavior: smooth;
+}
+
+[data-reduce-motion="true"] .landing-page {
+  scroll-behavior: auto;
+  scroll-snap-type: none;
+}

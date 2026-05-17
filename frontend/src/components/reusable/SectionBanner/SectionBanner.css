@@ -1,0 +1,62 @@
+.section-banner {
+  background: var(--gradient-hero, linear-gradient(135deg, var(--color-purple-700), var(--color-purple-500), var(--color-pink-500)));
+  padding: var(--space-8);
+  margin-bottom: var(--space-8);
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-subtle);
+  /* GPU acceleration fix for backdrop-filter flashes on glass buttons */
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+}
+
+.section-banner__overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+  pointer-events: none;
+}
+
+.section-banner__content { position: relative; z-index: 1; }
+
+.section-banner__main-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-6);
+}
+
+.section-banner__tags { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+
+.section-banner__tag {
+  color: #fff;
+  font-size: var(--font-size-lg);
+  background: rgba(255,255,255,0.2);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: var(--space-2) var(--space-4);
+  font-weight: 600;
+  border-radius: var(--radius-subtle);
+  /* Fix for blurry text in some browsers when on top of blur */
+  transform: translateZ(0);
+}
+
+.section-banner__tag--sm {
+  font-size: var(--font-size-sm);
+  background: rgba(255,255,255,0.3);
+  padding: var(--space-1) var(--space-3);
+  font-weight: 500;
+}
+
+.section-banner__subtitle { 
+  color: rgba(255,255,255,0.9); 
+  font-size: var(--font-size-sm); 
+  margin-top: var(--space-3); 
+}
+
+.section-banner__actions { 
+  display: flex; 
+  align-items: center; 
+  gap: var(--space-3); 
+  flex-wrap: wrap; 
+}

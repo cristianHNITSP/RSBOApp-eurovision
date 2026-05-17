@@ -1,0 +1,113 @@
+/* ── Wrapper ───────────────────────────────────────────────── */
+.tab-nav-wrapper {
+  position: relative;
+}
+
+/* ── Scroll fade edge indicators (mobile only) ─────────────── */
+.tab-nav__fade {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 40px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.tab-nav__fade--left {
+  left: 0;
+  background: linear-gradient(to right, rgba(255, 255, 255, 0.96) 20%, transparent);
+}
+
+.tab-nav__fade--right {
+  right: 0;
+  background: linear-gradient(to left, rgba(255, 255, 255, 0.96) 20%, transparent);
+}
+
+/* ── Tab container ─────────────────────────────────────────── */
+.tab-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* Mobile: no wrap, horizontal scroll */
+@media (max-width: 639px) {
+  .tab-nav-wrapper--mobile .tab-nav {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+
+  .tab-nav-wrapper--mobile .tab-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tab-nav-wrapper--mobile .tab-nav__btn {
+    flex-shrink: 0;
+    scroll-snap-align: start;
+    white-space: nowrap;
+  }
+}
+
+/* ── Tab button ────────────────────────────────────────────── */
+.tab-nav__btn {
+  padding: 10px var(--space-4);
+  font-weight: 500;
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition:
+    background-color var(--transition-base),
+    color var(--transition-base),
+    box-shadow var(--transition-base);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: rgba(255, 255, 255, 0.4);
+  color: var(--color-gray-600);
+  border-radius: var(--radius-subtle);
+}
+
+.tab-nav__btn:hover {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.tab-nav__btn--active {
+  background: rgba(237, 233, 254, 0.8);
+  color: var(--color-purple-700);
+  box-shadow: var(--shadow-md);
+}
+
+/* ── Icon ──────────────────────────────────────────────────── */
+.tab-nav__icon {
+  display: flex;
+  align-items: center;
+}
+
+/* ── Panel ─────────────────────────────────────────────────── */
+.tab-panel {
+  width: 100%;
+  overflow: hidden;
+}
+
+/* ── Badge dot ─────────────────────────────────────────────── */
+.tab-nav__badge {
+  width: 20px;
+  height: 20px;
+  background: var(--color-orange-500);
+  color: #fff;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}

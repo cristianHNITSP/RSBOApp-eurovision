@@ -5,8 +5,10 @@ const useBreakpoint = () => {
   const isTablet = useMediaQuery({ minWidth: 640, maxWidth: 1023 });
   const isDesktop = useMediaQuery({ minWidth: 1024 });
   const isMobileOrTablet = useMediaQuery({ maxWidth: 1023 });
+  const isLandscape = useMediaQuery({ query: '(orientation: landscape)' });
+  const isMobileLandscape = isMobile && isLandscape;
 
-  return { isMobile, isTablet, isDesktop, isMobileOrTablet };
+  return { isMobile, isTablet, isDesktop, isMobileOrTablet, isLandscape, isMobileLandscape };
 };
 
 export default useBreakpoint;

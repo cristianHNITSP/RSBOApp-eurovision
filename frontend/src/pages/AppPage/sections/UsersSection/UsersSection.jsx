@@ -5,7 +5,7 @@ import Button from '../../../../components/ui/Button/Button.jsx';
 import Input, { Select } from '../../../../components/ui/Input/Input.jsx';
 import EditModal from '../../../../components/reusable/EditModal/EditModal.jsx';
 import QuickActionCard from '../../../../components/reusable/QuickActionCard/QuickActionCard.jsx';
-import UsersTable from '../../../../components/reusable/UsersTable/UsersTable.jsx';
+import Table from '../../../../components/reusable/Table/Table.jsx';
 import {
   IconUsers,
   IconSearch,
@@ -132,7 +132,7 @@ const UsersSection = ({ openAvatarModal, commitGlobalAvatar }) => {
           ))}
         </div>
 
-        <UsersTable
+        <Table
           users={systemUsers}
           selectedUserId={bannerUser.id}
           onSelectUser={selectUserFromTable}

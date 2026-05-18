@@ -4,19 +4,9 @@ import TabNav, { TabNavProvider, TabPanels, TabPanel } from '../../../../compone
 import { getIcon, IconSettings } from '../../../../components/icons/Icons.jsx';
 import useSectionLoading from '../../../../composables/useSectionLoading.js';
 import OpticaSectionSkeleton from './OpticaSectionSkeleton.jsx';
+import { opticaTabs } from './data.js';
+
 import './OpticaSection.css';
-
-const TABS = [
-  { id: 'equipos',   label: 'Equipos',   icon: 'microscope' },
-  { id: 'armazones', label: 'Armazones', icon: 'glasses' },
-  { id: 'estuches',  label: 'Estuches',  icon: 'package' },
-];
-
-const TAB_DESC = {
-  equipos:   'Equipos y aparatos de medición oftálmica.',
-  armazones: 'Armazones y monturas para lentes graduados.',
-  estuches:  'Estuches, fundas y accesorios de protección.',
-};
 
 const OpticaSection = () => {
   const [activeTab, setActiveTab] = useState('equipos');
@@ -41,17 +31,21 @@ const OpticaSection = () => {
           <QuickActionCard icon="users"   title="Proveedores" description="Gestión de proveedores ópticos" />
         </div>
 
-        <TabNavProvider tabs={TABS} activeTab={activeTab} onChange={setActiveTab}>
+        <TabNavProvider tabs={opticaTabs} activeTab={activeTab} onChange={setActiveTab}>
           <TabNav />
           <TabPanels>
-            {TABS.map((tab) => (
+            {opticaTabs.map((tab) => (
               <TabPanel key={tab.id} tabId={tab.id}>
-                <div className="inv-optica-demo">
-                  <div className="inv-optica-demo__icon">
-                    <IconSettings width={40} height={40} />
+                <div className="inv-optica-demo-wrapper">
+                  <div className="inv-optica-demo">
+                    <div className="inv-optica-demo__icon">
+                      <IconSettings width={40} height={40} />
+                    </div>
+                    <h3 className="inv-optica-demo__title">Mantenimiento</h3>
+                    <p className="inv-optica-demo__text">
+                      Sección <strong>{tab.label}</strong> — módulo en construcción.
+                    </p>
                   </div>
-                  <h3 className="inv-optica-demo__title">Mantenimiento</h3>
-                  <p className="inv-optica-demo__text">{TAB_DESC[tab.id]}</p>
                 </div>
               </TabPanel>
             ))}

@@ -54,7 +54,16 @@ const Header = ({
               ))}
             </div>
           )}
-          <h1 className="app-header__title">{title}</h1>
+          <h1 className="app-header__title">
+            {title && title.includes(' — ') ? (
+              <>
+                {title.split(' — ')[0]}{' '}
+                <span className="app-header__title-tag">{title.split(' — ')[1]}</span>
+              </>
+            ) : (
+              title
+            )}
+          </h1>
         </div>
 
         {showSearch && !showCompactTrigger && (

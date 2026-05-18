@@ -1,0 +1,340 @@
+/* ═══════════════════════════════════════════════════════════════
+   AG Grid — Editorial Glass overrides para Óptica
+   Trabaja junto al editorialGlassTheme construido en opticaGrid.js
+   con .withParams({...}) — aquí solo lo que params no cubre:
+   tipografía de header, hover shimmer, focus ring, scrollbar.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Shimmer sweep — eco exacto del sb-shimmer del Sidebar ─── */
+@keyframes opt-row-shimmer {
+  0%   { transform: translateX(-100%) skewX(-12deg); }
+  100% { transform: translateX(300%) skewX(-12deg); }
+}
+
+/* ── Wrapper raíz del grid ──────────────────────────────────── */
+.inv-optica-demo__grid {
+  --opt-grid-accent: var(--color-purple-500);
+  --opt-grid-accent-soft: rgba(var(--color-purple-500-rgb), 0.1);
+  --opt-grid-shimmer: rgba(var(--color-white-rgb), 0.45);
+  width: 100%;
+}
+
+/* AG Grid wrapper transparente para que se vea el frame de la sección */
+.inv-optica-demo__grid .ag-root-wrapper {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* ── Header — tipografía editorial uppercase tracking ──────── */
+.inv-optica-demo__grid .ag-header {
+  border-bottom: 1px solid rgba(var(--color-white-rgb), 0.4);
+}
+
+.inv-optica-demo__grid .ag-header-cell-text {
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-gray-700);
+}
+
+.inv-optica-demo__grid .ag-header-cell-resize::after {
+  background: rgba(var(--color-purple-400-rgb), 0.35);
+}
+
+/* ── Filas — hover liquid shimmer (eco del .sidebar__item) ──
+   Nota: NO añadir position/display/transform a .ag-row o .ag-cell,
+   AG Grid usa posicionamiento absoluto interno para virtualización
+   y cualquier override rompe el cálculo de altura de filas. */
+.inv-optica-demo__grid .ag-row {
+  transition:
+    background-color 180ms cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 180ms cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 180ms cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+/* Shimmer sweep overlay — mismo recipe que sidebar__item::before */
+.inv-optica-demo__grid .ag-row::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(var(--color-white-rgb), 0.22) 50%,
+    transparent 70%
+  );
+  opacity: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.inv-optica-demo__grid .ag-row-hover::before {
+  opacity: 1;
+  animation: opt-row-shimmer 0.9s ease-out;
+}
+
+.inv-optica-demo__grid .ag-row-hover {
+  box-shadow:
+    inset 3px 0 0 var(--opt-grid-accent),
+    0 2px 8px rgba(var(--color-purple-500-rgb), 0.08);
+}
+
+/* Selected row — liquid glass pill (eco del .sidebar__item--active) */
+.inv-optica-demo__grid .ag-row-selected {
+  background: linear-gradient(
+    135deg,
+    rgba(var(--color-white-rgb), 0.85),
+    rgba(var(--color-purple-100-rgb), 0.65)
+  ) !important;
+  box-shadow:
+    inset 3px 0 0 var(--opt-grid-accent),
+    0 4px 16px rgba(var(--color-purple-500-rgb), 0.18),
+    inset 0 1px 0 rgba(var(--color-white-rgb), 0.9),
+    inset 0 -1px 0 rgba(var(--color-purple-500-rgb), 0.08);
+}
+
+.inv-optica-demo__grid .ag-row-selected.ag-row-hover {
+  box-shadow:
+    inset 3px 0 0 var(--color-purple-700),
+    0 4px 16px rgba(var(--color-purple-500-rgb), 0.22),
+    inset 0 1px 0 rgba(var(--color-white-rgb), 0.9),
+    inset 0 -1px 0 rgba(var(--color-purple-500-rgb), 0.12);
+}
+
+/* ── Celdas ──────────────────────────────────────────────────
+   Solo features tipográficas — NO tocar display/position. */
+.inv-optica-demo__grid .ag-cell {
+  font-feature-settings: 'tnum' 1, 'cv11' 1;
+}
+
+.inv-optica-demo__grid .ag-cell-focus,
+.inv-optica-demo__grid .ag-cell-inline-editing {
+  outline: 1px solid rgba(var(--color-purple-500-rgb), 0.55) !important;
+  outline-offset: -1px;
+  border-radius: 2px;
+}
+
+/* ── Iconos ────────────────────────────────────────────────── */
+.inv-optica-demo__grid .ag-icon {
+  color: var(--color-purple-500);
+  opacity: 0.7;
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+
+.inv-optica-demo__grid .ag-icon:hover {
+  opacity: 1;
+  transform: scale(1.08);
+}
+
+/* ── Popups (menú, filtro, select list, rich select) ─────────
+   Necesitan opacidad alta (~97%) para no superponerse con el grid.
+   var(--glass-bg) es para superficies, no para overlays flotantes. */
+.inv-optica-demo__grid .ag-popup-child,
+.inv-optica-demo__grid .ag-menu,
+.inv-optica-demo__grid .ag-filter,
+.inv-optica-demo__grid .ag-filter-toolpanel,
+.inv-optica-demo__grid .ag-list,
+.inv-optica-demo__grid .ag-select-list,
+.inv-optica-demo__grid .ag-rich-select-list,
+.inv-optica-demo__grid .ag-virtual-list-container,
+.inv-optica-demo__grid .ag-tooltip {
+  background: rgba(var(--color-white-rgb), 0.97) !important;
+  border: 1px solid rgba(var(--color-purple-400-rgb), 0.22) !important;
+  border-radius: 8px !important;
+  box-shadow:
+    var(--shadow-xl),
+    0 0 0 1px rgba(var(--color-white-rgb), 0.6) inset !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Hover/active de items dentro de los popups */
+.inv-optica-demo__grid .ag-menu-option:hover,
+.inv-optica-demo__grid .ag-list-item:hover,
+.inv-optica-demo__grid .ag-rich-select-row:hover {
+  background: rgba(var(--color-purple-500-rgb), 0.1);
+}
+
+.inv-optica-demo__grid .ag-list-item.ag-active-item,
+.inv-optica-demo__grid .ag-rich-select-row-selected {
+  background: rgba(var(--color-purple-500-rgb), 0.18);
+  color: var(--color-purple-700);
+  font-weight: 600;
+}
+
+/* Input dentro de filtros (caja de texto, número, fecha) */
+.inv-optica-demo__grid .ag-input-field-input,
+.inv-optica-demo__grid .ag-picker-field-wrapper {
+  background: rgba(var(--color-white-rgb), 0.95);
+  border: 1px solid rgba(var(--color-purple-400-rgb), 0.2);
+  border-radius: 4px;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.inv-optica-demo__grid .ag-input-field-input:focus,
+.inv-optica-demo__grid .ag-picker-field-wrapper:focus-within {
+  border-color: var(--color-purple-500);
+  box-shadow: 0 0 0 3px rgba(var(--color-purple-500-rgb), 0.15);
+  outline: none;
+}
+
+/* ── Scrollbar — match al global de la app ─────────────────── */
+.inv-optica-demo__grid ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.inv-optica-demo__grid ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.inv-optica-demo__grid ::-webkit-scrollbar-thumb {
+  background: rgba(var(--color-purple-400-rgb), 0.3);
+  border-radius: 999px;
+  transition: background 150ms ease;
+}
+
+.inv-optica-demo__grid ::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--color-purple-500-rgb), 0.5);
+}
+
+/* ── Paginación toolbar (cuando se active) ─────────────────── */
+.inv-optica-demo__grid .ag-paging-panel {
+  border-top: 1px solid rgba(var(--color-purple-400-rgb), 0.14);
+  background: linear-gradient(
+    135deg,
+    rgba(var(--color-white-rgb), 0.5),
+    rgba(var(--color-purple-50-rgb), 0.4)
+  );
+  color: var(--color-gray-600);
+  font-size: var(--font-size-xs);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   DARK MODE — matte slate (eco del sidebar dark)
+   ═══════════════════════════════════════════════════════════ */
+
+[data-theme="oscuro"] .inv-optica-demo__grid {
+  --opt-grid-accent: var(--color-purple-400);
+  --opt-grid-accent-soft: rgba(var(--color-purple-400-rgb), 0.12);
+  --opt-grid-shimmer: rgba(var(--color-white-rgb), 0.05);
+}
+
+[data-theme="oscuro"] .inv-optica-demo__grid .ag-header {
+  border-bottom-color: rgba(var(--color-white-rgb), 0.05);
+  background-color: transparent;
+}
+
+[data-theme="oscuro"] .inv-optica-demo__grid .ag-header-cell-text {
+  color: var(--color-gray-500);
+}
+
+[data-theme="oscuro"] .inv-optica-demo__grid .ag-header-cell-resize::after {
+  background: rgba(var(--color-purple-400-rgb), 0.3);
+}
+
+/* Shimmer más sutil en oscuro */
+[data-theme="oscuro"] .inv-optica-demo__grid .ag-row::before {
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(var(--color-white-rgb), 0.06) 50%,
+    transparent 70%
+  );
+}
+
+[data-theme="oscuro"] .inv-optica-demo__grid .ag-row-hover {
+  box-shadow:
+    inset 3px 0 0 var(--color-purple-400),
+    0 2px 8px rgba(var(--color-black-rgb), 0.2);
+}
+
+/* Sidebar dark active: gradient purple-500→purple-700 */
+[data-theme="oscuro"] .inv-optica-demo__grid .ag-row-selected {
+  background: linear-gradient(
+    135deg,
+    rgba(var(--color-purple-500-rgb), 0.2),
+    rgba(var(--color-purple-700-rgb), 0.12)
+  ) !important;
+  box-shadow:
+    inset 3px 0 0 var(--color-purple-400),
+    0 4px 16px rgba(var(--color-black-rgb), 0.3),
+    inset 0 1px 0 rgba(var(--color-white-rgb), 0.06);
+}
+
+[data-theme="oscuro"] .inv-optica-demo__grid .ag-row-selected.ag-row-hover {
+  box-shadow:
+    inset 3px 0 0 var(--color-purple-400),
+    0 4px 16px rgba(var(--color-black-rgb), 0.35),
+    inset 0 1px 0 rgba(var(--color-white-rgb), 0.08);
+}
+
+[data-theme="oscuro"] .inv-optica-demo__grid .ag-cell-focus,
+[data-theme="oscuro"] .inv-optica-demo__grid .ag-cell-inline-editing {
+  outline-color: rgba(var(--color-purple-400-rgb), 0.65) !important;
+}
+
+[data-theme="oscuro"] .inv-optica-demo__grid .ag-icon {
+  color: var(--color-purple-400);
+}
+
+[data-theme="oscuro"] .inv-optica-demo__grid .ag-popup-child,
+[data-theme="oscuro"] .inv-optica-demo__grid .ag-menu,
+[data-theme="oscuro"] .inv-optica-demo__grid .ag-filter,
+[data-theme="oscuro"] .inv-optica-demo__grid .ag-filter-toolpanel,
+[data-theme="oscuro"] .inv-optica-demo__grid .ag-list,
+[data-theme="oscuro"] .inv-optica-demo__grid .ag-select-list,
+[data-theme="oscuro"] .inv-optica-demo__grid .ag-rich-select-list,
+[data-theme="oscuro"] .inv-optica-demo__grid .ag-virtual-list-container,
+[data-theme="oscuro"] .inv-optica-demo__grid .ag-tooltip {
+  background: rgba(var(--color-charcoal-900-rgb), 0.97) !important;
+  border-color: rgba(var(--color-white-rgb), 0.12) !important;
+  box-shadow:
+    var(--shadow-2xl),
+    0 0 0 1px rgba(var(--color-black-rgb), 0.4) inset !important;
+}
+
+[data-theme="oscuro"] .inv-optica-demo__grid .ag-menu-option:hover,
+[data-theme="oscuro"] .inv-optica-demo__grid .ag-list-item:hover,
+[data-theme="oscuro"] .inv-optica-demo__grid .ag-rich-select-row:hover {
+  background: rgba(var(--color-purple-400-rgb), 0.15);
+}
+
+[data-theme="oscuro"] .inv-optica-demo__grid .ag-list-item.ag-active-item,
+[data-theme="oscuro"] .inv-optica-demo__grid .ag-rich-select-row-selected {
+  background: rgba(var(--color-purple-400-rgb), 0.22);
+  color: var(--color-purple-400);
+}
+
+[data-theme="oscuro"] .inv-optica-demo__grid .ag-input-field-input,
+[data-theme="oscuro"] .inv-optica-demo__grid .ag-picker-field-wrapper {
+  background: rgba(var(--color-white-rgb), 0.04);
+  border-color: rgba(var(--color-white-rgb), 0.1);
+  color: var(--color-gray-900);
+}
+
+[data-theme="oscuro"] .inv-optica-demo__grid .ag-input-field-input:focus,
+[data-theme="oscuro"] .inv-optica-demo__grid .ag-picker-field-wrapper:focus-within {
+  border-color: var(--color-purple-400);
+  box-shadow: 0 0 0 3px rgba(var(--color-purple-400-rgb), 0.2);
+}
+
+[data-theme="oscuro"] .inv-optica-demo__grid ::-webkit-scrollbar-thumb {
+  background: rgba(var(--color-white-rgb), 0.15);
+}
+
+[data-theme="oscuro"] .inv-optica-demo__grid ::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--color-purple-400-rgb), 0.5);
+}
+
+[data-theme="oscuro"] .inv-optica-demo__grid .ag-paging-panel {
+  background: linear-gradient(
+    135deg,
+    rgba(var(--color-charcoal-700-rgb), 0.6),
+    rgba(var(--color-charcoal-800-rgb), 0.6)
+  );
+  border-top-color: rgba(var(--color-white-rgb), 0.06);
+  color: var(--color-gray-500);
+}

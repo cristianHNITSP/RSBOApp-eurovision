@@ -1,6 +1,6 @@
 import SectionBannerSkeleton from '../../../../components/reusable/SectionBanner/SectionBannerSkeleton.jsx';
 import QuickActionCardSkeleton from '../../../../components/reusable/QuickActionCard/QuickActionCardSkeleton.jsx';
-import UsersTableSkeleton from '../../../../components/reusable/UsersTable/UsersTableSkeleton.jsx';
+import TableSkeleton from '../../../../components/reusable/Table/TableSkeleton.jsx';
 import Skeleton from '../../../../components/ui/Skeleton/Skeleton.jsx';
 import './UsersSection.css';
 
@@ -34,7 +34,7 @@ const UsersSectionSkeleton = () => (
         ))}
       </div>
 
-      <UsersTableSkeleton />
+      <TableSkeleton />
     </div>
   </div>
 );

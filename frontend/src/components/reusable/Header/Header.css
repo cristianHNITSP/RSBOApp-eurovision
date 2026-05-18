@@ -46,6 +46,24 @@
   color: var(--color-gray-900);
   letter-spacing: -0.02em;
   margin-bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.app-header__title-tag {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-purple-600);
+  background: rgba(var(--color-purple-500-rgb), 0.1);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
 
 .app-header__search {

@@ -9,11 +9,11 @@ import {
   IconClock,
   IconCalendar,
 } from '../../icons/Icons.jsx';
-import './UsersTable.css';
+import './Table.css';
 
 const DEFAULT_PAGE_SIZE = 7;
 
-const UsersTable = ({
+const Table = ({
   users,
   selectedUserId,
   onSelectUser,
@@ -69,10 +69,10 @@ const UsersTable = ({
   };
 
   const renderDesktopTable = () => (
-    <div className="users-table">
-      <table className="users-table__el">
+    <div className="table">
+      <table className="table__el">
         <thead>
-          <tr className="users-table__head">
+          <tr className="table__head">
             <th>Usuario</th>
             <th>Nombre de usuario</th>
             <th>Último acceso</th>
@@ -84,36 +84,36 @@ const UsersTable = ({
           {visibleUsers.map((user) => (
             <tr
               key={user.id}
-              className={`users-table__row ${selectedUserId === user.id ? 'users-table__row--selected' : ''}`}
+              className={`table__row ${selectedUserId === user.id ? 'table__row--selected' : ''}`}
               onClick={() => onSelectUser?.(user)}
             >
-              <td className="users-table__cell">
-                <div className="users-table__user">
+              <td className="table__cell">
+                <div className="table__identity">
                   <Avatar src={user.avatar} size="medium" />
                   <div>
-                    <div className="users-table__user-name">
+                    <div className="table__name">
                       {user.name}
-                      {user.isCurrentUser && <span className="users-table__you">Yo</span>}
+                      {user.isCurrentUser && <span className="table__badge">Yo</span>}
                     </div>
-                    <div className="users-table__user-role">{user.role}</div>
+                    <div className="table__role">{user.role}</div>
                   </div>
                 </div>
               </td>
-              <td className="users-table__cell">
-                <div className="users-table__username">
+              <td className="table__cell">
+                <div className="table__identifier">
                   <IconAt width={14} height={14} /> {user.username}
                 </div>
               </td>
-              <td className="users-table__cell">{user.lastAccess}</td>
-              <td className="users-table__cell">
+              <td className="table__cell">{user.lastAccess}</td>
+              <td className="table__cell">
                 <Badge variant={user.status === 'Activo' ? 'success' : 'danger'}>{user.status}</Badge>
               </td>
-              <td className="users-table__cell">{user.createdDate}</td>
+              <td className="table__cell">{user.createdDate}</td>
             </tr>
           ))}
           {Array.from({ length: emptyRowsCount }).map((_, i) => (
-            <tr key={`empty-${i}`} className="users-table__row users-table__row--empty" aria-hidden="true">
-              <td className="users-table__cell" colSpan={5}>&nbsp;</td>
+            <tr key={`empty-${i}`} className="table__row table__row--empty" aria-hidden="true">
+              <td className="table__cell" colSpan={5}>&nbsp;</td>
             </tr>
           ))}
         </tbody>
@@ -122,37 +122,37 @@ const UsersTable = ({
   );
 
   const renderCards = () => (
-    <div className="users-cards">
+    <div className="table-cards">
       {visibleUsers.map((user) => {
         const isSelected = selectedUserId === user.id;
         return (
           <button
             type="button"
             key={user.id}
-            className={`users-card ${isSelected ? 'users-card--selected' : ''}`}
+            className={`table-card ${isSelected ? 'table-card--selected' : ''}`}
             onClick={() => onSelectUser?.(user)}
           >
-            <div className="users-card__top">
+            <div className="table-card__top">
               <Avatar src={user.avatar} size="medium" />
-              <div className="users-card__identity">
-                <div className="users-card__name">
+              <div className="table-card__identity">
+                <div className="table-card__name">
                   {user.name}
-                  {user.isCurrentUser && <span className="users-table__you">Yo</span>}
+                  {user.isCurrentUser && <span className="table__badge">Yo</span>}
                 </div>
-                <div className="users-card__role">{user.role}</div>
+                <div className="table-card__role">{user.role}</div>
               </div>
               <Badge variant={user.status === 'Activo' ? 'success' : 'danger'}>{user.status}</Badge>
             </div>
-            <div className="users-card__meta">
-              <div className="users-card__meta-item">
+            <div className="table-card__meta">
+              <div className="table-card__meta-item">
                 <IconAt width={14} height={14} />
                 <span>{user.username}</span>
               </div>
-              <div className="users-card__meta-item">
+              <div className="table-card__meta-item">
                 <IconClock width={14} height={14} />
                 <span>{user.lastAccess}</span>
               </div>
-              <div className="users-card__meta-item">
+              <div className="table-card__meta-item">
                 <IconCalendar width={14} height={14} />
                 <span>Alta: {user.createdDate}</span>
               </div>
@@ -161,7 +161,7 @@ const UsersTable = ({
         );
       })}
       {visibleUsers.length === 0 && (
-        <div className="users-cards__empty">Sin usuarios en esta página</div>
+        <div className="table-cards__empty">Sin usuarios en esta página</div>
       )}
     </div>
   );
@@ -172,28 +172,28 @@ const UsersTable = ({
         {isMobileOrTablet ? renderCards() : renderDesktopTable()}
       </div>
 
-      <div className="users-table__pagination">
-        <span className="users-table__pagination-info">
+      <div className="table__pagination">
+        <span className="table__pagination-info">
           {visibleUsers.length === 0
             ? '0 resultados'
             : `${startIdx + 1}–${startIdx + visibleUsers.length} de ${users.length}`}
         </span>
-        <div className="users-table__pagination-controls">
+        <div className="table__pagination-controls">
           <button
             type="button"
-            className="users-table__pagination-btn"
+            className="table__pagination-btn"
             onClick={goPrev}
             disabled={currentPage === 1}
             aria-label="Página anterior"
           >
             <IconChevronLeft width={16} height={16} />
           </button>
-          <span className="users-table__pagination-page">
+          <span className="table__pagination-page">
             {currentPage} / {totalPages}
           </span>
           <button
             type="button"
-            className="users-table__pagination-btn"
+            className="table__pagination-btn"
             onClick={goNext}
             disabled={currentPage === totalPages}
             aria-label="Página siguiente"
@@ -206,4 +206,4 @@ const UsersTable = ({
   );
 };
 
-export default UsersTable;
+export default Table;

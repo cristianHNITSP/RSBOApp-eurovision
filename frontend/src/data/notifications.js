@@ -27,4 +27,11 @@ export const defaultNotifications = [
     action: 'VER DETALLE',
     time: 'Hace 8 Min',
   },
+  {
+    type: 'critical',
+    title: 'STOCK CRÍTICO | progresivo | 1.56 | Blanco',
+    description: '[Planilla: progresivo | 1.56 | Blanco] | 22 combinaciones CRÍTICAS.',
+    action: 'VER DETALLE',
+    time: 'Hace 10 Min',
+  },
 ];

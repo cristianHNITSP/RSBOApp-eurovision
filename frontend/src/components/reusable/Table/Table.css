@@ -1,8 +1,8 @@
-.users-table { overflow-x: auto; }
+.table { overflow-x: auto; }
 
-.users-table__el { width: 100%; border-collapse: collapse; }
+.table__el { width: 100%; border-collapse: collapse; }
 
-.users-table__head th {
+.table__head th {
   text-align: left;
   padding: var(--space-4);
   font-size: var(--font-size-sm);
@@ -11,25 +11,25 @@
   border-bottom: 2px solid var(--color-gray-200);
 }
 
-.users-table__row {
+.table__row {
   border-bottom: 1px solid var(--color-gray-100);
   cursor: pointer;
   transition: background var(--transition-fast), box-shadow var(--transition-fast);
 }
-.users-table__row:hover { background: rgba(var(--color-purple-100-rgb),0.5); }
-.users-table__row--selected {
+.table__row:hover { background: rgba(var(--color-purple-100-rgb),0.5); }
+.table__row--selected {
   background: rgba(var(--color-purple-400-rgb), 0.18);
   box-shadow: inset 3px 0 0 var(--color-purple-500);
 }
-.users-table__row--selected:hover { background: rgba(var(--color-purple-400-rgb), 0.24); }
+.table__row--selected:hover { background: rgba(var(--color-purple-400-rgb), 0.24); }
 
-.users-table__cell { padding: var(--space-4); color: var(--color-gray-700); }
+.table__cell { padding: var(--space-4); color: var(--color-gray-700); }
 
-.users-table__user { display: flex; align-items: center; gap: var(--space-3); }
-.users-table__user-name { font-weight: 600; color: var(--color-gray-900); display: flex; align-items: center; gap: var(--space-2); }
-.users-table__user-role { font-size: var(--font-size-sm); color: var(--color-gray-600); }
+.table__user { display: flex; align-items: center; gap: var(--space-3); }
+.table__user-name { font-weight: 600; color: var(--color-gray-900); display: flex; align-items: center; gap: var(--space-2); }
+.table__user-role { font-size: var(--font-size-sm); color: var(--color-gray-600); }
 
-.users-table__you {
+.table__badge {
   background: var(--color-purple-100);
   color: var(--color-purple-700);
   font-size: var(--font-size-xs);
@@ -37,26 +37,26 @@
   font-weight: 700;
 }
 
-.users-table__username { display: flex; align-items: center; gap: 4px; }
+.table__username { display: flex; align-items: center; gap: 4px; }
 
 /* Empty filler rows — mantienen altura constante */
-.users-table__row--empty {
+.table__row--empty {
   cursor: default;
   pointer-events: none;
   background: transparent !important;
   box-shadow: none !important;
 }
-.users-table__row--empty:hover { background: transparent !important; }
-.users-table__row--empty .users-table__cell { color: transparent; }
+.table__row--empty:hover { background: transparent !important; }
+.table__row--empty .table__cell { color: transparent; }
 
 /* ── Variante cards (tablet / mobile) ─────────────────────────── */
-.users-cards {
+.table-cards {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
 }
 
-.users-card {
+.table-card {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
@@ -72,31 +72,31 @@
   transition: background var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-.users-card:hover {
+.table-card:hover {
   background: rgba(var(--color-purple-100-rgb), 0.5);
 }
 
-.users-card--selected {
+.table-card--selected {
   background: rgba(var(--color-purple-400-rgb), 0.18);
   border-left-color: var(--color-purple-500);
 }
 
-.users-card--selected:hover {
+.table-card--selected:hover {
   background: rgba(var(--color-purple-400-rgb), 0.24);
 }
 
-.users-card__top {
+.table-card__top {
   display: flex;
   align-items: center;
   gap: var(--space-3);
 }
 
-.users-card__identity {
+.table-card__identity {
   flex: 1;
   min-width: 0;
 }
 
-.users-card__name {
+.table-card__name {
   font-weight: 600;
   color: var(--color-gray-900);
   display: flex;
@@ -105,13 +105,13 @@
   font-size: var(--font-size-base);
 }
 
-.users-card__role {
+.table-card__role {
   font-size: var(--font-size-sm);
   color: var(--color-gray-600);
   margin-top: 2px;
 }
 
-.users-card__meta {
+.table-card__meta {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
@@ -119,7 +119,7 @@
   border-top: 1px solid rgba(var(--color-gray-200-rgb), 0.6);
 }
 
-.users-card__meta-item {
+.table-card__meta-item {
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -127,12 +127,12 @@
   color: var(--color-gray-600);
 }
 
-.users-card__meta-item svg {
+.table-card__meta-item svg {
   color: var(--color-purple-500);
   flex-shrink: 0;
 }
 
-.users-cards__empty {
+.table-cards__empty {
   padding: var(--space-6);
   text-align: center;
   color: var(--color-gray-500);
@@ -140,43 +140,43 @@
 }
 
 /* Dark mode — cards */
-[data-theme="oscuro"] .users-card {
+[data-theme="oscuro"] .table-card {
   background: rgba(var(--color-white-rgb), 0.05);
   border-color: rgba(var(--color-white-rgb), 0.08);
 }
 
-[data-theme="oscuro"] .users-card:hover {
+[data-theme="oscuro"] .table-card:hover {
   background: rgba(var(--color-purple-500-rgb), 0.1);
 }
 
-[data-theme="oscuro"] .users-card--selected {
+[data-theme="oscuro"] .table-card--selected {
   background: rgba(var(--color-purple-500-rgb), 0.22);
   border-left-color: var(--color-purple-400);
 }
 
-[data-theme="oscuro"] .users-card--selected:hover {
+[data-theme="oscuro"] .table-card--selected:hover {
   background: rgba(var(--color-purple-500-rgb), 0.3);
 }
 
-[data-theme="oscuro"] .users-card__name {
+[data-theme="oscuro"] .table-card__name {
   color: var(--color-gray-900);
 }
 
-[data-theme="oscuro"] .users-card__role,
-[data-theme="oscuro"] .users-card__meta-item {
+[data-theme="oscuro"] .table-card__role,
+[data-theme="oscuro"] .table-card__meta-item {
   color: var(--color-gray-500);
 }
 
-[data-theme="oscuro"] .users-card__meta {
+[data-theme="oscuro"] .table-card__meta {
   border-top-color: rgba(var(--color-white-rgb), 0.06);
 }
 
-[data-theme="oscuro"] .users-card__meta-item svg {
+[data-theme="oscuro"] .table-card__meta-item svg {
   color: var(--color-purple-400);
 }
 
 /* Pagination */
-.users-table__pagination {
+.table__pagination {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -186,18 +186,18 @@
   margin-top: 0;
 }
 
-.users-table__pagination-info {
+.table__pagination-info {
   font-size: var(--font-size-sm);
   color: var(--color-gray-600);
 }
 
-.users-table__pagination-controls {
+.table__pagination-controls {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
 }
 
-.users-table__pagination-btn {
+.table__pagination-btn {
   width: 32px;
   height: 32px;
   display: inline-flex;
@@ -211,18 +211,18 @@
   transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
 }
 
-.users-table__pagination-btn:hover:not(:disabled) {
+.table__pagination-btn:hover:not(:disabled) {
   background: rgba(var(--color-purple-100-rgb), 0.6);
   border-color: rgba(var(--color-purple-400-rgb), 0.5);
   color: var(--color-purple-700);
 }
 
-.users-table__pagination-btn:disabled {
+.table__pagination-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 
-.users-table__pagination-page {
+.table__pagination-page {
   font-size: var(--font-size-sm);
   font-weight: 600;
   color: var(--color-gray-700);
@@ -231,28 +231,28 @@
 }
 
 /* Dark mode overrides */
-[data-theme="oscuro"] .users-table__pagination {
+[data-theme="oscuro"] .table__pagination {
   border-top-color: rgba(var(--color-white-rgb), 0.06);
 }
-[data-theme="oscuro"] .users-table__pagination-info {
+[data-theme="oscuro"] .table__pagination-info {
   color: var(--color-gray-500);
 }
-[data-theme="oscuro"] .users-table__pagination-btn {
+[data-theme="oscuro"] .table__pagination-btn {
   background: rgba(var(--color-white-rgb), 0.04);
   border-color: rgba(var(--color-white-rgb), 0.08);
   color: var(--color-gray-700);
 }
-[data-theme="oscuro"] .users-table__pagination-btn:hover:not(:disabled) {
+[data-theme="oscuro"] .table__pagination-btn:hover:not(:disabled) {
   background: rgba(var(--color-purple-500-rgb), 0.15);
   border-color: rgba(var(--color-purple-500-rgb), 0.4);
   color: var(--color-purple-400);
 }
-[data-theme="oscuro"] .users-table__pagination-page {
+[data-theme="oscuro"] .table__pagination-page {
   color: var(--color-gray-700);
 }
 
 @media (max-width: 1023px) {
-  .users-table__pagination {
+  .table__pagination {
     padding: var(--space-3) 0;
   }
 }

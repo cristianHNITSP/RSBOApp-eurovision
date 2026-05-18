@@ -35,11 +35,6 @@ const BottomNav = ({ activeSection, onSectionChange }) => {
     if (item.hasSubmenu) {
       const isSameOpen = openSubmenuId === item.id;
       setOpenSubmenuId(isSameOpen ? null : item.id);
-      const alreadyInChild = activeSection?.startsWith(`${item.id}/`);
-      const firstChild = item.submenu?.[0];
-      if (!isSameOpen && !alreadyInChild && firstChild) {
-        onSectionChange(`${item.id}/${firstChild.id}`);
-      }
       return;
     }
     setOpenSubmenuId(null);
@@ -83,6 +78,7 @@ const BottomNav = ({ activeSection, onSectionChange }) => {
         anchorRect={anchorRect}
         orientation="vertical"
         variant="bottom-nav"
+        activeSection={activeSection}
       />
     </>
   );

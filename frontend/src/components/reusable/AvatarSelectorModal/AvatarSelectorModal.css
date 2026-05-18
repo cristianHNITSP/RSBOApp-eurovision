@@ -10,6 +10,10 @@
   gap: var(--space-4);
   max-height: 400px;
   overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+  width: 100%;
+  min-width: 0;
   margin-bottom: var(--space-6);
 }
 
@@ -22,16 +26,22 @@
   justify-content: center;
   color: var(--color-white);
   font-size: 2rem;
+  transform-origin: var(--avatar-origin, center center);
+  will-change: transform;
   transition: all var(--transition-base);
 }
 
-.avatar-modal__option:hover {
+.avatar-modal__option--hover-enabled:hover {
   transform: scale(1.06);
   border-color: rgba(var(--color-purple-500-rgb), 0.5);
 }
 
 .avatar-modal__option--selected {
   border-color: var(--color-purple-500);
+}
+
+.avatar-modal__option--selected.avatar-modal__option--hover-enabled,
+.avatar-modal__option--hovering.avatar-modal__option--hover-enabled {
   transform: scale(1.03);
 }
 

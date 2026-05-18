@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import useMotionTransition from '../../../composables/useMotionTransition.js';
@@ -7,6 +7,8 @@ import './SubmenuStrip.css';
 
 const CONTAINER_SPRING = { type: 'spring', stiffness: 320, damping: 24, mass: 0.5 };
 const ITEM_SPRING = { type: 'spring', stiffness: 380, damping: 26, mass: 0.4 };
+const VIEWPORT_PADDING = 8;
+const GAP = 12;
 
 const VARIANTS = {
   sidebar: {
@@ -46,9 +48,12 @@ const SubmenuStrip = ({
   anchorRect,
   orientation = 'horizontal',
   variant = 'sidebar',
+  activeSection = '',
 }) => {
   const containerTransition = useMotionTransition(CONTAINER_SPRING);
   const itemTransition = useMotionTransition(ITEM_SPRING);
+  const panelRef = useRef(null);
+  const [panelStyle, setPanelStyle] = useState(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -56,6 +61,64 @@ const SubmenuStrip = ({
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   }, [isOpen, onClose]);
+
+  useLayoutEffect(() => {
+    if (!isOpen || !anchorRect || typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const updatePosition = () => {
+      const panelEl = panelRef.current;
+      if (!panelEl) return;
+
+      const panelRect = panelEl.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const availableWidth = Math.max(0, viewportWidth - VIEWPORT_PADDING * 2);
+      const measuredWidth = Math.min(panelRect.width, availableWidth || panelRect.width);
+
+      const nextStyle = {
+        maxWidth: `${availableWidth}px`,
+      };
+
+      if (variant === 'sidebar') {
+        const preferredLeft = anchorRect.right + GAP;
+        const left = Math.min(
+          Math.max(preferredLeft, VIEWPORT_PADDING),
+          Math.max(VIEWPORT_PADDING, viewportWidth - measuredWidth - VIEWPORT_PADDING),
+        );
+
+        setPanelStyle({
+          ...nextStyle,
+          left: `${left}px`,
+          top: `${Math.max(anchorRect.top, VIEWPORT_PADDING)}px`,
+        });
+        return;
+      }
+
+      const preferredLeft = anchorRect.left + (anchorRect.width / 2) - (measuredWidth / 2);
+      const left = Math.min(
+        Math.max(preferredLeft, VIEWPORT_PADDING),
+        Math.max(VIEWPORT_PADDING, viewportWidth - measuredWidth - VIEWPORT_PADDING),
+      );
+      const bottom = Math.max(viewportHeight - anchorRect.top + GAP, VIEWPORT_PADDING);
+
+      setPanelStyle({
+        ...nextStyle,
+        left: `${left}px`,
+        bottom: `${bottom}px`,
+      });
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('orientationchange', updatePosition);
+
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('orientationchange', updatePosition);
+    };
+  }, [anchorRect, isOpen, variant, items.length]);
 
   if (typeof document === 'undefined') return null;
 
@@ -69,9 +132,7 @@ const SubmenuStrip = ({
       style.top = `${anchorRect.top}px`;
     } else {
       style.bottom = `${window.innerHeight - anchorRect.top + 12}px`;
-      const centerX = anchorRect.left + anchorRect.width / 2;
-      style.left = `${centerX}px`;
-      style.transform = 'translateX(-50%)';
+      style.left = `${anchorRect.left + (anchorRect.width / 2)}px`;
     }
   }
 
@@ -95,8 +156,9 @@ const SubmenuStrip = ({
           />
           <motion.div
             key="submenu-strip"
+            ref={panelRef}
             className={`submenu-strip submenu-strip--${variant} submenu-strip--${orientation}`}
-            style={style}
+            style={{ ...style, ...panelStyle }}
             variants={v.container}
             initial="initial"
             animate="animate"
@@ -109,11 +171,14 @@ const SubmenuStrip = ({
               initial="initial"
               animate="animate"
             >
-              {items.map((it) => (
+              {items.map((it) => {
+                const fullId = parentId ? `${parentId}/${it.id}` : it.id;
+                const isActive = activeSection === fullId;
+                return (
                 <motion.button
                   key={it.id}
                   type="button"
-                  className="submenu-strip__item"
+                  className={`submenu-strip__item${isActive ? ' submenu-strip__item--active' : ''}`}
                   onClick={() => handleSelect(it.id)}
                   variants={v.item}
                   transition={itemTransition}
@@ -123,7 +188,8 @@ const SubmenuStrip = ({
                   </span>
                   <span className="submenu-strip__item-label">{it.label}</span>
                 </motion.button>
-              ))}
+                );
+              })}
             </motion.div>
           </motion.div>
         </>

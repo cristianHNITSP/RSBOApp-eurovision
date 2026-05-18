@@ -18,6 +18,9 @@
   border-radius: 14px;
   box-shadow: var(--shadow-lg);
   padding: var(--space-2);
+  box-sizing: border-box;
+  max-width: calc(100vw - 16px);
+  overflow: visible;
 }
 
 /* Arrow pointing to parent item */
@@ -89,6 +92,19 @@
 .submenu-strip__item:hover {
   background: rgba(var(--color-purple-500-rgb), 0.08);
   color: var(--color-purple-700);
+}
+
+.submenu-strip__item--active {
+  background: rgba(var(--color-purple-500-rgb), 0.14);
+  color: var(--color-purple-700);
+}
+
+.submenu-strip__item--active .submenu-strip__item-icon {
+  color: var(--color-purple-600);
+}
+
+.submenu-strip__item--active:hover {
+  background: rgba(var(--color-purple-500-rgb), 0.2);
 }
 
 .submenu-strip__item-icon {

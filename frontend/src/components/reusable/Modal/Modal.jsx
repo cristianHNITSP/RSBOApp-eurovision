@@ -8,7 +8,7 @@ const SIZE_MAP = { small: 'sm', medium: 'md', large: 'lg', xlarge: 'xl' };
 
 const SPRING = { type: "spring", stiffness: 250, damping: 20, mass: 1 };
 
-const Modal = ({ isOpen, onClose, title, children, size = 'medium' }) => {
+const Modal = ({ isOpen, onClose, title, children, size = 'medium', onAnimationComplete }) => {
   const sizeKey = SIZE_MAP[size] || size;
   const transition = useMotionTransition(SPRING);
 
@@ -28,6 +28,7 @@ const Modal = ({ isOpen, onClose, title, children, size = 'medium' }) => {
             initial={{ opacity: 0, scale: 0.9, y: 30 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={transition}
+            onAnimationComplete={onAnimationComplete}
           >
             <div className="modal__header">
               <h3 className="modal__title">{title}</h3>

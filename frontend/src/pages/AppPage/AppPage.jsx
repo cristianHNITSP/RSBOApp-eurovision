@@ -12,8 +12,10 @@ import BottomNav from '../../components/reusable/BottomNav/BottomNav.jsx';
 import DashboardSection from './sections/DashboardSection/DashboardSection.jsx';
 import UsersSection from './sections/UsersSection/UsersSection.jsx';
 import SettingsSection from './sections/SettingsSection/SettingsSection.jsx';
-import InventorySection from './sections/InventorySection/InventorySection.jsx';
 import SalesSection from './sections/SalesSection/SalesSection.jsx';
+import OpticaSection from './sections/OpticaSection/OpticaSection.jsx';
+import BasesMicasSection from './sections/BasesMicasSection/BasesMicasSection.jsx';
+import LentesContactoSection from './sections/LentesContactoSection/LentesContactoSection.jsx';
 import AvatarSelectorModal from '../../components/reusable/AvatarSelectorModal/AvatarSelectorModal.jsx';
 import useNotifications from '../../composables/useNotifications.js';
 import useBreakpoint from '../../composables/useBreakpoint.js';
@@ -115,12 +117,9 @@ const AppPage = () => {
         />
       );
     }
-    if (activeSection.startsWith('inventario/')) {
-      const child = activeSection.split('/')[1];
-      if (['optica', 'bases-micas', 'lentes-contacto'].includes(child)) {
-        return <InventorySection activeCategory={child} />;
-      }
-    }
+    if (activeSection === 'inventario/optica')          return <OpticaSection />;
+    if (activeSection === 'inventario/bases-micas')     return <BasesMicasSection />;
+    if (activeSection === 'inventario/lentes-contacto') return <LentesContactoSection />;
     if (activeSection.startsWith('ventas/')) {
       const child = activeSection.split('/')[1];
       if (['pedidos', 'catalogo'].includes(child)) {

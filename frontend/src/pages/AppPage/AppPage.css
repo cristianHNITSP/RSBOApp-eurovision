@@ -15,7 +15,7 @@
 
 .app-page__content {
   flex: 1;
-  overflow-y: auto;
+  overflow-y: scroll; /* siempre visible — evita el toggle aparece/desaparece que causa parpadeo horizontal en transiciones */
   scroll-snap-type: y proximity;
   scroll-behavior: smooth;
   scroll-padding-top: var(--space-4);

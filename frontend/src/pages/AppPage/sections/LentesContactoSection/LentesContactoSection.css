@@ -1,0 +1,98 @@
+.inv-lentes-section {
+  min-height: 100%;
+  background: var(--gradient-bg);
+  padding: var(--space-8);
+  scroll-snap-align: start;
+}
+
+.inv-lentes-content {
+  background: var(--glass-bg);
+  backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */
+  -webkit-backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */
+  border: 1px solid var(--glass-border);
+  padding: var(--space-8);
+  scroll-snap-align: start;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+}
+
+.inv-lentes-content__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--icon-color-ui);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--space-2);
+}
+
+.inv-lentes-content__title {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  color: var(--color-gray-900);
+  margin-bottom: var(--space-2);
+}
+
+.inv-lentes-content__desc {
+  color: var(--color-gray-600);
+  margin-bottom: var(--space-6);
+}
+
+.inv-lentes-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-6);
+  margin-bottom: var(--space-8);
+}
+
+.inv-lentes-demo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  padding: var(--space-12) var(--space-8);
+  background: var(--glass-bg);
+  backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */
+  -webkit-backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-subtle);
+  text-align: center;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+}
+
+.inv-lentes-demo__icon {
+  color: var(--icon-color-brand);
+  opacity: 0.7;
+}
+
+.inv-lentes-demo__title {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--color-gray-700);
+}
+
+.inv-lentes-demo__text {
+  color: var(--color-gray-500);
+  font-size: var(--font-size-sm);
+  max-width: 38ch;
+}
+
+@media (max-width: 1023px) {
+  .inv-lentes-section { padding: var(--space-5); }
+  .inv-lentes-content { padding: var(--space-5); }
+  .inv-lentes-cards { grid-template-columns: repeat(2, 1fr); gap: var(--space-4); }
+}
+
+@media (max-width: 639px) {
+  .inv-lentes-section { padding: var(--space-4); }
+  .inv-lentes-content { padding: var(--space-4); }
+  .inv-lentes-cards { grid-template-columns: 1fr; gap: var(--space-3); margin-bottom: var(--space-6); }
+  .inv-lentes-content__title { font-size: var(--font-size-xl); }
+  .inv-lentes-demo { padding: var(--space-8) var(--space-4); }
+}

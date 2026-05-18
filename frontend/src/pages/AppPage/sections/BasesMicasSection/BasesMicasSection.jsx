@@ -2,6 +2,8 @@ import { useRef, useState, useEffect } from 'react';
 import useBreakpoint from '../../../../composables/useBreakpoint.js';
 import QuickActionCard from '../../../../components/reusable/QuickActionCard/QuickActionCard.jsx';
 import { getIcon } from '../../../../components/icons/Icons.jsx';
+import Tooltip from '../../../../components/ui/Tooltip/Tooltip.jsx';
+import Dropdown, { DropdownItem } from '../../../../components/ui/Dropdown/Dropdown.jsx';
 
 import { basesMicasColumnDefs, basesMicasRowData, editorialGlassTheme, defaultColDef } from '../../../../data/basesMicasGrid.js';
 
@@ -30,8 +32,8 @@ const PAGINATION_SIZE_SELECTOR = [10, 20, 50];
 
 const BasesMicasSection = () => {
   const gridRef = useRef(null);
-  const [quickFilter, setQuickFilter] = useState('');
   const [rowData, setRowData] = useState(null);
+  const [isTemplateMenuOpen, setIsTemplateMenuOpen] = useState(false);
 
   const { isTablet, isDesktop, isMobileLandscape } = useBreakpoint();
   const gridHeight = isDesktop
@@ -66,37 +68,61 @@ const BasesMicasSection = () => {
 
         <div className="inv-bases-demo-wrapper">
 
-          <div className="inv-bases-toolbar">
-            {/* El filtro rápido de AG Grid no tiene un componente de búsqueda integrado, así que creamos uno personalizado 
-                        <div className="inv-bases-toolbar__filter">
-              {getIcon('search', { width: 15, height: 15 })}
-              <input
-                type="text"
-                placeholder="Filtrar filas..."
-                className="inv-bases-toolbar__input"
-                value={quickFilter}
-                onChange={e => setQuickFilter(e.target.value)}
-              />
-              {quickFilter && (
-                <button
-                  className="inv-bases-toolbar__clear"
-                  onClick={() => setQuickFilter('')}
-                  aria-label="Limpiar filtro"
-                >
-                  {getIcon('close', { width: 13, height: 13 })}
-                </button>
-              )}
-            </div>
+          <div className="inv-bases-tabs">
+            <Tooltip label="Crear plantilla">
+              <button className="inv-bases-tab inv-bases-tab--active" aria-label="Crear plantilla">
+                {getIcon('plus', { width: 15, height: 15 })}
+                Crear plantilla
+              </button>
+            </Tooltip>
 
-            <button
-              className="inv-bases-toolbar__btn"
-              onClick={() => gridRef.current?.api.exportDataAsCsv({ fileName: 'bases-micas.csv' })}
+            <Dropdown
+              trigger={
+                <Tooltip label="Abrir plantilla">
+                  <button className="inv-bases-tab" aria-label="Abrir plantilla">
+                    {getIcon('clipboard', { width: 15, height: 15 })}
+                    Abrir plantilla
+                  </button>
+                </Tooltip>
+              }
+              isOpen={isTemplateMenuOpen}
+              onToggle={setIsTemplateMenuOpen}
+              placement="bottom-left"
+              className="template-dropdown"
             >
-              {getIcon('arrowDown', { width: 15, height: 15 })}
-              Exportar CSV
-            </button>
-            */}
-
+              <div className="template-menu-header">
+                <h3>Catálogo de Plantillas</h3>
+                <div className="template-search">
+                  {getIcon('search', { width: 16, height: 16 })}
+                  <input type="text" placeholder="Buscar por nombre o SKU..." />
+                </div>
+              </div>
+              
+              <div className="template-menu-group">
+                <span className="template-group-title">RECIENTES</span>
+                <DropdownItem onClick={() => setIsTemplateMenuOpen(false)} className="template-item">
+                  <div className="template-item-content">
+                    <p className="template-item-title">Progresivo (Base + ADD) | 1.74 | A...</p>
+                    <div className="template-item-meta">
+                      <span className="template-sku">00-00-BA-17-PRO-ALA-C499</span>
+                      <span className="template-date">27/4/2026 07:02 p.m.</span>
+                    </div>
+                  </div>
+                  {getIcon('chevron-right', { width: 16, height: 16 })}
+                </DropdownItem>
+                
+                <DropdownItem onClick={() => setIsTemplateMenuOpen(false)} className="template-item">
+                  <div className="template-item-content">
+                    <p className="template-item-title">Monofocal (Base) | Policarbonato |...</p>
+                    <div className="template-item-meta">
+                      <span className="template-sku">EUR-ZEI-BAS-POL-MON-FCA-CACB</span>
+                      <span className="template-date">27/4/2026 07:01 p.m.</span>
+                    </div>
+                  </div>
+                  {getIcon('chevron-right', { width: 16, height: 16 })}
+                </DropdownItem>
+              </div>
+            </Dropdown>
           </div>
 
           <div className="inv-bases-demo">
@@ -114,7 +140,6 @@ const BasesMicasSection = () => {
                 rowSelection={ROW_SELECTION}
                 statusBar={STATUS_BAR}
                 sideBar={SIDE_BAR}
-                quickFilterText={quickFilter}
                 pagination={true}
                 paginationPageSize={10}
                 paginationPageSizeSelector={PAGINATION_SIZE_SELECTOR}

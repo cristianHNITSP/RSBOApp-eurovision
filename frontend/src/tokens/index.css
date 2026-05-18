@@ -367,6 +367,7 @@
 
 [data-theme="oscuro"] .notif-panel__close:hover {
   background: rgba(255, 255, 255, 0.06);
+  color: var(--color-white);
 }
 
 [data-theme="oscuro"] .dropdown__menu {
@@ -546,6 +547,10 @@
   border-color: rgba(139, 92, 246, 0.4);
 }
 
+[data-theme="oscuro"] .btn.tab-nav__btn--active:hover {
+  color: var(--color-gray-200);
+}
+
 /* 4. Inputs y Selects */
 [data-theme="oscuro"] .input-field,
 [data-theme="oscuro"] .input-select {
@@ -574,31 +579,104 @@
   border-bottom-color: rgba(255, 255, 255, 0.06);
 }
 
-[data-theme="oscuro"] .notif-item {
-  background: rgba(255, 255, 255, 0.02);
-  border-color: rgba(255, 255, 255, 0.06);
-}
-
-[data-theme="oscuro"] .notif-item:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
-
 [data-theme="oscuro"] .notif-item__description {
   color: var(--color-gray-500);
 }
 
+/* ── NotificationPanel matte — dark overrides ── */
+[data-theme="oscuro"] .notif-panel__header,
+[data-theme="oscuro"] .notif-panel__footer {
+  background: rgba(var(--color-white-rgb), 0.04);
+  border-color: rgba(var(--color-white-rgb), 0.08);
+}
+
+[data-theme="oscuro"] .notif-panel__title-badge {
+  background: var(--color-blue-500);
+}
+
+[data-theme="oscuro"] .notif-panel__mark-all {
+  color: var(--color-blue-400);
+  border-color: rgba(96, 165, 250, 0.25);
+}
+
+[data-theme="oscuro"] .notif-panel__mark-all:hover {
+  background: rgba(96, 165, 250, 0.1);
+  color: #93c5fd;
+}
+
+[data-theme="oscuro"] .notif-panel__footer-link {
+  color: var(--color-blue-400);
+}
+
+[data-theme="oscuro"] .notif-panel__footer-link:hover {
+  color: #93c5fd;
+  background: rgba(96, 165, 250, 0.08);
+}
+
+[data-theme="oscuro"] .notif-panel__empty {
+  color: var(--color-gray-700);
+}
+
+[data-theme="oscuro"] .notif-panel__empty-icon {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.25);
+  color: #34d399;
+}
+
+[data-theme="oscuro"] .notif-item {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+[data-theme="oscuro"] .notif-item:hover {
+  background: rgba(96, 165, 250, 0.06);
+  border-color: rgba(96, 165, 250, 0.2);
+}
+
 [data-theme="oscuro"] .notif-item__action-btn:hover {
-  color: var(--color-gray-200);
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-white);
 }
 
 [data-theme="oscuro"] .notif-item__link {
-  background: rgba(139, 92, 246, 0.12);
-  color: var(--color-purple-400);
+  background: rgba(96, 165, 250, 0.1);
+  border-color: rgba(96, 165, 250, 0.18);
+  color: var(--color-blue-400);
 }
 
 [data-theme="oscuro"] .notif-item__link:hover {
-  background: rgba(139, 92, 246, 0.2);
+  background: rgba(96, 165, 250, 0.16);
+  color: #93c5fd;
+}
+
+[data-theme="oscuro"] .notif-item__meta-item:first-child {
+  color: var(--color-blue-400);
+}
+
+/* SubmenuStrip — dark overrides */
+[data-theme="oscuro"] .submenu-strip {
+  background: rgba(var(--color-charcoal-800-rgb), 0.82);
+  border-color: rgba(var(--color-white-rgb), 0.08);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+}
+
+[data-theme="oscuro"] .submenu-strip::before {
+  background: rgba(var(--color-charcoal-800-rgb), 0.82);
+  border-top-color: rgba(var(--color-white-rgb), 0.08);
+  border-left-color: rgba(var(--color-white-rgb), 0.08);
+}
+
+[data-theme="oscuro"] .submenu-strip__item {
+  color: var(--color-gray-700);
+}
+
+[data-theme="oscuro"] .submenu-strip__item:hover {
+  background: rgba(var(--color-white-rgb), 0.06);
+  color: var(--color-gray-900);
+}
+
+[data-theme="oscuro"] .submenu-strip__item-icon {
+  color: var(--color-purple-400);
 }
 
 /* 6. SearchBar (Header) */

@@ -1,4 +1,8 @@
-/* ── Mobile bottom-sheet overlay (mirrors .modal__overlay) ─────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   NOTIFICATION PANEL — Editorial Matte / Flat Glass
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Mobile bottom-sheet overlay ──────────────────────────── */
 .notif-sheet__overlay {
   position: fixed;
   inset: 0;
@@ -13,11 +17,9 @@
   position: absolute;
   inset: 0;
   background: rgba(var(--color-black-rgb), 0.4);
-  backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */
-  -webkit-backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */ /* backdrop-filter causa parpadeo GPU — desactivado */
 }
 
-/* ── Desktop dropdown backdrop ──────────────────────────────────────────── */
+/* ── Desktop dropdown backdrop ────────────────────────────── */
 .notif-panel__backdrop {
   position: fixed;
   inset: 0;
@@ -25,138 +27,286 @@
   z-index: 40;
 }
 
-/* ── Panel shell ────────────────────────────────────────────────────────── */
+/* ── Panel shell ──────────────────────────────────────────── */
 .notif-panel {
   position: fixed;
   right: var(--space-8);
-  width: min(360px, calc(100vw - var(--space-8) * 2));
+  width: min(380px, calc(100vw - var(--space-8) * 2));
   max-height: calc(100vh - 120px);
   z-index: 50;
   display: flex;
   flex-direction: column;
   background: var(--notif-panel-bg);
-  backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */
-  -webkit-backdrop-filter: none; /* backdrop-filter causa parpadeo GPU — desactivado */
-  box-shadow: var(--notif-panel-shadow);
-  border: 1.5px solid var(--notif-panel-border);
-  border-radius: var(--radius-subtle);
+  backdrop-filter: var(--glass-blur-strong);
+  -webkit-backdrop-filter: var(--glass-blur-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: 2px;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
 }
 
+/* Arrow — pointing to bell icon in header */
 .notif-panel::before {
   content: '';
   position: absolute;
   top: -8px;
   right: var(--arrow-right, 24px);
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   background: var(--notif-panel-bg);
-  border-top: 1.5px solid var(--notif-panel-border);
-  border-left: 1.5px solid var(--notif-panel-border);
+  border-top: 1px solid var(--glass-border);
+  border-left: 1px solid var(--glass-border);
   transform: rotate(45deg);
   z-index: -1;
-  box-shadow: -3px -3px 10px var(--notif-panel-shadow-dark);
 }
 
-
-
-/* ── Mobile sheet variant (mirrors .modal on mobile) ────────────────────── */
+/* ── Mobile sheet variant ─────────────────────────────────── */
 .notif-panel--sheet {
   position: relative;
   right: auto;
   width: 100%;
   max-width: 100%;
   max-height: 92vh;
-  border-radius: var(--radius-subtle) var(--radius-subtle) 0 0;
+  border-radius: 2px 2px 0 0;
 }
 .notif-panel--sheet::before { display: none; }
 
-/* ── Inner decoration ───────────────────────────────────────────────────── */
+/* ── Inner decoration overlay (very subtle) ───────────────── */
 .notif-panel__overlay {
   position: absolute;
   inset: 0;
   background: var(--notif-panel-overlay);
   pointer-events: none;
-  z-index: 2;
+  z-index: 0;
   border-radius: inherit;
 }
 
-/* ── Handle pill (mobile only) ──────────────────────────────────────────── */
+/* ── Handle pill (mobile only) ────────────────────────────── */
 .notif-panel__handle {
-  width: 36px;
+  width: 40px;
   height: 4px;
-  background: var(--color-gray-200);
+  background: var(--color-gray-300);
   border-radius: 2px;
   margin: 8px auto 0;
   flex-shrink: 0;
+  position: relative;
+  z-index: 2;
 }
 
-/* ── Header ─────────────────────────────────────────────────────────────── */
+/* ── Header ───────────────────────────────────────────────── */
 .notif-panel__header {
   padding: var(--space-3) var(--space-4);
-  border-bottom: 1.5px solid var(--notif-panel-border-light);
-  background: var(--notif-panel-header-bg);
+  position: relative;
+  background: rgba(var(--color-white-rgb), 0.5);
+  border-bottom: 1px solid var(--glass-border);
   flex-shrink: 0;
+  z-index: 2;
 }
 
-.notif-panel--sheet .notif-panel__header { padding: var(--space-4) var(--space-5); }
+.notif-panel--sheet .notif-panel__header {
+  padding: var(--space-4) var(--space-5);
+}
 
 .notif-panel__header-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--space-3);
 }
 
 .notif-panel__title-group {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-3);
+  min-width: 0;
 }
 
-.notif-panel__title-icon { color: var(--color-blue-600); display: flex; align-items: center; }
-.notif-panel__title { font-size: var(--font-size-base); font-weight: 700; color: var(--color-gray-900); }
+/* Brand pill — bell icon (único gradient intencional) */
+.notif-panel__title-icon {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  background: var(--gradient-brand);
+  color: var(--color-white);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.notif-panel__title {
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  color: var(--color-gray-900);
+  letter-spacing: -0.01em;
+}
 
 [data-theme="oscuro"] .notif-panel__title {
   color: rgba(var(--color-white-rgb), 0.95);
 }
-.notif-panel--sheet .notif-panel__title { font-size: var(--font-size-lg); }
+
+.notif-panel--sheet .notif-panel__title {
+  font-size: var(--font-size-lg);
+}
+
+/* Unread counter badge — flat solid */
+.notif-panel__title-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-purple-600);
+  color: var(--color-white);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  border-radius: 2px;
+  margin-left: var(--space-1);
+}
+
+/* Header actions */
+.notif-panel__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.notif-panel__mark-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  color: var(--color-purple-700);
+  border: 1px solid rgba(var(--color-purple-500-rgb), 0.2);
+  border-radius: 2px;
+  padding: 5px var(--space-3);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-family);
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
+  white-space: nowrap;
+}
+
+.notif-panel__mark-all:hover {
+  background: rgba(var(--color-purple-500-rgb), 0.08);
+  color: var(--color-purple-900);
+}
 
 .notif-panel__close {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: none;
+  background: transparent;
   border: none;
+  border-radius: 2px;
   cursor: pointer;
-  color: var(--color-gray-400);
-  transition: all var(--transition-fast);
+  color: var(--color-gray-500);
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
 }
-.notif-panel__close:hover { color: var(--color-gray-600); background: rgba(var(--color-black-rgb), 0.05); }
+
+.notif-panel__close:hover {
+  background: rgba(var(--color-black-rgb), 0.05);
+  color: var(--color-gray-900);
+}
 
 [data-theme="oscuro"] .notif-panel__close:hover {
   background: rgba(var(--color-white-rgb), 0.06);
-  color: var(--color-gray-200);
+  color: var(--color-white);
 }
 
-/* ── Body ───────────────────────────────────────────────────────────────── */
+/* ── Body ─────────────────────────────────────────────────── */
 .notif-panel__body {
   flex: 1;
   overflow-y: auto;
-  padding: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  position: relative;
+  z-index: 2;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--color-purple-500-rgb), 0.25) transparent;
+}
+
+.notif-panel__body::-webkit-scrollbar       { width: 4px; }
+.notif-panel__body::-webkit-scrollbar-track { background: transparent; }
+.notif-panel__body::-webkit-scrollbar-thumb {
+  background: rgba(var(--color-purple-500-rgb), 0.25);
+  border-radius: 2px;
+}
+.notif-panel__body::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--color-purple-500-rgb), 0.4);
 }
 
 .notif-panel--sheet .notif-panel__body {
-  padding: var(--space-5);
+  padding: var(--space-4) var(--space-5);
   padding-bottom: calc(var(--space-5) + env(safe-area-inset-bottom, 0px));
 }
 
-/* ── Empty state ────────────────────────────────────────────────────────── */
+/* ── Empty state ──────────────────────────────────────────── */
 .notif-panel__empty {
   text-align: center;
-  padding: var(--space-8) 0;
-  color: var(--color-gray-500);
+  padding: var(--space-8) var(--space-4);
+  color: var(--color-gray-600);
   font-size: var(--font-size-sm);
+  font-weight: 600;
 }
 
-.notif-panel__empty-icon { margin-bottom: var(--space-3); display: flex; justify-content: center; color: var(--color-green-500); }
+.notif-panel__empty-icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto var(--space-3);
+  display: grid;
+  place-items: center;
+  background: rgba(var(--color-green-100-rgb), 0.5);
+  border: 1px solid rgba(var(--color-green-200-rgb), 0.5);
+  border-radius: 2px;
+  color: var(--color-green-600);
+}
+
+.notif-panel__empty-sub {
+  display: block;
+  font-size: var(--font-size-xs);
+  font-weight: 400;
+  color: var(--color-gray-500);
+  margin-top: var(--space-2);
+}
+
+/* ── Footer ───────────────────────────────────────────────── */
+.notif-panel__footer {
+  position: relative;
+  z-index: 2;
+  padding: var(--space-2) var(--space-4);
+  background: rgba(var(--color-white-rgb), 0.5);
+  border-top: 1px solid var(--glass-border);
+  flex-shrink: 0;
+}
+
+.notif-panel__footer-link {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  background: transparent;
+  border: none;
+  color: var(--color-purple-700);
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  padding: var(--space-2) 0;
+  cursor: pointer;
+  border-radius: 2px;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.notif-panel__footer-link:hover {
+  color: var(--color-purple-900);
+  background: rgba(var(--color-purple-500-rgb), 0.06);
+}

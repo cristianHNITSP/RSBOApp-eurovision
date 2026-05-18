@@ -12,8 +12,27 @@ export const menuSections = [
     label: 'GESTIÓN',
     items: [
       { id: 'usuarios', label: 'Usuarios', icon: 'users' },
-      { id: 'inventario', label: 'Inventario', icon: 'box', hasSubmenu: true },
-      { id: 'ventas', label: 'Ventas', icon: 'cart', hasSubmenu: true },
+      {
+        id: 'inventario',
+        label: 'Inventario',
+        icon: 'box',
+        hasSubmenu: true,
+        submenu: [
+          { id: 'optica',          label: 'Óptica',             icon: 'eye' },
+          { id: 'bases-micas',     label: 'Bases y Micas',      icon: 'shield' },
+          { id: 'lentes-contacto', label: 'Lentes de Contacto', icon: 'microscope' },
+        ],
+      },
+      {
+        id: 'ventas',
+        label: 'Ventas',
+        icon: 'cart',
+        hasSubmenu: true,
+        submenu: [
+          { id: 'pedidos',   label: 'Pedidos',   icon: 'clipboard' },
+          { id: 'catalogo',  label: 'Catálogo',  icon: 'box' },
+        ],
+      },
       { id: 'devoluciones', label: 'Devoluciones', icon: 'return' },
       { id: 'encargos', label: 'Encargos', icon: 'clipboard' },
     ],
@@ -37,6 +56,11 @@ export const pageTitles = {
   ventas: 'Ventas',
   devoluciones: 'Devoluciones',
   encargos: 'Encargos',
+  'ventas/pedidos':              'Pedidos — Ventas',
+  'ventas/catalogo':             'Catálogo — Ventas',
+  'inventario/optica':           'Óptica — Inventario',
+  'inventario/bases-micas':      'Bases y Micas — Inventario',
+  'inventario/lentes-contacto':  'Lentes de Contacto — Inventario',
 };
 
 export const breadcrumbMap = {
@@ -51,4 +75,9 @@ export const breadcrumbMap = {
   ventas: ['Dashboard', 'Ventas'],
   devoluciones: ['Dashboard', 'Devoluciones'],
   encargos: ['Dashboard', 'Encargos'],
+  'ventas/pedidos':              ['Dashboard', 'Ventas', 'Pedidos'],
+  'ventas/catalogo':             ['Dashboard', 'Ventas', 'Catálogo'],
+  'inventario/optica':           ['Dashboard', 'Inventario', 'Óptica'],
+  'inventario/bases-micas':      ['Dashboard', 'Inventario', 'Bases y Micas'],
+  'inventario/lentes-contacto':  ['Dashboard', 'Inventario', 'Lentes de Contacto'],
 };

@@ -3,14 +3,27 @@ import { motion, AnimatePresence } from 'framer-motion';
 import useMotionTransition from '../../../composables/useMotionTransition.js';
 import NotificationItem from '../NotificationItem/NotificationItem.jsx';
 import NotificationItemSkeleton from '../NotificationItem/NotificationItemSkeleton.jsx';
-import { IconBell, IconClose, IconCheck } from '../../icons/Icons.jsx';
+import { IconBell, IconClose, IconCheck, IconChevronRight } from '../../icons/Icons.jsx';
 import './NotificationPanel.css';
 
 const SPRING = { type: "spring", stiffness: 250, damping: 20, mass: 1 };
 
-const NotificationPanel = ({ isOpen, onClose, notifications = [], loading = false }) => {
+const NotificationPanel = ({
+  isOpen,
+  onClose,
+  notifications = [],
+  loading = false,
+  unreadCount,
+  onMarkAllRead,
+  onViewAll,
+}) => {
   const transition = useMotionTransition(SPRING);
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+
+  const computedUnread = unreadCount ?? notifications.filter((n) => !n.read).length;
+  const hasUnread = computedUnread > 0;
+  const showMarkAll = typeof onMarkAllRead === 'function' && hasUnread;
+  const showFooter = typeof onViewAll === 'function';
 
   let buttonRect = null;
   if (!isMobile && isOpen && typeof document !== 'undefined') {
@@ -35,12 +48,29 @@ const NotificationPanel = ({ isOpen, onClose, notifications = [], loading = fals
       <div className="notif-panel__header">
         <div className="notif-panel__header-row">
           <div className="notif-panel__title-group">
-            <span className="notif-panel__title-icon"><IconBell width={20} height={20} /></span>
+            <span className="notif-panel__title-icon">
+              <IconBell width={16} height={16} />
+            </span>
             <h3 className="notif-panel__title">Notificaciones</h3>
+            {hasUnread && (
+              <span className="notif-panel__title-badge">{computedUnread}</span>
+            )}
           </div>
-          <button className="notif-panel__close" onClick={onClose}>
-            <IconClose width={16} height={16} />
-          </button>
+          <div className="notif-panel__actions">
+            {showMarkAll && (
+              <button
+                className="notif-panel__mark-all"
+                onClick={onMarkAllRead}
+                title="Marcar todas como leídas"
+              >
+                <IconCheck width={14} height={14} />
+                <span>Marcar todas</span>
+              </button>
+            )}
+            <button className="notif-panel__close" onClick={onClose} title="Cerrar">
+              <IconClose width={16} height={16} />
+            </button>
+          </div>
         </div>
       </div>
       <div className="notif-panel__body">
@@ -57,11 +87,22 @@ const NotificationPanel = ({ isOpen, onClose, notifications = [], loading = fals
           ))
         ) : (
           <div className="notif-panel__empty">
-            <div className="notif-panel__empty-icon"><IconCheck width={48} height={48} /></div>
+            <div className="notif-panel__empty-icon"><IconCheck width={32} height={32} /></div>
             <div>No hay notificaciones</div>
+            <span className="notif-panel__empty-sub">
+              Estás al día con todas tus notificaciones
+            </span>
           </div>
         )}
       </div>
+      {showFooter && (
+        <div className="notif-panel__footer">
+          <button className="notif-panel__footer-link" onClick={onViewAll}>
+            <span>Ver todas las notificaciones</span>
+            <IconChevronRight width={14} height={14} />
+          </button>
+        </div>
+      )}
     </>
   );
 

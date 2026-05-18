@@ -12,6 +12,8 @@ import BottomNav from '../../components/reusable/BottomNav/BottomNav.jsx';
 import DashboardSection from './sections/DashboardSection/DashboardSection.jsx';
 import UsersSection from './sections/UsersSection/UsersSection.jsx';
 import SettingsSection from './sections/SettingsSection/SettingsSection.jsx';
+import InventorySection from './sections/InventorySection/InventorySection.jsx';
+import SalesSection from './sections/SalesSection/SalesSection.jsx';
 import AvatarSelectorModal from '../../components/reusable/AvatarSelectorModal/AvatarSelectorModal.jsx';
 import useNotifications from '../../composables/useNotifications.js';
 import useBreakpoint from '../../composables/useBreakpoint.js';
@@ -24,7 +26,12 @@ const LIQUID_SPRING = { type: "spring", stiffness: 250, damping: 20, mass: 0.8 }
 
 const getSectionOrder = (id) => {
   const flat = [
-    'dashboard', 'analiticas', 'usuarios', 'inventario', 'ventas', 'devoluciones', 'encargos',
+    'dashboard', 'analiticas', 'usuarios',
+    'inventario',
+    'inventario/optica', 'inventario/bases-micas', 'inventario/lentes-contacto',
+    'ventas',
+    'ventas/pedidos', 'ventas/catalogo',
+    'devoluciones', 'encargos',
     'ajustes', 'ajustes-perfil', 'ajustes-preferencias', 'ajustes-seguridad', 'ayuda'
   ];
   return flat.indexOf(id) !== -1 ? flat.indexOf(id) : 0;
@@ -107,6 +114,18 @@ const AppPage = () => {
           user={user}
         />
       );
+    }
+    if (activeSection.startsWith('inventario/')) {
+      const child = activeSection.split('/')[1];
+      if (['optica', 'bases-micas', 'lentes-contacto'].includes(child)) {
+        return <InventorySection activeCategory={child} />;
+      }
+    }
+    if (activeSection.startsWith('ventas/')) {
+      const child = activeSection.split('/')[1];
+      if (['pedidos', 'catalogo'].includes(child)) {
+        return <SalesSection activeView={child} />;
+      }
     }
     return <DashboardSection onAdminProfile={() => changeSection('ajustes-perfil')} />;
   };

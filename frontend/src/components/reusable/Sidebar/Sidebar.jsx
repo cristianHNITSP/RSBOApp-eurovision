@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Avatar from '../../ui/Avatar/Avatar.jsx';
 import { getIcon, IconChevronDown, IconChevronRight, IconChevronLeft } from '../../icons/Icons.jsx';
 import { menuSections } from '../../../data/menuItems.js';
 import useBreakpoint from '../../../composables/useBreakpoint.js';
+import SubmenuStrip from '../SubmenuStrip/SubmenuStrip.jsx';
 import SidebarSkeleton from './SidebarSkeleton.jsx';
 import './Sidebar.css';
 
@@ -98,21 +99,40 @@ const CollapsedTooltip = ({ label }) => (
 
 /* ── Component ──────────────────────────────────────────────── */
 const Sidebar = ({ collapsed, onToggle, activeSection, onSectionChange, userInfo, loading = false }) => {
-  const [expandedMenus, setExpandedMenus] = useState({});
+  const [openSubmenuId, setOpenSubmenuId] = useState(null);
   const [hoveredItem, setHoveredItem] = useState(null);
+  const itemRefs = useRef({});
   const { isTablet } = useBreakpoint();
 
   const effectiveCollapsed = isTablet ? true : collapsed;
 
   if (loading) return <SidebarSkeleton collapsed={effectiveCollapsed} />;
 
-  const toggleSubmenu = (id) =>
-    setExpandedMenus((prev) => ({ ...prev, [id]: !prev[id] }));
-
   const handleItemClick = (item) => {
+    if (item.hasSubmenu) {
+      const isSameOpen = openSubmenuId === item.id;
+      setOpenSubmenuId(isSameOpen ? null : item.id);
+      const alreadyInChild = activeSection?.startsWith(`${item.id}/`);
+      const firstChild = item.submenu?.[0];
+      if (!isSameOpen && !alreadyInChild && firstChild) {
+        onSectionChange(`${item.id}/${firstChild.id}`);
+      }
+      return;
+    }
+    setOpenSubmenuId(null);
     onSectionChange(item.id);
-    if (item.hasSubmenu) toggleSubmenu(item.id);
   };
+
+  const handleSubmenuSelect = (fullId) => {
+    onSectionChange(fullId);
+    setOpenSubmenuId(null);
+  };
+
+  const openParent = openSubmenuId
+    ? menuSections.flatMap((s) => s.items).find((i) => i.id === openSubmenuId)
+    : null;
+  const anchorEl = openSubmenuId ? itemRefs.current[openSubmenuId] : null;
+  const anchorRect = anchorEl ? anchorEl.getBoundingClientRect() : null;
 
   return (
     <aside
@@ -201,9 +221,10 @@ const Sidebar = ({ collapsed, onToggle, activeSection, onSectionChange, userInfo
               }
 
               {section.items.map((item) => {
-                const isActive = activeSection === item.id;
-                const isExpanded = expandedMenus[item.id];
-                const showTooltip = effectiveCollapsed && hoveredItem === item.id;
+                const isActive = activeSection === item.id
+                  || (item.hasSubmenu && activeSection.startsWith(`${item.id}/`));
+                const isOpen = openSubmenuId === item.id;
+                const showTooltip = effectiveCollapsed && hoveredItem === item.id && !isOpen;
 
                 return (
                   <motion.div
@@ -214,6 +235,7 @@ const Sidebar = ({ collapsed, onToggle, activeSection, onSectionChange, userInfo
                     onHoverEnd={() => setHoveredItem(null)}
                   >
                     <motion.button
+                      ref={(el) => { if (el) itemRefs.current[item.id] = el; }}
                       onClick={() => handleItemClick(item)}
                       className={`sidebar__item${isActive ? ' sidebar__item--active' : ''}`}
                     >
@@ -235,7 +257,7 @@ const Sidebar = ({ collapsed, onToggle, activeSection, onSectionChange, userInfo
                           </span>
                         )}
                         {item.hasSubmenu && (
-                          <span className={`sidebar__item-chevron ${isExpanded ? 'sidebar__item-chevron--open' : ''}`}>
+                          <span className={`sidebar__item-chevron ${isOpen ? 'sidebar__item-chevron--open' : ''}`}>
                             <IconChevronDown width={12} height={12} />
                           </span>
                         )}
@@ -269,6 +291,17 @@ const Sidebar = ({ collapsed, onToggle, activeSection, onSectionChange, userInfo
         </div>
 
       </div>
+
+      <SubmenuStrip
+        isOpen={!!openSubmenuId}
+        onClose={() => setOpenSubmenuId(null)}
+        onSelect={handleSubmenuSelect}
+        parentId={openSubmenuId}
+        items={openParent?.submenu || []}
+        anchorRect={anchorRect}
+        orientation="horizontal"
+        variant="sidebar"
+      />
     </aside>
   );
 };

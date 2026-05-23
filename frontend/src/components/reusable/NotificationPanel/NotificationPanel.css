@@ -37,12 +37,13 @@
   display: flex;
   flex-direction: column;
   background: var(--notif-panel-bg);
-  backdrop-filter: var(--glass-blur-strong);
-  -webkit-backdrop-filter: var(--glass-blur-strong);
+  backdrop-filter: none; /* desactivado por rendimiento */
+  -webkit-backdrop-filter: none;
   border: 1px solid var(--glass-border);
   border-radius: 2px;
   box-shadow: var(--shadow-lg);
   overflow: hidden;
+  will-change: transform, opacity;
 }
 
 /* Arrow — pointing to bell icon in header */

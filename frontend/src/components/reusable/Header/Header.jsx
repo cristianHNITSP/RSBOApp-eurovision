@@ -35,7 +35,7 @@ const Header = ({
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const palette = useCommandPalette();
   const isMac = useMemo(() => isMacPlatform(), []);
-  const { isMobileOrTablet } = useBreakpoint();
+  const { isMobileOrTablet, isMobile } = useBreakpoint();
   const showCompactTrigger = isMobileOrTablet;
 
   if (loading) return <HeaderSkeleton showSearch={showSearch} />;
@@ -58,7 +58,7 @@ const Header = ({
             {title && title.includes(' — ') ? (
               <>
                 {title.split(' — ')[0]}{' '}
-                <span className="app-header__title-tag">{title.split(' — ')[1]}</span>
+                {!isMobile && <span className="app-header__title-tag">{title.split(' — ')[1]}</span>}
               </>
             ) : (
               title

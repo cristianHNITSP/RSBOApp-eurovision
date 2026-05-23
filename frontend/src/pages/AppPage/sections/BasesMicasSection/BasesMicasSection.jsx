@@ -1,16 +1,30 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useMemo } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import useBreakpoint from '../../../../composables/useBreakpoint.js';
 import QuickActionCard from '../../../../components/reusable/QuickActionCard/QuickActionCard.jsx';
+import FormSection from '../../../../components/reusable/Form/FormSection.jsx';
+import Navigation from '../../../../components/reusable/Navigation/Navigation.jsx';
 import { getIcon } from '../../../../components/icons/Icons.jsx';
 import Tooltip from '../../../../components/ui/Tooltip/Tooltip.jsx';
-import Dropdown, { DropdownItem } from '../../../../components/ui/Dropdown/Dropdown.jsx';
 
-import { basesMicasColumnDefs, basesMicasRowData, editorialGlassTheme, defaultColDef } from '../../../../data/basesMicasGrid.js';
+import TabNav, { TabNavProvider, TabPanels, TabPanel } from '../../../../components/reusable/TabNav/TabNav.jsx';
 
+import ContextMenu from '../../../../components/ui/ContextMenu/ContextMenu.jsx';
 import {
-  AllCommunityModule,
-  ModuleRegistry,
-} from 'ag-grid-community';
+  TEMPLATE_DATA,
+  TEMPLATE_TABS,
+  DELETED_TEMPLATE_DATA,
+  TEMPLATE_FORM_SECTIONS,
+  ROW_SELECTION,
+  PAGINATION_SIZE_SELECTOR,
+  PANEL_TRANSITION,
+} from './data.js';
+
+import { getToolbarGroups, basesMicasColumnDefs, basesMicasRowData, editorialGlassTheme, defaultColDef } from './basesMicasGrid.js';
+import { renderTemplateItem, getTemplateSearchText, templateMenuHeight } from './basesMicasUtils.jsx';
+import { useBasesMicas } from './useBasesMicas.js';
+
+import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community';
 import { AgGridReact } from 'ag-grid-react';
 
 import './BasesMicasSection.css';
@@ -18,36 +32,34 @@ import './BasesMicasGrid.css';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-const ROW_SELECTION = { mode: 'multiRow', checkboxes: true, headerCheckbox: true };
-
-const STATUS_BAR = {
-  statusPanels: [
-    { statusPanel: 'agTotalAndFilteredRowCountComponent', align: 'left' },
-    { statusPanel: 'agSelectedRowCountComponent', align: 'right' },
-  ],
-};
-
-const SIDE_BAR = { toolPanels: ['columns'] };
-const PAGINATION_SIZE_SELECTOR = [10, 20, 50];
-
 const BasesMicasSection = () => {
   const gridRef = useRef(null);
-  const [rowData, setRowData] = useState(null);
-  const [isTemplateMenuOpen, setIsTemplateMenuOpen] = useState(false);
+
+  const { state, actions } = useBasesMicas();
+  const {
+    rowData, isTemplateMenuOpen, isDeletedMenuOpen, isCreating,
+    templateValues, gridApi, selectionCount
+  } = state;
+  const {
+    setIsTemplateMenuOpen, setIsDeletedMenuOpen,
+    handleToggleCreate, handleFormChange, handleGridReady, handleSelectionChanged
+  } = actions;
 
   const { isTablet, isDesktop, isMobileLandscape } = useBreakpoint();
-  const gridHeight = isDesktop
-    ? 470
-    : isTablet
-      ? 370
-      : isMobileLandscape
-        ? 250
-        : 310;
+  const gridHeight = isDesktop ? 470 : isTablet ? 370 : isMobileLandscape ? 250 : 310;
 
-  useEffect(() => {
-    const t = setTimeout(() => setRowData(basesMicasRowData), 1800);
-    return () => clearTimeout(t);
-  }, []);
+  const toolbarGroups = useMemo(() => getToolbarGroups({
+    isCreating,
+    gridApi,
+    selectionCount,
+    actions
+  }), [isCreating, gridApi, selectionCount, actions]);
+
+  const navLeading = isCreating
+    ? <span className="nav__count nav__count--muted">Nueva plantilla</span>
+    : (selectionCount > 0
+        ? <span className="nav__count">{selectionCount} {selectionCount === 1 ? 'seleccionada' : 'seleccionadas'}</span>
+        : <span className="nav__count nav__count--muted">Sin selección</span>);
 
   return (
     <div className="inv-bases-section">
@@ -61,24 +73,31 @@ const BasesMicasSection = () => {
         </p>
 
         <div className="inv-bases-cards">
-          <QuickActionCard icon="box" title="Catálogo" description="Referencias de bases y micas" />
-          <QuickActionCard icon="refresh" title="Movimientos" description="Entradas, salidas y ajustes" />
-          <QuickActionCard icon="users" title="Proveedores" description="Gestión de proveedores" />
+          <QuickActionCard icon="box"     title="Catálogo"     description="Referencias de bases y micas" />
+          <QuickActionCard icon="refresh" title="Movimientos"  description="Entradas, salidas y ajustes" />
+          <QuickActionCard icon="users"   title="Proveedores"  description="Gestión de proveedores" />
         </div>
 
         <div className="inv-bases-demo-wrapper">
 
           <div className="inv-bases-tabs">
-            <Tooltip label="Crear plantilla">
-              <button className="inv-bases-tab inv-bases-tab--active" aria-label="Crear plantilla">
-                {getIcon('plus', { width: 15, height: 15 })}
-                Crear plantilla
+            <Tooltip label={isCreating ? 'Cancelar creación' : 'Crear plantilla'} portal>
+              <button
+                className={['inv-bases-tab', isCreating ? 'inv-bases-tab--active' : ''].join(' ').trim()}
+                aria-label={isCreating ? 'Cancelar creación' : 'Crear plantilla'}
+                onClick={handleToggleCreate}
+              >
+                {isCreating
+                  ? getIcon('close', { width: 15, height: 15 })
+                  : getIcon('plus',  { width: 15, height: 15 })
+                }
+                {isCreating ? 'Cancelar' : 'Crear plantilla'}
               </button>
             </Tooltip>
 
-            <Dropdown
+            <ContextMenu
               trigger={
-                <Tooltip label="Abrir plantilla">
+                <Tooltip label="Abrir plantilla" portal>
                   <button className="inv-bases-tab" aria-label="Abrir plantilla">
                     {getIcon('clipboard', { width: 15, height: 15 })}
                     Abrir plantilla
@@ -87,70 +106,109 @@ const BasesMicasSection = () => {
               }
               isOpen={isTemplateMenuOpen}
               onToggle={setIsTemplateMenuOpen}
-              placement="bottom-left"
-              className="template-dropdown"
-            >
-              <div className="template-menu-header">
-                <h3>Catálogo de Plantillas</h3>
-                <div className="template-search">
-                  {getIcon('search', { width: 16, height: 16 })}
-                  <input type="text" placeholder="Buscar por nombre o SKU..." />
-                </div>
-              </div>
-              
-              <div className="template-menu-group">
-                <span className="template-group-title">RECIENTES</span>
-                <DropdownItem onClick={() => setIsTemplateMenuOpen(false)} className="template-item">
-                  <div className="template-item-content">
-                    <p className="template-item-title">Progresivo (Base + ADD) | 1.74 | A...</p>
-                    <div className="template-item-meta">
-                      <span className="template-sku">00-00-BA-17-PRO-ALA-C499</span>
-                      <span className="template-date">27/4/2026 07:02 p.m.</span>
-                    </div>
-                  </div>
-                  {getIcon('chevron-right', { width: 16, height: 16 })}
-                </DropdownItem>
-                
-                <DropdownItem onClick={() => setIsTemplateMenuOpen(false)} className="template-item">
-                  <div className="template-item-content">
-                    <p className="template-item-title">Monofocal (Base) | Policarbonato |...</p>
-                    <div className="template-item-meta">
-                      <span className="template-sku">EUR-ZEI-BAS-POL-MON-FCA-CACB</span>
-                      <span className="template-date">27/4/2026 07:01 p.m.</span>
-                    </div>
-                  </div>
-                  {getIcon('chevron-right', { width: 16, height: 16 })}
-                </DropdownItem>
-              </div>
-            </Dropdown>
+              placement="bottom-right"
+              title="Catálogo de Plantillas"
+              tabs={TEMPLATE_TABS}
+              data={TEMPLATE_DATA}
+              renderItem={renderTemplateItem}
+              getItemSearchText={getTemplateSearchText}
+              width="300"
+              maxHeight={templateMenuHeight}
+              initialSize={6}
+              pageSize={4}
+              searchPlaceholder="Buscar por nombre o SKU..."
+            />
+
+            <ContextMenu
+              trigger={
+                <Tooltip label="Plantillas eliminadas" portal>
+                  <button className="inv-bases-tab" aria-label="Plantillas eliminadas">
+                    {getIcon('trash', { width: 15, height: 15 })}
+                    Plantillas eliminadas
+                  </button>
+                </Tooltip>
+              }
+              isOpen={isDeletedMenuOpen}
+              onToggle={setIsDeletedMenuOpen}
+              placement="bottom-right"
+              title="Plantillas Eliminadas"
+              data={DELETED_TEMPLATE_DATA}
+              renderItem={renderTemplateItem}
+              getItemSearchText={getTemplateSearchText}
+              width="300"
+              maxHeight={templateMenuHeight}
+              initialSize={6}
+              pageSize={4}
+              searchPlaceholder="Buscar por nombre o SKU..."
+            />
           </div>
 
+          <Navigation
+            ariaLabel="Acciones de la rejilla de bases y micas"
+            modeKey={isCreating ? 'form' : 'grid'}
+            leadingSlot={navLeading}
+            groups={toolbarGroups}
+          />
+
           <div className="inv-bases-demo">
-            <div className="inv-bases-demo__grid" style={{ height: gridHeight }}>
-              <AgGridReact
-                ref={gridRef}
-                theme={editorialGlassTheme}
-                rowData={rowData}
-                columnDefs={basesMicasColumnDefs}
-                defaultColDef={defaultColDef}
-                columnHoverHighlight={true}
-                rowHeight={42}
-                headerHeight={42}
-                animateRows
-                rowSelection={ROW_SELECTION}
-                statusBar={STATUS_BAR}
-                sideBar={SIDE_BAR}
-                pagination={true}
-                paginationPageSize={10}
-                paginationPageSizeSelector={PAGINATION_SIZE_SELECTOR}
-                tooltipShowDelay={300}
-                tooltipHideDelay={2000}
-              />
+            <div
+              className="inv-bases-demo__grid"
+              style={isCreating ? undefined : { height: gridHeight }}
+            >
+              <AnimatePresence mode="wait" initial={false}>
+                {isCreating ? (
+                  <motion.div
+                    key="form"
+                    className="inv-bases-demo__form-wrap"
+                    initial={{ opacity: 0, y: 14, filter: 'blur(6px)' }}
+                    animate={{ opacity: 1, y: 0,  filter: 'blur(0px)' }}
+                    exit={{    opacity: 0, y: -8,  filter: 'blur(6px)' }}
+                    transition={PANEL_TRANSITION}
+                  >
+                    <FormSection
+                      sections={TEMPLATE_FORM_SECTIONS}
+                      values={templateValues}
+                      onChange={handleFormChange}
+                    />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="grid"
+                    style={{ height: gridHeight }}
+                    initial={{ opacity: 0, y: -8,  filter: 'blur(6px)' }}
+                    animate={{ opacity: 1, y: 0,   filter: 'blur(0px)' }}
+                    exit={{    opacity: 0, y: 14,   filter: 'blur(6px)' }}
+                    transition={PANEL_TRANSITION}
+                  >
+                    <AgGridReact
+                      ref={gridRef}
+                      theme={editorialGlassTheme}
+                      rowData={rowData}
+                      columnDefs={basesMicasColumnDefs}
+                      defaultColDef={defaultColDef}
+                      columnHoverHighlight={true}
+                      rowHeight={42}
+                      headerHeight={42}
+                      animateRows
+                      rowSelection={ROW_SELECTION}
+                      multiSortKey="ctrl"
+                      suppressMovableColumns={false}
+                      suppressDragLeaveHidesColumns={true}
+                      pagination={true}
+                      paginationPageSize={10}
+                      paginationPageSizeSelector={PAGINATION_SIZE_SELECTOR}
+                      tooltipShowDelay={0}
+                      tooltipHideDelay={2000}
+                      onGridReady={handleGridReady}
+                      onSelectionChanged={handleSelectionChanged}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
 
         </div>
-
       </div>
     </div>
   );

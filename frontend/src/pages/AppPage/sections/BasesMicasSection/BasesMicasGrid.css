@@ -165,14 +165,29 @@
 .inv-bases-demo__grid .ag-list,
 .inv-bases-demo__grid .ag-select-list,
 .inv-bases-demo__grid .ag-rich-select-list,
-.inv-bases-demo__grid .ag-virtual-list-container,
-.inv-bases-demo__grid .ag-tooltip {
+.inv-bases-demo__grid .ag-virtual-list-container {
   background: rgba(var(--color-white-rgb), 0.97) !important;
   border: 1px solid rgba(var(--color-purple-400-rgb), 0.22) !important;
   border-radius: 8px !important;
   box-shadow:
     var(--shadow-xl),
     0 0 0 1px rgba(var(--color-white-rgb), 0.6) inset !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Tooltip nativo AG Grid — tokens de Tooltip.jsx, background sólido */
+.ag-tooltip {
+  background: rgba(var(--color-white-rgb), 0.97) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 8px !important;
+  padding: var(--space-1) var(--space-3) !important;
+  box-shadow: var(--shadow-lg) !important;
+  color: var(--color-gray-700) !important;
+  font-size: var(--font-size-xs) !important;
+  font-weight: 600 !important;
+  font-family: inherit !important;
+  white-space: nowrap !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
@@ -387,13 +402,18 @@
 [data-theme="oscuro"] .inv-bases-demo__grid .ag-list,
 [data-theme="oscuro"] .inv-bases-demo__grid .ag-select-list,
 [data-theme="oscuro"] .inv-bases-demo__grid .ag-rich-select-list,
-[data-theme="oscuro"] .inv-bases-demo__grid .ag-virtual-list-container,
-[data-theme="oscuro"] .inv-bases-demo__grid .ag-tooltip {
+[data-theme="oscuro"] .inv-bases-demo__grid .ag-virtual-list-container {
   background: rgba(var(--color-charcoal-900-rgb), 0.97) !important;
   border-color: rgba(var(--color-white-rgb), 0.12) !important;
   box-shadow:
     var(--shadow-2xl),
     0 0 0 1px rgba(var(--color-black-rgb), 0.4) inset !important;
+}
+
+[data-theme="oscuro"] .ag-tooltip {
+  background: rgba(var(--color-charcoal-900-rgb), 0.97) !important;
+  border-color: rgba(var(--color-white-rgb), 0.08) !important;
+  color: var(--color-gray-900) !important;
 }
 
 [data-theme="oscuro"] .inv-bases-demo__grid .ag-menu-option:hover,

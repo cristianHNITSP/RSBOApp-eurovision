@@ -83,7 +83,7 @@ const UsersSection = ({ openAvatarModal, commitGlobalAvatar }) => {
             { label: bannerUser.username, size: 'sm' },
           ]}
           subtitle={bannerUser.lastAccess}
-          badge={<Badge variant={statusVariant}>{bannerUser.status}</Badge>}
+          //badge={<Badge variant={statusVariant}>{bannerUser.status}</Badge>}
           actions={
             <>
               <Button variant="success" icon={<IconPlus width={16} height={16} />} size="medium">Nuevo usuario</Button>

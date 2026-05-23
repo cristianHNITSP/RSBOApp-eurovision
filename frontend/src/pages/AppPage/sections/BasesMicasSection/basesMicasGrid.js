@@ -219,3 +219,65 @@ export const basesMicasRowData = [
     proveedor: 'LumenX',
   },
 ];
+
+export const getToolbarGroups = ({
+  isCreating,
+  gridApi,
+  selectionCount,
+  actions
+}) => {
+  const ready = !!gridApi;
+  const hasSelection = selectionCount > 0;
+
+  if (isCreating) {
+    return [
+      {
+        id: 'form',
+        label: 'Formulario',
+        actions: [
+          { id: 'save',   icon: 'check',   label: 'Guardar',  tooltip: 'Guardar plantilla',  onClick: actions.handleFormSave,       variant: 'primary' },
+          { id: 'reset',  icon: 'refresh', label: 'Limpiar',  tooltip: 'Limpiar campos',     onClick: actions.handleFormReset },
+          { id: 'cancel', icon: 'close',   label: 'Cancelar', tooltip: 'Cancelar creación',  onClick: actions.handleToggleCreate },
+        ],
+      },
+    ];
+  }
+
+  return [
+    {
+      id: 'clipboard',
+      label: 'Portapapeles',
+      actions: [
+        { id: 'copy',  icon: 'copy',  label: 'Copiar', tooltip: 'Copiar selección (Ctrl+C)', onClick: actions.handleCopy,  disabled: !ready || !hasSelection },
+        { id: 'cut',   icon: 'cut',   label: 'Cortar', tooltip: 'Cortar selección (Ctrl+X)', onClick: actions.handleCut,   disabled: !ready || !hasSelection },
+        { id: 'paste', icon: 'paste', label: 'Pegar',  tooltip: 'Pegar desde portapapeles (Ctrl+V)', onClick: actions.handlePaste },
+      ],
+    },
+    {
+      id: 'insert',
+      label: 'Insertar',
+      actions: [
+        { id: 'new-row', icon: 'plus',  label: 'Nueva fila',         tooltip: 'Insertar fila vacía al final', onClick: actions.handleCreateRow },
+        { id: 'del-row', icon: 'trash', label: 'Eliminar selección', tooltip: 'Eliminar filas seleccionadas', onClick: actions.handleDeleteSelected, disabled: !ready || !hasSelection },
+      ],
+    },
+    {
+      id: 'data',
+      label: 'Datos',
+      actions: [
+        { id: 'export',  icon: 'download', label: 'Exportar CSV', tooltip: 'Descargar como CSV', onClick: actions.handleExportCsv, disabled: !ready },
+        { id: 'refresh', icon: 'refresh',  label: 'Actualizar',   tooltip: 'Recargar datos',     onClick: actions.handleRefresh },
+      ],
+    },
+    {
+      id: 'view',
+      label: 'Vista',
+      actions: [
+        { id: 'autosize',   icon: 'columns', label: 'Ajustar columnas', tooltip: 'Ajustar ancho al contenido', onClick: actions.handleAutosize,     disabled: !ready },
+        { id: 'clear-flt',  icon: 'filter',  label: 'Limpiar filtros',  tooltip: 'Limpiar todos los filtros',  onClick: actions.handleClearFilters, disabled: !ready },
+        { id: 'deselect',   icon: 'close',   label: 'Deseleccionar',    tooltip: 'Deseleccionar filas',        onClick: actions.handleDeselectAll,  disabled: !ready || !hasSelection },
+      ],
+    },
+  ];
+};
+

@@ -1,0 +1,172 @@
+/* ═══════════════════════════════════════════════════════════════
+   NAVIGATION — Excel formula/action bar (folder-tab continuity)
+   ═══════════════════════════════════════════════════════════════ */
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--glass-bg);
+  /* backdrop-filter desactivado: workaround GPU flicker (mismo criterio que .inv-bases-demo) */
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 1px solid var(--glass-border);
+  border-bottom: none;
+  border-radius: 0 var(--radius-subtle) 0 0;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  height: 44px;
+  box-sizing: border-box;
+  overflow: hidden; /* contiene el scroll del carril central; tooltips usan portal */
+}
+
+/* ── Slots laterales (siempre visibles) ───────────────────── */
+.nav__leading,
+.nav__trailing {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+  color: var(--color-gray-600);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+
+/* ── Carril central scrollable ────────────────────────────── */
+.nav__scroll {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  overflow-x: auto;
+  overflow-y: hidden; /* explícito: evita que spec fuerce overflow-y:auto */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  /* Fade masks en bordes para insinuar contenido oculto al scrollear */
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 16px,
+    #000 calc(100% - 16px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 16px,
+    #000 calc(100% - 16px),
+    transparent 100%
+  );
+}
+
+.nav__scroll::-webkit-scrollbar { display: none; }
+
+.nav__groups {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 2px;
+  width: max-content;
+}
+
+.nav__group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+
+.nav__divider {
+  width: 1px;
+  height: 22px;
+  background: var(--glass-border);
+  flex-shrink: 0;
+}
+
+/* ── Botones de acción (override sutil de IconButton) ──────── */
+.nav__btn.icon-btn--sm {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  color: var(--color-gray-600);
+}
+
+.nav__btn.icon-btn--ghost:hover {
+  background: rgba(var(--color-purple-500-rgb), 0.1);
+  color: var(--color-purple-700);
+}
+
+.nav__btn.icon-btn--primary {
+  color: var(--color-white);
+}
+
+/* Contador de selección dentro del slot leading */
+.nav__count {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 4px var(--space-2);
+  border-radius: 6px;
+  background: rgba(var(--color-purple-500-rgb), 0.08);
+  color: var(--color-purple-700);
+  font-family: var(--font-family);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.nav__count--muted {
+  background: transparent;
+  color: var(--color-gray-500);
+}
+
+/* ── Dark mode ─────────────────────────────────────────────── */
+[data-theme="oscuro"] .nav {
+  border-color: rgba(var(--color-white-rgb), 0.07);
+}
+
+[data-theme="oscuro"] .nav__divider {
+  background: rgba(var(--color-white-rgb), 0.08);
+}
+
+[data-theme="oscuro"] .nav__leading,
+[data-theme="oscuro"] .nav__trailing {
+  color: var(--color-gray-500);
+}
+
+[data-theme="oscuro"] .nav__btn.icon-btn--sm {
+  color: var(--color-gray-500);
+}
+
+[data-theme="oscuro"] .nav__btn.icon-btn--ghost:hover {
+  background: rgba(var(--color-purple-400-rgb), 0.14);
+  color: var(--color-purple-300);
+}
+
+[data-theme="oscuro"] .nav__count {
+  background: rgba(var(--color-purple-400-rgb), 0.16);
+  color: var(--color-purple-300);
+}
+
+[data-theme="oscuro"] .nav__count--muted {
+  background: transparent;
+  color: var(--color-gray-500);
+}
+
+/* ── Responsive: en móvil reduce padding y oculta mask para
+   evitar que recorte el primer/último botón con el dedo ────── */
+@media (max-width: 639px) {
+  .nav {
+    gap: var(--space-2);
+    padding: var(--space-2);
+    min-height: 40px;
+  }
+  .nav__scroll {
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+  .nav__groups { gap: var(--space-2); }
+}

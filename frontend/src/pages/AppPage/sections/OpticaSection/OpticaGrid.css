@@ -138,8 +138,7 @@
 .inv-optica-demo__grid .ag-list,
 .inv-optica-demo__grid .ag-select-list,
 .inv-optica-demo__grid .ag-rich-select-list,
-.inv-optica-demo__grid .ag-virtual-list-container,
-.inv-optica-demo__grid .ag-tooltip {
+.inv-optica-demo__grid .ag-virtual-list-container {
   background: rgba(var(--color-white-rgb), 0.97) !important;
   border: 1px solid rgba(var(--color-purple-400-rgb), 0.22) !important;
   border-radius: 8px !important;
@@ -287,8 +286,7 @@
 [data-theme="oscuro"] .inv-optica-demo__grid .ag-list,
 [data-theme="oscuro"] .inv-optica-demo__grid .ag-select-list,
 [data-theme="oscuro"] .inv-optica-demo__grid .ag-rich-select-list,
-[data-theme="oscuro"] .inv-optica-demo__grid .ag-virtual-list-container,
-[data-theme="oscuro"] .inv-optica-demo__grid .ag-tooltip {
+[data-theme="oscuro"] .inv-optica-demo__grid .ag-virtual-list-container {
   background: rgba(var(--color-charcoal-900-rgb), 0.97) !important;
   border-color: rgba(var(--color-white-rgb), 0.12) !important;
   box-shadow:

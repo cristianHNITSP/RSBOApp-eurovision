@@ -50,6 +50,12 @@ export const IconCommand = (p) => <svg {...props} {...p}><path d="M18 3a3 3 0 0 
 export const IconCornerDownLeft = (p) => <svg {...props} {...p}><polyline points="9 10 4 15 9 20"/><path d="M20 4v7a4 4 0 0 1-4 4H4"/></svg>;
 export const IconArrowUp = (p) => <svg {...props} {...p}><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>;
 export const IconArrowDown = (p) => <svg {...props} {...p}><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>;
+export const IconDownload = (p) => <svg {...props} {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>;
+export const IconFilter = (p) => <svg {...props} {...p}><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>;
+export const IconColumns = (p) => <svg {...props} {...p}><path d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7m0-18H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7m0-18v18"/></svg>;
+export const IconMore = (p) => <svg {...props} {...p}><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>;
+export const IconCut = (p) => <svg {...props} {...p}><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>;
+export const IconPaste = (p) => <svg {...props} {...p}><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><line x1="12" y1="11" x2="12" y2="17"/><polyline points="9 14 12 17 15 14"/></svg>;
 
 /* Icon map for data-driven usage */
 export const iconMap = {
@@ -98,6 +104,14 @@ export const iconMap = {
   arrowDown: IconArrowDown,
   clock: IconClock,
   chevronRight: IconChevronRight,
+  download: IconDownload,
+  filter: IconFilter,
+  columns: IconColumns,
+  more: IconMore,
+  copy: IconCopy,
+  cut: IconCut,
+  paste: IconPaste,
+  check: IconCheck,
 };
 
 export const getIcon = (name, props = {}) => {

@@ -39,7 +39,11 @@
   scroll-snap-type: x mandatory;
   scroll-behavior: smooth;
   scrollbar-width: none;
-  padding-bottom: 2px;
+  /* Proveemos espacio (padding/margin negativo) para que animaciones en Y no se corten por el overflow */
+  padding-top: 8px;
+  padding-bottom: 8px;
+  margin-top: -8px;
+  margin-bottom: -6px;
 }
 
 .tab-nav::-webkit-scrollbar {

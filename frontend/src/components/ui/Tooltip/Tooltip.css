@@ -40,3 +40,29 @@
 [data-reduce-motion="true"] .tooltip {
   transition: none;
 }
+
+/* ── Portal variant — escapa de overflow/transform de ancestors ──
+   Posicionado vía position: fixed con left/top inline desde getBoundingClientRect.
+   Siempre visible al montar (la visibilidad se controla por React, no por CSS hover). */
+.tooltip--portal {
+  opacity: 1;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.tooltip--portal.tooltip--top {
+  bottom: auto;
+  transform: translate(-50%, calc(-100% - 8px));
+}
+
+.tooltip--portal.tooltip--bottom {
+  top: auto;
+  transform: translate(-50%, 8px);
+}
+
+/* Dark mode: background sólido + gray-900 = #e6e8ec en dark token */
+[data-theme="oscuro"] .tooltip {
+  background: rgba(var(--color-charcoal-900-rgb), 0.97);
+  border-color: rgba(var(--color-white-rgb), 0.08);
+  color: var(--color-gray-900);
+}

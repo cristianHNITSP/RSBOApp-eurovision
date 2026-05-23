@@ -6,7 +6,7 @@ import NotificationItemSkeleton from '../NotificationItem/NotificationItemSkelet
 import { IconBell, IconClose, IconCheck, IconChevronRight } from '../../icons/Icons.jsx';
 import './NotificationPanel.css';
 
-const SPRING = { type: "spring", stiffness: 250, damping: 20, mass: 1 };
+import { SPRING } from './data.js';
 
 const NotificationPanel = ({
   isOpen,

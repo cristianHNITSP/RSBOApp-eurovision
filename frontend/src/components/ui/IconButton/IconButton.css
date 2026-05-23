@@ -38,3 +38,13 @@
   color: var(--color-white);
 }
 .icon-btn--primary:hover { background: var(--color-purple-600); }
+
+/* Disabled — neutraliza hover/active + reduce opacidad */
+.icon-btn:disabled,
+.icon-btn--disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+  pointer-events: none;
+}
+.icon-btn:disabled:hover,
+.icon-btn--disabled:hover { transform: none; background: transparent; }

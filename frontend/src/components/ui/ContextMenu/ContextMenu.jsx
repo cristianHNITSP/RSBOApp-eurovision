@@ -1,5 +1,5 @@
 import { createPortal } from 'react-dom';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import useMotionTransition from '../../../composables/useMotionTransition.js';
 import useBreakpoint from '../../../composables/useBreakpoint.js';
@@ -90,7 +90,7 @@ const ContextMenu = ({
     });
   }, [placement, width, resolvedMaxHeight]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!isOpen || isMobile) return;
     updateDropdownPos();
     window.addEventListener('scroll', updateDropdownPos, true);

@@ -56,6 +56,8 @@ export const IconColumns = (p) => <svg {...props} {...p}><path d="M12 3h7a2 2 0 
 export const IconMore = (p) => <svg {...props} {...p}><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>;
 export const IconCut = (p) => <svg {...props} {...p}><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>;
 export const IconPaste = (p) => <svg {...props} {...p}><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><line x1="12" y1="11" x2="12" y2="17"/><polyline points="9 14 12 17 15 14"/></svg>;
+export const IconUndo = (p) => <svg {...props} {...p}><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>;
+export const IconRedo = (p) => <svg {...props} {...p}><polyline points="15 14 20 9 15 4"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/></svg>;
 
 /* Icon map for data-driven usage */
 export const iconMap = {
@@ -111,6 +113,8 @@ export const iconMap = {
   copy: IconCopy,
   cut: IconCut,
   paste: IconPaste,
+  undo: IconUndo,
+  redo: IconRedo,
   check: IconCheck,
 };
 

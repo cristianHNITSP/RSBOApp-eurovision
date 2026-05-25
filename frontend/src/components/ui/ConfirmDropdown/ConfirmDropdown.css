@@ -1,3 +1,21 @@
+.confirm-dropdown {
+  display: inline-flex;
+  position: relative;
+}
+
+.confirm-dropdown__popover {
+  min-width: 220px;
+  background: rgba(var(--color-white-rgb), 0.96);
+  border: 1px solid rgba(var(--color-white-rgb), 0.6);
+  border-radius: var(--radius-subtle);
+  box-shadow: var(--shadow-2xl);
+}
+
+[data-theme="oscuro"] .confirm-dropdown__popover {
+  background: rgba(var(--color-charcoal-900-rgb), 0.95);
+  border-color: rgba(var(--color-white-rgb), 0.08);
+}
+
 .confirm-dropdown__content {
   padding: var(--space-2) var(--space-4);
   min-width: 220px;
@@ -17,4 +35,33 @@
   display: flex;
   justify-content: center;
   gap: var(--space-3);
+}
+
+/* ── Mobile: bottom-sheet + backdrop ─────────────────────────── */
+.confirm-dropdown__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 299;
+}
+
+.confirm-dropdown__popover--mobile {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  min-width: 0;
+  border-radius: 16px 16px 0 0;
+  z-index: 300;
+}
+
+.confirm-dropdown__popover--mobile .confirm-dropdown__content {
+  min-width: 0;
+  padding: var(--space-5) var(--space-5) calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+}
+
+.confirm-dropdown__popover--mobile .confirm-dropdown__message {
+  font-size: var(--font-size-md);
+  margin-bottom: var(--space-4);
 }

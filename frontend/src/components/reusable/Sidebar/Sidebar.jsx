@@ -253,7 +253,7 @@ const Sidebar = ({ collapsed, onToggle, activeSection, onSectionChange, userInfo
                         )}
                         {item.hasSubmenu && (
                           <span className={`sidebar__item-chevron ${isOpen ? 'sidebar__item-chevron--open' : ''}`}>
-                            <IconChevronDown width={12} height={12} />
+                            <IconChevronRight width={12} height={12} />
                           </span>
                         )}
                       </div>

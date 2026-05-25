@@ -224,6 +224,8 @@ export const getToolbarGroups = ({
   isCreating,
   gridApi,
   selectionCount,
+  canUndo = false,
+  canRedo = false,
   actions
 }) => {
   const ready = !!gridApi;
@@ -244,6 +246,14 @@ export const getToolbarGroups = ({
   }
 
   return [
+    {
+      id: 'history',
+      label: 'Historial',
+      actions: [
+        { id: 'undo', icon: 'undo', label: 'Deshacer', tooltip: 'Deshacer (Ctrl+Z)',       onClick: actions.handleUndo, disabled: !canUndo },
+        { id: 'redo', icon: 'redo', label: 'Rehacer',  tooltip: 'Rehacer (Ctrl+Y)',        onClick: actions.handleRedo, disabled: !canRedo },
+      ],
+    },
     {
       id: 'clipboard',
       label: 'Portapapeles',

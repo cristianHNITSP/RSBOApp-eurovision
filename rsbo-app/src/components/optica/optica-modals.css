@@ -4,8 +4,8 @@
   border-radius: var(--radius-lg) !important;
   border: 1px solid var(--border) !important;
   background: var(--surface) !important;
-  -webkit-backdrop-filter: blur(20px) !important;
-  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
   box-shadow: var(--shadow-xl, 0 24px 48px rgba(0,0,0,0.22)) !important;
   overflow: hidden;
   max-width: 520px;

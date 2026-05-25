@@ -39,8 +39,8 @@
 
   /* Liquid glass properties */
   background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
 
@@ -182,7 +182,7 @@
   position: absolute;
   inset: 0;
   background: var(--surface-overlay);
-  backdrop-filter: blur(8px);
+  backdrop-filter: none;
   display: flex;
   flex-direction: column;
   align-items: center;

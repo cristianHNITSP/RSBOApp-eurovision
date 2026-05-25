@@ -28,8 +28,8 @@
 
 .tabs-wrapper--glass {
   background: var(--surface-overlay);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .tabs-wrapper::before,
@@ -87,8 +87,8 @@
 
 .tab-item--glass {
   background: var(--surface-overlay);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   color: var(--text-primary);
 }
 

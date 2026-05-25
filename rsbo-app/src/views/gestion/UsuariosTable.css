@@ -89,7 +89,7 @@
   :deep(.b-table .table-wrapper.has-mobile-cards tr) {
     display: block !important;
     background: var(--surface-overlay) !important;
-    backdrop-filter: blur(8px) !important;
+    backdrop-filter: none !important;
     border: 1px solid var(--border-strong) !important;
     border-radius: var(--radius-lg) !important;
     margin-bottom: 1.5rem !important;

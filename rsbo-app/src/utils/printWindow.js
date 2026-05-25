@@ -35,7 +35,7 @@ export function openPrintWindow({ title, bodyHtml }) {
     .print-toolbar {
       display: flex; align-items: center; gap: 12px;
       background: rgba(255, 255, 255, 0.70);
-      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      backdrop-filter: none; -webkit-backdrop-filter: none;
       border: 1px solid rgba(144, 111, 225, 0.18);
       border-radius: 12px; padding: 12px 18px; margin-bottom: 24px;
       box-shadow: 0 4px 16px rgba(88, 28, 135, 0.08);
@@ -53,7 +53,7 @@ export function openPrintWindow({ title, bodyHtml }) {
     .print-header {
       display: flex; justify-content: space-between; align-items: flex-start;
       background: rgba(255, 255, 255, 0.65);
-      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+      backdrop-filter: none; -webkit-backdrop-filter: none;
       border: 1px solid rgba(144, 111, 225, 0.14);
       border-radius: 14px; padding: 20px 24px; margin-bottom: 22px;
       box-shadow: 0 8px 30px rgba(88, 28, 135, 0.06);
@@ -75,7 +75,7 @@ export function openPrintWindow({ title, bodyHtml }) {
 
     .box {
       background: rgba(255, 255, 255, 0.60);
-      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: none; -webkit-backdrop-filter: none;
       border: 1px solid rgba(144, 111, 225, 0.12);
       border-radius: 12px; padding: 14px 16px; margin: 12px 0;
       box-shadow: 0 4px 20px rgba(88, 28, 135, 0.05);
@@ -84,7 +84,7 @@ export function openPrintWindow({ title, bodyHtml }) {
     .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin: 14px 0; }
     .info-card {
       background: rgba(255, 255, 255, 0.72);
-      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+      backdrop-filter: none; -webkit-backdrop-filter: none;
       border: 1px solid rgba(144, 111, 225, 0.12);
       border-radius: 10px; padding: 12px 16px;
       box-shadow: 0 2px 10px rgba(88, 28, 135, 0.04);
@@ -121,7 +121,7 @@ export function openPrintWindow({ title, bodyHtml }) {
     .note-box {
       border-left: 4px solid #f59e0b;
       background: rgba(255, 251, 235, 0.80);
-      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      backdrop-filter: none; -webkit-backdrop-filter: none;
       border-radius: 0 8px 8px 0; padding: 10px 14px; margin: 10px 0; font-size: 12px;
     }
 

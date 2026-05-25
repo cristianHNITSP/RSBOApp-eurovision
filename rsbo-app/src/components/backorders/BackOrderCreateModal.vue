@@ -272,7 +272,7 @@ async function handleSubmit() {
 
 .bo-modal-head {
   background: var(--surface-overlay);
-  backdrop-filter: blur(20px);
+  backdrop-filter: none;
   padding: 1.25rem;
   display: flex;
   align-items: center;

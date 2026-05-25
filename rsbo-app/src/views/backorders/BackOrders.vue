@@ -45,7 +45,7 @@ defineProps({
   padding: 3rem;
   text-align: center;
   box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-  backdrop-filter: blur(10px);
+  backdrop-filter: none;
 }
 
 .maintenance-icon {

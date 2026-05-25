@@ -229,8 +229,8 @@ onMounted(() => {
 .trash-popover {
   width: 340px;
   background: var(--surface-overlay);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   border: 1px solid var(--border-strong);
   border-radius: 16px;
   box-shadow: var(--shadow-xl);

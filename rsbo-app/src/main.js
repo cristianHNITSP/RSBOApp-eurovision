@@ -39,8 +39,6 @@ document.head.appendChild(style);
 
 const app = createApp(App);
 
-
-
 app.use(Buefy, {
   defaultIconPack: "fas",
 });

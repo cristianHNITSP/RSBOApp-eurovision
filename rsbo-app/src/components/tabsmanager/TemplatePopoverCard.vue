@@ -248,8 +248,8 @@ const formatDate = (dateStr) => {
 .template-popover {
   width: 320px;
   background: var(--surface-overlay);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   border: 1px solid var(--border-strong);
   border-radius: 16px;
   box-shadow: var(--shadow-xl);

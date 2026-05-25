@@ -157,7 +157,7 @@ const vClickOutside = {
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
-  backdrop-filter: blur(5px);
+  backdrop-filter: none;
 }
 
 .trash-menu-trigger:hover {

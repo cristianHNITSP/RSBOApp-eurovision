@@ -187,8 +187,8 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   background: var(--tm-sidebar-bg);
-  backdrop-filter: var(--tm-glass-blur);
-  -webkit-backdrop-filter: var(--tm-glass-blur);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   border-right: 1px solid var(--border);
   border-radius: 18px 0 0 18px;
   box-shadow: var(--tm-elev-1);

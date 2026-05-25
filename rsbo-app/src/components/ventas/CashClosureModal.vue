@@ -156,7 +156,7 @@ function formatDate(d) {
 <style scoped>
 .premium-glass-card {
   background: rgba(255, 255, 255, 0.9) !important;
-  backdrop-filter: blur(20px) saturate(160%) !important;
+  backdrop-filter: none !important;
   border: 1px solid rgba(255, 255, 255, 0.5) !important;
   border-radius: 28px !important;
   box-shadow: 0 30px 60px rgba(0, 0, 0, 0.15) !important;

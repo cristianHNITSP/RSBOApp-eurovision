@@ -6,8 +6,8 @@
   
   /* Fondo Glass-in-Glass */
   background: rgba(255, 255, 255, 0.45);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   
   border: 1px solid rgba(255, 255, 255, 0.4);
   overflow: hidden;
@@ -230,7 +230,7 @@
 /* ── Panel de Detalle (Efecto Bóveda / Vault) ──────────────────────────────── */
 .detail-panel {
   background: var(--bg-muted);
-  backdrop-filter: blur(5px);
+  backdrop-filter: none;
   border: 1px solid var(--border-subtle);
   border-radius: 14px;
   padding: 0.65rem 0.75rem;

@@ -91,8 +91,8 @@ export default {
   border: 1px solid var(--border);
 
   background: var(--surface);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 
   box-shadow: var(--shadow-lg);
   padding: 1.05rem 1.05rem;

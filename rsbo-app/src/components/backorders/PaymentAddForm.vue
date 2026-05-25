@@ -143,7 +143,7 @@ async function handleSubmit() {
 <style scoped>
 .payment-glass-form {
   background: var(--surface-overlay);
-  backdrop-filter: blur(8px);
+  backdrop-filter: none;
   padding: 1.5rem;
   border-radius: var(--radius-lg, 16px);
   border: 1px solid var(--border);

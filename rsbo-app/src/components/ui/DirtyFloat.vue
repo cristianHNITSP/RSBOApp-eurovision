@@ -144,8 +144,8 @@ const isMobile =
   border-radius: 0.9rem;
   border: 1px solid rgba(245, 158, 11, 0.35);
   background: linear-gradient(90deg, rgba(245, 158, 11, 0.16), rgba(124, 58, 237, 0.10));
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   box-shadow: var(--shadow-md);
 }
 

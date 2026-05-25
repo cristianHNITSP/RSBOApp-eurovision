@@ -319,8 +319,8 @@ onBeforeUnmount(() => {
 
 .login-card {
   background: var(--surface-raised);
-  backdrop-filter: blur(var(--fx-blur));
-  -webkit-backdrop-filter: blur(var(--fx-blur));
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   border-radius: var(--radius-xl);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-lg);

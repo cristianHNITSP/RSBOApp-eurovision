@@ -23,8 +23,8 @@
   box-shadow: 0 6px 18px rgba(15, 23, 42, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.06);
   border-color: var(--c-primary);
   background: var(--c-primary-alpha);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .quick-action-btn--surtir {
@@ -175,8 +175,8 @@
   border-radius: var(--radius-md);
   background: var(--surface-overlay);
   border: 1px solid var(--border-light);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   padding: 0.6rem 0.75rem;
 }
 
@@ -189,8 +189,8 @@
   text-align: center;
   font-weight: 600;
   font-size: 0.85rem;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .events-loading {
@@ -205,8 +205,8 @@
   border-radius: var(--radius-md);
   background: var(--surface-overlay);
   border: 1px dashed var(--border-light);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .events-loading__text {

@@ -46,8 +46,8 @@
   border-bottom: 1px solid var(--border);
 
   background: var(--surface);
-  backdrop-filter: blur(var(--fx-blur));
-  -webkit-backdrop-filter: blur(var(--fx-blur));
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   box-shadow: var(--shadow-sm);
 }
 
@@ -80,8 +80,8 @@
   position: fixed;
   inset: 0;
   background: var(--surface-overlay);
-  backdrop-filter: blur(var(--fx-blur));
-  -webkit-backdrop-filter: blur(var(--fx-blur));
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   z-index: 9;
   pointer-events: auto;
 }
@@ -103,8 +103,8 @@
 @media (max-width: 768px) {
   .notif-overlay {
     background: color-mix(in srgb, var(--surface-overlay, rgba(0, 0, 0, 0.3)) 60%, transparent);
-    backdrop-filter: blur(2px);
-    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 }
 
@@ -132,7 +132,7 @@
 .fade-glass-enter-from,
 .fade-glass-leave-to {
   opacity: 0;
-  backdrop-filter: blur(0px) saturate(100%);
+  backdrop-filter: none;
 }
 
 /* Mobile behavior fixes */
@@ -146,8 +146,8 @@
 /* iOS 26 Liquid Glass Overlay */
 .sidebar-mobile-overlay {
   background: rgba(0, 0, 0, 0.2) !important;
-  backdrop-filter: blur(40px) saturate(210%) contrast(1.1) brightness(0.9) !important;
-  -webkit-backdrop-filter: blur(40px) saturate(210%) contrast(1.1) brightness(0.9) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 
   background-image:
     radial-gradient(at 0% 0%, rgba(255, 255, 255, 0.08) 0, transparent 50%),

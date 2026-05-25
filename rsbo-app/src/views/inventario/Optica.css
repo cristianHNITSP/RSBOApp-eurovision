@@ -36,8 +36,8 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background: var(--surface);
-  -webkit-backdrop-filter: blur(var(--fx-blur, 12px));
-  backdrop-filter: blur(var(--fx-blur, 12px));
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
   box-shadow: var(--shadow-md);
   overflow: hidden;
   padding: 1rem;

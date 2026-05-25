@@ -126,7 +126,7 @@ const labelFor = (type) => ({
 .lab-notif {
   pointer-events: auto;
   border-radius: 0.9rem;
-  backdrop-filter: blur(10px);
+  backdrop-filter: none;
   box-shadow: var(--shadow-md);
   overflow: hidden;
 }

@@ -111,7 +111,7 @@ const orderTotalCount = lab.orderTotalCount;
 .order-skeleton-card { border: 1px solid var(--border); border-radius: 16px; padding: 0.85rem; background: var(--surface-overlay); }
 .order-cards-grid { display: grid; gap: 0.6rem; }
 .oci { position: relative; text-align: left; width: 100%; border: 1.5px solid var(--border); border-radius: 16px; padding: 0.85rem; background: var(--surface); cursor: pointer; transition: all 220ms ease; overflow: hidden; }
-.oci:hover { border-color: var(--c-primary); background: linear-gradient(135deg, var(--surface-raised), var(--c-primary-alpha)); backdrop-filter: blur(14px); }
+.oci:hover { border-color: var(--c-primary); background: linear-gradient(135deg, var(--surface-raised), var(--c-primary-alpha)); backdrop-filter: none; }
 .oci--active { border-color: rgba(144, 111, 225, 0.6); background: linear-gradient(135deg, rgba(144, 111, 225, 0.07), rgba(236, 72, 153, 0.04)); box-shadow: 0 0 0 3px rgba(144, 111, 225, 0.12); }
 .oci__row { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
 .oci__row--top { margin-bottom: 0.45rem; }

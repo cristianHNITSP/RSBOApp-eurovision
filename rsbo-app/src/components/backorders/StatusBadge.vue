@@ -42,7 +42,7 @@ const statusClass = computed(() => statusInfo.value.class);
   letter-spacing: 0.04em;
   border: 1px solid rgba(148, 163, 184, 0.2);
   background: var(--surface-overlay);
-  backdrop-filter: blur(4px);
+  backdrop-filter: none;
   white-space: nowrap;
 }
 

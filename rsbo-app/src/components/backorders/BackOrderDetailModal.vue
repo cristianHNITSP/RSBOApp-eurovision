@@ -303,7 +303,7 @@ watch(() => props.isOpen, (newVal) => {
 
 .bo-modal-head {
   background: var(--surface-overlay);
-  backdrop-filter: blur(20px);
+  backdrop-filter: none;
   border-bottom: 1px solid var(--border);
   padding: 1.25rem;
   display: flex;

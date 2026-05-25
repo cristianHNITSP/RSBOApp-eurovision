@@ -4,7 +4,7 @@ import { MotionPlugin } from "@vueuse/motion";
 
 import "bulma/css/bulma.css";
 import Buefy from "buefy";
-import "buefy/dist/buefy.css";
+import "buefy/dist/css/buefy.css";
 import "@fortawesome/fontawesome-free/css/all.css";
 
 

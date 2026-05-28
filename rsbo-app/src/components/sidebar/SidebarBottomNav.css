@@ -1,0 +1,83 @@
+/* ═══════════════════════════════════════════════════════════
+   BOTTOM NAV — barra de navegación inferior para móvil
+   Solo tokens de tokens.css — sin valores hardcodeados.
+   Visibilidad por breakpoint: clase Bulma is-hidden-desktop.
+   ═══════════════════════════════════════════════════════════ */
+
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  display: flex;
+  align-items: stretch;
+  background: var(--surface-raised);
+  border-top: var(--fx-glass-border);
+  box-shadow: var(--shadow-soft);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ── Ítem ──────────────────────────────────────────────── */
+.bottom-nav__item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-xs);
+  min-height: 56px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+  transition:
+    color var(--transition-fast),
+    background var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+}
+
+.bottom-nav__item:active {
+  background: var(--c-primary-alpha);
+}
+
+.bottom-nav__item.is-active {
+  color: var(--c-primary);
+}
+
+/* ── Icono ─────────────────────────────────────────────── */
+.bottom-nav__item-icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+}
+
+.bottom-nav__dot-badge {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  background: var(--c-warning);
+  color: var(--text-on-primary);
+  border-radius: var(--radius-pill);
+  font-size: 0.58rem;
+  font-weight: 900;
+  min-width: 15px;
+  height: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+  line-height: 1;
+}
+
+/* ── Label ─────────────────────────────────────────────── */
+.bottom-nav__item-label {
+  white-space: nowrap;
+}

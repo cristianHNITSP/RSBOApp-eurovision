@@ -1,0 +1,120 @@
+/* ═══════════════════════════════════════════════════════════
+   SUBMENU STRIP — tira flotante de subnavegación
+   Usado por Sidebar (variant="sidebar") y BottomNav (variant="bottom-nav")
+   Solo tokens de tokens.css — sin valores hardcodeados.
+   ═══════════════════════════════════════════════════════════ */
+
+.submenu-strip__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  background: transparent;
+}
+
+.submenu-strip {
+  background: var(--surface-raised);
+  border: var(--fx-glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-xs);
+  z-index: 60;
+  max-width: calc(100vw - 16px);
+  box-sizing: border-box;
+  outline: none;
+}
+
+/* Flecha apuntando al ítem padre */
+.submenu-strip::before {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: var(--surface-raised);
+  border-top: var(--fx-glass-border);
+  border-left: var(--fx-glass-border);
+  z-index: -1;
+}
+
+.submenu-strip--sidebar::before {
+  left: -6px;
+  top: 16px;
+  transform: rotate(-45deg);
+}
+
+.submenu-strip--bottom-nav::before {
+  bottom: -6px;
+  left: 50%;
+  margin-left: -5px;
+  transform: rotate(-135deg);
+}
+
+/* ── Items ─────────────────────────────────────────────── */
+.submenu-strip__items {
+  display: flex;
+  gap: var(--space-xs);
+}
+
+.submenu-strip__items--row    { flex-direction: row;    align-items: stretch; }
+.submenu-strip__items--column { flex-direction: column; align-items: stretch; min-width: 200px; }
+
+/* ── Item ──────────────────────────────────────────────── */
+.submenu-strip__item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.submenu-strip__item:hover {
+  background: var(--c-primary-alpha);
+  color: var(--c-primary);
+  border-color: var(--c-primary-alpha);
+}
+
+.submenu-strip__item.is-active {
+  background: var(--c-primary-alpha);
+  color: var(--c-primary);
+  border-color: var(--c-primary-alpha);
+}
+
+.submenu-strip__item.is-active:hover {
+  background: var(--c-primary-alpha);
+  color: var(--c-primary-dark);
+}
+
+.submenu-strip__item-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--c-primary);
+  flex-shrink: 0;
+}
+
+.submenu-strip__item-badge {
+  margin-left: auto;
+}
+
+/* ── Transición sidebar (desliza desde la izquierda) ───── */
+.strip-slide-enter-active { transition: opacity var(--transition-base), transform var(--transition-base); }
+.strip-slide-leave-active { transition: opacity var(--transition-fast), transform var(--transition-fast); }
+.strip-slide-enter-from   { opacity: 0; transform: scaleX(0.7) translateX(-8px); transform-origin: left center; }
+.strip-slide-leave-to     { opacity: 0; transform: scaleX(0.7) translateX(-8px); transform-origin: left center; }
+
+/* ── Transición bottom-nav (sube desde abajo) ───────────── */
+.strip-up-enter-active { transition: opacity var(--transition-base), transform var(--transition-base); }
+.strip-up-leave-active { transition: opacity var(--transition-fast), transform var(--transition-fast); }
+.strip-up-enter-from   { opacity: 0; transform: scaleY(0.8) translateY(12px); transform-origin: bottom center; }
+.strip-up-leave-to     { opacity: 0; transform: scaleY(0.8) translateY(12px); transform-origin: bottom center; }

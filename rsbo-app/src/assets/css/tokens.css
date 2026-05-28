@@ -80,6 +80,7 @@
   --fx-liquid-grad: linear-gradient(135deg, var(--c-primary-alpha), rgba(236, 72, 153, 0.08), var(--c-info-alpha));
   --fx-glass-border: 1px solid rgba(255, 255, 255, 0.4);
   --fx-glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.12);
+  --fx-shine: var(--ag-skel-shine);
 
   /* === Gradiente de fondo de la app === */
   --grad-header-bg:
@@ -95,6 +96,9 @@
   --radius-lg: 14px;
   --radius-xl: 18px;
   --radius-pill: 999px;
+
+  /* === Layout === */
+  --layout-header-h: 80px;
 
   /* === Espaciado base === */
   --space-xs: 0.25rem;
@@ -157,6 +161,32 @@
   --ag-stock-zero-bg: rgba(239, 68, 68, 0.13);
   --ag-stock-zero-edge: rgba(239, 68, 68, 0.60);
   --ag-stock-zero-fg: #991b1b;
+
+  /* === Bulma 1.x color bridge ===
+     Bulma 1.x genera TODOS sus colores desde vars HSL.
+     Sin esto, usa su default teal (171°) en todos los componentes. */
+  --bulma-primary-h: 258;
+  --bulma-primary-s: 65%;
+  --bulma-primary-l: 66%;
+  --bulma-primary-invert-l: 100%;
+  --bulma-primary-on-scheme-l: 45%;
+  --bulma-link-h: 258;
+  --bulma-link-s: 65%;
+  --bulma-link-l: 66%;
+  --bulma-link-invert-l: 100%;
+  --bulma-link-on-scheme-l: 45%;
+  --bulma-success-h: 142;
+  --bulma-success-s: 71%;
+  --bulma-success-l: 45%;
+  --bulma-warning-h: 38;
+  --bulma-warning-s: 92%;
+  --bulma-warning-l: 50%;
+  --bulma-danger-h: 0;
+  --bulma-danger-s: 84%;
+  --bulma-danger-l: 60%;
+  --bulma-info-h: 217;
+  --bulma-info-s: 91%;
+  --bulma-info-l: 60%;
 }
 
 /* ----------------------------------------------------------
@@ -278,6 +308,22 @@
   --ag-stock-zero-bg: rgba(239, 68, 68, 0.14);
   --ag-stock-zero-edge: rgba(239, 68, 68, 0.50);
   --ag-stock-zero-fg: #fca5a5;
+
+  /* === Bulma 1.x color bridge — dark mode === */
+  --bulma-primary-h: 258;
+  --bulma-primary-s: 78%;
+  --bulma-primary-l: 74%;
+  --bulma-primary-invert-l: 100%;
+  --bulma-primary-on-scheme-l: 80%;
+  --bulma-link-h: 258;
+  --bulma-link-s: 78%;
+  --bulma-link-l: 74%;
+  --bulma-link-invert-l: 100%;
+  --bulma-link-on-scheme-l: 80%;
+  --bulma-success-l: 54%;
+  --bulma-warning-l: 55%;
+  --bulma-danger-l: 68%;
+  --bulma-info-l: 65%;
 }
 
 /* ----------------------------------------------------------

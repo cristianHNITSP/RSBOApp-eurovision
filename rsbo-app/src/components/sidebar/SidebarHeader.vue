@@ -19,8 +19,8 @@ defineEmits(['toggle']);
       </div>
     </router-link>
 
-    <!-- Logo compacto -->
-    <router-link to="/" v-else class="sidebar-brand sidebar-brand--compact">
+    <!-- Logo compacto: solo visible cuando el toggle está oculto (≤1020px) -->
+    <router-link to="/" v-if="isCollapsed" class="sidebar-brand sidebar-brand--compact sidebar-brand--collapsed-logo">
       <figure class="sidebar-logo sidebar-logo--compact">
         <img src="/eurovision.svg" alt="Laboratorio Eurovisión" />
       </figure>

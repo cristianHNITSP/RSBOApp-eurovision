@@ -1,6 +1,6 @@
 @keyframes sb-shimmer {
-    0%   { transform: translateX(-100%) skewX(-12deg); }
-    100% { transform: translateX(300%)  skewX(-12deg); }
+    0%   { transform: translateX(-100%) skewX(-12deg); opacity: 1; }
+    100% { transform: translateX(300%)  skewX(-12deg); opacity: 1; }
 }
 
 .sidebar-menu {
@@ -78,11 +78,9 @@
         );
         opacity: 0;
         pointer-events: none;
-        transition: opacity var(--transition-base);
     }
 
     &:hover::after {
-        opacity: 1;
         animation: sb-shimmer 0.9s ease-out;
     }
 

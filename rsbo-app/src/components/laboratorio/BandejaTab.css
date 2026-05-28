@@ -20,7 +20,7 @@
 }
 
 .quick-action-btn:hover {
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  box-shadow: 0 6px 18px var(--static-color-rgba-15-23-42-0-10), inset 0 1px 0 var(--static-color-rgba-255-255-255-0-06);
   border-color: var(--c-primary);
   background: var(--c-primary-alpha);
   backdrop-filter: none;
@@ -28,21 +28,21 @@
 }
 
 .quick-action-btn--surtir {
-  border-color: rgba(34, 197, 94, 0.3);
-  background: linear-gradient(135deg, rgba(34, 197, 94, 0.07), var(--surface-raised));
+  border-color: var(--static-color-rgba-34-197-94-0-3);
+  background: linear-gradient(135deg, var(--static-color-rgba-34-197-94-0-07), var(--surface-raised));
 }
 
 .quick-action-btn--surtir:hover {
-  border-color: rgba(34, 197, 94, 0.55);
+  border-color: var(--static-color-rgba-34-197-94-0-55);
 }
 
 .quick-action-btn--corr {
-  border-color: rgba(245, 158, 11, 0.3);
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.07), var(--surface-raised));
+  border-color: var(--static-color-rgba-245-158-11-0-3);
+  background: linear-gradient(135deg, var(--static-color-rgba-245-158-11-0-07), var(--surface-raised));
 }
 
 .quick-action-btn--corr:hover {
-  border-color: rgba(245, 158, 11, 0.55);
+  border-color: var(--static-color-rgba-245-158-11-0-55);
 }
 
 .quick-action-btn__icon {
@@ -84,8 +84,8 @@
   flex-direction: column;
   gap: 0.4rem;
   padding: 0.55rem 0.7rem;
-  background: rgba(34, 197, 94, 0.05);
-  border: 1px solid rgba(34, 197, 94, 0.15);
+  background: var(--static-color-rgba-34-197-94-0-05);
+  border: 1px solid var(--static-color-rgba-34-197-94-0-15);
   border-radius: 12px;
 }
 
@@ -104,7 +104,7 @@
 .period-btn {
   padding: 0.2rem 0.55rem;
   border-radius: 999px;
-  border: 1px solid rgba(34, 197, 94, 0.3);
+  border: 1px solid var(--static-color-rgba-34-197-94-0-3);
   background: var(--surface);
   font-size: 0.76rem;
   font-weight: 900;
@@ -114,8 +114,8 @@
 }
 
 .period-btn:hover {
-  background: rgba(34, 197, 94, 0.12);
-  border-color: rgba(34, 197, 94, 0.5);
+  background: var(--static-color-rgba-34-197-94-0-12);
+  border-color: var(--static-color-rgba-34-197-94-0-5);
 }
 
 
@@ -132,14 +132,14 @@
 }
 .entry-card:hover {
   border-color: var(--c-primary);
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  box-shadow: 0 4px 14px var(--static-color-rgba-15-23-42-0-08), inset 0 1px 0 var(--static-color-rgba-255-255-255-0-05);
 }
 
 .entry-card--open.log-card--in {
   border-bottom-left-radius: 0;
   border-bottom-right-radius: 0;
   border-bottom-color: transparent;
-  background: rgba(34, 197, 94, 0.09);
+  background: var(--static-color-rgba-34-197-94-0-09);
 }
 
 .entry-card__right {
@@ -164,7 +164,7 @@
   font-size: 0.7rem;
   font-weight: 900;
   background: var(--c-primary-alpha);
-  border: 1px solid rgba(144, 111, 225, 0.2);
+  border: 1px solid var(--static-color-rgba-144-111-225-0-2);
   border-radius: var(--radius-pill);
   padding: 0.05rem 0.35rem;
   color: var(--c-primary);
@@ -220,7 +220,7 @@
 .exits-panel__header {
   font-size: 0.72rem;
   font-weight: 900;
-  color: rgba(239, 68, 68, 0.75);
+  color: var(--static-color-rgba-239-68-68-0-75);
   display: flex;
   align-items: center;
   gap: 0.3rem;
@@ -228,13 +228,13 @@
 }
 
 .exits-count {
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.2);
+  background: var(--static-color-rgba-239-68-68-0-1);
+  border: 1px solid var(--static-color-rgba-239-68-68-0-2);
   border-radius: 999px;
   padding: 0.02rem 0.35rem;
   font-size: 0.68rem;
   font-weight: 900;
-  color: rgba(239, 68, 68, 0.8);
+  color: var(--static-color-rgba-239-68-68-0-8);
 }
 
 .exits-empty {
@@ -252,8 +252,8 @@
 .exit-item {
   border-radius: 8px;
   padding: 0.4rem 0.5rem;
-  background: rgba(239, 68, 68, 0.05);
-  border: 1px solid rgba(239, 68, 68, 0.12);
+  background: var(--static-color-rgba-239-68-68-0-05);
+  border: 1px solid var(--static-color-rgba-239-68-68-0-12);
 }
 
 .exit-item__row {
@@ -292,9 +292,9 @@
 }
 
 .exit-chip--type {
-  background: rgba(239, 68, 68, 0.08);
-  border: 1px solid rgba(239, 68, 68, 0.18);
-  color: rgba(239, 68, 68, 0.85);
+  background: var(--static-color-rgba-239-68-68-0-08);
+  border: 1px solid var(--static-color-rgba-239-68-68-0-18);
+  color: var(--static-color-rgba-239-68-68-0-85);
 }
 
 .exit-chip--code {
@@ -356,6 +356,6 @@
 }
 
 /* Iconos de colores (anteriormente inline) */
-.icon--urgent { color: rgba(251, 191, 36, 0.9); }
-.icon--entry { color: rgba(34, 197, 94, 0.85); }
-.icon--exit { color: rgba(239, 68, 68, 0.75); }
+.icon--urgent { color: var(--static-color-rgba-251-191-36-0-9); }
+.icon--entry { color: var(--static-color-rgba-34-197-94-0-85); }
+.icon--exit { color: var(--static-color-rgba-239-68-68-0-75); }

@@ -6,7 +6,7 @@
   background: var(--surface) !important;
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
-  box-shadow: var(--shadow-xl, 0 24px 48px rgba(0,0,0,0.22)) !important;
+  box-shadow: var(--shadow-xl, 0 24px 48px var(--static-color-rgba-0-0-0-0-22)) !important;
   overflow: hidden;
   max-width: 520px;
   width: 100%;
@@ -14,7 +14,7 @@
 .glass-modal-card--wide { max-width: 660px; }
 
 .glass-modal-head {
-  background: linear-gradient(135deg, rgba(144,111,225,0.14), rgba(236,72,153,0.08)) !important;
+  background: linear-gradient(135deg, var(--static-color-rgba-144-111-225-0-14), var(--static-color-rgba-236-72-153-0-08)) !important;
   border-bottom: 1px solid var(--border-light) !important;
   padding: 1rem 1.5rem !important;
 }

@@ -61,7 +61,7 @@
 }
 
 .tabs-sortable-zone::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.35);
+  background: var(--static-color-rgba-148-163-184-0-35);
   border-radius: 999px;
 }
 
@@ -98,7 +98,7 @@
 }
 
 .tab-item.active {
-  background: linear-gradient(90deg, rgba(121, 87, 213, 0.18), rgba(236, 72, 153, 0.10));
+  background: linear-gradient(90deg, var(--static-color-rgba-121-87-213-0-18), var(--static-color-rgba-236-72-153-0-10));
   color: var(--text-primary);
   box-shadow: var(--shadow-lg);
   border-color: var(--c-primary-alpha);
@@ -112,7 +112,7 @@
   bottom: -1px;
   height: 3px;
   border-radius: 999px;
-  background: linear-gradient(90deg, rgba(121, 87, 213, 1), rgba(236, 72, 153, 0.95));
+  background: linear-gradient(90deg, var(--static-color-rgba-121-87-213-1), var(--static-color-rgba-236-72-153-0-95));
 }
 
 .tab-agregar {
@@ -217,7 +217,7 @@
 }
 .tab-prior-pill:hover {
   background: var(--c-primary);
-  color: #fff;
+  color: var(--static-color-fff);
 }
 
 .tab-loading-pill {
@@ -255,7 +255,7 @@
   width: 120px;
   height: 0.85rem;
   border-radius: 999px;
-  background: linear-gradient(90deg, rgba(226, 232, 240, 0.9) 0%, rgba(248, 250, 252, 0.9) 50%, rgba(226, 232, 240, 0.9) 100%);
+  background: linear-gradient(90deg, var(--static-color-rgba-226-232-240-0-9) 0%, var(--static-color-rgba-248-250-252-0-9) 50%, var(--static-color-rgba-226-232-240-0-9) 100%);
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.2s ease-in-out infinite;
 }
@@ -266,15 +266,15 @@
 }
 
 @keyframes tabFocusPulse {
-  0% { box-shadow: 0 0 0 0 rgba(121, 87, 213, 0.55), var(--shadow-lg); }
-  35% { box-shadow: 0 0 0 6px rgba(121, 87, 213, 0.28), var(--shadow-lg); }
-  70% { box-shadow: 0 0 0 3px rgba(121, 87, 213, 0.15), var(--shadow-lg); }
-  100% { box-shadow: 0 0 0 0 rgba(121, 87, 213, 0), var(--shadow-lg); }
+  0% { box-shadow: 0 0 0 0 var(--static-color-rgba-121-87-213-0-55), var(--shadow-lg); }
+  35% { box-shadow: 0 0 0 6px var(--static-color-rgba-121-87-213-0-28), var(--shadow-lg); }
+  70% { box-shadow: 0 0 0 3px var(--static-color-rgba-121-87-213-0-15), var(--shadow-lg); }
+  100% { box-shadow: 0 0 0 0 var(--static-color-rgba-121-87-213-0), var(--shadow-lg); }
 }
 
 .tab-item.tab-focus-pulse {
   animation: tabFocusPulse 0.9s ease forwards;
-  border-color: rgba(121, 87, 213, 0.55) !important;
+  border-color: var(--static-color-rgba-121-87-213-0-55) !important;
 }
 
 .sortable-ghost {

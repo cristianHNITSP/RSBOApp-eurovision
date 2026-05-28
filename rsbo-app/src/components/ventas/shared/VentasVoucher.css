@@ -40,8 +40,8 @@
   gap: 0.75rem;
   padding: 0.7rem 0.9rem;
   margin-top: 0.25rem;
-  background: rgba(144, 111, 225, 0.07);
-  border: 1px solid rgba(144, 111, 225, 0.2);
+  background: var(--static-color-rgba-144-111-225-0-07);
+  border: 1px solid var(--static-color-rgba-144-111-225-0-2);
   border-radius: 14px;
 }
 .ventas-voucher__lab-icon {
@@ -66,24 +66,24 @@
   font-weight: 900;
 }
 .lab-status-pill--pendiente {
-  background: rgba(245, 158, 11, 0.12);
-  color: rgba(245, 158, 11, 0.95);
-  border: 1px solid rgba(245, 158, 11, 0.25);
+  background: var(--static-color-rgba-245-158-11-0-12);
+  color: var(--static-color-rgba-245-158-11-0-95);
+  border: 1px solid var(--static-color-rgba-245-158-11-0-25);
 }
 .lab-status-pill--parcial {
-  background: rgba(59, 130, 246, 0.12);
-  color: rgba(59, 130, 246, 0.95);
-  border: 1px solid rgba(59, 130, 246, 0.25);
+  background: var(--static-color-rgba-59-130-246-0-12);
+  color: var(--static-color-rgba-59-130-246-0-95);
+  border: 1px solid var(--static-color-rgba-59-130-246-0-25);
 }
 .lab-status-pill--cerrado {
-  background: rgba(34, 197, 94, 0.12);
-  color: rgba(34, 197, 94, 0.95);
-  border: 1px solid rgba(34, 197, 94, 0.3);
+  background: var(--static-color-rgba-34-197-94-0-12);
+  color: var(--static-color-rgba-34-197-94-0-95);
+  border: 1px solid var(--static-color-rgba-34-197-94-0-3);
 }
 .lab-status-pill--cancelado {
-  background: rgba(239, 68, 68, 0.1);
-  color: rgba(239, 68, 68, 0.9);
-  border: 1px solid rgba(239, 68, 68, 0.2);
+  background: var(--static-color-rgba-239-68-68-0-1);
+  color: var(--static-color-rgba-239-68-68-0-9);
+  border: 1px solid var(--static-color-rgba-239-68-68-0-2);
 }
 
 /* ── Nota de Venta ── */
@@ -222,7 +222,7 @@
   .ventas-voucher__actions,
   .ventas-voucher__meta,
   .ventas-voucher__lab-order { display: none !important; }
-  .nv-nota { border-color: #000 !important; }
+  .nv-nota { border-color: var(--static-color-000) !important; }
   .nv-nota__table thead th,
-  .nv-nota__table tbody td { border-color: #000 !important; }
+  .nv-nota__table tbody td { border-color: var(--static-color-000) !important; }
 }

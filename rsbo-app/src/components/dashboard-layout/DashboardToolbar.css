@@ -60,12 +60,12 @@
 /* Botones */
 .toolbar-btn :deep(.button) {
   border-radius: 999px;
-  box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.22);
+  box-shadow: 0 0 0 1px var(--static-color-rgba-148-163-184-0-22);
 }
 
 .toolbar-user :deep(.button) {
   border-radius: 999px;
-  box-shadow: 0 14px 30px rgba(88, 28, 135, 0.18);
+  box-shadow: 0 14px 30px var(--static-color-rgba-88-28-135-0-18);
 }
 
 /* Dropdown user */

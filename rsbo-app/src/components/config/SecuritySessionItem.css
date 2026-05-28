@@ -65,5 +65,5 @@
 }
 
 .current-icon {
-  color: var(--c-success, #257953);
+  color: var(--c-success, var(--static-color-257953));
 }

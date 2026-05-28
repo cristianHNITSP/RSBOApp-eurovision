@@ -20,8 +20,8 @@
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
   background: 
-    radial-gradient(circle at 0% 0%, rgba(144, 111, 225, 0.12), transparent 40%),
-    radial-gradient(circle at 100% 100%, rgba(236, 72, 153, 0.08), transparent 40%);
+    radial-gradient(circle at 0% 0%, var(--static-color-rgba-144-111-225-0-12), transparent 40%),
+    radial-gradient(circle at 100% 100%, var(--static-color-rgba-236-72-153-0-08), transparent 40%);
   pointer-events: none;
   z-index: -1;
 }
@@ -50,7 +50,7 @@
   font-size: 1.6rem;
   font-weight: 1000;
   margin: 0;
-  background: linear-gradient(135deg, #7c3aed, #3b82f6);
+  background: linear-gradient(135deg, var(--static-color-7c3aed), var(--static-color-3b82f6));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   letter-spacing: -0.02em;
@@ -86,7 +86,7 @@
 .ventas-chip--cart {
   background: var(--c-primary-alpha);
   color: var(--c-primary);
-  border-color: rgba(144, 111, 225, 0.2);
+  border-color: var(--static-color-rgba-144-111-225-0-2);
 }
 
 /* ── Meta ── */

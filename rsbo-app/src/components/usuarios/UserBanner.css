@@ -1,14 +1,14 @@
 /* ── Banner principal ── */
 .selected-user-banner {
-  background: linear-gradient(120deg, #7957d5, #9a6dff, #f97316, #ec4899);
+  background: linear-gradient(120deg, var(--static-color-7957d5), var(--static-color-9a6dff), var(--static-color-f97316), var(--static-color-ec4899));
   background-size: 200% 200%;
   border-radius: 12px;
   padding: 1.25rem;
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-  color: #f9fafb;
-  box-shadow: 0 14px 32px rgba(88, 28, 135, 0.45);
+  color: var(--static-color-f9fafb);
+  box-shadow: 0 14px 32px var(--static-color-rgba-88-28-135-0-45);
   position: relative;
   overflow: hidden;
   animation: banner-enter 220ms ease-out, banner-gradient-shift 14s ease-in-out infinite alternate;
@@ -17,7 +17,7 @@
 }
 
 .selected-user-banner--pulse {
-  box-shadow: 0 14px 32px rgba(88, 28, 135, 0.45), 0 0 0 3px rgba(255, 255, 255, 0.22);
+  box-shadow: 0 14px 32px var(--static-color-rgba-88-28-135-0-45), 0 0 0 3px var(--static-color-rgba-255-255-255-0-22);
 }
 
 .selected-user-banner::after {
@@ -25,8 +25,8 @@
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 0 0, rgba(255, 255, 255, 0.28), transparent 60%),
-    radial-gradient(circle at 100% 100%, rgba(15, 23, 42, 0.24), transparent 60%);
+    radial-gradient(circle at 0 0, var(--static-color-rgba-255-255-255-0-28), transparent 60%),
+    radial-gradient(circle at 100% 100%, var(--static-color-rgba-15-23-42-0-24), transparent 60%);
   opacity: 0.55;
   pointer-events: none;
 }
@@ -87,8 +87,8 @@
 .selected-user-banner__bio {
   font-size: 0.75rem;
   opacity: 0.92;
-  color: rgba(255, 255, 255, 0.92);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
+  color: var(--static-color-rgba-255-255-255-0-92);
+  text-shadow: 0 1px 2px var(--static-color-rgba-0-0-0-0-28);
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -98,11 +98,11 @@
 .selected-user-banner__email {
   padding: 0.25rem 0.75rem;
   border-radius: 999px;
-  background: rgba(15, 23, 42, 0.28);
-  color: rgba(255, 255, 255, 0.95);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  background: var(--static-color-rgba-15-23-42-0-28);
+  color: var(--static-color-rgba-255-255-255-0-95);
+  text-shadow: 0 1px 2px var(--static-color-rgba-0-0-0-0-25);
   backdrop-filter: none;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.22);
+  box-shadow: 0 0 0 1px var(--static-color-rgba-255-255-255-0-22);
   display: inline-block;
   max-width: 100%;
   overflow: hidden;
@@ -120,14 +120,14 @@
   font-weight: 600 !important;
   letter-spacing: 0.01em;
   height: 2.5rem !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 8px var(--static-color-rgba-0-0-0-0-15);
 }
 
 /* ── Detalles ── */
 .banner-details {
   margin-top: 0.5rem;
   padding-top: 1rem;
-  border-top: 1px solid rgba(249, 250, 251, 0.18);
+  border-top: 1px solid var(--static-color-rgba-249-250-251-0-18);
 }
 
 .banner-details__grid {
@@ -137,8 +137,8 @@
 }
 
 .banner-details__item {
-  background: rgba(15, 23, 42, 0.18);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: var(--static-color-rgba-15-23-42-0-18);
+  border: 1px solid var(--static-color-rgba-255-255-255-0-18);
   backdrop-filter: none;
   border-radius: 12px;
   padding: 0.65rem 0.75rem;
@@ -162,7 +162,7 @@
   margin: 0.25rem 0 0;
   font-size: 0.88rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.95);
+  color: var(--static-color-rgba-255-255-255-0-95);
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -180,7 +180,7 @@
 
 .banner-details__empty {
   font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--static-color-rgba-255-255-255-0-85);
 }
 
 /* Transición */
@@ -204,8 +204,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: rgba(15, 23, 42, 0.15);
-  color: #f9fafb;
+  background: var(--static-color-rgba-15-23-42-0-15);
+  color: var(--static-color-f9fafb);
   backdrop-filter: none;
   transition: transform 120ms ease, box-shadow 120ms ease;
 }
@@ -217,7 +217,7 @@
 
 .chip--status-active {
   background: var(--c-success);
-  color: #ecfdf5;
+  color: var(--static-color-ecfdf5);
 }
 
 .chip--status-inactive {
@@ -262,7 +262,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 0.65rem 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    border-bottom: 1px solid var(--static-color-rgba-255-255-255-0-12);
   }
   .banner-info-item:last-child { border-bottom: none; }
   .banner-info-label {

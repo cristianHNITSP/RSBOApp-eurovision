@@ -5,11 +5,11 @@
   border-radius: 16px;
   
   /* Fondo Glass-in-Glass */
-  background: rgba(255, 255, 255, 0.45);
+  background: var(--static-color-rgba-255-255-255-0-45);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  border: 1px solid var(--static-color-rgba-255-255-255-0-4);
   overflow: hidden;
   transition: 
     transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.1),
@@ -18,12 +18,12 @@
     border-color 0.3s ease;
   
   position: relative;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 4px 12px var(--static-color-rgba-0-0-0-0-03);
 }
 
 [data-theme='dark'] .notif-card {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--static-color-rgba-255-255-255-0-05);
+  border: 1px solid var(--static-color-rgba-255-255-255-0-08);
 }
 
 /* Reducir efectos: Cartas con fondo plano */
@@ -37,20 +37,20 @@
 .notif-card:hover {
   background: var(--surface-raised);
   border-color: var(--c-primary-alpha);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 8px 24px var(--static-color-rgba-0-0-0-0-12);
   opacity: 1 !important;
   filter: none !important;
   z-index: 5;
 }
 
 [data-theme='dark'] .notif-card:hover {
-  background: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  background: var(--static-color-rgba-255-255-255-0-12);
+  box-shadow: 0 8px 32px var(--static-color-rgba-0-0-0-0-4);
 }
 
 /* Estado No Leído: Brillo suave estilo iOS */
 .notif-card--unread {
-  background: rgba(255, 255, 255, 0.85);
+  background: var(--static-color-rgba-255-255-255-0-85);
   border-color: var(--c-primary);
   box-shadow: 0 8px 20px rgba(var(--c-primary-rgb, 59, 130, 246), 0.12);
 }
@@ -82,7 +82,7 @@
 
 @keyframes liquidFlash {
   0% { transform: scale(1); background: var(--c-success); }
-  100% { transform: scale(1); background: rgba(255, 255, 255, 0.45); }
+  100% { transform: scale(1); background: var(--static-color-rgba-255-255-255-0-45); }
 }
 
 /* Indicador lateral: Línea líquida más fina */
@@ -93,10 +93,10 @@
   flex-shrink: 0;
   transition: all 0.3s ease;
 }
-.notif-type-bar--info    { background: linear-gradient(to bottom, #60a5fa, #3b82f6); }
-.notif-type-bar--warning { background: linear-gradient(to bottom, #fbbf24, #f59e0b); }
-.notif-type-bar--danger  { background: linear-gradient(to bottom, #f87171, #ef4444); }
-.notif-type-bar--success { background: linear-gradient(to bottom, #34d399, #10b981); }
+.notif-type-bar--info    { background: linear-gradient(to bottom, var(--static-color-60a5fa), var(--static-color-3b82f6)); }
+.notif-type-bar--warning { background: linear-gradient(to bottom, var(--static-color-fbbf24), var(--static-color-f59e0b)); }
+.notif-type-bar--danger  { background: linear-gradient(to bottom, var(--static-color-f87171), var(--static-color-ef4444)); }
+.notif-type-bar--success { background: linear-gradient(to bottom, var(--static-color-34d399), var(--static-color-10b981)); }
 
 .notif-body {
   flex: 1;
@@ -143,14 +143,14 @@
 /* Badge de conteo: Estilo Apple Notification Center */
 .notif-count-badge {
   background: var(--c-warning) !important;
-  color: #fff !important;
+  color: var(--static-color-fff) !important;
   font-size: 0.65rem !important;
   font-weight: 800;
   height: 1.15rem !important;
   min-width: 1.15rem !important;
   padding: 0 0.35rem !important;
-  border: 1px solid rgba(255, 255, 255, 0.4) !important;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--static-color-rgba-255-255-255-0-4) !important;
+  box-shadow: 0 2px 6px var(--static-color-rgba-0-0-0-0-1);
 }
 
 /* ── Acciones Flotantes ─────────────────────────────────────────────────────── */
@@ -161,24 +161,24 @@
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.03);
+  background: var(--static-color-rgba-0-0-0-0-03);
   color: var(--text-muted);
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 [data-theme='dark'] .action-icon {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--static-color-rgba-255-255-255-0-06);
 }
 
 .action-icon:hover {
   transform: scale(1.2) translateY(-2px);
   background: var(--c-primary);
-  color: #fff;
+  color: var(--static-color-fff);
   box-shadow: 0 4px 12px rgba(var(--c-primary-rgb, 59, 130, 246), 0.3);
 }
 
-.action-icon--dismiss:hover { background: #ef4444; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3); }
-.action-icon--pinned { color: #f59e0b !important; background: rgba(245, 158, 11, 0.1); }
+.action-icon--dismiss:hover { background: var(--static-color-ef4444); box-shadow: 0 4px 12px var(--static-color-rgba-239-68-68-0-3); }
+.action-icon--pinned { color: var(--static-color-f59e0b) !important; background: var(--static-color-rgba-245-158-11-0-1); }
 /* ── Botón Ver Detalle (Estilo Apple Link) ─────────────────────────────────── */
 .detail-toggle {
   display: inline-flex;
@@ -200,7 +200,7 @@
 
 .detail-toggle:hover {
   background: var(--c-primary);
-  color: #fff;
+  color: var(--static-color-fff);
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(var(--c-primary-rgb, 59, 130, 246), 0.2);
 }
@@ -236,15 +236,15 @@
   padding: 0.65rem 0.75rem;
   margin: 0.25rem 0 0.75rem;
   box-shadow: 
-    inset 0 2px 8px rgba(0, 0, 0, 0.06);
+    inset 0 2px 8px var(--static-color-rgba-0-0-0-0-06);
   overflow: hidden;
 }
 
 [data-theme='dark'] .detail-panel {
-  background: rgba(0, 0, 0, 0.35);
-  border-color: rgba(255, 255, 255, 0.08);
+  background: var(--static-color-rgba-0-0-0-0-35);
+  border-color: var(--static-color-rgba-255-255-255-0-08);
   box-shadow: 
-    inset 0 2px 12px rgba(0, 0, 0, 0.5);
+    inset 0 2px 12px var(--static-color-rgba-0-0-0-0-5);
 }
 
 .notif-author,
@@ -277,7 +277,7 @@
   gap: 0.75rem;
   margin-top: 0.35rem;
   padding-top: 0.35rem;
-  border-top: 1px solid rgba(0, 0, 0, 0.03);
+  border-top: 1px solid var(--static-color-rgba-0-0-0-0-03);
 }
 
 /* ── Elementos internos del Detalle (Vault Content) ────────────────────────── */
@@ -309,8 +309,8 @@
   letter-spacing: 0.02em;
   white-space: nowrap;
 }
-.level-badge--critico { background: var(--c-danger); color: #fff; }
-.level-badge--bajo { background: var(--c-warning); color: #fff; }
+.level-badge--critico { background: var(--c-danger); color: var(--static-color-fff); }
+.level-badge--bajo { background: var(--c-warning); color: var(--static-color-fff); }
 
 .cell-list, .order-list {
   list-style: none;
@@ -346,7 +346,7 @@
 
 /* Pedidos en detalle */
 .order-item {
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  border-top: 1px solid var(--static-color-rgba-0-0-0-0-05);
   padding-top: 0.4rem;
   margin-top: 0.2rem;
 }
@@ -376,11 +376,11 @@
 .progress-bar {
   flex: 1;
   height: 4px;
-  background: rgba(0, 0, 0, 0.05);
+  background: var(--static-color-rgba-0-0-0-0-05);
   border-radius: 2px;
   overflow: hidden;
 }
-[data-theme='dark'] .progress-bar { background: rgba(255, 255, 255, 0.1); }
+[data-theme='dark'] .progress-bar { background: var(--static-color-rgba-255-255-255-0-1); }
 
 .progress-bar__fill {
   height: 100%;
@@ -399,7 +399,7 @@
 /* Navegador de Ejes para Panel Lateral */
 .axis-navigator-mini {
   padding: 0.5rem 0;
-  border-bottom: 1px solid rgba(0,0,0,0.05);
+  border-bottom: 1px solid var(--static-color-rgba-0-0-0-0-05);
 }
 
 .axis-pills-mini {
@@ -421,12 +421,12 @@
 }
 
 .axis-pill-mini:hover {
-  background: #e2e8f0;
+  background: var(--static-color-e2e8f0);
 }
 
 .axis-pill-mini.active {
-  background: #3b82f6;
-  border-color: #3b82f6;
+  background: var(--static-color-3b82f6);
+  border-color: var(--static-color-3b82f6);
   color: white;
 }
 
@@ -437,9 +437,9 @@
 
 .detail-footer-mini {
   font-size: 0.65rem;
-  color: #94a3b8;
+  color: var(--static-color-94a3b8);
   text-align: center;
-  border-top: 1px solid rgba(0,0,0,0.05);
+  border-top: 1px solid var(--static-color-rgba-0-0-0-0-05);
 }
 /* ── Devoluciones agrupadas (Grid Layout) ─────────────────────────────────── */
 .dev-grid-list {
@@ -456,14 +456,14 @@
   grid-template-columns: 1fr auto;
   gap: 0.75rem;
   padding: 0.65rem 0.5rem;
-  background: rgba(255, 255, 255, 0.4);
-  border: 1px solid rgba(0, 0, 0, 0.04);
+  background: var(--static-color-rgba-255-255-255-0-4);
+  border: 1px solid var(--static-color-rgba-0-0-0-0-04);
   border-radius: 12px;
   transition: background 0.2s;
 }
 [data-theme='dark'] .dev-grid-item {
-  background: rgba(255, 255, 255, 0.03);
-  border-color: rgba(255, 255, 255, 0.05);
+  background: var(--static-color-rgba-255-255-255-0-03);
+  border-color: var(--static-color-rgba-255-255-255-0-05);
 }
 
 .dev-grid-info {

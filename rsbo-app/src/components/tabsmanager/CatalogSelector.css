@@ -36,9 +36,9 @@
 
 .option-pill.is-active {
   background: var(--c-primary);
-  color: #fff;
+  color: var(--static-color-fff);
   border-color: var(--c-primary);
-  box-shadow: 0 4px 12px rgba(121, 87, 213, 0.25);
+  box-shadow: 0 4px 12px var(--static-color-rgba-121-87-213-0-25);
 }
 
 .option-pill.is-disabled {

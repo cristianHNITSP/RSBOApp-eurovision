@@ -36,7 +36,7 @@
 }
 
 .panel-unread-badge {
-  color: #fff !important;
+  color: var(--static-color-fff) !important;
   font-size: 0.7rem !important;
   font-weight: 800;
   height: 1.15rem !important;
@@ -48,7 +48,7 @@
   line-height: 1 !important;
   background: var(--c-primary) !important;
   box-shadow: 0 4px 10px rgba(var(--c-primary-rgb, 59, 130, 246), 0.4);
-  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  border: 1.5px solid var(--static-color-rgba-255-255-255-0-4);
   flex-shrink: 0;
 }
 

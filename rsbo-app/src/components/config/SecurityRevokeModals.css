@@ -1,11 +1,11 @@
 .revoke-modal-head--warning {
-  background: rgba(254, 243, 199, 0.92);
-  color: rgba(120, 53, 15, 0.95);
+  background: var(--static-color-rgba-254-243-199-0-92);
+  color: var(--static-color-rgba-120-53-15-0-95);
 }
 
 .revoke-modal-head--danger {
-  background: rgba(254, 226, 226, 0.92);
-  color: rgba(127, 29, 29, 0.95);
+  background: var(--static-color-rgba-254-226-226-0-92);
+  color: var(--static-color-rgba-127-29-29-0-95);
 }
 
 .revoke-modal-head--warning .modal-card-title,
@@ -15,8 +15,8 @@
 }
 
 .revoke-notice {
-  background: color-mix(in srgb, var(--c-info, #3273dc) 8%, transparent);
-  border: 1px solid color-mix(in srgb, var(--c-info, #3273dc) 25%, transparent);
+  background: color-mix(in srgb, var(--c-info, var(--static-color-3273dc)) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--c-info, var(--static-color-3273dc)) 25%, transparent);
   border-radius: 8px;
   padding: 0.65rem 0.9rem;
   font-size: 0.82rem;

@@ -11,5 +11,5 @@
   background: var(--c-primary-alpha);
   border-radius: 999px;
   padding: 0.1rem 0.45rem;
-  border: 1px solid rgba(79, 70, 229, 0.15);
+  border: 1px solid var(--static-color-rgba-79-70-229-0-15);
 }

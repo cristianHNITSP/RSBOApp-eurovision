@@ -24,8 +24,8 @@
 /* Metadata Card */
 .navtools-card--meta {
     background:
-        radial-gradient(circle at 0% 0%, rgba(121, 87, 213, 0.10), transparent 55%),
-        radial-gradient(circle at 100% 100%, rgba(236, 72, 153, 0.08), transparent 60%),
+        radial-gradient(circle at 0% 0%, var(--static-color-rgba-121-87-213-0-10), transparent 55%),
+        radial-gradient(circle at 100% 100%, var(--static-color-rgba-236-72-153-0-08), transparent 60%),
         var(--surface-raised);
 }
 
@@ -33,14 +33,14 @@
 .navtools-card--ribbon {
     overflow: visible !important;
     background:
-        linear-gradient(120deg, rgba(121, 87, 213, 0.10), rgba(154, 109, 255, 0.08), rgba(236, 72, 153, 0.06)),
+        linear-gradient(120deg, var(--static-color-rgba-121-87-213-0-10), var(--static-color-rgba-154-109-255-0-08), var(--static-color-rgba-236-72-153-0-06)),
         var(--surface-raised);
 }
 
 /* Formula Bar Card */
 .navtools-card--fx {
     background:
-        radial-gradient(circle at 0% 0%, rgba(121, 87, 213, 0.08), transparent 55%),
+        radial-gradient(circle at 0% 0%, var(--static-color-rgba-121-87-213-0-08), transparent 55%),
         var(--surface-raised);
 }
 
@@ -76,7 +76,7 @@
 .meta-pill,
 .server-pill {
     border-radius: 999px;
-    box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.15);
+    box-shadow: inset 0 0 0 1px var(--static-color-rgba-148-163-184-0-15);
     font-weight: 600;
 }
 
@@ -92,7 +92,7 @@
     background: var(--surface-solid);
     border-radius: 999px;
     padding: 2px;
-    border: 1px solid rgba(148, 163, 184, 0.1);
+    border: 1px solid var(--static-color-rgba-148-163-184-0-1);
 }
 
 .tab-switcher__btn {
@@ -114,7 +114,7 @@
 .ribbon-tabs :deep(.tabs) {
     margin-bottom: 0 !important;
     padding: 0.4rem 0.6rem 0;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+    border-bottom: 1px solid var(--static-color-rgba-148-163-184-0-1);
 }
 
 .ribbon-tabs :deep(.tab-content) {
@@ -166,18 +166,18 @@
 /* Custom Ribbon Buttons (rbtn) */
 .rbtn {
     border-radius: 999px !important;
-    box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.15);
+    box-shadow: 0 0 0 1px var(--static-color-rgba-148-163-184-0-15);
     transition: transform 120ms ease, box-shadow 140ms ease, background 0.2s;
     font-weight: 700 !important;
 }
 
 .rbtn:hover:not(:disabled) {
     transform: translateY(-1.5px);
-    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(148, 163, 184, 0.25);
+    box-shadow: 0 8px 20px var(--static-color-rgba-15-23-42-0-12), 0 0 0 1px var(--static-color-rgba-148-163-184-0-25);
 }
 
 .rbtn--primary {
-    box-shadow: 0 4px 12px var(--c-primary-alpha), 0 0 0 1px rgba(121, 87, 213, 0.2);
+    box-shadow: 0 4px 12px var(--c-primary-alpha), 0 0 0 1px var(--static-color-rgba-121-87-213-0-2);
 }
 
 /* ─── 5. Formula Bar (FX) ────────────────────────────────────────── */
@@ -187,10 +187,10 @@
     gap: 0.6rem;
     padding: 0.45rem 0.75rem;
     border-radius: 999px;
-    border: 1px solid rgba(121, 87, 213, 0.15);
+    border: 1px solid var(--static-color-rgba-121-87-213-0-15);
     background:
-        radial-gradient(circle at 20% 0%, rgba(121, 87, 213, 0.12), transparent 55%),
-        linear-gradient(90deg, rgba(144, 111, 225, 0.10), rgba(236, 72, 153, 0.05)),
+        radial-gradient(circle at 20% 0%, var(--static-color-rgba-121-87-213-0-12), transparent 55%),
+        linear-gradient(90deg, var(--static-color-rgba-144-111-225-0-10), var(--static-color-rgba-236-72-153-0-05)),
         var(--surface-solid);
     margin: 0.5rem;
 }
@@ -199,9 +199,9 @@
     border-radius: 999px;
     padding-inline: 1rem;
     font-weight: 1000;
-    background: var(--bg-muted, rgba(148, 163, 184, 0.1));
+    background: var(--bg-muted, var(--static-color-rgba-148-163-184-0-1));
     color: var(--c-primary);
-    border: 1px solid rgba(121, 87, 213, 0.2);
+    border: 1px solid var(--static-color-rgba-121-87-213-0-2);
     font-style: italic;
     font-family: serif;
 }
@@ -224,7 +224,7 @@
 }
 
 .formula-input :deep(.input:focus) {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--static-color-rgba-255-255-255-0-05);
 }
 
 .formula-apply-button {

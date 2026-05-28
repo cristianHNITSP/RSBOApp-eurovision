@@ -20,8 +20,8 @@
 
     /* soft background */
     background:
-        radial-gradient(circle at 0% 0%, rgba(121, 87, 213, 0.08), transparent 55%),
-        radial-gradient(circle at 100% 80%, rgba(236, 72, 153, 0.06), transparent 55%),
+        radial-gradient(circle at 0% 0%, var(--static-color-rgba-121-87-213-0-08), transparent 55%),
+        radial-gradient(circle at 100% 80%, var(--static-color-rgba-236-72-153-0-06), transparent 55%),
         var(--surface-solid);
 
     /* overlays */
@@ -32,15 +32,15 @@
         opacity: 0.65;
         z-index: 0;
         background:
-            radial-gradient(circle at 0 0, rgba(255, 255, 255, 0.22), transparent 55%),
-            radial-gradient(circle at 100% 100%, rgba(15, 23, 42, 0.14), transparent 60%);
+            radial-gradient(circle at 0 0, var(--static-color-rgba-255-255-255-0-22), transparent 55%),
+            radial-gradient(circle at 100% 100%, var(--static-color-rgba-15-23-42-0-14), transparent 60%);
     }
 
     .sidebar-decor--bottom {
         opacity: 0.45;
         background:
-            radial-gradient(circle at 30% 100%, rgba(249, 115, 22, 0.16), transparent 55%),
-            radial-gradient(circle at 90% 60%, rgba(154, 109, 255, 0.14), transparent 55%);
+            radial-gradient(circle at 30% 100%, var(--static-color-rgba-249-115-22-0-16), transparent 55%),
+            radial-gradient(circle at 90% 60%, var(--static-color-rgba-154-109-255-0-14), transparent 55%);
     }
 
     /* content above */

@@ -38,18 +38,18 @@
   border-radius: var(--radius-xl);
 
   /* Liquid glass properties */
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--static-color-rgba-255-255-255-0-05);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--static-color-rgba-255-255-255-0-1);
+  box-shadow: 0 8px 32px var(--static-color-rgba-0-0-0-0-08);
 
   transition: transform 0.15s, box-shadow 0.16s, background 0.15s;
 }
 
 .kpi-glass:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.16);
+  box-shadow: 0 12px 40px var(--static-color-rgba-0-0-0-0-16);
   background: var(--bg-muted);
   border-color: var(--c-primary-alpha);
 }
@@ -77,38 +77,38 @@
 }
 
 .ki-blue {
-  background: rgba(59, 130, 246, .15);
-  color: #3b82f6;
+  background: var(--static-color-rgba-59-130-246--15);
+  color: var(--static-color-3b82f6);
 }
 
 .ki-green {
-  background: rgba(16, 185, 129, .15);
-  color: #10b981;
+  background: var(--static-color-rgba-16-185-129--15);
+  color: var(--static-color-10b981);
 }
 
 .ki-orange {
-  background: rgba(245, 158, 11, .15);
-  color: #f59e0b;
+  background: var(--static-color-rgba-245-158-11--15);
+  color: var(--static-color-f59e0b);
 }
 
 .ki-cyan {
-  background: rgba(6, 182, 212, .15);
-  color: #06b6d4;
+  background: var(--static-color-rgba-6-182-212--15);
+  color: var(--static-color-06b6d4);
 }
 
 .ki-teal {
-  background: rgba(20, 184, 166, .15);
-  color: #14b8a6;
+  background: var(--static-color-rgba-20-184-166--15);
+  color: var(--static-color-14b8a6);
 }
 
 .ki-red {
-  background: rgba(239, 68, 68, .15);
-  color: #ef4444;
+  background: var(--static-color-rgba-239-68-68--15);
+  color: var(--static-color-ef4444);
 }
 
 .kpi-trend-badge {
   font-size: 0.65rem;
-  color: #f59e0b;
+  color: var(--static-color-f59e0b);
 }
 
 .kpi-number {
@@ -121,31 +121,31 @@
 }
 
 .kn-purple {
-  background-image: linear-gradient(135deg, var(--c-primary), #60a5fa);
+  background-image: linear-gradient(135deg, var(--c-primary), var(--static-color-60a5fa));
 }
 
 .kn-blue {
-  background-image: linear-gradient(135deg, #3b82f6, #06b6d4);
+  background-image: linear-gradient(135deg, var(--static-color-3b82f6), var(--static-color-06b6d4));
 }
 
 .kn-green {
-  background-image: linear-gradient(135deg, #10b981, #65a30d);
+  background-image: linear-gradient(135deg, var(--static-color-10b981), var(--static-color-65a30d));
 }
 
 .kn-orange {
-  background-image: linear-gradient(135deg, #f59e0b, #ef4444);
+  background-image: linear-gradient(135deg, var(--static-color-f59e0b), var(--static-color-ef4444));
 }
 
 .kn-cyan {
-  background-image: linear-gradient(135deg, #06b6d4, #3b82f6);
+  background-image: linear-gradient(135deg, var(--static-color-06b6d4), var(--static-color-3b82f6));
 }
 
 .kn-teal {
-  background-image: linear-gradient(135deg, #14b8a6, #06b6d4);
+  background-image: linear-gradient(135deg, var(--static-color-14b8a6), var(--static-color-06b6d4));
 }
 
 .kn-red {
-  background-image: linear-gradient(135deg, #ef4444, #dc2626);
+  background-image: linear-gradient(135deg, var(--static-color-ef4444), var(--static-color-dc2626));
 }
 
 .kpi-label {
@@ -223,7 +223,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #f59e0b;
+  background: var(--static-color-f59e0b);
   animation: pulse-dot .9s ease-in-out infinite;
 }
 
@@ -325,21 +325,21 @@
 }
 
 .dqa-review {
-  background: rgba(59, 130, 246, .12);
-  color: #3b82f6;
-  border-color: rgba(59, 130, 246, .2);
+  background: var(--static-color-rgba-59-130-246--12);
+  color: var(--static-color-3b82f6);
+  border-color: var(--static-color-rgba-59-130-246--2);
 }
 
 .dqa-approve {
-  background: rgba(16, 185, 129, .12);
-  color: #10b981;
-  border-color: rgba(16, 185, 129, .2);
+  background: var(--static-color-rgba-16-185-129--12);
+  color: var(--static-color-10b981);
+  border-color: var(--static-color-rgba-16-185-129--2);
 }
 
 .dqa-reject {
-  background: rgba(239, 68, 68, .10);
-  color: #ef4444;
-  border-color: rgba(239, 68, 68, .18);
+  background: var(--static-color-rgba-239-68-68--10);
+  color: var(--static-color-ef4444);
+  border-color: var(--static-color-rgba-239-68-68--18);
 }
 
 /* ── Correction log ── */
@@ -389,13 +389,13 @@
 }
 
 .dot-red {
-  background: rgba(239, 68, 68, .12);
-  color: #ef4444;
+  background: var(--static-color-rgba-239-68-68--12);
+  color: var(--static-color-ef4444);
 }
 
 .dot-orange {
-  background: rgba(249, 115, 22, .12);
-  color: #f97316;
+  background: var(--static-color-rgba-249-115-22--12);
+  color: var(--static-color-f97316);
 }
 
 .corr-body {
@@ -493,15 +493,15 @@
 }
 
 .gradient-purple {
-  background-image: linear-gradient(135deg, var(--c-primary), #60a5fa);
+  background-image: linear-gradient(135deg, var(--c-primary), var(--static-color-60a5fa));
 }
 
 .gradient-blue {
-  background-image: linear-gradient(135deg, #3b82f6, #06b6d4);
+  background-image: linear-gradient(135deg, var(--static-color-3b82f6), var(--static-color-06b6d4));
 }
 
 .gradient-red {
-  background-image: linear-gradient(135deg, #ef4444, #f59e0b);
+  background-image: linear-gradient(135deg, var(--static-color-ef4444), var(--static-color-f59e0b));
 }
 
 .tb-unit {
@@ -543,31 +543,31 @@
 }
 
 .p-pending {
-  background: rgba(245, 158, 11, .15);
-  color: #f59e0b;
-  border: 1.5px solid rgba(245, 158, 11, .3);
-  box-shadow: 0 0 12px rgba(245, 158, 11, .2);
+  background: var(--static-color-rgba-245-158-11--15);
+  color: var(--static-color-f59e0b);
+  border: 1.5px solid var(--static-color-rgba-245-158-11--3);
+  box-shadow: 0 0 12px var(--static-color-rgba-245-158-11--2);
 }
 
 .p-scan {
-  background: rgba(6, 182, 212, .15);
-  color: #06b6d4;
-  border: 1.5px solid rgba(6, 182, 212, .3);
-  box-shadow: 0 0 12px rgba(6, 182, 212, .2);
+  background: var(--static-color-rgba-6-182-212--15);
+  color: var(--static-color-06b6d4);
+  border: 1.5px solid var(--static-color-rgba-6-182-212--3);
+  box-shadow: 0 0 12px var(--static-color-rgba-6-182-212--2);
 }
 
 .p-done {
-  background: rgba(16, 185, 129, .15);
-  color: #10b981;
-  border: 1.5px solid rgba(16, 185, 129, .3);
-  box-shadow: 0 0 12px rgba(16, 185, 129, .2);
+  background: var(--static-color-rgba-16-185-129--15);
+  color: var(--static-color-10b981);
+  border: 1.5px solid var(--static-color-rgba-16-185-129--3);
+  box-shadow: 0 0 12px var(--static-color-rgba-16-185-129--2);
 }
 
 .p-ret {
   background: var(--c-primary-alpha);
   color: var(--c-primary);
-  border: 1.5px solid rgba(144, 111, 225, .3);
-  box-shadow: 0 0 12px rgba(144, 111, 225, .2);
+  border: 1.5px solid var(--static-color-rgba-144-111-225--3);
+  box-shadow: 0 0 12px var(--static-color-rgba-144-111-225--2);
 }
 
 .pipe-label {
@@ -607,23 +607,23 @@
 }
 
 .sl-excellent {
-  border-color: #10b981;
-  box-shadow: 0 0 18px rgba(16, 185, 129, .35);
+  border-color: var(--static-color-10b981);
+  box-shadow: 0 0 18px var(--static-color-rgba-16-185-129--35);
 }
 
 .sl-good {
-  border-color: #06b6d4;
-  box-shadow: 0 0 18px rgba(6, 182, 212, .35);
+  border-color: var(--static-color-06b6d4);
+  box-shadow: 0 0 18px var(--static-color-rgba-6-182-212--35);
 }
 
 .sl-ok {
-  border-color: #f59e0b;
-  box-shadow: 0 0 18px rgba(245, 158, 11, .35);
+  border-color: var(--static-color-f59e0b);
+  box-shadow: 0 0 18px var(--static-color-rgba-245-158-11--35);
 }
 
 .sl-poor {
-  border-color: #ef4444;
-  box-shadow: 0 0 18px rgba(239, 68, 68, .35);
+  border-color: var(--static-color-ef4444);
+  box-shadow: 0 0 18px var(--static-color-rgba-239-68-68--35);
 }
 
 .sl-pct {
@@ -690,7 +690,7 @@
 .atile:hover {
   background: var(--g-hover);
   transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 16px var(--static-color-rgba-0-0-0-0-12);
 }
 
 .atile i {
@@ -727,7 +727,7 @@
 }
 
 .sysrow .text-warn {
-  color: #f59e0b;
+  color: var(--static-color-f59e0b);
 }
 
 .sys-tag {
@@ -744,8 +744,8 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #10b981;
-  box-shadow: 0 0 7px rgba(16, 185, 129, .6);
+  background: var(--static-color-10b981);
+  box-shadow: 0 0 7px var(--static-color-rgba-16-185-129--6);
 }
 
 /* ── Report tiles ── */

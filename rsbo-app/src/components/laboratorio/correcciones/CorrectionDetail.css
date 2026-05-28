@@ -89,7 +89,7 @@
   padding: 0.05rem 0.35rem;
   border-radius: 999px;
   background: var(--c-primary-alpha);
-  border: 1px solid rgba(144, 111, 225, 0.2);
+  border: 1px solid var(--static-color-rgba-144-111-225-0-2);
   font-size: 0.68rem;
   font-weight: 900;
   color: var(--c-primary);
@@ -99,7 +99,7 @@
 .rollback-hint {
   padding: 0.4rem 0.6rem;
   background: var(--c-danger-alpha);
-  border: 1px solid rgba(239, 68, 68, 0.18);
+  border: 1px solid var(--static-color-rgba-239-68-68-0-18);
   border-radius: 10px;
   font-size: 0.8rem;
   font-weight: 900;
@@ -110,7 +110,7 @@
   display: flex;
   align-items: center;
   padding: 0.6rem 0.75rem;
-  background: rgba(148, 163, 184, 0.08);
+  background: var(--static-color-rgba-148-163-184-0-08);
   border: 1px solid var(--border);
   border-radius: 12px;
   font-size: 0.84rem;
@@ -158,9 +158,9 @@
   background: var(--surface-overlay);
 }
 
-.history-item--edit { border-left: 3px solid rgba(245, 158, 11, 0.7); }
-.history-item--cancel { border-left: 3px solid rgba(239, 68, 68, 0.7); }
-.history-item--correction { border-left: 3px solid rgba(59, 130, 246, 0.7); }
+.history-item--edit { border-left: 3px solid var(--static-color-rgba-245-158-11-0-7); }
+.history-item--cancel { border-left: 3px solid var(--static-color-rgba-239-68-68-0-7); }
+.history-item--correction { border-left: 3px solid var(--static-color-rgba-59-130-246-0-7); }
 
 .history-item__icon {
   flex-shrink: 0;

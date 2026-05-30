@@ -7,7 +7,7 @@ import { ref, shallowRef, onMounted, onBeforeUnmount, onActivated, onDeactivated
 import { useGridHistory } from "@/composables/ag-grid/useGridHistory";
 import { useUnsavedGuard } from "@/composables/ag-grid/useUnsavedGuard";
 
-export function useAgGridIntegration({ sheetId, sphType, guardKeyPrefix, onWsRefresh }) {
+export function useAgGridIntegration({ sheetId, sphType, guardKeyPrefix, onWsMessage }) {
   const gridApi = shallowRef(null);
   const dirty = ref(false);
   const saving = ref(false);
@@ -40,7 +40,7 @@ export function useAgGridIntegration({ sheetId, sphType, guardKeyPrefix, onWsRef
     if (typeof BroadcastChannel === "undefined") return;
     _broadcastCh?.close();
     _broadcastCh = new BroadcastChannel(`rsbo:inv:${sheetId.value}`);
-    _broadcastCh.onmessage = () => { onWsRefresh?.(); };
+    _broadcastCh.onmessage = () => { onWsMessage?.("INV_RELOAD", {}); };
   }
 
   function closeBroadcast() {
@@ -53,29 +53,32 @@ export function useAgGridIntegration({ sheetId, sphType, guardKeyPrefix, onWsRef
   }
 
   // ─── WebSocket ────────────────────────────────────────────────────
-  const _WS_STOCK = new Set(["LAB_ORDER_SCAN", "LAB_ORDER_CANCEL", "LAB_ORDER_RESET", "INVENTORY_CHUNK_SAVED", "INV_CHANGE"]);
+  const _WS_STOCK = new Set([
+    "INV_CELL", "INV_CELLS", "INV_RELOAD",        // nuevos: parche por celda / recarga
+    "LAB_ORDER_SCAN", "LAB_ORDER_CANCEL", "LAB_ORDER_RESET", // afectan stock → recarga
+    "INVENTORY_CHUNK_SAVED", "INV_CHANGE",        // legado → recarga
+  ]);
   function onLabWs(e) {
     const type = e?.detail?.type;
     if (!_WS_STOCK.has(type)) return;
 
     const payload = e.detail?.payload || {};
-    
+
     // Caso 1: Array de IDs (Bases y Micas / Laboratorio)
     if (payload.sheetIds && payload.sheetIds.length > 0) {
       if (!payload.sheetIds.includes(sheetId.value)) return;
-    } 
-    // Caso 2: ID único (Lentes de Contacto)
+    }
+    // Caso 2: ID único
     else if (payload.sheetId) {
       if (String(payload.sheetId) !== String(sheetId.value)) return;
     }
-    // Caso 3: Colección (Óptica - aunque las grillas AG-Grid no se usan para óptica usualmente)
+    // Caso 3: Colección (Óptica) — ignorar para grillas AG-Grid
     else if (payload.collection) {
-      // Ignorar para grillas AG-Grid por ahora
       return;
     }
 
     if (_suppressNextWsRefresh) { _suppressNextWsRefresh = false; return; }
-    onWsRefresh?.();
+    onWsMessage?.(type, payload);
   }
 
   function suppressNextWsRefresh() { _suppressNextWsRefresh = true; }

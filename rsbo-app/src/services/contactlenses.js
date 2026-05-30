@@ -15,6 +15,7 @@ export const purgeContactLensSheet       = _svc.purgeSheet;
 export const reseedContactLensSheet      = _svc.reseedSheet;
 export const fetchContactLensItems       = _svc.fetchItems;
 export const saveContactLensChunk        = _svc.saveChunk;
+export const saveContactLensCell         = _svc.saveCell;
 
 import api from "@/api/axios";
 export function registerContactLensSale(sheetId, payload) {

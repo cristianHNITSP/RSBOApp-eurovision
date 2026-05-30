@@ -25,7 +25,7 @@ export function useAgGridFormulaBar({ gridApi, onMarkChanged, isEditableField })
   };
 
   function applyFxToGrid(val, { commit = false, rowIdGetter } = {}) {
-    if (!activeCell || !gridApi.value || activeCell.data?.__loading) return;
+    if (!activeCell || !gridApi.value || !activeCell.data) return;
     const field = activeCell.colDef.field;
     if (!isEditableField(field)) return;
 

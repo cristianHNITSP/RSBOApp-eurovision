@@ -11,6 +11,7 @@ import { labToast } from "@/composables/shared/useLabToast.js";
 import {
   fetchItems,
   saveChunk,
+  saveCell,
   reseedSheet,
   listSheets,
   getSheet as _getSheetRaw,
@@ -24,6 +25,7 @@ import {
 import {
   fetchContactLensItems,
   saveContactLensChunk,
+  saveContactLensCell,
   reseedContactLensSheet,
   listContactLensSheets,
   getContactLensSheet as _getCLSheetRaw,
@@ -88,6 +90,7 @@ export function useSheetApi(getApiType) {
   return {
     fetchItems:       (...a) => isCL() ? fetchContactLensItems(...a)       : fetchItems(...a),
     saveChunk:        (...a) => isCL() ? saveContactLensChunk(...a)        : saveChunk(...a),
+    saveCell:         (...a) => isCL() ? saveContactLensCell(...a)         : saveCell(...a),
     reseedSheet:      (...a) => isCL() ? reseedContactLensSheet(...a)      : reseedSheet(...a),
     getSheet:         getSheetSmart,
     createSheet:      (...a) => isCL() ? createContactLensSheet(...a)      : createSheet(...a),

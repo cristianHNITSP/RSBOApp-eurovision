@@ -28,7 +28,7 @@
   flex: 0 0 auto;
   position: sticky;
   top: 0;
-  z-index: 5;
+  /*z-index: 5;*/
 }
 
 .navtools-wrap {
@@ -342,13 +342,21 @@
   border: none !important;
 }
 
+/* Bordes de rejilla — sutiles (líneas finas verticales + horizontales) */
 .ag-grid-glass :deep(.ag-cell) {
-  border-right: none !important;
+  border-right: 1px solid var(--static-color-rgba-121-87-213-0-12);
 }
 
 .ag-grid-glass :deep(.ag-row) {
-  border-bottom: none !important;
-  box-shadow: 0 1px 0 var(--static-color-rgba-148-163-184-0-06);
+  border-bottom: 1px solid var(--static-color-rgba-121-87-213-0-12);
+}
+
+[data-theme="dark"] .ag-grid-glass :deep(.ag-cell) {
+  border-right-color: var(--static-color-rgba-167-139-250-0-18);
+}
+
+[data-theme="dark"] .ag-grid-glass :deep(.ag-row) {
+  border-bottom-color: var(--static-color-rgba-167-139-250-0-18);
 }
 
 /* Header styling */
@@ -642,4 +650,144 @@
 
 [data-theme="dark"] .grid-footer__loading {
   color: var(--static-color-rgba-167-139-250-0-95);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PAGINACIÓN NATIVA — glassmorphism
+   ═══════════════════════════════════════════════════════════════ */
+.ag-grid-glass :deep(.ag-paging-panel) {
+  border-top: 1px solid var(--static-color-rgba-121-87-213-0-12);
+  color: var(--c-muted, var(--static-color-6b7280));
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  background: var(--static-color-rgba-245-243-255-0-55);
+  height: 34px;
+}
+
+.ag-grid-glass :deep(.ag-paging-page-size .ag-picker-field-wrapper) {
+  border-radius: 999px;
+  border-color: var(--static-color-rgba-121-87-213-0-25);
+  background: transparent;
+}
+
+[data-theme="dark"] .ag-grid-glass :deep(.ag-paging-panel) {
+  border-top: 1px solid var(--static-color-rgba-167-139-250-0-12);
+  background: var(--static-color-rgba-20-16-45-0-55);
+  color: var(--static-color-rgba-220-220-240-0-7);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BORDES DE HEADER — separadores verticales en los encabezados
+   ═══════════════════════════════════════════════════════════════ */
+.ag-grid-glass :deep(.ag-header-cell),
+.ag-grid-glass :deep(.ag-header-group-cell) {
+  border-right: 1px solid var(--static-color-rgba-121-87-213-0-12);
+}
+
+[data-theme="dark"] .ag-grid-glass :deep(.ag-header-cell),
+[data-theme="dark"] .ag-grid-glass :deep(.ag-header-group-cell) {
+  border-right-color: var(--static-color-rgba-167-139-250-0-18);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TOOLTIP DE STOCK — tarjeta con coordenadas + estado (tokens)
+   ═══════════════════════════════════════════════════════════════ */
+/* Reset del wrapper nativo de tooltip para mostrar nuestra tarjeta limpia */
+.ag-grid-glass :deep(.ag-tooltip),
+.ag-grid-glass :deep(.ag-tooltip-custom) {
+  /* background: transparent !important;*/
+  /* border: none !important; */
+  padding: 1 !important;
+  box-shadow: none !important;
+}
+
+.ag-grid-glass :deep(.ag-stock-tooltip) {
+  min-width: 130px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  border: 1px solid var(--ag-glass-border);
+  box-shadow: var(--shadow-md);
+  color: var(--text-primary);
+  font-size: 0.72rem;
+  line-height: 1.3;
+}
+
+.ag-grid-glass :deep(.stt-coords) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-bottom: 6px;
+}
+
+.ag-grid-glass :deep(.stt-chip) {
+  display: inline-flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.ag-grid-glass :deep(.stt-chip__label) {
+  font-size: 0.58rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.ag-grid-glass :deep(.stt-chip__val) {
+  font-weight: 700;
+  color: var(--c-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.ag-grid-glass :deep(.stt-foot) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 5px;
+  border-top: 1px solid var(--border-light);
+}
+
+.ag-grid-glass :deep(.stt-stock) {
+  font-size: 1.05rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.ag-grid-glass :deep(.stt-badge) {
+  font-size: 0.58rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 9px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+
+/* Estados (de mejor a peor): buen stock · aceptable · bajo · crítico · sin stock */
+.ag-grid-glass :deep(.stt-badge--good) {
+  background: var(--c-success-alpha);
+  color: var(--c-success);
+}
+
+.ag-grid-glass :deep(.stt-badge--neutral) {
+  background: var(--c-info-alpha);
+  color: var(--c-info);
+}
+
+.ag-grid-glass :deep(.stt-badge--low) {
+  background: var(--ag-stock-low-bg);
+  color: var(--ag-stock-low-fg);
+}
+
+.ag-grid-glass :deep(.stt-badge--crit) {
+  background: var(--c-danger-alpha);
+  color: var(--c-danger);
+}
+
+.ag-grid-glass :deep(.stt-badge--zero) {
+  background: var(--ag-stock-zero-bg);
+  color: var(--ag-stock-zero-fg);
 }

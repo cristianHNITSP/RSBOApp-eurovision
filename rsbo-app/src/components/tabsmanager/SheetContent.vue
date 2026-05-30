@@ -17,11 +17,8 @@
 
 <script setup>
 import { computed, onMounted, onBeforeUnmount, watch, ref, nextTick } from "vue";
-import AgGridBifocal from "@/components/ag-grid/templates/AgGridBifocal.vue";
-import AgGridBase from "@/components/ag-grid/templates/AgGridBase.vue";
-import AgGridMonofocal from "@/components/ag-grid/templates/AgGridMonofocal.vue";
-import AgGridProgresivo from "@/components/ag-grid/templates/AgGridProgresivo.vue";
-import AgGridTorico from "@/components/ag-grid/templates/AgGridTorico.vue";
+// Componente unificado: reemplaza las 5 plantillas AgGrid* para todos los tipos.
+import AgGridSheet from "@/components/ag-grid/AgGridSheet.vue";
 
 const props = defineProps({
   sheet: { type: Object, required: true },
@@ -32,28 +29,11 @@ const props = defineProps({
 
 const emit = defineEmits(["update:internal"]);
 
-const resolverGrid = (tipo) => {
-  switch (tipo) {
-    case "SPH_CYL":
-      return AgGridMonofocal;
-    case "SPH_CYL_AXIS":
-      return AgGridTorico;
-    case "SPH_ADD":
-      return AgGridBifocal;
-    case "BASE":
-      return AgGridBase;
-    case "BASE_ADD":
-      return AgGridProgresivo;
-    default:
-      return AgGridMonofocal;
-  }
-};
-
-const gridComponent = computed(() => resolverGrid(props.sheet?.tipo_matriz));
+const gridComponent = computed(() => AgGridSheet);
 
 const resolverGridProps = (sheet, activeInternal) => {
   if (!sheet) return {};
-  const base = { sheetId: sheet.id, apiType: props.apiType };
+  const base = { sheetId: sheet.id, apiType: props.apiType, tipoMatriz: sheet.tipo_matriz };
 
   if (sheet.tipo_matriz === "SPH_ADD" || sheet.tipo_matriz === "SPH_CYL" || sheet.tipo_matriz === "SPH_CYL_AXIS") {
     return { ...base, sphType: activeInternal || "sph-neg" };

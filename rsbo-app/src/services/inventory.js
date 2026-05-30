@@ -16,6 +16,7 @@ export const purgeSheet = _svc.purgeSheet;
 export const reseedSheet = _svc.reseedSheet;
 export const fetchItems = _svc.fetchItems;
 export const saveChunk = _svc.saveChunk;
+export const saveCell = _svc.saveCell;
 
 // ── Función con logging extendido de campos de compra (mantiene comportamiento original) ──
 export async function createSheetWithPurchase(payload) {

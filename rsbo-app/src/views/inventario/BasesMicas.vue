@@ -8,7 +8,7 @@ import { labToast } from "@/composables/shared/useLabToast.js";
 import { listSheets } from "@/services/inventory";
 import { fetchCatalog } from "@/services/catalog";
 import { useSheetPagination } from "@/composables/api/useSheetPagination.js";
-import { INVENTORY_LABELS, GRID_RESOLVERS, INVENTORY_CONFIG } from "@/data/inventory.data";
+import { INVENTORY_LABELS, INVENTORY_CONFIG } from "@/data/inventory.data";
 
 const props = defineProps({
   user: { type: Object, required: false, default: null }

@@ -186,10 +186,21 @@ const {
 } = useWorkspaceTabs(props.apiType);
 
 const mountedTabIds = reactive(new Set());
+// Keep-alive: máximo 3 planillas vivas (con su data + WebSocket). LRU por recencia.
+const MAX_ALIVE_SHEETS = 3;
+const mountedOrder = []; // MRU al frente
 
 watch(activeIdStore, (id) => {
   if (id && id !== 'nueva') {
     mountedTabIds.add(id);
+    const i = mountedOrder.indexOf(id);
+    if (i >= 0) mountedOrder.splice(i, 1);
+    mountedOrder.unshift(id);
+    // Desmontar las más viejas más allá del límite (nunca la activa)
+    while (mountedOrder.length > MAX_ALIVE_SHEETS) {
+      const evict = mountedOrder.pop();
+      if (evict && evict !== id) mountedTabIds.delete(evict);
+    }
   }
   // Sync store state to parent without re-triggering loops
   if (id !== props.activeId) {
@@ -206,6 +217,8 @@ const closeTab = (id) => {
 
   closeTabStore(id);
   mountedTabIds.delete(id);
+  const i = mountedOrder.indexOf(id);
+  if (i >= 0) mountedOrder.splice(i, 1);
 };
 
 const handleTogglePin = (id) => {

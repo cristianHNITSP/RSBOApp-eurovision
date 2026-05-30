@@ -152,6 +152,22 @@ export function createSheetService(base, tag) {
     return api.delete(`${base}/sheets/${sheetId}/purge`, { data: { actor } });
   }
 
+  /**
+   * Guarda UNA celda vía el endpoint PUT por celda del backend.
+   * @param {string} segment - "base" | "sph-cyl" | "bifocal" | "progresivo" | "torico" | "multifocal"
+   * @param {object} body    - coordenadas + existencias (lo produce descriptor.changeRecord)
+   */
+  async function saveCell(sheetId, segment, body, actor) {
+    if (DEV) console.log(`[${tag.toLowerCase()}.saveCell] ${segment}`, sheetId, JSON.stringify(body));
+    try {
+      const res = await api.put(`${base}/sheets/${sheetId}/${segment}/cell`, { ...body, actor });
+      return res;
+    } catch (err) {
+      logErr(`[${tag.toLowerCase()}.saveCell] ERROR ${err?.response?.status}`, err);
+      throw err;
+    }
+  }
+
   return {
     listSheets,
     createSheet,
@@ -163,6 +179,7 @@ export function createSheetService(base, tag) {
     purgeSheet,
     reseedSheet,
     fetchItems,
-    saveChunk
+    saveChunk,
+    saveCell
   };
 }

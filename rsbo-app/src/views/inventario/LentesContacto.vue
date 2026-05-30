@@ -5,11 +5,6 @@ import { useRoute, useRouter } from "vue-router";
 import TabsManager from "@/components/TabsManager.vue";
 import { labToast } from "@/composables/shared/useLabToast.js";
 
-import AgGridBifocal    from "@/components/ag-grid/templates/AgGridBifocal.vue";
-import AgGridBase       from "@/components/ag-grid/templates/AgGridBase.vue";
-import AgGridMonofocal  from "@/components/ag-grid/templates/AgGridMonofocal.vue";
-import AgGridTorico     from "@/components/ag-grid/templates/AgGridTorico.vue";
-import AgGridProgresivo from "@/components/ag-grid/templates/AgGridProgresivo.vue";
 
 import { listContactLensSheets } from "@/services/contactlenses";
 import { useSheetPagination } from "@/composables/api/useSheetPagination.js";
@@ -176,32 +171,6 @@ function reordenarSheets({ oldIndex, newIndex }) {
   pager.sheets.splice(newIndex, 0, moved);
 }
 
-/* ─────────────────────────────────────────────────────────────────────────
-   Resolvers de grilla — misma lógica que BasesMicas
-───────────────────────────────────────────────────────────────────────── */
-const resolverGrid = (tipo) => {
-  switch (tipo) {
-    case "SPH_CYL":      return AgGridMonofocal;
-    case "SPH_CYL_AXIS": return AgGridTorico;
-    case "SPH_ADD":      return AgGridBifocal;
-    case "BASE":         return AgGridBase;
-    case "BASE_ADD":     return AgGridProgresivo;
-    default:             return AgGridMonofocal;
-  }
-};
-
-const resolverGridProps = (sheet, activeInternal) => {
-  if (!sheet) return {};
-  const base = { sheetId: sheet.id, apiType: "contactlenses" };
-
-  if (sheet.tipo_matriz === "SPH_ADD" || sheet.tipo_matriz === "SPH_CYL" || sheet.tipo_matriz === "SPH_CYL_AXIS") {
-    return { ...base, sphType: activeInternal || "sph-neg" };
-  }
-  if (sheet.tipo_matriz === "BASE" || sheet.tipo_matriz === "BASE_ADD") {
-    return { ...base, sphType: activeInternal || "base-neg" };
-  }
-  return base;
-};
 </script>
 
 <template>

@@ -1298,6 +1298,8 @@ router.post(
         actor
       });
 
+      broadcast("INV_RELOAD", { sheetId: String(sheet._id) });
+
       res.json({ ok: true, data: stats });
     } catch (err) {
       console.error("POST /sheets/:sheetId/seed error:", err);
@@ -1396,7 +1398,7 @@ router.put(
 
 
       await invalidatePattern(`inv:sheet:${sheet._id}:*`);
-      broadcast("INV_CHANGE", { sheetId: String(sheet._id), type: "cell_update", matrixKey: key });
+      broadcast("INV_CELL", { sheetId: String(sheet._id), cell: { sph, cyl, existencias: after } });
 
       return res.json({ ok: true, key, before, after, cell: nextCell, axisExtended, axisExtendError });
     } catch (err) {
@@ -1467,7 +1469,7 @@ router.put(
       });
 
       await invalidatePattern(`inv:sheet:${sheet._id}:*`);
-      broadcast("INV_CHANGE", { sheetId: String(sheet._id), type: "cell_update", matrixKey: key });
+      broadcast("INV_CELL", { sheetId: String(sheet._id), cell: { base, existencias: after } });
 
       return res.json({ ok: true, key, before, after, cell: nextCell });
     } catch (err) {
@@ -1573,7 +1575,7 @@ router.put(
       });
 
       await invalidatePattern(`inv:sheet:${sheet._id}:*`);
-      broadcast("INV_CHANGE", { sheetId: String(sheet._id), type: "cell_update", matrixKey: key });
+      broadcast("INV_CELL", { sheetId: String(sheet._id), cell: { sph, add, eye, base_izq, base_der, existencias: after } });
 
       return res.json({ ok: true, key, eye, before, after, cell: nextEye });
     } catch (err) {
@@ -1667,7 +1669,7 @@ router.put(
       });
 
       await invalidatePattern(`inv:sheet:${sheet._id}:*`);
-      broadcast("INV_CHANGE", { sheetId: String(sheet._id), type: "cell_update", matrixKey: key });
+      broadcast("INV_CELL", { sheetId: String(sheet._id), cell: { base_izq, base_der, add, eye, existencias: after } });
 
       return res.json({ ok: true, key, eye, before, after, cell: nextEye });
     } catch (err) {
@@ -1752,9 +1754,9 @@ router.post(
       await cacheDel(KEYS.stats());
       await invalidatePattern("inv:*sheets:*");
 
-      // Notificar a otras pestañas del mismo sheet que el inventario cambió
+      // Notificar a otras pestañas del mismo sheet: lista de celdas cambiadas
       if (result.updated > 0) {
-        broadcast("INVENTORY_CHUNK_SAVED", { sheetIds: [req.params.sheetId] });
+        broadcast("INV_CELLS", { sheetId: String(sheet._id), cells: rows });
       }
 
       if (conflicts.length > 0) {

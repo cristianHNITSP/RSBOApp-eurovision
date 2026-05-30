@@ -42,7 +42,7 @@
           </div>
 
           <!-- Papelera (Insertado tras el catálogo) -->
-          <div v-if="planilla.id === 'nueva'" class="tab-sentinel tab-menu-manager-wrapper ml-1">
+          <div v-if="planilla.id === 'nueva'" class="tab-sentinel tab-menu-manager-wrapper">
             <TrashMenuManager :api-type="apiType" :actor="actor" @restored="$emit('open-template', $event)" />
           </div>
         </template>

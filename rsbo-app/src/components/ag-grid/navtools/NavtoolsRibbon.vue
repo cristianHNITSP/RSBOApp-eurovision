@@ -51,13 +51,13 @@
           <b-field grouped>
 
 
-            <NavButton extra-class="rbtn--primary" :type="dirty ? 'is-primary' : 'is-light'" icon="save"
+            <NavButton v-if="!autoSave" extra-class="rbtn--primary" :type="dirty ? 'is-primary' : 'is-light'" icon="save"
               :disabled="!dirty || saving || opPending" @click="$emit('save')">
               <span v-if="saving || opPending">Guardando…</span>
               <span v-else>Guardar cambios</span>
             </NavButton>
 
-            <NavButton icon="undo" :disabled="!dirty || saving || opPending" @click="$emit('discard')">
+            <NavButton v-if="!autoSave" icon="undo" :disabled="!dirty || saving || opPending" @click="$emit('discard')">
               Descartar cambios
             </NavButton>
 
@@ -92,7 +92,8 @@ const props = defineProps({
   colActionLabel: String,
   allowColumns: Boolean,
   dirty: Boolean,
-  saving: Boolean
+  saving: Boolean,
+  autoSave: Boolean
 })
 
 const emit = defineEmits([

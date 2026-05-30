@@ -10,7 +10,7 @@
     <!-- 2. RIBBON ACTIONS -->
     <NavtoolsRibbon class="p-2" v-model:activeTab="activeTab" :can-undo="canUndo" :can-redo="canRedo"
       :is-mobile="isMobile" :op-pending="opPending" :row-action-label="rowActionLabel"
-      :col-action-label="colActionLabel" :allow-columns="allowColumns" :dirty="dirty" :saving="saving"
+      :col-action-label="colActionLabel" :allow-columns="allowColumns" :dirty="dirty" :saving="saving" :auto-save="autoSave"
       @undo="handleUndoClick" @redo="handleRedoClick" @copy="handleCopyClick" @cut="handleCutClick"
       @paste="handlePasteClick" @add-row="openAddRowModal" @add-column="openAddColumnModal" @save="handleSaveInternal"
       @discard="handleDiscard" @refresh="handleRefreshInternal" @seed="handleSeedInternal" @export="emit('export')" />
@@ -22,8 +22,8 @@
       @apply="applyChange"
     />
     -->
-    <!-- 4. OVERLAY DIRTY -->
-    <DirtyFloat :dirty="dirty" :saving="saving" :op-pending="opPending" :change-key="dirtyChangeTick"
+    <!-- 4. OVERLAY DIRTY (oculto con auto-guardado) -->
+    <DirtyFloat v-if="!autoSave" :dirty="dirty" :saving="saving" :op-pending="opPending" :change-key="dirtyChangeTick"
       @save="handleSaveInternal" @discard="handleDiscard" />
   </section>
 </template>
@@ -58,7 +58,8 @@ const props = defineProps({
   gridCanRedo: { type: Boolean, default: false },
   isFullscreen: { type: Boolean, default: false },
   internalTabs: { type: Array, default: () => [] },
-  activeInternalTab: { type: String, default: "" }
+  activeInternalTab: { type: String, default: "" },
+  autoSave: { type: Boolean, default: false }
 })
 
 const emit = defineEmits([

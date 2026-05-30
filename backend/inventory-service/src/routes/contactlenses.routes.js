@@ -1000,6 +1000,8 @@ router.post(
         actor
       });
 
+      broadcast("INV_RELOAD", { sheetId: String(sheet._id) });
+
       res.json({ ok: true, data: stats });
     } catch (err) {
       console.error("POST /contactlenses/sheets/:sheetId/seed error:", err);
@@ -1067,6 +1069,10 @@ router.post(
         details: { upserted: result.updated, rowsCount: rows.length },
         actor
       });
+
+      if (result.updated > 0) {
+        broadcast("INV_CELLS", { sheetId: String(sheet._id), cells: rows });
+      }
 
       return res.json({ ok: true, data: { upserted: result.updated } });
     } catch (err) {
@@ -1149,7 +1155,7 @@ router.put(
       });
 
       await invalidatePattern(`inv:sheet:${sheet._id}:*`);
-      broadcast("INV_CHANGE", { sheetId: String(sheet._id), type: "cell_update", matrixKey: key });
+      broadcast("INV_CELL", { sheetId: String(sheet._id), cell: { sph, cyl, existencias: after } });
 
       return res.json({ ok: true, key, before, after, cell: nextCell });
     } catch (err) {
@@ -1233,7 +1239,7 @@ router.put(
       });
 
       await invalidatePattern(`inv:sheet:${sheet._id}:*`);
-      broadcast("INV_CHANGE", { sheetId: String(sheet._id), type: "cell_update", matrixKey: key });
+      broadcast("INV_CELL", { sheetId: String(sheet._id), cell: { sph, cyl, axis, existencias: after } });
 
       return res.json({ ok: true, key, before, after, cell: nextCell });
     } catch (err) {
@@ -1312,7 +1318,7 @@ router.put(
       });
 
       await invalidatePattern(`inv:sheet:${sheet._id}:*`);
-      broadcast("INV_CHANGE", { sheetId: String(sheet._id), type: "cell_update", matrixKey: key });
+      broadcast("INV_CELL", { sheetId: String(sheet._id), cell: { base, existencias: after } });
 
       return res.json({ ok: true, key, before, after, cell: nextCell });
     } catch (err) {
@@ -1418,7 +1424,7 @@ router.put(
       });
 
       await invalidatePattern(`inv:sheet:${sheet._id}:*`);
-      broadcast("INV_CHANGE", { sheetId: String(sheet._id), type: "cell_update", matrixKey: key, eye });
+      broadcast("INV_CELL", { sheetId: String(sheet._id), cell: { base_izq, base_der, add, eye, existencias: after } });
 
       return res.json({ ok: true, key, eye, before, after, cell: nextEye });
     } catch (err) {

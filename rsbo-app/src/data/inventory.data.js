@@ -2,11 +2,6 @@
  * @fileoverview Datos y configuración para el módulo de Inventario.
  */
 
-import AgGridBifocal from "@/components/ag-grid/templates/AgGridBifocal.vue";
-import AgGridBase from "@/components/ag-grid/templates/AgGridBase.vue";
-import AgGridMonofocal from "@/components/ag-grid/templates/AgGridMonofocal.vue";
-import AgGridProgresivo from "@/components/ag-grid/templates/AgGridProgresivo.vue";
-
 export const INVENTORY_CONFIG = {
   STALE_TIME_MS: 300_000, // 5 minutos
   FETCH_LIMIT: 50,
@@ -15,14 +10,6 @@ export const INVENTORY_CONFIG = {
     SPH_NEG: 'sph-neg',
     BASE_NEG: 'base-neg'
   }
-};
-
-export const GRID_RESOLVERS = {
-  SPH_CYL: AgGridMonofocal,
-  SPH_ADD: AgGridBifocal,
-  BASE: AgGridBase,
-  BASE_ADD: AgGridProgresivo,
-  DEFAULT: AgGridMonofocal
 };
 
 export const INVENTORY_LABELS = {

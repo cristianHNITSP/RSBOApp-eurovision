@@ -27,8 +27,11 @@ function broadcast(type, payload) {
   try {
     if (_ws?.readyState === WebSocket.OPEN) {
       _ws.send(JSON.stringify({ type, payload }));
+      console.log("[WS][OUT]", type, "sheet:", payload?.sheetId || payload?.sheetIds || "?");
+    } else {
+      console.warn("[WS][OUT] DESCARTADO (ws no abierto):", type, "readyState:", _ws?.readyState);
     }
-  } catch {}
+  } catch (e) { console.warn("[WS][OUT] error:", e?.message); }
 }
 
 module.exports = { connect, broadcast };

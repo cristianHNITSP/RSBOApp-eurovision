@@ -160,7 +160,6 @@ function select(tab) {
     0 2px 10px rgba(144, 111, 225, 0.22),
     inset 0 1px 0 rgba(255, 255, 255, 0.14);
   pointer-events: none;
-  z-index: 0;
   transition:
     left 230ms cubic-bezier(0.34, 1.56, 0.64, 1),
     width 230ms cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -171,7 +170,6 @@ function select(tab) {
    ════════════════════════════════════════════════════════════ */
 .dyn-tab {
   position: relative;
-  z-index: 1;
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;

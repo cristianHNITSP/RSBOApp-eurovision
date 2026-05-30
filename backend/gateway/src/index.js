@@ -265,6 +265,8 @@ server.on("upgrade", (req, socket, head) => {
 
 wss.on("connection", (ws) => {
   frontendClients.add(ws);
+  ws.isAlive = true;
+  ws.on("pong", () => { ws.isAlive = true; });
   console.log("🔌 Frontend WS conectado");
   ws.send(JSON.stringify({ type: "welcome" }));
   ws.on("close", () => {
@@ -274,14 +276,31 @@ wss.on("connection", (ws) => {
   ws.on("error", () => {});
 });
 
+// Heartbeat: mantiene vivas las conexiones (evita drops por inactividad del proxy)
+// y limpia las "medio muertas" que no responden al ping.
+const _wsHeartbeat = setInterval(() => {
+  wss.clients.forEach((ws) => {
+    if (ws.isAlive === false) {
+      frontendClients.delete(ws);
+      try { return ws.terminate(); } catch { return; }
+    }
+    ws.isAlive = false;
+    try { ws.ping(); } catch {}
+  });
+}, 30000);
+wss.on("close", () => clearInterval(_wsHeartbeat));
+
 wssInternal.on("connection", (ws) => {
   console.log("🔌 Servicio interno WS conectado");
   ws.on("message", (data) => {
+    let _t = "?"; try { _t = JSON.parse(String(data)).type; } catch {}
+    let _n = 0;
     frontendClients.forEach((client) => {
       if (client.readyState === 1) {
-        try { client.send(String(data)); } catch {}
+        try { client.send(String(data)); _n++; } catch {}
       }
     });
+    console.log("[WS][RELAY]", _t, "→", _n, "/", frontendClients.size, "(vivos/en-set)");
   });
   ws.on("close", () => console.log("❌ Servicio interno WS desconectado"));
   ws.on("error", () => {});

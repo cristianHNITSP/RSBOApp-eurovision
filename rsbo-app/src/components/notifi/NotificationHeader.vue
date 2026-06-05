@@ -10,9 +10,10 @@ defineEmits(['close']);
     </div>
 
     <div class="panel-actions">
-      <!-- Cerrar -->
+      <!-- Cerrar (en móvil se cierra con swipe-down o tap fuera) -->
       <b-button type="is-ghost" icon-pack="fas" icon-left="times"
-                size="is-small" @click="$emit('close')" aria-label="Cerrar" />
+                size="is-small" class="is-hidden-mobile"
+                @click="$emit('close')" aria-label="Cerrar" />
     </div>
   </header>
 </template>

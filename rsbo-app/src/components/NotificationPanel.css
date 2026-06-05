@@ -36,14 +36,15 @@
   border: 1px solid var(--border-solid) !important;
 }
 
-/* Móvil: bottom sheet con curvatura suave */
+/* Móvil: bottom sheet pegado al fondo */
 @media (max-width: 768px) {
   .notification-panel {
     top: auto;
     bottom: 0;
-    right: 0;
     left: 0;
+    right: 0;
     width: 100%;
+    height: 85dvh;       /* abre al tamaño final */
     max-height: 85dvh;
     border-radius: 32px 32px 0 0;
     border-bottom: none;
@@ -51,6 +52,91 @@
     border-right: none;
     box-shadow: 0 -10px 40px var(--static-color-rgba-0-0-0-0-15);
   }
+
+  /* Apertura Liquid Glass: el sheet sube y se "asienta" pegado al fondo.
+     El rebote es en scaleY con origin abajo → el borde inferior queda CLAVADO
+     (la parte de arriba respira); el translateY no hace overshoot, así no se
+     despega. Acompaña un blur que se enfoca. */
+  .notification-panel {
+    transform-origin: bottom center;
+  }
+
+  /* La entrada/salida la maneja el keyframe; neutralizamos los estados
+     from/to globales para que no interfieran con la animación. */
+  .panel-pop-enter-from,
+  .panel-pop-enter-to,
+  .panel-pop-leave-from,
+  .panel-pop-leave-to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+
+  .panel-pop-enter-active {
+    animation: sheet-liquid-in 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) both !important;
+  }
+
+  .panel-pop-leave-active {
+    animation: sheet-liquid-out 0.3s cubic-bezier(0.4, 0, 1, 1) both !important;
+  }
+}
+
+@keyframes sheet-liquid-in {
+  0% {
+    opacity: 0;
+    transform: translateY(100%) scaleY(0.92);
+    filter: blur(12px);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(0) scaleY(1.012);
+    filter: blur(0);
+  }
+  100% {
+    transform: translateY(0) scaleY(1);
+  }
+}
+
+@keyframes sheet-liquid-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+}
+
+/* Scrim (fondo oscuro) — solo móvil; tap fuera cierra */
+.panel-scrim {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .panel-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 199;
+    background: var(--static-color-rgba-0-0-0-0-4, rgba(0, 0, 0, 0.4));
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Snap-back suave del panel al soltar el arrastre (cuando no cierra) */
+  .notification-panel {
+    transition: transform 0.32s cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+}
+
+.scrim-enter-active,
+.scrim-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.scrim-enter-from,
+.scrim-leave-to {
+  opacity: 0;
 }
 
 /* Drag handle (estilo iOS) */

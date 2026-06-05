@@ -322,6 +322,146 @@ async function upsertDaily({ groupKey, date, title, message, metadata, type, pri
   return { notification: n, accumulated: false };
 }
 
+// ============================================================================
+// POLÍTICA DE ALERTAS DE STOCK (consumidor de eventos `stock.*`)
+// Una notificación persistente por planilla (groupKey = stock_alert:<sheetId>),
+// que se "nudgea" según urgencia/antigüedad y se auto-cierra al recuperarse.
+// ============================================================================
+
+const STOCK_SYSTEM_OID = new mongoose.Types.ObjectId('000000000000000000000001');
+const STOCK_TARGET_ROLES = ['eurovision'];
+const PRIO_ORDER = { low: 0, medium: 1, high: 2, critical: 3 };
+const HOUR_MS = 60 * 60 * 1000;
+const CYCLE_MS = 3 * 24 * HOUR_MS; // una notificación vive 3 días, luego se regenera
+
+/** urgencyScore [0..100] → prioridad de la notificación. */
+function priorityFromScore(score) {
+  if (score >= 85) return 'critical';
+  if (score >= 55) return 'high';
+  if (score >= 25) return 'medium';
+  return 'low';
+}
+
+function buildStockTitle(ev) {
+  const label = ev.sheetLabel || ev.sheetId;
+  return ev.critCount > 0 ? `Stock crítico · ${label}` : `Stock bajo · ${label}`;
+}
+
+function buildStockMessage(ev) {
+  const parts = [];
+  if (ev.critCount > 0) parts.push(`${ev.critCount} crítico${ev.critCount > 1 ? 's' : ''}`);
+  if (ev.lowCount  > 0) parts.push(`${ev.lowCount} bajo${ev.lowCount > 1 ? 's' : ''}`);
+  return parts.join(' · ') || 'Revisar stock';
+}
+
+function buildStockFields(ev) {
+  return {
+    title:    buildStockTitle(ev),
+    message:  buildStockMessage(ev),
+    type:     ev.critCount > 0 ? 'danger' : 'warning',
+    priority: priorityFromScore(ev.urgencyScore || 0),
+    metadata: {
+      type:        'stock_alert',
+      sheetId:     ev.sheetId,
+      sheetLabel:  ev.sheetLabel,
+      sheet:       ev.sheet || null,   // identidad: name, sku, proveedor, marca, material, tratamiento, tipoLabel
+      tipo_matriz: ev.tipo_matriz,
+      cells:       ev.cells,
+      alertsByAxis: ev.alertsByAxis || null,
+      critCount:   ev.critCount,
+      lowCount:    ev.lowCount,
+      urgencyScore: ev.urgencyScore,
+    },
+  };
+}
+
+/**
+ * Política PURA (sin I/O): decide qué hacer con un evento `stock.assessed`.
+ * - create:     no existe la notificación.
+ * - regenerate: la vigente superó el ciclo de 3 días → nueva identidad.
+ * - revive:     dentro del ciclo, no fijada y la cadencia (lock) lo permite → re-surface.
+ * - refresh:    actualiza datos en silencio (fijada, o cambió el contenido sin tick de cadencia).
+ * - skip:       nada que hacer.
+ * NUNCA hay contadores: el "spam" es revivir, no acumular.
+ * @returns {{ action: 'create'|'regenerate'|'revive'|'refresh'|'skip' }}
+ */
+function decideStockAction({ existing, ev, now, resurface, pinned, cycleMs = CYCLE_MS }) {
+  if (!existing) return { action: 'create' };
+  if (now - new Date(existing.createdAt).getTime() > cycleMs) return { action: 'regenerate' };
+  const contentChanged = existing.contentHash !== ev.hash;
+  if (pinned)    return { action: contentChanged ? 'refresh' : 'skip' };
+  if (resurface) return { action: 'revive' };
+  return { action: contentChanged ? 'refresh' : 'skip' };
+}
+
+/**
+ * Materializa un evento `stock.assessed` en una notificación persistente.
+ * `resurface` lo decide el consumidor con el rate-limiter de Redis (cadencia).
+ * @returns {{ notification, changed:boolean, action:string }}
+ */
+async function upsertStockAlert(ev, { resurface = false } = {}) {
+  const groupKey = `stock_alert:${ev.sheetId}`;
+  const now = Date.now();
+
+  // Una sola notificación por planilla: conserva la más reciente, borra duplicados.
+  const dupes    = await Notification.find({ groupKey }).sort({ updatedAt: -1 });
+  let existing   = dupes[0] || null;
+  if (dupes.length > 1) {
+    await Notification.deleteMany({ groupKey, _id: { $ne: existing._id } });
+  }
+
+  const pinned = !!existing && (existing.pinnedBy || []).length > 0;
+  const { action } = decideStockAction({ existing, ev, now, resurface, pinned });
+  const fields = buildStockFields(ev);
+
+  // create / regenerate → nueva notificación (identidad fresca, sin contador)
+  if (action === 'create' || action === 'regenerate') {
+    if (action === 'regenerate') await Notification.deleteMany({ groupKey });
+    const n = await Notification.create({
+      groupKey,
+      date:          new Date().toISOString().slice(0, 10),
+      ...fields,
+      targetRoles:   STOCK_TARGET_ROLES,
+      isGlobal:      false,
+      count:         1,            // fijo; nunca se incrementa
+      contentHash:   ev.hash,
+      createdBy:     STOCK_SYSTEM_OID,
+      createdByName: 'Sistema',
+    });
+    return { notification: n, changed: true, action };
+  }
+
+  if (action === 'skip') return { notification: existing, changed: false, action };
+
+  // revive / refresh → actualiza la vigente
+  existing.title    = fields.title;
+  existing.message  = fields.message;
+  existing.metadata = fields.metadata;
+  existing.markModified('metadata');
+  existing.contentHash = ev.hash;
+  existing.type     = fields.type;
+  // Prioridad: subir siempre; bajar solo si no está fijada.
+  if (!pinned || PRIO_ORDER[fields.priority] >= PRIO_ORDER[existing.priority]) {
+    existing.priority = fields.priority;
+  }
+
+  if (action === 'revive') {
+    existing.dismissedBy = [];        // re-surface: vuelve a verse para todos
+    await existing.save();            // updatedAt avanza → sube y cuenta como nueva
+    return { notification: existing, changed: true, action };
+  }
+
+  // refresh: datos frescos en silencio, sin revivir ni mover updatedAt
+  await existing.save({ timestamps: false });
+  return { notification: existing, changed: false, action };
+}
+
+/** Stock recuperado → cierra la notificación de la planilla. */
+async function clearStockAlert(sheetId) {
+  const res = await Notification.deleteMany({ groupKey: `stock_alert:${sheetId}` });
+  return { changed: (res.deletedCount || 0) > 0 };
+}
+
 /**
  * Actualiza campos permitidos de una notificación.
  */
@@ -343,4 +483,9 @@ async function remove(notificationId) {
   return Notification.findByIdAndDelete(notificationId);
 }
 
-module.exports = { listForUser, countNew, create, createOrAccumulate, upsertDaily, togglePin, dismiss, update, remove };
+module.exports = {
+  listForUser, countNew, create, createOrAccumulate, upsertDaily,
+  upsertStockAlert, clearStockAlert, togglePin, dismiss, update, remove,
+  // puras (para tests)
+  decideStockAction, priorityFromScore, CYCLE_MS,
+};

@@ -19,7 +19,7 @@
  */
 
 const cron = require("node-cron");
-const { sweepAllSheets, cleanupLegacyPerCellNotifications } = require("../services/stockAlert.service");
+const { sweepAllSheets } = require("../services/stockAlert.service");
 
 const STARTUP_DELAY_MS = 8000;
 
@@ -28,27 +28,19 @@ function startStockAlertJob() {
   (async () => {
     await new Promise((resolve) => setTimeout(resolve, STARTUP_DELAY_MS));
     console.log("[STOCK_ALERT] Sweep inicial al arrancar...");
-    await cleanupLegacyPerCellNotifications();
-    await sweepAllSheets({ respectCooldown: true });
+    await sweepAllSheets();
   })().catch((e) => console.error("[STOCK_ALERT] Error en sweep inicial:", e?.message));
 
-  // ── Sweep Inteligente (Redis Pub/Sub) ───────────────────────────────────
-  
-  // REGLA 1: Horario Laboral (8 AM - 8 PM) - Cada Hora
-  cron.schedule("0 8-20 * * *", () => {
-    console.log("[STOCK_ALERT] Cron Laboral: iniciando barrido horario...");
-    sweepAllSheets({ respectCooldown: true, useRedis: true })
-      .catch((e) => console.error("[STOCK_ALERT] Error en cron laboral:", e?.message));
+  // ── Barrido periódico horario (safety-net). Solo "verifica" y emite a Redis
+  //    Streams; la CADENCIA real del recordatorio (1h laboral / 6h muertas) la
+  //    impone el consumidor con un rate-limiter en Redis, no este cron. ───────
+  cron.schedule("0 * * * *", () => {
+    console.log("[STOCK_ALERT] Cron horario: iniciando barrido...");
+    sweepAllSheets()
+      .catch((e) => console.error("[STOCK_ALERT] Error en cron horario:", e?.message));
   });
 
-  // REGLA 2: Horario Nocturno - Cada 4 Horas (00:00, 04:00)
-  cron.schedule("0 0,4 * * *", () => {
-    console.log("[STOCK_ALERT] Cron Nocturno: iniciando barrido preventivo...");
-    sweepAllSheets({ respectCooldown: true, useRedis: true })
-      .catch((e) => console.error("[STOCK_ALERT] Error en cron nocturno:", e?.message));
-  });
-
-  console.log("[STOCK_ALERT] Job iniciado — Horario laboral (8-20h: cada hora) | Nocturno (cada 4h).");
+  console.log("[STOCK_ALERT] Job iniciado — barrido horario (cadencia gobernada por el consumidor).");
 }
 
 module.exports = { startStockAlertJob };

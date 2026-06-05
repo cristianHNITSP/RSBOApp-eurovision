@@ -4,20 +4,22 @@
  * stockAlert.service.js
  *
  * Sistema de alertas de stock inteligente basado en distancia al neutro.
- * Las alertas se agrupan por planilla (una notificacion diaria por planilla).
  *
- * Las notificaciones se persisten en el notification-service via HTTP interno
- * (notifClient) — este servicio ya no accede directamente a notification_db.
+ * inventory-service es PRODUCTOR: evalúa el stock de una planilla y publica un
+ * hecho de dominio en Redis Streams (`stock.assessed` / `stock.cleared`) vía
+ * eventBus. NO conoce al notification-service — quien materializa la
+ * notificación (cadencia, dedup, display) es el consumidor.
  *
  * ┌─────────────────────────────────────────────────────────┐
- * │  SECCION 1 — Clasificacion (puras, sin efectos)         │
- * │  SECCION 2 — Notificacion agrupada por planilla         │
+ * │  SECCION 1 — Clasificacion + urgencia (puras, sin I/O)  │
+ * │  SECCION 2 — Evaluacion por planilla → evento de dominio│
  * │  SECCION 3 — Orquestacion: checkCell / sweep            │
  * └─────────────────────────────────────────────────────────┘
  */
 
+const crypto        = require("crypto");
 const { denormNum } = require("../inventory/utils/keys");
-const notifClient   = require("./notifClient");
+const eventBus      = require("./eventBus");
 
 const MatrixBase       = require("../models/matrix/MatrixBase");
 const MatrixSphCyl     = require("../models/matrix/MatrixSphCyl");
@@ -89,9 +91,57 @@ function cellLabel(tipoMatriz, cellKey, eye) {
   } catch { return cellKey; }
 }
 
+/** Coordenadas estructuradas de una celda (sin formato de presentación). */
+function cellCoords(tipoMatriz, cellKey, eye) {
+  const p = String(cellKey).split("|").map(denormNum);
+  switch (tipoMatriz) {
+    case "BASE":         return { base: p[0] ?? null };
+    case "SPH_CYL":      return { sph: p[0] ?? null, cyl: p[1] ?? null };
+    case "SPH_CYL_AXIS": return { sph: p[0] ?? null, cyl: p[1] ?? null, axis: p[2] != null ? parseInt(p[2]) : null };
+    case "SPH_ADD":      return { sph: p[0] ?? null, add: p[1] ?? null, eye: eye || null };
+    case "BASE_ADD":     return { base_izq: p[0] ?? null, base_der: p[1] ?? null, add: p[2] ?? null, eye: eye || null };
+    default:             return {};
+  }
+}
+
+/**
+ * Score de urgencia [0..100]. Reusa la semántica de stock del dominio:
+ * "mientras más lejos del neutro (0), menos urgente es tener poco stock".
+ * CRÍTICO cerca de neutro → ~100; lejos → ~60. BAJO cerca → ~70; lejos → ~30.
+ */
+function urgency(level, distance) {
+  if (level !== "CRITICO" && level !== "BAJO") return 0;
+  const base      = level === "CRITICO" ? 60 : 30;
+  const closeness = Math.max(0, 1 - Math.min(Number(distance) || 0, 8) / 8); // 0..1
+  return Math.round(base + closeness * 40);
+}
+
+/** Etiqueta humana: prioriza el nombre de la planilla. */
 function sheetLabel(sheet) {
+  const name = String(sheet.nombre || sheet.name || "").trim();
+  if (name) return name;
   return [sheet.baseKey, sheet.material, sheet.tratamiento]
-    .filter(Boolean).join(" | ").trim() || String(sheet._id);
+    .filter(Boolean).join(" · ").trim() || String(sheet._id);
+}
+
+const TIPO_LABEL = {
+  BASE: "Monofocal", SPH_CYL: "Esf/Cil", SPH_ADD: "Bifocal",
+  BASE_ADD: "Progresivo/Multifocal", SPH_CYL_AXIS: "Tórico",
+};
+
+/** Identidad estructurada de la planilla para representarla en la notificación. */
+function sheetInfo(sheet) {
+  return {
+    name:        String(sheet.nombre || sheet.name || "").trim() || null,
+    sku:         sheet.sku || null,
+    proveedor:   sheet.proveedor?.name || null,
+    marca:       sheet.marca?.name || null,
+    material:    sheet.material || null,
+    tratamiento: sheet.tratamiento || null,
+    baseKey:     sheet.baseKey || null,
+    tipo_matriz: sheet.tipo_matriz || null,
+    tipoLabel:   TIPO_LABEL[sheet.tipo_matriz] || sheet.tipo_matriz || null,
+  };
 }
 
 function getMatrixModel(tipoMatriz, isContactLens = false) {
@@ -115,28 +165,19 @@ function getMatrixModel(tipoMatriz, isContactLens = false) {
   }
 }
 
-function todayStr() {
-  return new Date().toISOString().slice(0, 10);
-}
-
 // ============================================================================
-// SECCION 2 — Notificacion agrupada por planilla (una por dia)
+// SECCION 2 — Evaluacion por planilla → evento de dominio
 // ============================================================================
 
 /**
- * Lee TODAS las celdas de una planilla, clasifica las que tienen stock
- * bajo o critico, y delega la persistencia al notification-service via HTTP.
+ * Lee TODAS las celdas de una planilla, clasifica las que tienen stock bajo o
+ * critico, y publica el hecho de dominio (`stock.assessed`). Si no hay alertas,
+ * publica `stock.cleared` para que el consumidor cierre la notificacion.
  *
- * Si no hay celdas con alerta, solicita la eliminacion de la notificacion de hoy.
- *
- * @param {object} sheet - Documento de InventorySheet
- * @param {{ respectCooldown?: boolean }} opts
+ * @param {object} sheet - Documento de InventorySheet / ContactLensesSheet
  */
 async function upsertSheetAlertNotification(sheet, opts = {}) {
-  const { respectCooldown = false } = opts;
-
   try {
-    const today    = todayStr();
     const isCL  = sheet.isContactLens || !!sheet.curvaBase || !!sheet.diametro || sheet.tipo_matriz === 'SPH_CYL_AXIS';
     const Model = getMatrixModel(sheet.tipo_matriz, isCL);
     if (!Model) return;
@@ -159,8 +200,11 @@ async function upsertSheetAlertNotification(sheet, opts = {}) {
           allAlertCells.push({
             cellKey:     key,
             eye:         null,
+            coords:      cellCoords(sheet.tipo_matriz, key, null),
             label:       cellLabel(sheet.tipo_matriz, key, null),
             level,
+            distance,
+            urgency:     urgency(level, distance),
             existencias,
             // Extraer el eje y asegurar que sea un entero limpio (sin .00)
             axis: sheet.tipo_matriz === 'SPH_CYL_AXIS' ? String(parseInt(String(key).split('|')[2] || 0)) : null
@@ -176,8 +220,11 @@ async function upsertSheetAlertNotification(sheet, opts = {}) {
             allAlertCells.push({
               cellKey:     key,
               eye,
+              coords:      cellCoords(sheet.tipo_matriz, key, eye),
               label:       cellLabel(sheet.tipo_matriz, key, eye),
               level,
+              distance,
+              urgency:     urgency(level, distance),
               existencias,
               axis: null
             });
@@ -186,13 +233,10 @@ async function upsertSheetAlertNotification(sheet, opts = {}) {
       }
     }
 
-    // ── ESTRATEGIA DE NOTIFICACIÓN ──────────────────────────────────────────
-    const groupKey = `stock_alert:${sheet._id}`;
-    
+    // ── EMISIÓN DEL HECHO DE DOMINIO ────────────────────────────────────────
     if (allAlertCells.length === 0) {
-      await notifClient.deleteByGroup({ groupKey, date: today });
-      // Limpiar también posibles remanentes del sistema de ejes anterior
-      await notifClient.deleteByGroup({ groupKeyPattern: `^stock_alert:${sheet._id}:` });
+      // Stock recuperado → el consumidor cerrará la notificación de esta planilla.
+      await eventBus.publish({ kind: "stock.cleared", v: 1, sheetId: String(sheet._id), ts: Date.now() });
       return;
     }
 
@@ -205,72 +249,52 @@ async function upsertSheetAlertNotification(sheet, opts = {}) {
       });
     }
 
-    await _sendAggregatedNotification(sheet, allAlertCells, groupKey, today, { ...opts, alertsByAxis });
+    await _emitAssessedEvent(sheet, allAlertCells, isCL, alertsByAxis);
   } catch (e) {
     console.warn("[STOCK_ALERT] upsertSheetAlertNotification error:", e?.message);
   }
 }
 
 /**
- * Helper interno para construir y enviar el payload final.
+ * Construye y publica el hecho de dominio `stock.assessed`.
+ * Solo datos estructurados (coords, niveles, urgencia) — la política de
+ * notificación (título, mensaje, prioridad, cadencia) la decide el consumidor.
  */
-async function _sendAggregatedNotification(sheet, alertCells, groupKey, today, opts = {}) {
-  const { respectCooldown = false, alertsByAxis = null } = opts;
-
-  // Ordenar: CRITICO primero
+async function _emitAssessedEvent(sheet, alertCells, isCL, alertsByAxis) {
+  // Ordenar: CRITICO primero, luego mayor urgencia
   alertCells.sort((a, b) => {
     if (a.level === "CRITICO" && b.level !== "CRITICO") return -1;
     if (b.level === "CRITICO" && a.level !== "CRITICO") return 1;
-    return 0;
+    return (b.urgency || 0) - (a.urgency || 0);
   });
 
-  const critCount = alertCells.filter((c) => c.level === "CRITICO").length;
-  const lowCount  = alertCells.filter((c) => c.level === "BAJO").length;
-  const sLabel    = sheetLabel(sheet);
-  const hasCrit   = critCount > 0;
+  const critCount    = alertCells.filter((c) => c.level === "CRITICO").length;
+  const lowCount     = alertCells.filter((c) => c.level === "BAJO").length;
+  const urgencyScore = alertCells.reduce((m, c) => Math.max(m, c.urgency || 0), 0);
 
-  const title = hasCrit
-    ? `STOCK CRÍTICO | ${sLabel}`
-    : `STOCK BAJO | ${sLabel}`;
+  // Fingerprint del estado (para idempotencia/dedup en el consumidor)
+  const fingerprint = alertCells
+    .map((c) => `${c.cellKey}:${c.eye || ""}:${c.level}:${c.existencias}`)
+    .sort()
+    .join("|");
+  const hash = crypto.createHash("sha256").update(fingerprint).digest("hex");
 
-  const parts = [];
-  if (critCount > 0) parts.push(`${critCount} combinacion${critCount > 1 ? "es" : ""} CRÍTICA${critCount > 1 ? "S" : ""}`);
-  if (lowCount  > 0) parts.push(`${lowCount} con stock bajo`);
-
-  const message = `[Planilla: ${sLabel}] | ${parts.join(" | ")}. Revisa el detalle para navegar por grados.`;
-
-  const metadata = {
-    type:       "stock_alert",
-    sheetId:    String(sheet._id),
-    sheetLabel: sLabel,
-    cells:      alertCells,
-    alertsByAxis, // Agrupación para navegación en frontend
+  await eventBus.publish({
+    kind:         "stock.assessed",
+    v:            1,
+    sheetId:      String(sheet._id),
+    sheetLabel:   sheetLabel(sheet),
+    sheet:        sheetInfo(sheet),
+    isCL:         Boolean(isCL),
+    tipo_matriz:  sheet.tipo_matriz,
+    cells:        alertCells,
+    alertsByAxis,
     critCount,
     lowCount,
-  };
-
-  const payload = {
-    groupKey,
-    date:          today,
-    title,
-    message:       message.slice(0, 2000),
-    metadata,
-    type:          hasCrit ? "danger" : "warning",
-    priority:      hasCrit ? "critical" : "high",
-    targetRoles:   ["eurovision"],
-    isGlobal:      false,
-    respectCooldown,
-    cooldownMs:    5 * 60 * 60 * 1000,
-  };
-
-  if (opts.useRedis) {
-    const { getClient, isReady } = require("./redis");
-    if (isReady()) {
-      try { getClient().publish("stock:alerts", JSON.stringify(payload)); } catch {}
-    } else { await notifClient.upsertDaily(payload); }
-  } else {
-    await notifClient.upsertDaily(payload);
-  }
+    urgencyScore,
+    hash,
+    ts:           Date.now(),
+  });
 }
 
 // ============================================================================
@@ -322,19 +346,6 @@ async function sweepAllSheets(opts = { respectCooldown: true }) {
 }
 
 /**
- * Limpia notificaciones antiguas por celda individual (formato legado).
- * Llamar una vez al iniciar la app para migrar al nuevo formato por planilla.
- */
-async function cleanupLegacyPerCellNotifications() {
-  try {
-    await notifClient.deleteByGroup({ groupKeyPattern: "^stock_(critico|bajo):" });
-    console.log("[STOCK_ALERT] Limpieza de notificaciones por celda (formato legado) solicitada.");
-  } catch (e) {
-    console.warn("[STOCK_ALERT] cleanupLegacyPerCellNotifications error:", e?.message);
-  }
-}
-
-/**
  * Verifica el stock de una planilla dado solo su ObjectId.
  * Usado por los hooks post-save de los modelos Matrix para cubrir
  * creacion de planillas, seeds y cualquier otra escritura directa.
@@ -367,9 +378,12 @@ module.exports = {
   checkSheetAlerts,
   checkSheetById,
   sweepAllSheets,
-  cleanupLegacyPerCellNotifications,
   classifyStock,
   computeDistance,
   cellLabel,
+  cellCoords,
+  urgency,
   getTier,
+  sheetLabel,
+  sheetInfo,
 };

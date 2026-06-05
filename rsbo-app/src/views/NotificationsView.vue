@@ -4,6 +4,7 @@ import { fetchNotifications, pinNotification, dismissNotifApi as apiDismissNotif
 import { updateDevolutionStatus } from '@/services/devolutions.js';
 
 import { labToast } from '@/composables/shared/useLabToast.js';
+import { coordChips } from '@/components/notifi/shared/useNotifFormat.js';
 
 const props = defineProps({
   user: { type: Object, default: null },
@@ -164,6 +165,11 @@ function timeAgo(dateStr) {
   return `hace ${days} días`;
 }
 
+function sheetTags(notif) {
+  const s = notif.metadata?.sheet || {};
+  return [s.tipoLabel, s.baseKey, s.material, s.tratamiento, s.marca].filter(Boolean);
+}
+
 function getSquareColor(type) {
   const map = {
     info: '#007bff',
@@ -251,6 +257,13 @@ onMounted(() => {
                       </b-tag>
                     </span>
                     <h3 class="has-text-weight-bold is-size-6 mt-1 has-text-black">{{ notif.title }}</h3>
+                    <div v-if="notif.metadata?.type === 'stock_alert' && notif.metadata.sheet" class="sheet-id-row mt-1">
+                      <code v-if="notif.metadata.sheet.sku" class="sheet-sku">{{ notif.metadata.sheet.sku }}</code>
+                      <b-tag v-for="(t, i) in sheetTags(notif)" :key="i" type="is-light" size="is-small">{{ t }}</b-tag>
+                      <span v-if="notif.metadata.sheet.proveedor" class="sheet-prov">
+                        <b-icon pack="fas" icon="truck" size="is-small" /> {{ notif.metadata.sheet.proveedor }}
+                      </span>
+                    </div>
                   </div>
 
                   <!-- Row Actions -->
@@ -297,9 +310,9 @@ onMounted(() => {
                     <template v-if="notif.metadata.type === 'stock_alert'">
                       <div v-if="hasAxisData(notif)" class="axis-navigator p-3 border-bottom-light bg-white">
                         <p class="is-size-7 has-text-weight-bold mb-2 has-text-grey">NAVEGAR POR GRADOS (EJE):</p>
-                        <div class="axis-pills d-flex flex-wrap gap-2">
-                          <button 
-                            v-for="axisLabel in getAxes(notif)" 
+                        <div class="axis-pills">
+                          <button
+                            v-for="axisLabel in getAxes(notif)"
                             :key="axisLabel"
                             class="axis-pill"
                             :class="{ 'active': (selectedAxisMap[notif._id] || getAxes(notif)[0]) === axisLabel }"
@@ -313,16 +326,21 @@ onMounted(() => {
 
                       <div class="cells-list-container" style="max-height: 400px; overflow-y: auto;">
                         <div class="p-3">
-                          <div 
-                            v-for="(cell, cidx) in getCurrentAlerts(notif)" 
-                            :key="cidx" 
-                            class="cell-item d-flex is-align-items-center py-2 border-bottom-light"
+                          <div
+                            v-for="(cell, cidx) in getCurrentAlerts(notif)"
+                            :key="cidx"
+                            class="cell-item border-bottom-light"
                           >
-                            <b-tag :type="cell.level === 'CRITICO' ? 'is-danger' : 'is-warning'" size="is-small" class="mr-3 has-text-weight-bold">
+                            <b-tag :type="cell.level === 'CRITICO' ? 'is-danger' : 'is-warning'" size="is-small" class="has-text-weight-bold cell-item__level">
                               {{ cell.level }}
                             </b-tag>
-                            <span class="is-size-7 has-text-weight-semibold is-flex-grow-1">{{ cell.label }}</span>
-                            <span class="is-size-7 has-text-weight-bold">{{ cell.existencias }} pzas</span>
+                            <span class="cell-coords">
+                              <span v-for="(chip, ci) in coordChips(cell)" :key="ci" class="coord-chip">
+                                <span v-if="chip.k" class="coord-chip__k">{{ chip.k }}</span>
+                                <span class="coord-chip__v">{{ chip.v }}</span>
+                              </span>
+                            </span>
+                            <span class="cell-stock">{{ cell.existencias }} pza{{ cell.existencias !== 1 ? 's' : '' }}</span>
                           </div>
                         </div>
                       </div>
@@ -408,7 +426,10 @@ onMounted(() => {
 
 .axis-pills {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
+  max-height: 132px;
+  overflow-y: auto;
 }
 
 .axis-pill {
@@ -448,12 +469,107 @@ onMounted(() => {
   background: rgba(255,255,255,0.2);
 }
 
+.sheet-id-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.sheet-sku {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--c-primary);
+  background: var(--c-primary-alpha);
+  padding: 0.05rem 0.4rem;
+  border-radius: 5px;
+}
+.sheet-prov {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* Scroll personalizado (estilo Sidebar) dentro del detalle — cross-browser */
+.cells-list-container {
+  scrollbar-width: thin;
+  scrollbar-color: var(--static-color-rgba-148-163-184-0-35) transparent;
+}
+.cells-list-container::-webkit-scrollbar {
+  width: 8px;
+}
+.cells-list-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+.cells-list-container::-webkit-scrollbar-thumb {
+  background: var(--static-color-rgba-148-163-184-0-35);
+  border-radius: 999px;
+}
+.cells-list-container::-webkit-scrollbar-thumb:hover {
+  background: var(--static-color-rgba-148-163-184-0-55);
+}
+
 .border-bottom-light {
   border-bottom: 1px solid var(--border-subtle);
 }
 
+.cell-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0;
+}
+
 .cell-item:last-child {
   border-bottom: none;
+}
+
+.cell-item__level {
+  flex-shrink: 0;
+}
+
+.cell-coords {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.coord-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 5px;
+  background: var(--c-primary-alpha);
+  font-size: 0.68rem;
+  line-height: 1.35;
+}
+
+.coord-chip__k {
+  font-weight: 700;
+  color: var(--c-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.coord-chip__v {
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.cell-stock {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: nowrap;
+  color: var(--text-primary);
 }
 
 .fade-enter-active, .fade-leave-active {

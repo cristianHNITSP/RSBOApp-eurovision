@@ -69,6 +69,10 @@ app.use((err, _req, res, _next) => {
 const notificationWs = require("./ws");
 notificationWs.connect();
 
+// Consumidor de eventos de stock (Redis Streams). Reemplaza el viejo Pub/Sub.
+const stockConsumer = require("./services/stockConsumer");
+stockConsumer.start();
+
 app.listen(PORT, HOST, () => {
   console.log(`🚀 Notification Service corriendo en http://${HOST}:${PORT}`);
 });

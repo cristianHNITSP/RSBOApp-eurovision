@@ -95,7 +95,7 @@
 }
 .notif-type-bar--info    { background: linear-gradient(to bottom, var(--static-color-60a5fa), var(--static-color-3b82f6)); }
 .notif-type-bar--warning { background: linear-gradient(to bottom, var(--static-color-fbbf24), var(--static-color-f59e0b)); }
-.notif-type-bar--danger  { background: linear-gradient(to bottom, var(--static-color-f87171), var(--static-color-ef4444)); }
+
 .notif-type-bar--success { background: linear-gradient(to bottom, var(--static-color-34d399), var(--static-color-10b981)); }
 
 .notif-body {
@@ -340,7 +340,7 @@
 .cell-stock, .line-qty {
   font-weight: 700;
   color: var(--text-primary);
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-variant-numeric: tabular-nums;
   font-size: 0.65rem;
 }
 
@@ -363,7 +363,7 @@
   font-size: 0.68rem;
   font-weight: 700;
   color: var(--c-primary);
-  font-family: monospace;
+  font-variant-numeric: tabular-nums;
 }
 
 .order-item__progress {
@@ -433,6 +433,26 @@
 .cell-list-container-mini {
   overflow-y: auto;
   margin: 0.5rem 0;
+  /* Scroll personalizado (estilo Sidebar) — cross-browser */
+  scrollbar-width: thin;
+  scrollbar-color: var(--static-color-rgba-148-163-184-0-35) transparent;
+}
+
+.cell-list-container-mini::-webkit-scrollbar {
+  width: 8px;
+}
+
+.cell-list-container-mini::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.cell-list-container-mini::-webkit-scrollbar-thumb {
+  background: var(--static-color-rgba-148-163-184-0-35);
+  border-radius: 999px;
+}
+
+.cell-list-container-mini::-webkit-scrollbar-thumb:hover {
+  background: var(--static-color-rgba-148-163-184-0-55);
 }
 
 .detail-footer-mini {

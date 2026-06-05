@@ -53,7 +53,7 @@
       </div>
 
       <b-field label="Nombre generado automáticamente">
-        <b-input :value="newSheetName" disabled expanded />
+        <b-input :model-value="newSheetName" disabled expanded />
       </b-field>
 
       <div class="create-actions">

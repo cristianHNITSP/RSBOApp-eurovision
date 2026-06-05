@@ -104,10 +104,6 @@
         border-color: var(--c-primary-alpha);
         color: var(--c-primary);
 
-        .submenu-item-bar {
-            background: linear-gradient(180deg, var(--c-primary-dark), var(--c-primary-light), var(--c-sidebar-pink));
-        }
-
         .submenu-item-icon {
             color: var(--c-primary);
         }
@@ -116,14 +112,6 @@
             font-weight: 900;
         }
     }
-}
-
-.submenu-item-bar {
-    width: 3px;
-    align-self: stretch;
-    border-radius: 999px;
-    background-color: transparent;
-    margin-right: 0.55rem;
 }
 
 .submenu-item-icon {

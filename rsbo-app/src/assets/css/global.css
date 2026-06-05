@@ -1,7 +1,115 @@
+@import url('https://api.fontshare.com/v2/css?f[]=satoshi@1&f[]=switzer@1&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Space+Grotesk:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap');
+
 /* ============================================================
    global.css — Overrides de Buefy/Bulma + utilidades globales
    Los tokens de color/sombra/tipografía están en tokens.css
    ============================================================ */
+
+/* ----------------------------------------------------------
+   TIPOGRAFÍA BASE Y VARIANTS
+   ---------------------------------------------------------- */
+:root {
+  --font-body: 'Satoshi', sans-serif;
+  --font-heading: 'Switzer', sans-serif;
+}
+
+/* ── FUENTES INDIVIDUALES ──────────────────────────────────── */
+
+[data-font-family="satoshi"] {
+  --font-body: 'Satoshi', sans-serif;
+  --font-heading: 'Satoshi', sans-serif;
+}
+
+[data-font-family="switzer"] {
+  --font-body: 'Switzer', sans-serif;
+  --font-heading: 'Switzer', sans-serif;
+}
+
+/* Inter: la sans de UI más usada en productos digitales (Figma, Linear) */
+[data-font-family="inter"] {
+  --font-body: 'Inter', sans-serif;
+  --font-heading: 'Inter', sans-serif;
+}
+
+/* DM Sans: humanista, muy legible en tamaños pequeños */
+[data-font-family="dm-sans"] {
+  --font-body: 'DM Sans', sans-serif;
+  --font-heading: 'DM Sans', sans-serif;
+}
+
+/* Space Grotesk: geométrica con personalidad, popular en fintech/crypto */
+[data-font-family="space-grotesk"] {
+  --font-body: 'Space Grotesk', sans-serif;
+  --font-heading: 'Space Grotesk', sans-serif;
+}
+
+/* Outfit: redondeada y amigable, buena para apps de salud/lifestyle */
+[data-font-family="outfit"] {
+  --font-body: 'Outfit', sans-serif;
+  --font-heading: 'Outfit', sans-serif;
+}
+
+/* Sistema: fuente nativa del SO del usuario */
+[data-font-family="system-ui"] {
+  --font-body: system-ui, sans-serif;
+  --font-heading: system-ui, sans-serif;
+}
+
+/* ── COMBINACIONES CURADAS ─────────────────────────────────── */
+
+/* Satoshi + Switzer: sans moderna (cuerpo) + grotesca (títulos)
+   Contraste sutil de personalidad dentro del mismo registro tipográfico */
+[data-font-family="combo-satoshi-switzer"] {
+  --font-body: 'Satoshi', sans-serif;
+  --font-heading: 'Switzer', sans-serif;
+}
+
+/* DM Sans + Space Grotesk: humanista (cuerpo) + geométrica (títulos)
+   Cálido y funcional. Muy popular en dashboards modernos */
+[data-font-family="combo-dm-space"] {
+  --font-body: 'DM Sans', sans-serif;
+  --font-heading: 'Space Grotesk', sans-serif;
+}
+
+/* Satoshi + Space Grotesk: dos sans modernas con carácter distinto
+   Minimalismo premium: refinada en cuerpo, con carácter en títulos */
+[data-font-family="combo-satoshi-space"] {
+  --font-body: 'Satoshi', sans-serif;
+  --font-heading: 'Space Grotesk', sans-serif;
+}
+
+/* Inter + DM Sans: dos humanistas complementarias
+   Ultra-limpio: la más "invisible", ideal para apps de datos densos */
+[data-font-family="combo-inter-dm"] {
+  --font-body: 'Inter', sans-serif;
+  --font-heading: 'DM Sans', sans-serif;
+}
+
+body,
+html,
+#app {
+  font-family: var(--font-body);
+  font-weight: 400;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-heading);
+  font-weight: 600;
+}
+
+button,
+label,
+.subtitle,
+.menu {
+  font-family: var(--font-body);
+  font-weight: 500;
+}
 
 /* ----------------------------------------------------------
    ELEMENTOS BASE
@@ -1249,7 +1357,10 @@ button.dropdown-item:hover {
   gap: 0.85rem;
   flex-wrap: wrap;
 }
-.panel__head > * { min-width: 0; }
+
+.panel__head>* {
+  min-width: 0;
+}
 
 .panel__head--compact {
   padding: 0.85rem 1rem;
@@ -1418,7 +1529,8 @@ button.dropdown-item:hover {
   border-bottom-color: var(--border-strong) !important;
 }
 
-[data-theme="dark"] .table td, [data-theme="dark"] .table th {
+[data-theme="dark"] .table td,
+[data-theme="dark"] .table th {
   border-color: var(--border-light) !important;
 }
 
@@ -1429,6 +1541,7 @@ button.dropdown-item:hover {
 .fade-leave-active {
   transition: opacity 0.3s ease;
 }
+
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
@@ -1704,7 +1817,7 @@ button.dropdown-item:hover {
 
 .mesh-bg {
   background-color: var(--bg-base);
-  background-image: 
+  background-image:
     radial-gradient(at 0% 0%, var(--static-color-rgba-144-111-225-0-15) 0px, transparent 50%),
     radial-gradient(at 100% 0%, var(--static-color-rgba-236-72-153-0-1) 0px, transparent 50%),
     radial-gradient(at 100% 100%, var(--static-color-rgba-249-115-22-0-1) 0px, transparent 50%),
@@ -1734,8 +1847,13 @@ button.dropdown-item:hover {
 }
 
 @keyframes liquid-swirl {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .hero-glow {
@@ -1772,8 +1890,15 @@ button.dropdown-item:hover {
 }
 
 @keyframes float-glow {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
+
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+
+  50% {
+    opacity: 1;
+  }
 }
 
 .glass-pill {
@@ -1859,23 +1984,25 @@ button.dropdown-item:hover {
 }
 
 @keyframes fadeIn {
-  from { 
-    opacity: 0; 
-    transform: translateY(8px); 
+  from {
+    opacity: 0;
+    transform: translateY(8px);
   }
-  to { 
-    opacity: 1; 
-    transform: translateY(0); 
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
 @keyframes slideDown {
-  from { 
-    opacity: 0; 
-    transform: translateY(-12px); 
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
   }
-  to { 
-    opacity: 1; 
-    transform: translateY(0); 
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

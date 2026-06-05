@@ -82,6 +82,14 @@
   --fx-glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.12);
   --fx-shine: var(--ag-skel-shine);
 
+  /* === Hover / selección (theme-aware) ===
+     Estados de interacción reutilizables: filas de tabla, tarjetas glass.
+     Definidos por tema para que el hover se vea bien en claro y oscuro. */
+  --surface-glass-hover: rgba(255, 255, 255, 0.66);
+  --row-hover-bg: var(--c-primary-alpha);
+  --row-selected-bg: var(--static-color-rgba-144-111-225-0-13);
+  --row-selected-accent: var(--c-primary);
+
   /* === Gradiente de fondo de la app === */
   --grad-header-bg:
     radial-gradient(circle at 0% 0%, rgba(144, 111, 225, 0.22), transparent 50%),
@@ -144,6 +152,9 @@
   /* === AG-Grid glassmorphism === */
   --ag-glass-bg: rgba(255, 255, 255, 0.55);
   --ag-glass-bg-strong: rgba(255, 255, 255, 0.72);
+  --ag-pinned-bg: var(--surface);
+  --ag-pinned-bg-strong: var(--surface-raised);
+  --ag-pinned-border: rgba(148, 163, 184, 0.12);
   --ag-glass-border: rgba(121, 87, 213, 0.18);
   --ag-glass-header-bg: rgba(245, 243, 255, 0.72);
   --ag-glass-header-fg: #4527a0;
@@ -161,6 +172,13 @@
   --ag-stock-zero-bg: rgba(239, 68, 68, 0.13);
   --ag-stock-zero-edge: rgba(239, 68, 68, 0.60);
   --ag-stock-zero-fg: #991b1b;
+
+  --ag-stock-low-row-bg: rgba(245, 158, 11, 0.05);
+  --ag-stock-zero-row-bg: rgba(239, 68, 68, 0.04);
+  --ag-status-badge-bg: rgba(100, 116, 139, 0.10);
+  --ag-status-badge-border: rgba(100, 116, 139, 0.22);
+  --ag-status-badge-fg: var(--text-secondary);
+  --ag-veil-bg: rgba(248, 250, 252, 0.94);
 
   /* === Bulma 1.x color bridge ===
      Bulma 1.x genera TODOS sus colores desde vars HSL.
@@ -584,6 +602,10 @@
   --shadow-glow: 0 0 25px rgba(167, 136, 240, 0.15);
   --shadow-inner: inset 0 1px 1px rgba(255, 255, 255, 0.05);
 
+  /* === Hover / selección (theme-aware) — dark === */
+  --surface-glass-hover: rgba(30, 36, 50, 0.82);
+  --row-selected-bg: rgba(167, 136, 240, 0.20);
+
   /* === FX tokens (glassmorphism dark: más opaco, mismo blur) === */
   --fx-surface-a: 0.92;
   --fx-grad-a1: 0.18;
@@ -624,6 +646,9 @@
   /* === AG-Grid glassmorphism (dark: carbón + violeta perlado) === */
   --ag-glass-bg: rgba(22, 27, 34, 0.55);
   --ag-glass-bg-strong: rgba(26, 31, 46, 0.78);
+  --ag-pinned-bg: var(--surface);
+  --ag-pinned-bg-strong: var(--surface-raised);
+  --ag-pinned-border: rgba(148, 163, 184, 0.08);
   --ag-glass-border: rgba(167, 136, 240, 0.22);
   --ag-glass-header-bg: rgba(26, 31, 46, 0.80);
   --ag-glass-header-fg: #c4b5fd;
@@ -640,6 +665,13 @@
   --ag-stock-zero-bg: rgba(239, 68, 68, 0.14);
   --ag-stock-zero-edge: rgba(239, 68, 68, 0.50);
   --ag-stock-zero-fg: #fca5a5;
+
+  --ag-stock-low-row-bg: rgba(245, 158, 11, 0.06);
+  --ag-stock-zero-row-bg: rgba(239, 68, 68, 0.05);
+  --ag-status-badge-bg: rgba(148, 163, 184, 0.10);
+  --ag-status-badge-border: rgba(148, 163, 184, 0.20);
+  --ag-status-badge-fg: var(--text-muted);
+  --ag-veil-bg: rgba(15, 18, 28, 0.96);
 
   /* === Bulma 1.x color bridge — dark mode === */
   --bulma-primary-h: 258;

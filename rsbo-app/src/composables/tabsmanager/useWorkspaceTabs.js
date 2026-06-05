@@ -168,7 +168,8 @@ export function useWorkspaceTabs(contextKey = 'inventory') {
       pendingTemplate: ref(null),
       catalogDefaultSection: ref("search"),
       isHydrating: false,
-      isHydrated: false
+      isHydrated: false,
+      hydrationPromise: null
     };
   }
 
@@ -176,8 +177,21 @@ export function useWorkspaceTabs(contextKey = 'inventory') {
 
   // -- Lifecycle / Initial Load --
 
-  async function hydrate() {
-    if (state.isHydrating) return;
+  // Idempotente: una sola hidratación por contexto. Devuelve SIEMPRE la
+  // misma promesa para que quien arranque la sección pueda esperar la
+  // carga real en vuelo (no un early-return).
+  function hydrate() {
+    if (state.hydrationPromise) return state.hydrationPromise;
+    state.hydrationPromise = _doHydrate();
+    return state.hydrationPromise;
+  }
+
+  /** Promesa que resuelve cuando la sesión persistida ya está restaurada. */
+  function whenHydrated() {
+    return hydrate();
+  }
+
+  async function _doHydrate() {
     state.isHydrating = true;
     try {
       const res = await prefsService.getPreferences(contextKey);
@@ -221,10 +235,8 @@ export function useWorkspaceTabs(contextKey = 'inventory') {
     }
   }
 
-  // Auto-hydrate once per context
-  if (!state.isHydrated && !state.isHydrating) {
-    hydrate();
-  }
+  // Auto-hydrate once per context (idempotente vía hydrationPromise)
+  hydrate();
 
   // -- Actions --
 
@@ -488,6 +500,7 @@ export function useWorkspaceTabs(contextKey = 'inventory') {
     setActiveTab,
     dismissLimitModal,
     hydrate,
+    whenHydrated,
     MAX_ACTIVE_TABS
   };
 }

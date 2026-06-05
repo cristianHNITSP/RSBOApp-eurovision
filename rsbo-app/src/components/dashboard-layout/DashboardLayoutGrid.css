@@ -37,6 +37,34 @@
   padding-bottom: 1rem;
 }
 
+/* Scrollbar estilizada (imita el del Sidebar) — Chrome/Edge/Safari.
+   NO declaramos scrollbar-width aquí: Chrome 121+ ignora ::-webkit-scrollbar
+   si el elemento tiene scrollbar-width, dejándolo en el nativo fino. */
+.main-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.main-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.main-content::-webkit-scrollbar-thumb {
+  background: var(--static-color-rgba-148-163-184-0-35);
+  border-radius: 999px;
+}
+
+.main-content::-webkit-scrollbar-thumb:hover {
+  background: var(--static-color-rgba-148-163-184-0-55);
+}
+
+/* Fallback Firefox (no soporta ::-webkit-scrollbar) */
+@supports not selector(::-webkit-scrollbar) {
+  .main-content {
+    scrollbar-width: thin;
+    scrollbar-color: var(--static-color-rgba-148-163-184-0-35) transparent;
+  }
+}
+
 /* Header base (glass + sticky) */
 .dashboard-header {
   position: sticky;

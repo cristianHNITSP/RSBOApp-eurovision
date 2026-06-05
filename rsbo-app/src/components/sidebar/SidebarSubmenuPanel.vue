@@ -15,7 +15,6 @@
         <nav class="submenu-list">
           <a v-for="(sub, index) in activeSubmenu.children" :key="index" class="submenu-item"
             :class="{ 'is-active': isActive(sub.path) }" @click="$emit('navigate', sub.path)">
-            <span class="submenu-item-bar"></span>
             <span class="submenu-item-icon">
               <b-icon :icon="sub.icon" size="is-small" />
             </span>

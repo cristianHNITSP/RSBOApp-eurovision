@@ -33,7 +33,8 @@
 import SidebarHeader from "./sidebar/SidebarHeader.vue";
 import SidebarMenu from "./sidebar/SidebarMenu.vue";
 import SidebarFooter from "./sidebar/SidebarFooter.vue";
-import { SIDEBAR_MENU, SIDEBAR_CONFIG } from "../data/sidebar.data";
+import { SIDEBAR_MENU } from "../data/sidebar.data";
+import { getAvatar, AVATAR_DEFAULTS } from "@/utils/avatarHelper";
 
 export default {
   name: "SidebarMobile",
@@ -50,7 +51,7 @@ export default {
   data() {
     return {
       activeSubmenu: null,
-      avatarUrl: SIDEBAR_CONFIG.DEFAULT_AVATAR,
+      avatarUrl: AVATAR_DEFAULTS.SIDEBAR,
       avatarLoaded: false,
     };
   },
@@ -90,8 +91,7 @@ export default {
     user: {
       immediate: true,
       handler(newUser) {
-        let avatar = newUser?.avatar ? String(newUser.avatar).trim() : "";
-        if (!avatar) avatar = SIDEBAR_CONFIG.DEFAULT_AVATAR;
+        const avatar = getAvatar(newUser?.avatar, 'SIDEBAR');
 
         this.avatarLoaded = false;
         this.$nextTick(() => {
@@ -100,7 +100,7 @@ export default {
           img.src = avatar;
           img.onload = () => (this.avatarLoaded = true);
           img.onerror = () => {
-            this.avatarUrl = SIDEBAR_CONFIG.DEFAULT_AVATAR;
+            this.avatarUrl = AVATAR_DEFAULTS.SIDEBAR;
             this.avatarLoaded = true;
           };
         });
@@ -109,7 +109,7 @@ export default {
   },
   methods: {
     onAvatarLoad() { this.avatarLoaded = true; },
-    onAvatarError() { this.avatarUrl = SIDEBAR_CONFIG.DEFAULT_AVATAR; this.avatarLoaded = true; },
+    onAvatarError() { this.avatarUrl = AVATAR_DEFAULTS.SIDEBAR; this.avatarLoaded = true; },
     navigateTo(path) {
       this.$router.push(path);
       this.$emit('close');

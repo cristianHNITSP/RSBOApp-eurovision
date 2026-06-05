@@ -231,7 +231,7 @@
 }
 .an-tab-two-col {
   display: grid;
-  grid-template-columns: 1fr 320px;
+  grid-template-columns: minmax(0, 1fr) 320px;
   gap: 1.25rem;
 }
 
@@ -290,7 +290,7 @@
 /* ── Trio (4-col) ── */
 .an-trio {
   display: grid;
-  grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: start;
   gap: 0.5rem;
 }
@@ -527,6 +527,7 @@
   font-size: 0.78rem;
   padding: 0.35rem 0;
   border-bottom: 1px solid var(--g-border);
+  gap: 0.5rem;
 }
 
 .cov-row:last-child {
@@ -535,11 +536,17 @@
 
 .cov-k {
   color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .cov-v {
   color: var(--text-primary);
   font-weight: 600;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .sl-display {
@@ -848,6 +855,12 @@
   font-size: 0.75rem;
   color: var(--text-muted);
   padding: 0.5rem 0;
+}
+
+@media (max-width: 1100px) {
+  .an-tab-two-col {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 768px) {

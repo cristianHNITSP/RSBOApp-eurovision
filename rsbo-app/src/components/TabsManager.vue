@@ -59,6 +59,7 @@
           :actor="props.actor"
           :api-type="props.apiType"
           @update:internal="handleInternalTabClick"
+          @update:available-internal="handleAvailableInternal"
         />
       </div>
 
@@ -342,25 +343,37 @@ const getInternalTabFor = (sheetId) => {
   return null;
 };
 
+// Lados (+/−) realmente disponibles por sheet (emitido por AgGridSheet según el eje).
+// null = sin info aún → no filtrar (mostrar ambos).
+const availableInternalBySheet = reactive(new Map());
+const handleAvailableInternal = ({ sheetId, ids }) => {
+  if (sheetId) availableInternalBySheet.set(sheetId, Array.isArray(ids) ? ids : null);
+};
+
 const internalTabs = computed(() => {
   const t = activeSheetObj.value?.tipo_matriz;
   if (!t) return [];
 
-  if (t === "SPH_ADD" || t === "SPH_CYL") {
-    return [
+  let all = [];
+  if (t === "SPH_ADD" || t === "SPH_CYL" || t === "SPH_CYL_AXIS") {
+    all = [
       { id: "sph-neg", label: "SPH (-)" },
       { id: "sph-pos", label: "SPH (+)" }
     ];
-  }
-
-  if (t === "BASE" || t === "BASE_ADD") {
-    return [
+  } else if (t === "BASE" || t === "BASE_ADD") {
+    all = [
       { id: "base-neg", label: "BASE (-)" },
       { id: "base-pos", label: "BASE (+)" }
     ];
+  } else {
+    return [];
   }
 
-  return [];
+  // Filtrar por los lados con filas reales (el 0 no cuenta). Sin info → ambos.
+  const allowed = availableInternalBySheet.get(activeIdStore.value);
+  if (!allowed || !allowed.length) return all;
+  const filtered = all.filter((tab) => allowed.includes(tab.id));
+  return filtered.length ? filtered : all;
 });
 
 watch(

@@ -8,6 +8,7 @@
       v-bind="gridProps"
       :actor="actor"
       @update:internal="$emit('update:internal', $event)"
+      @update:available-internal="$emit('update:available-internal', { sheetId: sheet.id, ids: $event })"
     />
     <div v-else class="sheet-content-placeholder">
       <div class="sheet-content-placeholder__spinner"></div>
@@ -27,7 +28,7 @@ const props = defineProps({
   apiType: { type: String, default: "inventory" }
 });
 
-const emit = defineEmits(["update:internal"]);
+const emit = defineEmits(["update:internal", "update:available-internal"]);
 
 const gridComponent = computed(() => AgGridSheet);
 

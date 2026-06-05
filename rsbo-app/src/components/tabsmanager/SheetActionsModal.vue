@@ -39,7 +39,7 @@
 
             <!-- SKU INFO READ-ONLY -->
             <b-field label="SKU de planilla" v-if="sheet.sku" class="mb-5">
-              <b-input :value="sheet.sku" disabled icon="barcode" />
+              <b-input :model-value="sheet.sku" disabled icon="barcode" />
             </b-field>
 
             <!-- OPEN -->

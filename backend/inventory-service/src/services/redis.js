@@ -28,6 +28,10 @@ if (REDIS_URL && Redis) {
   client.on("close", () => { ready = false; });
 }
 
+// ============================================================================
+// PRIMITIVAS (low-level)
+// ============================================================================
+
 async function cacheGet(key) {
   if (!ready) return null;
   try {
@@ -48,22 +52,45 @@ async function cacheDel(key) {
   try { await client.del(key); } catch { }
 }
 
+/**
+ * Borra todas las keys que matchean `pattern` SIN bloquear Redis:
+ * usa SCAN (cursor, COUNT 100) + UNLINK (borrado asíncrono) por lotes.
+ * Solo para paths fríos (lista/admin); el camino caliente usa versioning.
+ */
 async function invalidatePattern(pattern) {
   if (!ready) return;
   try {
-    const keys = await client.keys(pattern);
-    if (keys && keys.length > 0) {
-      await client.del(...keys);
+    const stream = client.scanStream({ match: pattern, count: 100 });
+    const pending = [];
+    for await (const keys of stream) {
+      if (keys.length) pending.push(client.unlink(...keys));
     }
+    if (pending.length) await Promise.all(pending);
   } catch (err) {
     console.warn("[Redis] invalidatePattern error:", err.message);
   }
 }
 
+/** Versión actual del set de items de una planilla (default "0"). */
+async function sheetVersion(sheetId) {
+  if (!ready) return "0";
+  try {
+    return (await client.get(KEYS.sheetVersion(sheetId))) || "0";
+  } catch { return "0"; }
+}
+
+// ============================================================================
+// MIDDLEWARE de caché HTTP (read-through). keyFn puede ser sync o async.
+// ============================================================================
+
 function cacheMiddleware(keyFn, ttl = 30) {
   return async (req, res, next) => {
     if (!ready) return next();
-    const key = typeof keyFn === "function" ? keyFn(req) : keyFn;
+    let key;
+    try {
+      key = typeof keyFn === "function" ? await keyFn(req) : keyFn;
+    } catch { return next(); }
+
     try {
       const cached = await cacheGet(key);
       if (cached !== null) {
@@ -84,25 +111,74 @@ function cacheMiddleware(keyFn, ttl = 30) {
   };
 }
 
+// ============================================================================
+// KEYS — único lugar que conoce la forma de las keys
+// ============================================================================
+
 const KEYS = {
   stats: () => "inv:stats:dashboard",
-  sheetItems: (sheetId, query) => {
-    const qs = Object.entries(query || {}).sort().map(([k,v]) => `${k}=${v}`).join("&");
-    return `inv:sheet:${sheetId}:items:${qs}`;
+  // Items versionados: la versión vive en sheetVersion(); al cambiar, el INCR
+  // deja inaccesibles las keys viejas (mueren por TTL/LRU). Sin SCAN al escribir.
+  sheetItems: (sheetId, ver, query) => {
+    const qs = Object.entries(query || {}).sort().map(([k, v]) => `${k}=${v}`).join("&");
+    return `inv:sheet:${sheetId}:v${ver}:items:${qs}`;
   },
+  sheetVersion: (sheetId) => `inv:sheet:${sheetId}:ver`,
   sheetMeta: (sheetId) => `inv:sheet:${sheetId}:meta`,
-  sheetsList: (prefix) => `inv:${prefix}:sheets`,
-  sheetPattern: (sheetId) => `inv:sheet:${sheetId}:*`,
-  allPattern: () => "inv:*",
+  sheetsListPattern: () => "inv:*sheets:*",
 };
 
+// ============================================================================
+// CAPA SEMÁNTICA de invalidación — los routes invalidan por INTENCIÓN.
+// Estas 4 funciones son el único acoplamiento permitido a las formas de key.
+// ============================================================================
+
+/** Cambió la data (celdas) de una planilla → items frescos en el próximo cold open. O(1). */
+async function invalidateSheetItems(sheetId) {
+  if (!ready) return;
+  try { await client.incr(KEYS.sheetVersion(sheetId)); } catch { }
+}
+
+/** Cambió la meta de una planilla (nombre, rangos, compra, etc.). */
+async function invalidateSheetMeta(sheetId) {
+  await cacheDel(KEYS.sheetMeta(sheetId));
+}
+
+/** Cambió la lista de planillas (crear/renombrar/papelera/restaurar). Cubre inventory + contactlenses. */
+async function invalidateSheetsList() {
+  await invalidatePattern(KEYS.sheetsListPattern());
+}
+
+/** El dashboard de stats quedó obsoleto (cualquier cambio de existencias o de planillas). */
+async function invalidateStats() {
+  await cacheDel(KEYS.stats());
+}
+
+// ============================================================================
+// Lifecycle
+// ============================================================================
+
+async function close() {
+  if (!client) return;
+  try { await client.quit(); } catch { }
+}
+
 module.exports = {
+  // primitivas
   cacheGet,
   cacheSet,
   cacheDel,
   invalidatePattern,
+  sheetVersion,
   cacheMiddleware,
   KEYS,
+  // capa semántica
+  invalidateSheetItems,
+  invalidateSheetMeta,
+  invalidateSheetsList,
+  invalidateStats,
+  // lifecycle / introspección
+  close,
   getClient: () => client,
   isReady: () => ready,
 };

@@ -4,7 +4,7 @@
  */
 import { to2, fmtSigned, numOr } from "@/composables/ag-grid/useAgGridBase";
 import { norm, parseAddEyeFromField, getProgresivoRowKey as rowKey } from "@/components/ag-grid/utils/ag-grid-utils";
-import { numericLeaf } from "./helpers";
+import { numericLeaf, axisSides } from "./helpers";
 
 export function createProgresivoDescriptor(ctx) {
   const baseViewId = () =>
@@ -17,9 +17,11 @@ export function createProgresivoDescriptor(ctx) {
       addMin: numOr(pl?.ADD?.min, 0), addMax: numOr(pl?.ADD?.max, 8),
     };
   };
+  const progresivoCellDistance = (p) => Math.abs(Number(p.data.base_izq) || 0) + Math.abs(Number(p.data.base_der) || 0);
   const addLeaf = (add, eye) => numericLeaf(ctx, {
     field: `add_${norm(add)}_${eye}`, headerName: eye === "OD" ? "Der." : "Izq.",
     minWidth: 90, maxWidth: 110,
+    cellDistance: progresivoCellDistance,
   });
 
   return {
@@ -33,6 +35,7 @@ export function createProgresivoDescriptor(ctx) {
       { id: "base-neg", label: "BASE (-)" },
       { id: "base-pos", label: "BASE (+)" },
     ],
+    availableSides: () => axisSides(ctx.sheetTabs.value, "base"),
 
     getRowId: (data) => rowKey(data.base_izq ?? data.base, data.base_der ?? data.base),
     isEditableField: (field) => field.startsWith("add_"),
@@ -112,14 +115,19 @@ export function createProgresivoDescriptor(ctx) {
 
     normalizeItem: (i) => ({
       base_izq: to2(i.base_izq ?? 0), base_der: to2(i.base_der ?? 0), add: to2(i.add),
-      eye: String(i.eye || "OD").toUpperCase(), existencias: Number(i.existencias ?? 0),
+      eye: String(i.eye || "OD").toUpperCase(), existencias: Number(i.existencias ?? 0), qr: i.qr ?? null,
     }),
 
     buildPivotPage(pageKeys, items, pending) {
       const addAll = ctx.allColValues.value;
       const eyes = ["OD", "OI"];
       const itemMap = new Map();
-      items.forEach((it) => itemMap.set(`${to2(it.base_izq)}|${to2(it.base_der)}|${to2(it.add)}|${it.eye}`, it.existencias));
+      const qrMap = new Map(); // qr passthrough (tooltip)
+      items.forEach((it) => {
+        const k = `${to2(it.base_izq)}|${to2(it.base_der)}|${to2(it.add)}|${it.eye}`;
+        itemMap.set(k, it.existencias);
+        qrMap.set(k, it.qr ?? null);
+      });
       return pageKeys.map((rk) => {
         const [bi, bd] = rk.split("|").map(Number);
         const row = { base_izq: bi, base_der: bd, base: bi };
@@ -128,6 +136,7 @@ export function createProgresivoDescriptor(ctx) {
             const field = `add_${norm(add)}_${eye}`;
             const pk = `${to2(bi)}|${to2(bd)}|${to2(add)}|${eye}`;
             row[field] = itemMap.get(pk) ?? 0;
+            row[`${field}__qr`] = qrMap.get(pk) ?? null;
             if (pending?.has(pk)) row[field] = pending.get(pk).existencias;
           });
         });

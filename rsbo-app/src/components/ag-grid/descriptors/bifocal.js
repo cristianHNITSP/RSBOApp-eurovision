@@ -4,7 +4,7 @@
  */
 import { to2, fmtSigned, numOr } from "@/composables/ag-grid/useAgGridBase";
 import { norm, parseAddEyeFromField } from "@/components/ag-grid/utils/ag-grid-utils";
-import { numericLeaf } from "./helpers";
+import { numericLeaf, axisSides } from "./helpers";
 
 export function createBifocalDescriptor(ctx) {
   const isNeg = () => ctx.sphType.value === "sph-neg";
@@ -12,9 +12,11 @@ export function createBifocalDescriptor(ctx) {
     const p = ctx.physicalLimits.value || {};
     return { SPH: p.SPH || { min: -40, max: 40 }, ADD: p.ADD || { min: 0, max: 8 } };
   };
+  const bifocalCellDistance = (p) => Math.abs(Number(p.data.sph) || 0);
   const addLeaf = (add, eye) => numericLeaf(ctx, {
     field: `add_${norm(add)}_${eye}`, headerName: eye === "OD" ? "Der." : "Izq.",
     minWidth: 90, maxWidth: 120,
+    cellDistance: bifocalCellDistance,
   });
 
   return {
@@ -28,6 +30,7 @@ export function createBifocalDescriptor(ctx) {
       { id: "sph-neg", label: "SPH (-)" },
       { id: "sph-pos", label: "SPH (+)" },
     ],
+    availableSides: () => axisSides(ctx.sheetTabs.value, "sph"),
 
     getRowId: (data) => String(to2(data.sph)),
     isEditableField: (field) => field.startsWith("add_"),
@@ -93,14 +96,18 @@ export function createBifocalDescriptor(ctx) {
 
     normalizeItem: (i) => ({
       sph: to2(i.sph), add: to2(i.add), eye: String(i.eye || "OD").toUpperCase(),
-      base_izq: to2(i.base_izq ?? 0), base_der: to2(i.base_der ?? 0), existencias: Number(i.existencias ?? 0),
+      base_izq: to2(i.base_izq ?? 0), base_der: to2(i.base_der ?? 0), existencias: Number(i.existencias ?? 0), qr: i.qr ?? null,
     }),
 
     buildPivotPage(pageSphs, items, pending) {
       const addAll = ctx.allColValues.value;
       const eyes = ["OD", "OI"];
       const itemMap = new Map();
-      items.forEach((it) => itemMap.set(`${it.sph}|${to2(it.add)}|${it.eye}`, it.existencias));
+      const qrMap = new Map(); // qr passthrough (tooltip)
+      items.forEach((it) => {
+        itemMap.set(`${it.sph}|${to2(it.add)}|${it.eye}`, it.existencias);
+        qrMap.set(`${it.sph}|${to2(it.add)}|${it.eye}`, it.qr ?? null);
+      });
       const baseMap = new Map();
       items.forEach((it) => {
         if (!baseMap.has(it.sph)) baseMap.set(it.sph, { base_izq: to2(it.base_izq ?? 0), base_der: to2(it.base_der ?? 0) });
@@ -112,6 +119,7 @@ export function createBifocalDescriptor(ctx) {
           eyes.forEach((eye) => {
             const field = `add_${norm(add)}_${eye}`;
             row[field] = itemMap.get(`${sph}|${to2(add)}|${eye}`) ?? 0;
+            row[`${field}__qr`] = qrMap.get(`${sph}|${to2(add)}|${eye}`) ?? null;
             const pk = `${to2(sph)}|${to2(add)}|${eye}`;
             if (pending?.has(pk)) row[field] = pending.get(pk).existencias;
           });

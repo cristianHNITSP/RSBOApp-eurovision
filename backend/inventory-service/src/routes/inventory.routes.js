@@ -22,7 +22,7 @@ const { makeUniqueSheetSku, ensureSheetSku } = require("../inventory/utils/sku")
 const { to2, isDef, isMultipleOfStep } = require("../inventory/utils/numbers");
 const { clampRange } = require("../inventory/utils/ranges");
 const { parseKey, denormNum, keyBase, keySphCyl, keyBifocal, keyProgresivo, normalizeCylConvention } = require("../inventory/utils/keys");
-const { makeSku, makeCodebar } = require("../inventory/utils/barcode");
+const { makeSku, makeQr } = require("../inventory/utils/barcode");
 const { isFlatMatrix, getMatrixModel } = require("../utils/matrix");
 
 // Services
@@ -36,7 +36,10 @@ const {
   applyChunkProgresivo
 } = require("../inventory/services/chunkApply.service");
 const { maybeExtendMetaRangesFromRows } = require("../inventory/services/metaRangesExtend.service");
-const { cacheMiddleware, invalidatePattern, cacheDel, KEYS } = require("../services/redis");
+const {
+  cacheMiddleware, KEYS, sheetVersion,
+  invalidateSheetItems, invalidateSheetMeta, invalidateSheetsList, invalidateStats,
+} = require("../services/redis");
 
 // ===================== DEBUG =====================
 const DEBUG_INVENTORY = String(process.env.DEBUG_INVENTORY || "") === "1";
@@ -418,8 +421,8 @@ router.post(
         });
       }
 
-      invalidatePattern("inv:*sheets:*");
-      cacheDel(KEYS.stats());
+      await invalidateSheetsList();
+      await invalidateStats();
 
       res.status(201).json({
         ok: true,
@@ -508,13 +511,13 @@ router.get("/sheets/by-sku/:sku", async (req, res) => {
 });
 
 /**
- * Resuelve un codebar buscando en todas las matrices de hojas activas.
- * GET /api/inventory/resolve/:codebar
+ * Resuelve un qr buscando en todas las matrices de hojas activas.
+ * GET /api/inventory/resolve/:qr
  */
-router.get("/resolve/:codebar", async (req, res) => {
+router.get("/resolve/:qr", async (req, res) => {
   try {
-    const cb = String(req.params.codebar || "").trim();
-    if (!cb) return res.status(400).json({ ok: false, message: "Codebar requerido" });
+    const cb = String(req.params.qr || "").trim();
+    if (!cb) return res.status(400).json({ ok: false, message: "Qr requerido" });
 
     const sheets = await InventorySheet.find({ isDeleted: { $ne: true } }).lean();
 
@@ -527,7 +530,7 @@ router.get("/resolve/:codebar", async (req, res) => {
 
       for (const [key, cell] of Object.entries(doc.cells || {})) {
         if (isFlatMatrix(sheet.tipo_matriz)) {
-          if (cell.codebar === cb) {
+          if (cell.qr === cb) {
             return res.json({
               ok: true,
               data: {
@@ -540,10 +543,10 @@ router.get("/resolve/:codebar", async (req, res) => {
           }
         } else {
           // Per eye
-          if (cell.OD?.codebar === cb) {
+          if (cell.OD?.qr === cb) {
             return res.json({ ok: true, data: { sheet, matrixKey: key, eye: "OD", item: cell.OD } });
           }
-          if (cell.OI?.codebar === cb) {
+          if (cell.OI?.qr === cb) {
             return res.json({ ok: true, data: { sheet, matrixKey: key, eye: "OI", item: cell.OI } });
           }
         }
@@ -552,7 +555,7 @@ router.get("/resolve/:codebar", async (req, res) => {
 
     res.status(404).json({ ok: false, message: "Item no encontrado" });
   } catch (err) {
-    console.error("GET /resolve/:codebar error:", err);
+    console.error("GET /resolve/:qr error:", err);
     res.status(500).json({ ok: false, message: "Error al resolver código" });
   }
 });
@@ -898,9 +901,10 @@ router.patch(
         actor
       });
 
-      await invalidatePattern("inv:*");
-      await invalidatePattern("cl:*");
-      await cacheDel(KEYS.stats());
+      await invalidateSheetsList();
+      await invalidateSheetItems(sheet._id);
+      await invalidateSheetMeta(sheet._id);
+      await invalidateStats();
 
       return res.json({
         ok: true,
@@ -945,10 +949,10 @@ router.delete(
       });
 
       const sheetId = sheet._id.toString();
-      await cacheDel(KEYS.sheetMeta(sheetId));
-      await invalidatePattern("inv:*:sheets");
-      await invalidatePattern(`inv:sheet:${sheetId}:*`);
-      await cacheDel(KEYS.stats());
+      await invalidateSheetsList();
+      await invalidateSheetMeta(sheetId);
+      await invalidateSheetItems(sheetId);
+      await invalidateStats();
       res.json({ ok: true, message: "Hoja eliminada (soft-delete)" });
     } catch (err) {
       console.error("DELETE /sheets/:sheetId error:", err);
@@ -984,10 +988,10 @@ router.patch(
       });
 
       const sheetId = sheet._id.toString();
-      await cacheDel(KEYS.sheetMeta(sheetId));
-      await invalidatePattern("inv:*:sheets");
-      await invalidatePattern(`inv:sheet:${sheetId}:*`);
-      await cacheDel(KEYS.stats());
+      await invalidateSheetsList();
+      await invalidateSheetMeta(sheetId);
+      await invalidateSheetItems(sheetId);
+      await invalidateStats();
 
       res.json({
         ok: true,
@@ -1024,10 +1028,10 @@ router.delete(
       await sheet.deleteOne();
 
       const sheetId = sheet._id.toString();
-      await cacheDel(KEYS.sheetMeta(sheetId));
-      await invalidatePattern("inv:*:sheets");
-      await invalidatePattern(`inv:sheet:${sheetId}:*`);
-      await cacheDel(KEYS.stats());
+      await invalidateSheetsList();
+      await invalidateSheetMeta(sheetId);
+      await invalidateSheetItems(sheetId);
+      await invalidateStats();
 
       res.json({ ok: true, message: "Hoja eliminada permanentemente" });
     } catch (err) {
@@ -1043,7 +1047,7 @@ router.get(
   "/sheets/:sheetId/items",
   param("sheetId").isMongoId(),
   handleValidation,
-  cacheMiddleware((req) => KEYS.sheetItems(req.params.sheetId, req.query), 20),
+  cacheMiddleware(async (req) => KEYS.sheetItems(req.params.sheetId, await sheetVersion(req.params.sheetId), req.query), 20),
   async (req, res) => {
     try {
       const sheet = await InventorySheet.findById(req.params.sheetId);
@@ -1076,7 +1080,7 @@ router.get(
                 base,
                 existencias: cell.existencias ?? 0,
                 sku: cell.sku || null,
-                codebar: cell.codebar || null
+                qr: cell.qr || null
               });
             }
           }
@@ -1132,7 +1136,7 @@ router.get(
                 cyl,
                 existencias: cell.existencias ?? 0,
                 sku: cell.sku || null,
-                codebar: cell.codebar || null
+                qr: cell.qr || null
               });
             }
           }
@@ -1188,7 +1192,7 @@ router.get(
                 base_der: to2(cell.base_der),
                 existencias: Number(eyeNode.existencias || 0),
                 sku: eyeNode.sku || null,
-                codebar: eyeNode.codebar || null
+                qr: eyeNode.qr || null
               });
             }
           }
@@ -1246,7 +1250,7 @@ router.get(
                 eye,
                 existencias: Number(eyeNode.existencias || 0),
                 sku: eyeNode.sku || null,
-                codebar: eyeNode.codebar || null
+                qr: eyeNode.qr || null
               });
             }
           }
@@ -1298,6 +1302,10 @@ router.post(
         actor
       });
 
+      await invalidateSheetItems(sheet._id);
+      await invalidateSheetMeta(sheet._id);
+      await invalidateStats();
+
       broadcast("INV_RELOAD", { sheetId: String(sheet._id) });
 
       res.json({ ok: true, data: stats });
@@ -1318,7 +1326,7 @@ router.put(
   body("existencias").optional(),
   body("delta").optional(),
   body("sku").optional(),
-  body("codebar").optional(),
+  body("qr").optional(),
   body("actor").optional().isObject(),
   handleValidation,
   async (req, res) => {
@@ -1355,7 +1363,7 @@ router.put(
       const rawPrev = doc.cells?.get(key);
       const prev = rawPrev
         ? (typeof rawPrev.toObject === "function" ? rawPrev.toObject() : { ...rawPrev })
-        : { existencias: 0, sku: null, codebar: null, createdBy: actor };
+        : { existencias: 0, sku: null, qr: null, createdBy: actor };
       const before = Number(prev.existencias ?? 0);
 
       let after;
@@ -1366,11 +1374,11 @@ router.put(
       if (!Number.isFinite(after) || after < 0) return res.status(400).json({ ok: false, message: "Existencias resultantes inválidas (<0)" });
 
       let finalSku = isDef(req.body.sku) ? String(req.body.sku) : prev.sku || makeSku(sheet._id, "SPH_CYL", { sph, cyl });
-      let finalCodebar = isDef(req.body.codebar) ? (req.body.codebar === null ? null : String(req.body.codebar)) : prev.codebar;
+      let finalQr = isDef(req.body.qr) ? (req.body.qr === null ? null : String(req.body.qr)) : prev.qr;
 
-      if (after > 0 && !finalCodebar) finalCodebar = makeCodebar(sheet._id, "SPH_CYL", { sph, cyl });
+      if (!finalQr) finalQr = makeQr(sheet._id, "SPH_CYL", { sph, cyl });
 
-      const nextCell = { ...prev, existencias: after, sku: finalSku, codebar: finalCodebar, createdBy: prev.createdBy || actor, updatedBy: actor };
+      const nextCell = { ...prev, existencias: after, sku: finalSku, qr: finalQr, createdBy: prev.createdBy || actor, updatedBy: actor };
 
       await MatrixSphCyl.updateOne(
         { sheet: sheet._id },
@@ -1397,7 +1405,8 @@ router.put(
       });
 
 
-      await invalidatePattern(`inv:sheet:${sheet._id}:*`);
+      await invalidateSheetItems(sheet._id);
+      await invalidateStats();
       broadcast("INV_CELL", { sheetId: String(sheet._id), cell: { sph, cyl, existencias: after } });
 
       return res.json({ ok: true, key, before, after, cell: nextCell, axisExtended, axisExtendError });
@@ -1417,7 +1426,7 @@ router.put(
   body("existencias").optional(),
   body("delta").optional(),
   body("sku").optional(),
-  body("codebar").optional(),
+  body("qr").optional(),
   body("actor").optional().isObject(),
   handleValidation,
   async (req, res) => {
@@ -1441,7 +1450,7 @@ router.put(
       const rawPrev = doc.cells?.get(key);
       const prev = rawPrev
         ? (typeof rawPrev.toObject === "function" ? rawPrev.toObject() : { ...rawPrev })
-        : { existencias: 0, sku: null, codebar: null, createdBy: actor };
+        : { existencias: 0, sku: null, qr: null, createdBy: actor };
       const before = Number(prev.existencias ?? 0);
 
       let after;
@@ -1453,10 +1462,10 @@ router.put(
         return res.status(400).json({ ok: false, message: "Existencias inválidas (<0)" });
 
       let finalSku = isDef(req.body.sku) ? String(req.body.sku) : prev.sku || makeSku(sheet._id, "BASE", { base });
-      let finalCodebar = isDef(req.body.codebar) ? (req.body.codebar === null ? null : String(req.body.codebar)) : prev.codebar;
-      if (after > 0 && !finalCodebar) finalCodebar = makeCodebar(sheet._id, "BASE", { base });
+      let finalQr = isDef(req.body.qr) ? (req.body.qr === null ? null : String(req.body.qr)) : prev.qr;
+      if (!finalQr) finalQr = makeQr(sheet._id, "BASE", { base });
 
-      const nextCell = { ...prev, existencias: after, sku: finalSku, codebar: finalCodebar, createdBy: prev.createdBy || actor, updatedBy: actor };
+      const nextCell = { ...prev, existencias: after, sku: finalSku, qr: finalQr, createdBy: prev.createdBy || actor, updatedBy: actor };
 
       await MatrixBase.updateOne(
         { sheet: sheet._id },
@@ -1468,7 +1477,8 @@ router.put(
         details: { key, before, after, delta: after - before }, actor
       });
 
-      await invalidatePattern(`inv:sheet:${sheet._id}:*`);
+      await invalidateSheetItems(sheet._id);
+      await invalidateStats();
       broadcast("INV_CELL", { sheetId: String(sheet._id), cell: { base, existencias: after } });
 
       return res.json({ ok: true, key, before, after, cell: nextCell });
@@ -1490,7 +1500,7 @@ router.put(
   body("existencias").optional(),
   body("delta").optional(),
   body("sku").optional(),
-  body("codebar").optional(),
+  body("qr").optional(),
   body("base").optional(),
   body("base_izq").optional(),
   body("base_der").optional(),
@@ -1532,9 +1542,9 @@ router.put(
       const rawCell = doc.cells?.get(key);
       const cell = rawCell
         ? (typeof rawCell.toObject === "function" ? rawCell.toObject() : { ...rawCell })
-        : { base_izq, base_der, OD: { existencias: 0, sku: null, codebar: null }, OI: { existencias: 0, sku: null, codebar: null } };
+        : { base_izq, base_der, OD: { existencias: 0, sku: null, qr: null }, OI: { existencias: 0, sku: null, qr: null } };
 
-      const prevEye = cell[eye] || { existencias: 0, sku: null, codebar: null };
+      const prevEye = cell[eye] || { existencias: 0, sku: null, qr: null };
       const before = Number(prevEye.existencias ?? 0);
 
       let after;
@@ -1546,14 +1556,14 @@ router.put(
         return res.status(400).json({ ok: false, message: "Existencias inválidas (<0)" });
 
       let finalSku = isDef(req.body.sku) ? String(req.body.sku) : prevEye.sku || makeSku(sheet._id, "SPH_ADD", { sph, add, eye, base_izq, base_der });
-      let finalCodebar = isDef(req.body.codebar) ? (req.body.codebar === null ? null : String(req.body.codebar)) : prevEye.codebar;
-      if (after > 0 && !finalCodebar) finalCodebar = makeCodebar(sheet._id, "SPH_ADD", { sph, add, eye, base_izq, base_der });
+      let finalQr = isDef(req.body.qr) ? (req.body.qr === null ? null : String(req.body.qr)) : prevEye.qr;
+      if (!finalQr) finalQr = makeQr(sheet._id, "SPH_ADD", { sph, add, eye, base_izq, base_der });
 
       const nextEye = {
         ...prevEye,
         existencias: after,
         sku: finalSku,
-        codebar: finalCodebar,
+        qr: finalQr,
         createdBy: prevEye.createdBy || actor,
         updatedBy: actor
       };
@@ -1574,7 +1584,8 @@ router.put(
         details: { key, eye, before, after, delta: after - before }, actor
       });
 
-      await invalidatePattern(`inv:sheet:${sheet._id}:*`);
+      await invalidateSheetItems(sheet._id);
+      await invalidateStats();
       broadcast("INV_CELL", { sheetId: String(sheet._id), cell: { sph, add, eye, base_izq, base_der, existencias: after } });
 
       return res.json({ ok: true, key, eye, before, after, cell: nextEye });
@@ -1597,7 +1608,7 @@ router.put(
   body("existencias").optional(),
   body("delta").optional(),
   body("sku").optional(),
-  body("codebar").optional(),
+  body("qr").optional(),
   body("actor").optional().isObject(),
   handleValidation,
   async (req, res) => {
@@ -1626,9 +1637,9 @@ router.put(
       const rawCell = doc.cells?.get(key);
       const cell = rawCell
         ? (typeof rawCell.toObject === "function" ? rawCell.toObject() : { ...rawCell })
-        : { base_izq, base_der, OD: { existencias: 0, sku: null, codebar: null }, OI: { existencias: 0, sku: null, codebar: null } };
+        : { base_izq, base_der, OD: { existencias: 0, sku: null, qr: null }, OI: { existencias: 0, sku: null, qr: null } };
 
-      const prevEye = cell[eye] || { existencias: 0, sku: null, codebar: null };
+      const prevEye = cell[eye] || { existencias: 0, sku: null, qr: null };
       const before = Number(prevEye.existencias ?? 0);
 
       let after;
@@ -1640,14 +1651,14 @@ router.put(
         return res.status(400).json({ ok: false, message: "Existencias inválidas (<0)" });
 
       let finalSku = isDef(req.body.sku) ? String(req.body.sku) : prevEye.sku || makeSku(sheet._id, "BASE_ADD", { base_izq, base_der, add, eye });
-      let finalCodebar = isDef(req.body.codebar) ? (req.body.codebar === null ? null : String(req.body.codebar)) : prevEye.codebar;
-      if (after > 0 && !finalCodebar) finalCodebar = makeCodebar(sheet._id, "BASE_ADD", { base_izq, base_der, add, eye });
+      let finalQr = isDef(req.body.qr) ? (req.body.qr === null ? null : String(req.body.qr)) : prevEye.qr;
+      if (!finalQr) finalQr = makeQr(sheet._id, "BASE_ADD", { base_izq, base_der, add, eye });
 
       const nextEye = {
         ...prevEye,
         existencias: after,
         sku: finalSku,
-        codebar: finalCodebar,
+        qr: finalQr,
         createdBy: prevEye.createdBy || actor,
         updatedBy: actor
       };
@@ -1668,7 +1679,8 @@ router.put(
         details: { key, eye, before, after, delta: after - before }, actor
       });
 
-      await invalidatePattern(`inv:sheet:${sheet._id}:*`);
+      await invalidateSheetItems(sheet._id);
+      await invalidateStats();
       broadcast("INV_CELL", { sheetId: String(sheet._id), cell: { base_izq, base_der, add, eye, existencias: after } });
 
       return res.json({ ok: true, key, eye, before, after, cell: nextEye });
@@ -1749,10 +1761,12 @@ router.post(
         actor
       });
 
-      // Invalidate cache for this sheet + stats
-      await invalidatePattern("inv:*");
-      await cacheDel(KEYS.stats());
-      await invalidatePattern("inv:*sheets:*");
+      // Invalidate cache: items de esta planilla (versión), meta (rangos pueden
+      // haberse extendido), lista y stats.
+      await invalidateSheetItems(sheet._id);
+      await invalidateSheetMeta(sheet._id);
+      await invalidateSheetsList();
+      await invalidateStats();
 
       // Notificar a otras pestañas del mismo sheet: lista de celdas cambiadas
       if (result.updated > 0) {

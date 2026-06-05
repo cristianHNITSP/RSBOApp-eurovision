@@ -51,6 +51,14 @@
           </b-tag>
         </div>
 
+        <div class="level-item" v-if="historyStatus">
+          <span :key="historyStatus.ms" class="is-size-7 last-saved last-history"
+            :class="`last-history--${historyStatus.type}`">
+            <b-icon :icon="historyStatus.icon" size="is-small" class="mr-1" />
+            {{ historyStatus.label }}
+          </span>
+        </div>
+
         <div class="level-item" v-if="lastSavedLabel">
           <span class="is-size-7 has-text-grey last-saved">
             <b-icon icon="clock" size="is-small" class="mr-1" />
@@ -79,6 +87,7 @@ defineProps({
   totalRows: Number,
   serverBadge: Object,
   lastSavedLabel: String,
+  historyStatus: Object, // { type: "undo"|"redo", icon, label } | null
   isFullscreen: Boolean,
   internalTabs: { type: Array, default: () => [] },
   activeInternalTab: { type: String, default: '' }

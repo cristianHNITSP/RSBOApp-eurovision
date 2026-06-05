@@ -37,14 +37,19 @@ export function useLabItems(sheets) {
         };
         const { data } = await invFetchItems(sheet.id, params);
         const rows = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
-        itemsDB.value = rows.map((r, idx) => ({
-          ...r,
-          _k: String(r.codebar || "") ? `${r.codebar}` : `row_${idx}`,
-          existencias: Number(r.existencias || 0),
-          _normTitle: normTxt(buildRowTitle(r, sheet)),
-          _normParams: normTxt(buildRowParams(r, sheet)),
-          _normCode: normTxt(r.codebar || "")
-        }));
+        itemsDB.value = rows.map((r, idx) => {
+          // `qr` = código QR interno por dioptría (reemplaza al legado `codebar`).
+          const qr = r.qr ?? r.codebar ?? "";
+          return {
+            ...r,
+            qr,
+            _k: String(qr || "") ? `${qr}` : `row_${idx}`,
+            existencias: Number(r.existencias || 0),
+            _normTitle: normTxt(buildRowTitle(r, sheet)),
+            _normParams: normTxt(buildRowParams(r, sheet)),
+            _normCode: normTxt(qr || "")
+          };
+        });
       } catch (e) {
         if (e?.name !== "CanceledError" && e?.code !== "ERR_CANCELED") {
           console.error("[LAB] loadItems", e?.response?.data || e);
@@ -82,8 +87,8 @@ export function useLabItems(sheets) {
     const q = normTxt(catalogQuery.value);
     let out = rows;
 
-    if (catalogFilter.value === "withStock") out = out.filter((r) => r.codebar && r.existencias > 0);
-    else if (catalogFilter.value === "allCodes") out = out.filter((r) => !!r.codebar);
+    if (catalogFilter.value === "withStock") out = out.filter((r) => r.qr && r.existencias > 0);
+    else if (catalogFilter.value === "allCodes") out = out.filter((r) => !!r.qr);
 
     if (q) {
       out = out.filter((r) =>
@@ -95,7 +100,7 @@ export function useLabItems(sheets) {
 
     return out.map((r, idx) => ({
       ...r,
-      _k: String(r.codebar || "") ? `${r.codebar}__${idx}` : `row_${idx}`
+      _k: String(r.qr || "") ? `${r.qr}__${idx}` : `row_${idx}`
     }));
   });
 
@@ -110,7 +115,7 @@ export function useLabItems(sheets) {
   });
 
   const totalCodes = computed(() =>
-    itemsDB.value.filter((r) => !!String(r.codebar || "").trim()).length
+    itemsDB.value.filter((r) => !!String(r.qr || "").trim()).length
   );
 
   return {

@@ -64,4 +64,30 @@ const makeCodebar = (sheetId, tipo, coords = {}) => {
   return `${body12}${ean13CheckDigit(body12)}`;
 };
 
-module.exports = { makeSku, makeCodebar, hashToDigits, ean13CheckDigit };
+// Prefijo del QR interno (no es EAN-13, no se escanea como código de barra)
+const QR_PREFIX = "RSBO";
+
+/**
+ * Genera el código QR interno, único por (hoja, dioptría, ojo).
+ *
+ * A diferencia de `makeCodebar` (que comprime con hash a 9 dígitos y puede colisionar),
+ * este código es DETERMINÍSTICO y SIN PÉRDIDA: incorpora todas las coordenadas normalizadas,
+ * por lo que dos dioptrías/ojos distintos nunca producen el mismo QR y re-sembrar la misma
+ * celda devuelve siempre el mismo valor (idempotente).
+ */
+const makeQr = (sheetId, tipo, coords = {}) =>
+  [
+    QR_PREFIX,
+    String(sheetId),
+    tipo,
+    normNum(coords.sph),
+    normNum(coords.cyl),
+    normNum(coords.add),
+    normNum(coords.base),
+    normStr(coords.eye),
+    normNum(coords.base_izq),
+    normNum(coords.base_der),
+    normNum(coords.axis),
+  ].join("|");
+
+module.exports = { makeSku, makeCodebar, makeQr, QR_PREFIX, hashToDigits, ean13CheckDigit };

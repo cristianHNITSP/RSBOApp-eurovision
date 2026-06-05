@@ -6,7 +6,7 @@
 import { to2, fmtSigned, numOr } from "@/composables/ag-grid/useAgGridBase";
 import { norm, parseCylFromField, fmtCylHeader } from "@/components/ag-grid/utils/ag-grid-utils";
 import { GRID_CONFIG } from "@/components/ag-grid/gridConfig";
-import { numericLeaf } from "./helpers";
+import { numericLeaf, axisSides } from "./helpers";
 
 export function createToricoDescriptor(ctx) {
   const isNeg = () => ctx.sphType.value === "sph-neg";
@@ -32,6 +32,7 @@ export function createToricoDescriptor(ctx) {
       { id: "sph-neg", label: "SPH (-)" },
       { id: "sph-pos", label: "SPH (+)" },
     ],
+    availableSides: () => axisSides(ctx.sheetTabs.value, "sph"),
 
     ext: {
       degreeBar: true,
@@ -105,6 +106,7 @@ export function createToricoDescriptor(ctx) {
           headerName: `CYL (-) | Eje ${deg()}°`,
           children: ctx.allColValues.value.map((cDisp) => numericLeaf(ctx, {
             field: `cyl_${norm(cDisp)}`, headerName: fmtCylHeader(cDisp), minWidth: 80, maxWidth: 110,
+            cellDistance: this.cellDistance,
           })),
         },
       ];
@@ -121,19 +123,24 @@ export function createToricoDescriptor(ctx) {
     normalizeItem: (i) => {
       let cyl = to2(i.cyl);
       if (Number.isFinite(cyl) && cyl > 0) cyl = -Math.abs(cyl);
-      return { sph: to2(i.sph), cyl, axis: Number(i.axis ?? 180), existencias: Number(i.existencias ?? 0) };
+      return { sph: to2(i.sph), cyl, axis: Number(i.axis ?? 180), existencias: Number(i.existencias ?? 0), qr: i.qr ?? null };
     },
 
     buildPivotPage(pageSphs, items, pending) {
       const cylAll = ctx.allColValues.value;
       const d = deg();
       const itemMap = new Map();
-      items.forEach((it) => itemMap.set(`${it.sph}|${to2(Math.abs(it.cyl))}`, it.existencias));
+      const qrMap = new Map(); // qr passthrough (tooltip)
+      items.forEach((it) => {
+        itemMap.set(`${it.sph}|${to2(Math.abs(it.cyl))}`, it.existencias);
+        qrMap.set(`${it.sph}|${to2(Math.abs(it.cyl))}`, it.qr ?? null);
+      });
       return pageSphs.map((sph) => {
         const row = { sph };
         cylAll.forEach((cDisp) => {
           const field = `cyl_${norm(cDisp)}`;
           row[field] = itemMap.get(`${sph}|${cDisp}`) ?? 0;
+          row[`${field}__qr`] = qrMap.get(`${sph}|${cDisp}`) ?? null;
           const pk = `${to2(sph)}|${cDisp}|${d}`;
           if (pending?.has(pk)) row[field] = pending.get(pk).existencias;
         });

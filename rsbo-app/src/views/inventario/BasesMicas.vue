@@ -3,11 +3,14 @@
 import { computed, ref, onMounted, watch, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import TabsManager from "@/components/TabsManager.vue";
+import SectionLoadingOverlay from "@/components/SectionLoadingOverlay.vue";
 import { labToast } from "@/composables/shared/useLabToast.js";
 
 import { listSheets } from "@/services/inventory";
 import { fetchCatalog } from "@/services/catalog";
 import { useSheetPagination } from "@/composables/api/useSheetPagination.js";
+import { useWorkspaceTabs } from "@/composables/tabsmanager/useWorkspaceTabs";
+import { useSectionBoot } from "@/composables/tabsmanager/useSectionBoot";
 import { INVENTORY_LABELS, INVENTORY_CONFIG } from "@/data/inventory.data";
 
 const props = defineProps({
@@ -17,7 +20,6 @@ const props = defineProps({
 const route = useRoute();
 const router = useRouter();
 
-const activeSheet = ref(INVENTORY_CONFIG.TABS.NEW);
 const activeInternalTab = ref(null);
 
 const catalog = ref({ bases: [], treatments: [] });
@@ -61,6 +63,17 @@ function mapSheet(s) {
 ───────────────────────────────────────────────────────────────────────── */
 const pager = useSheetPagination(listSheets, mapSheet);
 
+// Workspace (sesión persistida: tabs abiertas, fijadas, pestaña activa)
+const ws = useWorkspaceTabs("inventory");
+
+// Boot de sección (Etapa 1): loading global + restaurar sesión sin salto
+const { booting, activeSheet, boot } = useSectionBoot({
+  pager,
+  ws,
+  loadCatalog: cargarCatalog,
+  newTabId: INVENTORY_CONFIG.TABS.NEW,
+});
+
 const dynamicSheets = computed(() => [
   { id: INVENTORY_CONFIG.TABS.NEW, name: "+ Agregar" },
   ...pager.sheets
@@ -85,7 +98,8 @@ async function focusSheetFromQuery(sheetId) {
   router.replace({ query: Object.keys(newQuery).length ? newQuery : undefined });
 }
 
-watch(() => route.query.sheetId, (id) => { if (id) focusSheetFromQuery(id); }, { immediate: true });
+// Solo cambios de query EN CALIENTE (tras el boot); el arranque lo maneja boot()
+watch(() => route.query.sheetId, (id) => { if (id) focusSheetFromQuery(id); });
 
 /* ─────────────────────────────────────────────────────────────────────────
    Catálogo
@@ -104,12 +118,11 @@ async function cargarCatalog() {
 
 onMounted(async () => {
   const focusId = route.query.sheetId || null;
-  await Promise.all([cargarCatalog(), pager.init(focusId || null)]);
+  await boot(focusId);            // catálogo + restaurar sesión + lista; sin salto
   if (focusId) {
-    await nextTick();
-    if (pager.sheets.find((s) => s.id === focusId)) {
-      activeSheet.value = focusId;
-    }
+    const newQuery = { ...route.query };
+    delete newQuery.sheetId;
+    router.replace({ query: Object.keys(newQuery).length ? newQuery : undefined });
   }
 });
 
@@ -160,11 +173,16 @@ function reordenarSheets({ oldIndex, newIndex }) {
       </div>
     </header>
 
-    <div class="columns is-multiline">
+    <div class="section-boot-wrap" :class="{ 'is-booting': booting }">
+      <Transition name="boot">
+        <SectionLoadingOverlay v-if="booting" label="Cargando planillas…" />
+      </Transition>
+
+      <div v-if="!booting" class="columns is-multiline">
       <div class="column is-12">
-        <TabsManager 
-          :initial-sheets="dynamicSheets" 
-          :active-id="activeSheet" 
+        <TabsManager
+          :initial-sheets="dynamicSheets"
+          :active-id="activeSheet"
           :catalog="catalog"
           :catalog-loading="catalogLoading" 
           :actor="user"
@@ -182,6 +200,7 @@ function reordenarSheets({ oldIndex, newIndex }) {
           @load-more="pager.loadNext()"
           @load-prior="pager.loadPrior()">
         </TabsManager>
+      </div>
       </div>
     </div>
   </section>
@@ -213,6 +232,32 @@ function reordenarSheets({ oldIndex, newIndex }) {
   width: 100%;
   height: 600px;
   position: relative;
+}
+
+/* Boot de sección: contenedor relativo para el overlay; reserva alto mientras
+   el TabsManager aún no se monta, para que el loader tenga dónde mostrarse. */
+.section-boot-wrap {
+  position: relative;
+}
+
+.section-boot-wrap.is-booting {
+  min-height: 640px;
+}
+
+/* Reveal suave del contenido al terminar el boot */
+.boot-leave-active {
+  transition: opacity 220ms ease, filter 220ms ease;
+}
+
+.boot-leave-to {
+  opacity: 0;
+  filter: blur(2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boot-leave-active {
+    transition: none !important;
+  }
 }
 
 .sheet-enter-active,

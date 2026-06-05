@@ -31,7 +31,7 @@ class StockError extends Error {
  * @param {String}  args.type        Tipo del cambio para InventoryChangeLog
  *                                   (ej. "MERMA", "LAB_CONSUMO", "DEV_ENTRY").
  * @param {Object}  args.actor       { userId, name }.
- * @param {String}  [args.codebar]
+ * @param {String}  [args.qr]
  * @param {Object}  [args.details]   Detalles extra para el log.
  * @param {Object}  [args.session]   Sesión Mongoose opcional (transacciones).
  * @returns {Promise<{stockBefore:number, stockAfter:number, sheet:object}>}
@@ -43,7 +43,7 @@ async function mutateMatrixCell(args) {
     delta,
     type,
     actor = {},
-    codebar = null,
+    qr = null,
     details = {},
     session = null,
   } = args || {};
@@ -139,7 +139,7 @@ async function mutateMatrixCell(args) {
       type,
       matrixKey:   key,
       eye:         eye || null,
-      details: { codebar, qty: Math.abs(d), delta: d, before: stockBefore, after: stockAfter, matrixKey: key, eye, ...details },
+      details: { qr, qty: Math.abs(d), delta: d, before: stockBefore, after: stockAfter, matrixKey: key, eye, ...details },
       actor: { userId: actor?.userId || null, name: actor?.name || null },
     };
     if (session) {

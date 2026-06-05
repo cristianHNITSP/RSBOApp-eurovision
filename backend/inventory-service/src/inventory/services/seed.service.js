@@ -3,7 +3,7 @@ const defaultRangesByTipo = require("../constants/defaultRanges");
 const PHYSICAL_LIMITS = require("../constants/physicalLimits");
 
 const { frange, clampRange } = require("../utils/ranges");
-const { makeSku } = require("../utils/barcode");
+const { makeSku, makeQr } = require("../utils/barcode");
 const { keyBase, keySphCyl, keyBifocal, keyProg, keyTorico, normalizeCylConvention } = require("../utils/keys");
 const { PER_BASE_AXIS } = require("../utils/axisConfig");
 
@@ -25,7 +25,7 @@ async function seedRootForSheet(models, sheet, actor) {
         doc.cells.set(k, {
           existencias: 0,
           sku: makeSku(sheet._id, "BASE", { base }),
-          codebar: null,
+          qr: makeQr(sheet._id, "BASE", { base }),
           createdBy: actor,
           updatedBy: actor,
         });
@@ -50,7 +50,7 @@ async function seedRootForSheet(models, sheet, actor) {
         doc.cells.set(k, {
           existencias: 0,
           sku: makeSku(sheet._id, "SPH_CYL", { sph, cyl }),
-          codebar: null,
+          qr: makeQr(sheet._id, "SPH_CYL", { sph, cyl }),
           createdBy: actor,
           updatedBy: actor,
         });
@@ -81,12 +81,12 @@ async function seedRootForSheet(models, sheet, actor) {
           OD: {
             existencias: 0,
             sku: makeSku(sheet._id, "SPH_ADD", { sph, add, eye: "OD", base_izq: bi, base_der: bd }),
-            codebar: null,
+            qr: makeQr(sheet._id, "SPH_ADD", { sph, add, eye: "OD", base_izq: bi, base_der: bd }),
           },
           OI: {
             existencias: 0,
             sku: makeSku(sheet._id, "SPH_ADD", { sph, add, eye: "OI", base_izq: bi, base_der: bd }),
-            codebar: null,
+            qr: makeQr(sheet._id, "SPH_ADD", { sph, add, eye: "OI", base_izq: bi, base_der: bd }),
           },
           createdBy: actor,
           updatedBy: actor,
@@ -117,12 +117,12 @@ async function seedRootForSheet(models, sheet, actor) {
           OD: {
             existencias: 0,
             sku: makeSku(sheet._id, "BASE_ADD", { add, eye: "OD", base_izq: bi, base_der: bd }),
-            codebar: null,
+            qr: makeQr(sheet._id, "BASE_ADD", { add, eye: "OD", base_izq: bi, base_der: bd }),
           },
           OI: {
             existencias: 0,
             sku: makeSku(sheet._id, "BASE_ADD", { add, eye: "OI", base_izq: bi, base_der: bd }),
-            codebar: null,
+            qr: makeQr(sheet._id, "BASE_ADD", { add, eye: "OI", base_izq: bi, base_der: bd }),
           },
           createdBy: actor,
           updatedBy: actor,
@@ -150,7 +150,7 @@ async function seedRootForSheet(models, sheet, actor) {
         doc.cells.set(k, {
           existencias: 0,
           sku: makeSku(sheet._id, "SPH_CYL_AXIS", { sph, cyl, axis }),
-          codebar: null,
+          qr: makeQr(sheet._id, "SPH_CYL_AXIS", { sph, cyl, axis }),
           createdBy: actor,
           updatedBy: actor,
         });
@@ -204,7 +204,7 @@ async function seedFullForSheet(models, sheet, actor) {
       if (!doc.cells.has(k)) {
         doc.cells.set(
           k,
-          setCell({ existencias: 0, sku: makeSku(sheet._id, "BASE", { base }), codebar: null })
+          setCell({ existencias: 0, sku: makeSku(sheet._id, "BASE", { base }), qr: makeQr(sheet._id, "BASE", { base }) })
         );
       }
     });
@@ -257,7 +257,7 @@ async function seedFullForSheet(models, sheet, actor) {
         if (!doc.cells.has(k)) {
           doc.cells.set(
             k,
-            setCell({ existencias: 0, sku: makeSku(sheet._id, "SPH_CYL", { sph, cyl }), codebar: null })
+            setCell({ existencias: 0, sku: makeSku(sheet._id, "SPH_CYL", { sph, cyl }), qr: makeQr(sheet._id, "SPH_CYL", { sph, cyl }) })
           );
           count++;
         }
@@ -312,8 +312,8 @@ async function seedFullForSheet(models, sheet, actor) {
             setCell({
               base_izq: bi,
               base_der: bd,
-              OD: { existencias: 0, sku: makeSku(sheet._id, "SPH_ADD", { sph, add, eye: "OD", base_izq: bi, base_der: bd }), codebar: null },
-              OI: { existencias: 0, sku: makeSku(sheet._id, "SPH_ADD", { sph, add, eye: "OI", base_izq: bi, base_der: bd }), codebar: null },
+              OD: { existencias: 0, sku: makeSku(sheet._id, "SPH_ADD", { sph, add, eye: "OD", base_izq: bi, base_der: bd }), qr: makeQr(sheet._id, "SPH_ADD", { sph, add, eye: "OD", base_izq: bi, base_der: bd }) },
+              OI: { existencias: 0, sku: makeSku(sheet._id, "SPH_ADD", { sph, add, eye: "OI", base_izq: bi, base_der: bd }), qr: makeQr(sheet._id, "SPH_ADD", { sph, add, eye: "OI", base_izq: bi, base_der: bd }) },
             })
           );
           count++;
@@ -369,8 +369,8 @@ async function seedFullForSheet(models, sheet, actor) {
             setCell({
               base_izq: bi,
               base_der: bd,
-              OD: { existencias: 0, sku: makeSku(sheet._id, "BASE_ADD", { add, eye: "OD", base_izq: bi, base_der: bd }), codebar: null },
-              OI: { existencias: 0, sku: makeSku(sheet._id, "BASE_ADD", { add, eye: "OI", base_izq: bi, base_der: bd }), codebar: null },
+              OD: { existencias: 0, sku: makeSku(sheet._id, "BASE_ADD", { add, eye: "OD", base_izq: bi, base_der: bd }), qr: makeQr(sheet._id, "BASE_ADD", { add, eye: "OD", base_izq: bi, base_der: bd }) },
+              OI: { existencias: 0, sku: makeSku(sheet._id, "BASE_ADD", { add, eye: "OI", base_izq: bi, base_der: bd }), qr: makeQr(sheet._id, "BASE_ADD", { add, eye: "OI", base_izq: bi, base_der: bd }) },
             })
           );
           count++;
@@ -434,7 +434,7 @@ async function seedFullForSheet(models, sheet, actor) {
           if (!doc.cells.has(k)) {
             doc.cells.set(
               k,
-              setCell({ existencias: 0, sku: makeSku(sheet._id, "SPH_CYL_AXIS", { sph, cyl, axis }), codebar: null })
+              setCell({ existencias: 0, sku: makeSku(sheet._id, "SPH_CYL_AXIS", { sph, cyl, axis }), qr: makeQr(sheet._id, "SPH_CYL_AXIS", { sph, cyl, axis }) })
             );
             count++;
           }

@@ -21,27 +21,28 @@
     transition: background 0.3s ease, border-color 0.3s ease;
 }
 
-/* Metadata Card */
+/* Metadata Card — misma receta que el sidebar: primary sutil + pink sutil */
 .navtools-card--meta {
     background:
-        radial-gradient(circle at 0% 0%, var(--static-color-rgba-121-87-213-0-10), transparent 55%),
-        radial-gradient(circle at 100% 100%, var(--static-color-rgba-236-72-153-0-08), transparent 60%),
+        radial-gradient(circle at 0% 0%, var(--static-color-rgba-121-87-213-0-08), transparent 55%),
+        radial-gradient(circle at 100% 100%, var(--static-color-rgba-236-72-153-0-06), transparent 55%),
         var(--surface-raised);
 }
 
-/* Ribbon Card */
+/* Dark: meta card sin gradiente — superficie plana igual que las demás */
+[data-theme="dark"] .navtools-card--meta {
+    background: var(--surface-raised);
+}
+
+/* Ribbon Card — superficie plana, sin acento */
 .navtools-card--ribbon {
     overflow: visible !important;
-    background:
-        linear-gradient(120deg, var(--static-color-rgba-121-87-213-0-10), var(--static-color-rgba-154-109-255-0-08), var(--static-color-rgba-236-72-153-0-06)),
-        var(--surface-raised);
+    background: var(--surface-raised);
 }
 
-/* Formula Bar Card */
+/* Formula Bar Card — plana */
 .navtools-card--fx {
-    background:
-        radial-gradient(circle at 0% 0%, var(--static-color-rgba-121-87-213-0-08), transparent 55%),
-        var(--surface-raised);
+    background: var(--surface-raised);
 }
 
 /* ─── 3. Header & Metadata ────────────────────────────────────────── */
@@ -85,6 +86,40 @@
     align-items: center;
     font-weight: 600;
     color: var(--text-muted);
+}
+
+/* Píldora de última acción de historial (deshacer/rehacer), junto a "Guardado". */
+.last-history {
+    gap: 0.15rem;
+    padding: 0.05rem 0.4rem;
+    border-radius: 999px;
+    animation: history-pop 0.32s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+.last-history--undo {
+    color: var(--c-warning, #b45309);
+    background: var(--c-warning-alpha, var(--static-color-rgba-121-87-213-0-08));
+}
+
+.last-history--redo {
+    color: var(--c-info, var(--c-primary));
+    background: var(--c-info-alpha, var(--c-primary-alpha));
+}
+
+@keyframes history-pop {
+    from {
+        opacity: 0;
+        transform: translateY(-2px) scale(0.94);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+[data-reduced-motion="true"] .last-history {
+    animation: none;
 }
 
 /* ─── 4. Internal Tab Switcher ────────────────────────────────────── */
@@ -140,7 +175,8 @@
     width: 100%;
     max-width: 100%;
     overflow-x: auto;
-    overflow-y: visible; /* Permitir que las tooltips asomen por arriba */
+    overflow-y: visible;
+    /* Permitir que las tooltips asomen por arriba */
     -webkit-overflow-scrolling: touch;
     padding: 0.2rem 0.1rem;
     scrollbar-width: none;
@@ -177,7 +213,7 @@
 }
 
 .rbtn--primary {
-    box-shadow: 0 4px 12px var(--c-primary-alpha), 0 0 0 1px var(--static-color-rgba-121-87-213-0-2);
+    box-shadow: 0 4px 12px var(--c-primary-alpha), 0 0 0 1px var(--static-color-rgba-79-70-229-0-15);
 }
 
 /* ─── 5. Formula Bar (FX) ────────────────────────────────────────── */
@@ -187,10 +223,9 @@
     gap: 0.6rem;
     padding: 0.45rem 0.75rem;
     border-radius: 999px;
-    border: 1px solid var(--static-color-rgba-121-87-213-0-15);
+    border: 1px solid var(--static-color-rgba-148-163-184-0-15);
     background:
-        radial-gradient(circle at 20% 0%, var(--static-color-rgba-121-87-213-0-12), transparent 55%),
-        linear-gradient(90deg, var(--static-color-rgba-144-111-225-0-10), var(--static-color-rgba-236-72-153-0-05)),
+        radial-gradient(circle at 0% 0%, var(--static-color-rgba-121-87-213-0-05), transparent 55%),
         var(--surface-solid);
     margin: 0.5rem;
 }
@@ -201,7 +236,7 @@
     font-weight: 1000;
     background: var(--bg-muted, var(--static-color-rgba-148-163-184-0-1));
     color: var(--c-primary);
-    border: 1px solid var(--static-color-rgba-121-87-213-0-2);
+    border: 1px solid var(--static-color-rgba-79-70-229-0-15);
     font-style: italic;
     font-family: serif;
 }

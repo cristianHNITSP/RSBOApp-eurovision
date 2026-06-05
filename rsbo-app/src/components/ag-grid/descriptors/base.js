@@ -3,7 +3,7 @@
  * rowKey = base. Sin columnas dinámicas.
  */
 import { to2, fmtSigned, numOr, isMultipleOfStep } from "@/composables/ag-grid/useAgGridBase";
-import { numericLeaf } from "./helpers";
+import { numericLeaf, axisSides } from "./helpers";
 
 const BASE_STEP = 0.25;
 
@@ -30,6 +30,7 @@ export function createBaseDescriptor(ctx) {
       { id: "base-neg", label: "BASE (-)" },
       { id: "base-pos", label: "BASE (+)" },
     ],
+    availableSides: () => axisSides(ctx.sheetTabs.value, "base"),
 
     getRowId: (data) => String(to2(data.base)),
     isEditableField: (field) => field === "existencias",
@@ -76,6 +77,7 @@ export function createBaseDescriptor(ctx) {
           headerName: "EXISTENCIAS",
           children: [numericLeaf(ctx, {
             field: "existencias", headerName: "Stock", minWidth: 110, maxWidth: 140,
+            cellDistance: this.cellDistance,
           })],
         },
       ];
@@ -85,13 +87,14 @@ export function createBaseDescriptor(ctx) {
       return { baseMin: Math.min(...pageBases), baseMax: Math.max(...pageBases), limit: ctx.fetchLimit };
     },
 
-    normalizeItem: (i) => ({ base: to2(i.base), existencias: Number(i.existencias ?? 0) }),
+    normalizeItem: (i) => ({ base: to2(i.base), existencias: Number(i.existencias ?? 0), qr: i.qr ?? null }),
 
     buildPivotPage(pageBases, items, pending) {
       const map = new Map(items.map((i) => [String(to2(i.base)), i.existencias]));
+      const qrMap = new Map(items.map((i) => [String(to2(i.base)), i.qr ?? null])); // qr passthrough (tooltip)
       return pageBases.map((base) => {
         const key = String(to2(base));
-        const row = { base, existencias: map.get(key) ?? 0 };
+        const row = { base, existencias: map.get(key) ?? 0, existencias__qr: qrMap.get(key) ?? null };
         if (pending?.has(key)) row.existencias = pending.get(key).existencias;
         return row;
       });

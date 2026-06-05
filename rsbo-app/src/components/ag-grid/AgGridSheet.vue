@@ -30,6 +30,7 @@
         :material="material"
         :tratamientos="tratamientos"
         :last-saved-at="lastSavedAt"
+        :last-history-action="lastHistoryAction"
         :grid-can-undo="gridHistory.canUndo.value"
         :grid-can-redo="gridHistory.canRedo.value"
         :is-fullscreen="isFullscreen"
@@ -154,7 +155,7 @@ const props = defineProps({
   apiType: { type: String, default: "inventory" },
 });
 
-defineEmits(["update:internal"]);
+const emit = defineEmits(["update:internal", "update:available-internal"]);
 
 const { getSheet, fetchItems, saveChunk, saveCell } = useSheetApi(() => props.apiType);
 const { sheetId, sphType } = toRefs(props);
@@ -276,7 +277,16 @@ const sheetName = computed(() => sheetMeta.value?.nombre || sheetMeta.value?.nam
 const tipoMatrizLabel = computed(() => sheetMeta.value?.tipo_matriz || props.tipoMatriz);
 const material = computed(() => sheetMeta.value?.material || "");
 const tratamientos = computed(() => sheetMeta.value?.tratamientos || []);
-const internalTabs = computed(() => (descriptor ? descriptor.internalTabs() : []));
+// Tabs internas DISPONIBLES: oculta el lado (+/−) que no tiene filas reales
+// (el 0 no cuenta). Si aún no hay datos (ambos vacíos), se muestran todas.
+const internalTabs = computed(() => {
+  const all = descriptor ? descriptor.internalTabs() : [];
+  if (!all.length || !descriptor?.availableSides) return all;
+  const { hasNeg, hasPos } = descriptor.availableSides();
+  if (!hasNeg && !hasPos) return all; // sin datos / hoja vacía → no filtrar
+  return all.filter((t) =>
+    /neg/.test(t.id) ? hasNeg : (/pos/.test(t.id) ? hasPos : true));
+});
 
 const getRowId = (p) => descriptor.getRowId(p.data);
 
@@ -413,7 +423,10 @@ function onWsMessage(type, payload) {
 }
 
 // ─── Undo / Redo (ahora ESCRIBE: aplica el valor a la fila y lo persiste) ──
-function applyGridHistoryOp(op) {
+// Última acción de historial aplicada → feedback visual en navtools (junto a "Guardado").
+const lastHistoryAction = ref(null); // { type: "undo" | "redo", at: Date }
+
+function applyGridHistoryOp(op, actionType) {
   if (!op) return;
   const value = Number(op.reversed ? op.oldValue : op.newValue);
   const rowId = String(op.key).split("|").slice(0, -1).join("|"); // key = `${rowId}|${field}`
@@ -423,9 +436,10 @@ function applyGridHistoryOp(op) {
   node.setData({ ...node.data, [op.field]: value });
   // persistir el valor revertido por su endpoint de celda
   persistCell(descriptor.changeRecord(node.data, op.field, value, value), { rowId, field: op.field, oldValue: op.reversed ? op.newValue : op.oldValue });
+  lastHistoryAction.value = { type: actionType, at: new Date() };
 }
-const handleGridUndo = () => applyGridHistoryOp(gridHistory.undo());
-const handleGridRedo = () => applyGridHistoryOp(gridHistory.redo());
+const handleGridUndo = () => applyGridHistoryOp(gridHistory.undo(), "undo");
+const handleGridRedo = () => applyGridHistoryOp(gridHistory.redo(), "redo");
 
 useGridKeyboardShortcuts({
   onSave: () => {}, // auto-guardado: Ctrl+S no hace nada
@@ -494,6 +508,15 @@ watch(() => props.sphType, async () => {
   gridHistory.clear();          // el historial es por-vista
   await loadView({ useMemo: true });
 });
+
+// Avisar al padre qué lados (+/−) están disponibles y, si el lado activo quedó
+// oculto (p.ej. hoja sin filas positivas), saltar al primero disponible.
+watch(internalTabs, (tabs) => {
+  emit("update:available-internal", tabs.map((t) => t.id));
+  if (tabs.length && !tabs.some((t) => t.id === props.sphType)) {
+    emit("update:internal", tabs[0].id);
+  }
+}, { immediate: true });
 </script>
 
 <style scoped>

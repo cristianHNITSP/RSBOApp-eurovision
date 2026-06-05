@@ -4,7 +4,7 @@
  */
 import { to2, fmtSigned, numOr } from "@/composables/ag-grid/useAgGridBase";
 import { norm, parseCylFromField, fmtCylHeader } from "@/components/ag-grid/utils/ag-grid-utils";
-import { numericLeaf } from "./helpers";
+import { numericLeaf, axisSides } from "./helpers";
 
 export function createMonofocalDescriptor(ctx) {
   const isNeg = () => ctx.sphType.value === "sph-neg";
@@ -29,6 +29,7 @@ export function createMonofocalDescriptor(ctx) {
       { id: "sph-neg", label: "SPH (-)" },
       { id: "sph-pos", label: "SPH (+)" },
     ],
+    availableSides: () => axisSides(ctx.sheetTabs.value, "sph"),
 
     getRowId: (data) => String(to2(data.sph)),
     isEditableField: (field) => field.startsWith("cyl_"),
@@ -81,6 +82,7 @@ export function createMonofocalDescriptor(ctx) {
           headerName: "CYL (-)",
           children: ctx.allColValues.value.map((cDisp) => numericLeaf(ctx, {
             field: `cyl_${norm(cDisp)}`, headerName: fmtCylHeader(cDisp), minWidth: 80, maxWidth: 110,
+            cellDistance: this.cellDistance,
           })),
         },
       ];
@@ -93,18 +95,27 @@ export function createMonofocalDescriptor(ctx) {
     normalizeItem: (i) => {
       let cyl = to2(i.cyl);
       if (Number.isFinite(cyl) && cyl > 0) cyl = -Math.abs(cyl);
-      return { sph: to2(i.sph), cyl, existencias: Number(i.existencias ?? 0) };
+      // === QR TEST START === (conservar `qr` por celda; quitar al desactivar la prueba)
+      return { sph: to2(i.sph), cyl, existencias: Number(i.existencias ?? 0), qr: i.qr ?? null };
+      // === QR TEST END ===
     },
 
     buildPivotPage(pageSphs, items, pending) {
       const cylAll = ctx.allColValues.value;
       const itemMap = new Map();
-      items.forEach((it) => itemMap.set(`${it.sph}|${to2(Math.abs(it.cyl))}`, it.existencias));
+      const qrMap = new Map(); // === QR TEST === (mapa qr-por-celda)
+      items.forEach((it) => {
+        itemMap.set(`${it.sph}|${to2(Math.abs(it.cyl))}`, it.existencias);
+        qrMap.set(`${it.sph}|${to2(Math.abs(it.cyl))}`, it.qr ?? null); // === QR TEST ===
+      });
       return pageSphs.map((sph) => {
         const row = { sph };
         cylAll.forEach((cDisp) => {
           const field = `cyl_${norm(cDisp)}`;
           row[field] = itemMap.get(`${sph}|${cDisp}`) ?? 0;
+          // === QR TEST START === (qr de la celda bajo `<field>__qr`; quitar al desactivar)
+          row[`${field}__qr`] = qrMap.get(`${sph}|${cDisp}`) ?? null;
+          // === QR TEST END ===
           const pk = `${to2(sph)}|${cDisp}`;
           if (pending?.has(pk)) row[field] = pending.get(pk).existencias;
         });

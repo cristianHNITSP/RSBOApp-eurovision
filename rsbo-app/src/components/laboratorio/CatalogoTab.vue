@@ -73,7 +73,7 @@
               Códigos disponibles
               <span class="panel__badge">{{ lab.filteredCatalogRows.value.length }}</span>
             </h2>
-            <p class="panel__hint">Click para copiar el codebar (EAN-13).</p>
+            <p class="panel__hint">Click para copiar el código QR interno.</p>
           </div>
 
           <div class="panel__headActions">
@@ -99,8 +99,8 @@
 
           <div v-else class="qr-grid">
             <button v-for="row in lab.paginatedCatalog.value" :key="row._k"
-              v-memo="[row._k, row.existencias, row.codebar]" class="qr-card" type="button"
-              @click="lab.copyCodebar(row.codebar)" :title="'Copiar: ' + (row.codebar || '')">
+              v-memo="[row._k, row.existencias, row.qr]" class="qr-card" type="button"
+              @click="lab.copyCodebar(row.qr)" :title="'Copiar: ' + (row.qr || '')">
               <div class="qr-card__head">
                 <div class="qr-card__title">{{ lab.buildRowTitle(row, lab.selectedSheet.value) }}</div>
                 <span class="tag is-light qty-tag" :class="row.existencias > 0 ? 'is-success' : ''">
@@ -110,19 +110,19 @@
 
               <div class="qr-card__meta">
                 <div class="meta-line">
-                  <i class="fas fa-barcode mr-1"></i>
-                  <span class="mono big-code">{{ row.codebar || "sin código" }}</span>
+                  <i class="fas fa-qrcode mr-1"></i>
+                  <span class="mono big-code">{{ row.qr || "sin código" }}</span>
                 </div>
                 <div class="meta-line meta-line--muted">{{ lab.buildRowParams(row, lab.selectedSheet.value) }}</div>
               </div>
 
               <div class="qr-card__qr">
-                <div v-if="row.codebar && lab.isEan13(row.codebar)" class="barcode-wrap">
-                  <BarcodeEAN13 :value="row.codebar" :scale="2" :height="82" />
+                <div v-if="row.qr" class="barcode-wrap">
+                  <QrCode :value="row.qr" :size="96" />
                 </div>
                 <div v-else class="barcode-fallback">
                   <i class="fas fa-exclamation-circle mr-1"></i>
-                  Sin barcode válido
+                  Sin código QR
                 </div>
               </div>
 
@@ -154,7 +154,7 @@
 
 <script setup>
 import { inject } from "vue";
-import BarcodeEAN13 from "./barcode/BarcodeEAN13.vue";
+import QrCode from "./barcode/QrCode.vue";
 import SheetPickerInput from "@/components/ui/SheetPickerInput.vue";
 import "./laboratorio-shared.css";
 import "./CatalogoTab.css";

@@ -4,6 +4,7 @@
     <!-- 1. META & BADGE -->
     <NavtoolsMeta :tipo-human="tipoHuman" :material="material" :tratamientos-label="tratamientosLabel"
       :total-rows="totalRows" :server-badge="serverBadge" :last-saved-label="lastSavedLabel"
+      :history-status="historyStatus"
       :is-fullscreen="isFullscreen" :internal-tabs="internalTabs" :active-internal-tab="activeInternalTab"
       @toggle-fullscreen="emit('toggle-fullscreen')" @update:internal="emit('update:internal', $event)" />
 
@@ -59,7 +60,8 @@ const props = defineProps({
   isFullscreen: { type: Boolean, default: false },
   internalTabs: { type: Array, default: () => [] },
   activeInternalTab: { type: String, default: "" },
-  autoSave: { type: Boolean, default: false }
+  autoSave: { type: Boolean, default: false },
+  lastHistoryAction: { type: Object, default: null } // { type: "undo"|"redo", at: Date }
 })
 
 const emit = defineEmits([
@@ -143,6 +145,17 @@ const lastSavedLabel = computed(() => {
   if (!props.lastSavedAt) return ''
   const d = new Date(props.lastSavedAt)
   return `Guardado: ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+})
+
+// Estado de la última acción de historial (deshacer/rehacer) → píldora junto a "Guardado".
+const historyStatus = computed(() => {
+  const a = props.lastHistoryAction
+  if (!a || !a.at) return null
+  const ms = new Date(a.at).getTime()
+  const time = new Date(a.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  return a.type === 'redo'
+    ? { type: 'redo', icon: 'redo-alt', label: `Rehecho: ${time}`, ms }
+    : { type: 'undo', icon: 'undo-alt', label: `Revertido: ${time}`, ms }
 })
 
 // ─── 6. Event Handlers ──────────────────────────────────────────────

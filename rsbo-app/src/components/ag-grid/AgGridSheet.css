@@ -50,7 +50,7 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.35rem 0.75rem;
-  border-bottom: 1px solid var(--static-color-rgba-121-87-213-0-12);
+  border-bottom: 1px solid var(--static-color-rgba-148-163-184-0-12);
 }
 
 .degree-bar__label {
@@ -70,7 +70,7 @@
 .degree-pill {
   padding: 0.2rem 0.55rem;
   border-radius: 999px;
-  border: 1px solid var(--static-color-rgba-121-87-213-0-25);
+  border: 1px solid var(--static-color-rgba-79-70-229-0-20);
   background: transparent;
   font-size: 0.72rem;
   cursor: pointer;
@@ -79,13 +79,13 @@
 }
 
 .degree-pill:hover {
-  background: var(--static-color-rgba-121-87-213-0-08);
-  border-color: var(--static-color-rgba-121-87-213-0-4);
+  background: var(--static-color-rgba-79-70-229-0-08);
+  border-color: var(--static-color-rgba-79-70-229-0-35);
 }
 
 .degree-pill--active {
-  background: var(--static-color-rgba-121-87-213-0-18);
-  border-color: var(--static-color-rgba-121-87-213-0-6);
+  background: var(--static-color-rgba-79-70-229-0-15);
+  border-color: var(--static-color-rgba-79-70-229-0-55);
   font-weight: 700;
 }
 
@@ -100,8 +100,11 @@
   min-height: 0;
   overflow: hidden;
 
-  /* Fondo translúcido + blur */
-  background: var(--static-color-rgba-255-255-255-0-06);
+  /* Fondo — receta idéntica al sidebar: primary sutil + pink sutil, base sólida */
+  background:
+    radial-gradient(circle at 0 0, var(--static-color-rgba-121-87-213-0-07), transparent 55%),
+    radial-gradient(circle at 100% 100%, var(--static-color-rgba-236-72-153-0-05), transparent 55%),
+    var(--surface-solid);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 
@@ -132,11 +135,11 @@
   }
 }
 
-/* Dark mode glass shell */
+/* Dark mode glass shell — sólido, sin gradiente */
 [data-theme="dark"] .glass-shell {
-  background: var(--static-color-rgba-15-18-40-0-55);
+  background: var(--surface-solid);
   box-shadow:
-    0 0 0 1px var(--static-color-rgba-167-139-250-0-10),
+    0 0 0 1px var(--static-color-rgba-148-163-184-0-10),
     0 12px 40px var(--static-color-rgba-0-0-0-0-35);
 }
 
@@ -152,13 +155,13 @@
   gap: 0.85rem;
   border-radius: inherit;
   overflow: hidden;
-  background: var(--static-color-rgba-250-249-255-0-92);
+  background: var(--ag-veil-bg);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   box-shadow: inset 0 0 0 1px var(--static-color-rgba-255-255-255-0-10);
 }
 
-/* Liquid shimmer sweep */
+/* Liquid shimmer sweep — slate neutro */
 .grid-loading-veil::before {
   content: '';
   position: absolute;
@@ -166,22 +169,21 @@
   pointer-events: none;
   background: linear-gradient(112deg,
       transparent 10%,
-      var(--static-color-rgba-167-139-250-0-08) 40%,
-      var(--static-color-rgba-139-92-246-0-18) 50%,
-      var(--static-color-rgba-167-139-250-0-08) 60%,
+      var(--static-color-rgba-148-163-184-0-12) 40%,
+      var(--static-color-rgba-148-163-184-0-06) 60%,
       transparent 90%);
   background-size: 250% 100%;
   animation: liquid-sweep 2.4s ease-in-out infinite;
 }
 
-/* Soft radial glow at center */
+/* Soft radial glow at center — primary muy sutil */
 .grid-loading-veil::after {
   content: '';
   position: absolute;
   inset: 0;
   pointer-events: none;
   background: radial-gradient(ellipse 60% 40% at 50% 50%,
-      var(--static-color-rgba-121-87-213-0-08) 0%,
+      var(--static-color-rgba-121-87-213-0-05) 0%,
       transparent 70%);
   animation: glow-pulse 3s ease-in-out infinite;
 }
@@ -190,7 +192,6 @@
   0% {
     background-position: 240% center;
   }
-
   100% {
     background-position: -240% center;
   }
@@ -209,8 +210,8 @@
 }
 
 [data-theme="dark"] .grid-loading-veil {
-  background: var(--static-color-rgba-12-10-32-0-95);
-  box-shadow: inset 0 0 0 1px var(--static-color-rgba-167-139-250-0-08);
+  background: var(--ag-veil-bg);
+  box-shadow: inset 0 0 0 1px var(--static-color-rgba-148-163-184-0-10);
 }
 
 .grid-loading-veil__spinner {
@@ -219,12 +220,11 @@
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  border: 2px solid var(--static-color-rgba-167-139-250-0-18);
-  border-top-color: var(--static-color-rgba-139-92-246-0-95);
-  border-right-color: var(--static-color-rgba-167-139-250-0-55);
+  border: 2px solid var(--border);
+  border-top-color: var(--c-primary);
+  border-right-color: var(--c-primary-alpha);
   animation: spin 0.9s cubic-bezier(0.5, 0, 0.5, 1) infinite;
-  box-shadow: 0 0 14px var(--static-color-rgba-121-87-213-0-35),
-    inset 0 0 8px var(--static-color-rgba-167-139-250-0-08);
+  box-shadow: 0 0 10px var(--c-primary-alpha);
 }
 
 .grid-loading-veil__label {
@@ -234,7 +234,7 @@
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--static-color-rgba-167-139-250-0-7);
+  color: var(--text-muted);
 }
 
 /* Enter: instant (no flash of old data) */
@@ -274,21 +274,15 @@
   align-items: center;
   gap: 8px;
   padding: 4px 12px;
-  background: var(--static-color-rgba-121-87-213-0-15);
+  background: var(--ag-status-badge-bg);
   backdrop-filter: none;
-  border: 1px solid var(--static-color-rgba-121-87-213-0-3);
+  border: 1px solid var(--ag-status-badge-border);
   border-radius: 999px;
-  color: var(--c-primary, var(--static-color-7957d5));
+  color: var(--ag-status-badge-fg);
   font-size: 0.7rem;
   font-weight: 600;
   font-family: var(--font-mono, monospace);
   box-shadow: 0 4px 12px var(--static-color-rgba-0-0-0-0-1);
-}
-
-[data-theme="dark"] .status-badge {
-  background: var(--static-color-rgba-167-139-250-0-2);
-  border-color: var(--static-color-rgba-167-139-250-0-4);
-  color: var(--static-color-a78bfa);
 }
 
 .status-badge__icon {
@@ -322,8 +316,10 @@
 .ag-grid-glass {
   width: 100%;
   height: 100%;
-  --ag-background-color: transparent;
-  --ag-odd-row-background-color: transparent;
+}
+
+[data-theme="dark"] .ag-grid-glass {
+  --ag-background-color: var(--ag-dark-surface);
 }
 
 /* Quitar scroll horizontal molesto en la primera columna (pinned) */
@@ -337,6 +333,51 @@
   display: none !important;
 }
 
+/* ── Scrollbar estilizada (imita el del Sidebar) — vertical + horizontal ──
+   Chrome/Edge/Safari vía ::-webkit-scrollbar. NO declaramos scrollbar-width
+   aquí: Chrome 121+ ignora los pseudo-elementos si scrollbar-width está puesto. */
+.ag-grid-glass :deep(.ag-body-viewport::-webkit-scrollbar),
+.ag-grid-glass :deep(.ag-body-vertical-scroll-viewport::-webkit-scrollbar),
+.ag-grid-glass :deep(.ag-body-horizontal-scroll-viewport::-webkit-scrollbar),
+.ag-grid-glass :deep(.ag-center-cols-viewport::-webkit-scrollbar) {
+  width: 8px;
+  height: 8px;
+}
+
+.ag-grid-glass :deep(.ag-body-viewport::-webkit-scrollbar-track),
+.ag-grid-glass :deep(.ag-body-vertical-scroll-viewport::-webkit-scrollbar-track),
+.ag-grid-glass :deep(.ag-body-horizontal-scroll-viewport::-webkit-scrollbar-track),
+.ag-grid-glass :deep(.ag-center-cols-viewport::-webkit-scrollbar-track) {
+  background: transparent;
+}
+
+.ag-grid-glass :deep(.ag-body-viewport::-webkit-scrollbar-thumb),
+.ag-grid-glass :deep(.ag-body-vertical-scroll-viewport::-webkit-scrollbar-thumb),
+.ag-grid-glass :deep(.ag-body-horizontal-scroll-viewport::-webkit-scrollbar-thumb),
+.ag-grid-glass :deep(.ag-center-cols-viewport::-webkit-scrollbar-thumb) {
+  background: var(--static-color-rgba-148-163-184-0-35);
+  border-radius: 999px;
+}
+
+.ag-grid-glass :deep(.ag-body-viewport::-webkit-scrollbar-thumb:hover),
+.ag-grid-glass :deep(.ag-body-vertical-scroll-viewport::-webkit-scrollbar-thumb:hover),
+.ag-grid-glass :deep(.ag-body-horizontal-scroll-viewport::-webkit-scrollbar-thumb:hover),
+.ag-grid-glass :deep(.ag-center-cols-viewport::-webkit-scrollbar-thumb:hover) {
+  background: var(--static-color-rgba-148-163-184-0-55);
+}
+
+/* Fallback Firefox (no soporta ::-webkit-scrollbar) */
+@supports not selector(::-webkit-scrollbar) {
+
+  .ag-grid-glass :deep(.ag-body-viewport),
+  .ag-grid-glass :deep(.ag-body-vertical-scroll-viewport),
+  .ag-grid-glass :deep(.ag-body-horizontal-scroll-viewport),
+  .ag-grid-glass :deep(.ag-center-cols-viewport) {
+    scrollbar-width: thin;
+    scrollbar-color: var(--static-color-rgba-148-163-184-0-35) transparent;
+  }
+}
+
 /* Eliminar bordes internos rígidos */
 .ag-grid-glass :deep(.ag-root-wrapper) {
   border: none !important;
@@ -344,51 +385,90 @@
 
 /* Bordes de rejilla — sutiles (líneas finas verticales + horizontales) */
 .ag-grid-glass :deep(.ag-cell) {
-  border-right: 1px solid var(--static-color-rgba-121-87-213-0-12);
+  border-right: 1px solid var(--static-color-rgba-148-163-184-0-12);
 }
 
 .ag-grid-glass :deep(.ag-row) {
-  border-bottom: 1px solid var(--static-color-rgba-121-87-213-0-12);
+  border-bottom: 1px solid var(--static-color-rgba-148-163-184-0-12);
 }
 
 [data-theme="dark"] .ag-grid-glass :deep(.ag-cell) {
-  border-right-color: var(--static-color-rgba-167-139-250-0-18);
+  border-right-color: var(--static-color-rgba-148-163-184-0-12);
 }
 
 [data-theme="dark"] .ag-grid-glass :deep(.ag-row) {
-  border-bottom-color: var(--static-color-rgba-167-139-250-0-18);
+  border-bottom-color: var(--static-color-rgba-148-163-184-0-12);
 }
 
 /* Header styling */
 .ag-grid-glass :deep(.ag-header) {
-  background: var(--static-color-rgba-245-243-255-0-72);
+  background: var(--surface);
   backdrop-filter: none;
-  border-bottom: 1px solid var(--static-color-rgba-121-87-213-0-10) !important;
+  border-bottom: 1px solid var(--static-color-rgba-148-163-184-0-15) !important;
 }
 
 [data-theme="dark"] .ag-grid-glass :deep(.ag-header) {
-  background: var(--static-color-rgba-20-16-45-0-65);
-  border-bottom: 1px solid var(--static-color-rgba-167-139-250-0-12) !important;
+  background: var(--ag-glass-header-bg);
+  border-bottom: 1px solid var(--static-color-rgba-148-163-184-0-10) !important;
 }
 
 /* Pinned columns */
 .ag-grid-glass :deep(.ag-cell.ag-cell--pinned),
 .ag-grid-glass :deep(.ag-header-cell.ag-header-cell--pinned) {
-  background: var(--static-color-rgba-245-243-255-0-55) !important;
+  background: var(--surface) !important;
+  border-right: 1px solid var(--ag-pinned-border) !important;
   font-weight: 600;
 }
 
-[data-theme="dark"] .ag-grid-glass :deep(.ag-cell.ag-cell--pinned) {
-  background: var(--static-color-rgba-30-20-60-0-55) !important;
+.ag-grid-glass :deep(.ag-cell.ag-cell--pinned) {
+  box-shadow: inset -1px 0 0 var(--ag-pinned-border);
+}
+
+[data-theme="dark"] .ag-grid-glass :deep(.ag-cell.ag-cell--pinned),
+[data-theme="dark"] .ag-grid-glass :deep(.ag-header-cell.ag-header-cell--pinned) {
+  background: var(--ag-glass-header-bg) !important;
+  border-right: 1px solid var(--static-color-rgba-148-163-184-0-10) !important;
+}
+
+/* Pinned icon — chincheta en celda (absoluta, izquierda) y en header label */
+.ag-grid-glass :deep(.ag-cell.ag-cell--pinned) {
+  position: relative;
+}
+
+.ag-grid-glass :deep(.ag-cell.ag-cell--pinned)::before {
+  content: '\f08d';
+  font-family: 'Font Awesome 5 Free';
+  font-weight: 900;
+  font-size: 0.48rem;
+  color: var(--c-primary);
+  opacity: 0.4;
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%) rotate(-45deg);
+  pointer-events: none;
+}
+
+.ag-grid-glass :deep(.ag-header-cell.ag-header-cell--pinned .ag-header-cell-label)::after {
+  content: '\f08d';
+  font-family: 'Font Awesome 5 Free';
+  font-weight: 900;
+  font-size: 0.48rem;
+  color: var(--c-primary);
+  opacity: 0.5;
+  margin-left: auto;
+  transform: rotate(-45deg);
+  display: inline-block;
+  flex-shrink: 0;
 }
 
 /* Row Hover */
 .ag-grid-glass :deep(.ag-row-hover) {
-  background: var(--static-color-rgba-121-87-213-0-07) !important;
+  background: var(--static-color-rgba-148-163-184-0-08) !important;
 }
 
 [data-theme="dark"] .ag-grid-glass :deep(.ag-row-hover) {
-  background: var(--static-color-rgba-167-139-250-0-08) !important;
+  background: var(--static-color-rgba-148-163-184-0-08) !important;
 }
 
 /* Cell density & variants */
@@ -399,8 +479,8 @@
 }
 
 .ag-grid-glass :deep(.ag-cell.ag-cell--numeric) {
-  justify-content: flex-end;
-  text-align: right;
+  justify-content: flex-start;
+  text-align: left;
   font-variant-numeric: tabular-nums;
 }
 
@@ -432,9 +512,9 @@
 .ag-grid-glass :deep(.skeleton-cell--cyl) {
   width: 55%;
   background: linear-gradient(90deg,
-      var(--static-color-rgba-121-87-213-0-07) 25%,
-      var(--static-color-rgba-121-87-213-0-18) 50%,
-      var(--static-color-rgba-121-87-213-0-07) 75%);
+      var(--static-color-rgba-148-163-184-0-08) 25%,
+      var(--static-color-rgba-148-163-184-0-18) 50%,
+      var(--static-color-rgba-148-163-184-0-08) 75%);
 }
 
 .ag-grid-glass :deep(.skeleton-cell--stock) {
@@ -457,7 +537,7 @@
 
 /* Loading rows */
 .ag-grid-glass :deep(.ag-row.ag-row--loading-row) {
-  background: var(--static-color-rgba-121-87-213-0-02) !important;
+  background: var(--static-color-rgba-148-163-184-0-06) !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -466,37 +546,48 @@
 
 /* Full row highlights */
 .ag-grid-glass :deep(.ag-row.ag-row--stock-low) {
-  background: var(--static-color-rgba-167-139-250-0-06) !important;
-  box-shadow: inset 3px 0 0 var(--static-color-rgba-139-92-246-0-55), 0 1px 0 var(--static-color-rgba-148-163-184-0-06);
+  background: var(--ag-stock-low-row-bg) !important;
+  box-shadow: inset 3px 0 0 var(--ag-stock-low-edge), 0 1px 0 var(--static-color-rgba-148-163-184-0-06);
 }
 
 .ag-grid-glass :deep(.ag-row.ag-row--stock-zero) {
-  background: var(--static-color-rgba-99-102-241-0-05) !important;
-  box-shadow: inset 3px 0 0 var(--static-color-rgba-79-70-229-0-60), 0 1px 0 var(--static-color-rgba-148-163-184-0-06);
+  background: var(--ag-stock-zero-row-bg) !important;
+  box-shadow: inset 3px 0 0 var(--ag-stock-zero-edge), 0 1px 0 var(--static-color-rgba-148-163-184-0-06);
 }
 
-/* Specific cell alerts */
-.ag-grid-glass :deep(.ag-cell.ag-cell--stock-low) {
-  font-weight: 700;
-  background: var(--static-color-rgba-139-92-246-0-10);
-  color: var(--static-color-6d28d9);
+/* ── Iconos de stock en celdas ─────────────────────────────────── *
+ *
+ * VALORES AJUSTABLES:
+ *   --sic-gap        Espacio entre icono y número     (default 7px)
+ *   --sic-size       Tamaño del icono en rem           (default 0.62rem)
+ *   --sic-opacity    Opacidad global de los iconos     (default 0.88)
+ *
+ * ESTADOS:
+ *   sic--zero    SIN_STOCK  →  fa-ban              rojo oscuro  (--ag-stock-zero-fg)
+ *   sic--crit    CRITICO    →  fa-exclamation-circle  rojo      (--c-danger)
+ *   sic--low     BAJO       →  fa-exclamation-triangle  ámbar   (--ag-stock-low-fg)
+ *   sic--neutral NEUTRO     →  fa-circle            slate muted (--text-subtle)
+ *   (sin icono)  BUENO      →  solo el número
+ *
+ * ─────────────────────────────────────────────────────────────── */
+.ag-grid-glass :deep(.sic-wrap) {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  gap: var(--sic-gap, 7px);
 }
 
-[data-theme="dark"] .ag-grid-glass :deep(.ag-cell.ag-cell--stock-low) {
-  color: var(--static-color-c4b5fd);
-  background: var(--static-color-rgba-139-92-246-0-18);
+.ag-grid-glass :deep(.sic) {
+  font-size: var(--sic-size, 0.62rem);
+  flex-shrink: 0;
+  opacity: var(--sic-opacity, 0.88);
 }
 
-.ag-grid-glass :deep(.ag-cell.ag-cell--stock-zero) {
-  font-weight: 800;
-  background: var(--static-color-rgba-99-102-241-0-12);
-  color: var(--static-color-4338ca);
-}
-
-[data-theme="dark"] .ag-grid-glass :deep(.ag-cell.ag-cell--stock-zero) {
-  color: var(--static-color-a5b4fc);
-  background: var(--static-color-rgba-99-102-241-0-20);
-}
+.ag-grid-glass :deep(.sic--zero)    { color: var(--ag-stock-zero-fg); }
+.ag-grid-glass :deep(.sic--crit)    { color: var(--c-danger); }
+.ag-grid-glass :deep(.sic--low)     { color: var(--ag-stock-low-fg); }
+.ag-grid-glass :deep(.sic--neutral) { color: var(--text-subtle); font-size: 0.4rem; }
 
 /* ═══════════════════════════════════════════════════════════════
    INLINE EDITING
@@ -545,7 +636,7 @@
   border: none !important;
   outline: none !important;
   box-shadow: inset 0 0 0 2px var(--c-primary) !important;
-  background: var(--static-color-rgba-121-87-213-0-05) !important;
+  background: var(--static-color-rgba-79-70-229-0-06) !important;
   transition: box-shadow 0.1s ease;
 }
 
@@ -601,7 +692,7 @@
 .grid-footer {
   flex: 0 0 auto;
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   gap: 0.75rem;
   margin-top: 0.4rem;
@@ -610,7 +701,7 @@
   line-height: 1.2;
   color: var(--c-muted, var(--static-color-6b7280));
   background: var(--static-color-rgba-255-255-255-0-55);
-  border: 1px solid var(--static-color-rgba-121-87-213-0-12);
+  border: 1px solid var(--static-color-rgba-148-163-184-0-12);
   border-radius: var(--radius-md, 8px);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
@@ -638,42 +729,38 @@
 .grid-footer__loading {
   font-style: italic;
   opacity: 0.85;
-  color: var(--static-color-rgba-121-87-213-0-9);
+  color: var(--c-warning);
   font-variant-numeric: tabular-nums;
 }
 
 [data-theme="dark"] .grid-footer {
-  background: var(--static-color-rgba-20-22-45-0-55);
-  border-color: var(--static-color-rgba-167-139-250-0-18);
-  color: var(--static-color-rgba-220-220-240-0-7);
-}
-
-[data-theme="dark"] .grid-footer__loading {
-  color: var(--static-color-rgba-167-139-250-0-95);
+  background: var(--surface-raised);
+  border-color: var(--static-color-rgba-148-163-184-0-12);
+  color: var(--text-muted);
 }
 
 /* ═══════════════════════════════════════════════════════════════
    PAGINACIÓN NATIVA — glassmorphism
    ═══════════════════════════════════════════════════════════════ */
 .ag-grid-glass :deep(.ag-paging-panel) {
-  border-top: 1px solid var(--static-color-rgba-121-87-213-0-12);
+  border-top: 1px solid var(--static-color-rgba-148-163-184-0-12);
   color: var(--c-muted, var(--static-color-6b7280));
   font-size: 0.72rem;
   font-variant-numeric: tabular-nums;
-  background: var(--static-color-rgba-245-243-255-0-55);
+  background: var(--static-color-rgba-248-250-252-0-9);
   height: 34px;
 }
 
 .ag-grid-glass :deep(.ag-paging-page-size .ag-picker-field-wrapper) {
   border-radius: 999px;
-  border-color: var(--static-color-rgba-121-87-213-0-25);
+  border-color: var(--static-color-rgba-148-163-184-0-22);
   background: transparent;
 }
 
 [data-theme="dark"] .ag-grid-glass :deep(.ag-paging-panel) {
-  border-top: 1px solid var(--static-color-rgba-167-139-250-0-12);
-  background: var(--static-color-rgba-20-16-45-0-55);
-  color: var(--static-color-rgba-220-220-240-0-7);
+  border-top: 1px solid var(--static-color-rgba-148-163-184-0-10);
+  background: var(--surface-raised);
+  color: var(--text-muted);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -681,12 +768,12 @@
    ═══════════════════════════════════════════════════════════════ */
 .ag-grid-glass :deep(.ag-header-cell),
 .ag-grid-glass :deep(.ag-header-group-cell) {
-  border-right: 1px solid var(--static-color-rgba-121-87-213-0-12);
+  border-right: 1px solid var(--static-color-rgba-148-163-184-0-12);
 }
 
 [data-theme="dark"] .ag-grid-glass :deep(.ag-header-cell),
 [data-theme="dark"] .ag-grid-glass :deep(.ag-header-group-cell) {
-  border-right-color: var(--static-color-rgba-167-139-250-0-18);
+  border-right-color: var(--static-color-rgba-148-163-184-0-10);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -743,7 +830,7 @@
 .ag-grid-glass :deep(.stt-foot) {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 10px;
   padding-top: 5px;
   border-top: 1px solid var(--border-light);

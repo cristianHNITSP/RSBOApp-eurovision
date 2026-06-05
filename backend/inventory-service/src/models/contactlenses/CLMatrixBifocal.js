@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const EyeCellSchema = new mongoose.Schema({
   existencias: { type: Number, default: 0, min: 0 },
   sku:         { type: String, index: true },
-  codebar:     { type: String, default: null, index: true }
+  qr:     { type: String, default: null, index: true }
 }, { _id: false });
 
 const CellBifocalSchema = new mongoose.Schema({

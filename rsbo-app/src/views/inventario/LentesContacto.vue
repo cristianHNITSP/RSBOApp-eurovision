@@ -3,11 +3,14 @@
 import { computed, ref, onMounted, watch, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import TabsManager from "@/components/TabsManager.vue";
+import SectionLoadingOverlay from "@/components/SectionLoadingOverlay.vue";
 import { labToast } from "@/composables/shared/useLabToast.js";
 
 
 import { listContactLensSheets } from "@/services/contactlenses";
 import { useSheetPagination } from "@/composables/api/useSheetPagination.js";
+import { useWorkspaceTabs } from "@/composables/tabsmanager/useWorkspaceTabs";
+import { useSectionBoot } from "@/composables/tabsmanager/useSectionBoot";
 
 const props = defineProps({
   user: { type: Object, required: false, default: null }
@@ -16,7 +19,6 @@ const props = defineProps({
 const route  = useRoute();
 const router = useRouter();
 
-const activeSheet       = ref("nueva");
 const activeInternalTab = ref(null);
 
 
@@ -64,6 +66,11 @@ function mapSheet(s) {
 ───────────────────────────────────────────────────────────────────────── */
 const pager = useSheetPagination(listContactLensSheets, mapSheet);
 
+// Workspace (sesión persistida) + boot de sección (Etapa 1): loading global
+// + restaurar sesión sin salto. Catálogo es estático aquí, no hay loadCatalog.
+const ws = useWorkspaceTabs("contactlenses");
+const { booting, activeSheet, boot } = useSectionBoot({ pager, ws, newTabId: "nueva" });
+
 /** dynamicSheets = planillas paginadas + tab "nueva" al final */
 const dynamicSheets = computed(() => [
   ...pager.sheets,
@@ -91,24 +98,16 @@ async function focusSheetFromQuery(sheetId) {
   router.replace({ query: Object.keys(newQuery).length ? newQuery : undefined });
 }
 
-watch(
-  () => route.query.sheetId,
-  (id) => { if (id) focusSheetFromQuery(id); },
-  { immediate: true }
-);
+// Solo cambios de query EN CALIENTE (tras el boot); el arranque lo maneja boot()
+watch(() => route.query.sheetId, (id) => { if (id) focusSheetFromQuery(id); });
 
 /* ─────────────────────────────────────────────────────────────────────────
-   Carga inicial
+   Carga inicial (Etapa 1: loading global + restaurar sesión sin salto)
 ───────────────────────────────────────────────────────────────────────── */
 onMounted(async () => {
   const focusId = route.query.sheetId || null;
-  await pager.init(focusId || null);
-
+  await boot(focusId);
   if (focusId) {
-    await nextTick();
-    if (pager.sheets.find((s) => s.id === focusId)) {
-      activeSheet.value = focusId;
-    }
     const newQuery = { ...route.query };
     delete newQuery.sheetId;
     router.replace({ query: Object.keys(newQuery).length ? newQuery : undefined });
@@ -210,7 +209,12 @@ function reordenarSheets({ oldIndex, newIndex }) {
       </div>
     </header>
 
-    <div class="columns is-multiline">
+    <div class="section-boot-wrap" :class="{ 'is-booting': booting }">
+      <Transition name="boot">
+        <SectionLoadingOverlay v-if="booting" label="Cargando planillas…" />
+      </Transition>
+
+      <div v-if="!booting" class="columns is-multiline">
       <div class="column is-12">
         <TabsManager
           :initial-sheets="dynamicSheets"
@@ -235,6 +239,7 @@ function reordenarSheets({ oldIndex, newIndex }) {
           @load-prior="pager.loadPrior()"
         >
         </TabsManager>
+      </div>
       </div>
     </div>
   </section>
@@ -271,6 +276,31 @@ function reordenarSheets({ oldIndex, newIndex }) {
   width: 100%;
   height: 600px;
   position: relative;
+}
+
+/* Boot de sección: contenedor relativo para el overlay; reserva alto mientras
+   el TabsManager aún no se monta, para que el loader tenga dónde mostrarse. */
+.section-boot-wrap {
+  position: relative;
+}
+
+.section-boot-wrap.is-booting {
+  min-height: 640px;
+}
+
+.boot-leave-active {
+  transition: opacity 220ms ease, filter 220ms ease;
+}
+
+.boot-leave-to {
+  opacity: 0;
+  filter: blur(2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boot-leave-active {
+    transition: none !important;
+  }
 }
 
 .sheet-enter-active,

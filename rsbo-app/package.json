@@ -1,7 +1,7 @@
 {
   "name": "rsbo-app",
   "private": true,
-  "version": "3.3.0",
+  "version": "4.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -18,6 +18,7 @@
     "buefy": "^3.0.7",
     "bulma": "^1.0.4",
     "exceljs": "^4.4.0",
+    "qrcode": "^1.5.4",
     "sortablejs": "^1.15.7",
     "vue": "^3.5.34",
     "vue-router": "^5.0.7"

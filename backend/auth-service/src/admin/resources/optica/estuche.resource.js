@@ -6,7 +6,7 @@ const build = (Estuche) => ({
   options: {
     navigation: navOf(NAV.OPTICA, "Briefcase"),
     properties: {
-      sku: titleField(),
+      sku: { ...titleField(), isVisible: { list: true, filter: true, show: true, edit: false } },
       isDeleted: listFilterShow(),
     },
   },

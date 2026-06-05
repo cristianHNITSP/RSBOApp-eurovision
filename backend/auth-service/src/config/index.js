@@ -11,7 +11,6 @@ const requiredEnv = [
   'INTERNAL_SERVICE_TOKEN',
   'INVENTORY_MONGO_URI',
   'NOTIFICATION_MONGO_URI',
-  'OPTICA_MONGO_URI',
   'BACKORDER_MONGO_URI',
   'INITIAL_ROOT_PASSWORD'
 ];
@@ -41,7 +40,8 @@ module.exports = {
   externalMongo: {
     inventory: process.env.INVENTORY_MONGO_URI,
     notification: process.env.NOTIFICATION_MONGO_URI,
-    optica: process.env.OPTICA_MONGO_URI,
+    // óptica consolidada en inventory_db (ver optica.connection.js)
+    optica: process.env.INVENTORY_MONGO_URI,
     backorder: process.env.BACKORDER_MONGO_URI,
   }
 };

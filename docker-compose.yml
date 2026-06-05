@@ -38,7 +38,7 @@ services:
     environment:
       INVENTORY_MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${INVENTORY_DB}?authSource=admin"
       NOTIFICATION_MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${NOTIFICATION_DB}?authSource=admin"
-      OPTICA_MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${OPTICA_DB}?authSource=admin"
+      # OPTICA_MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${OPTICA_DB}?authSource=admin"
       BACKORDER_MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${BACKORDER_DB}?authSource=admin"
       MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${AUTH_DB}?authSource=admin"
     depends_on:
@@ -57,7 +57,7 @@ services:
     environment:
       MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${INVENTORY_DB}?authSource=admin"
       REDIS_URL: "redis://redis:6379"
-      GATEWAY_WS_URL: "ws://gateway:3000/ws-internal"
+      # GATEWAY_WS_URL: "ws://gateway:3000/ws-internal"
       NOTIFICATION_SERVICE_INTERNAL_URL: "http://notification-service:3000"
     depends_on:
       mongo: { condition: service_healthy }
@@ -69,20 +69,20 @@ services:
     restart: unless-stopped
 
   # ─── OPTICA SERVICE ───────────────────────────────────────
-  optica-service:
-    build: { context: ./backend/optica-service }
-    container_name: rsboapp-optica
-    env_file: [./.env, ./backend/optica-service/.env]
-    environment:
-      MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${OPTICA_DB}?authSource=admin"
-      GATEWAY_WS_URL: "ws://gateway:3000/ws-internal"
-    depends_on:
-      mongo: { condition: service_healthy }
-    networks: [rsbo-net]
-    user: "node"
-    healthcheck: *node-healthcheck
-    logging: *default-logging
-    restart: unless-stopped
+  # optica-service:
+  #   build: { context: ./backend/optica-service }
+  #   container_name: rsboapp-optica
+  #   env_file: [./.env, ./backend/optica-service/.env]
+  #   environment:
+  #     MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${OPTICA_DB}?authSource=admin"
+  #     GATEWAY_WS_URL: "ws://gateway:3000/ws-internal"
+  #   depends_on:
+  #     mongo: { condition: service_healthy }
+  #   networks: [rsbo-net]
+  #   user: "node"
+  #   healthcheck: *node-healthcheck
+  #   logging: *default-logging
+  #   restart: unless-stopped
 
   # ─── BACKORDER SERVICE ────────────────────────────────────
   backorder-service:
@@ -91,7 +91,7 @@ services:
     env_file: [./.env, ./backend/backorder-service/.env]
     environment:
       MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${BACKORDER_DB}?authSource=admin"
-      GATEWAY_WS_URL: "ws://gateway:3000/ws-internal"
+      # GATEWAY_WS_URL: "ws://gateway:3000/ws-internal"
       NOTIFICATION_SERVICE_URL: "http://notification-service:3000"
     depends_on:
       mongo: { condition: service_healthy }
@@ -108,7 +108,7 @@ services:
     env_file: [./.env, ./backend/notification-service/.env]
     environment:
       MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${NOTIFICATION_DB}?authSource=admin"
-      GATEWAY_WS_URL: "ws://gateway:3000/ws-internal"
+      # GATEWAY_WS_URL: "ws://gateway:3000/ws-internal"
       REDIS_URL: "redis://redis:6379"
     depends_on:
       mongo: { condition: service_healthy }

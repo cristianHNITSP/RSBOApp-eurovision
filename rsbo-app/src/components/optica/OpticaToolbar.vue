@@ -43,7 +43,7 @@ onBeforeUnmount(() => {
       </b-field>
 
       <b-field v-if="filterOptions.length" class="toolbar-field">
-        <b-select v-model="section.filterField" size="is-small">
+        <b-select v-model="section.filterField" size="is-small" @input="$emit('reload')">
           <option value="all">{{ filterPlaceholder }}</option>
           <option v-for="opt in filterOptions" :key="opt" :value="opt">
             {{ opt }}

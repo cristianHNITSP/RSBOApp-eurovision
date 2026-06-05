@@ -6,7 +6,7 @@ const build = (LenteContacto) => ({
   options: {
     navigation: navOf(NAV.OPTICA, "Eye"),
     properties: {
-      sku: titleField(),
+      sku: { ...titleField(), isVisible: { list: true, filter: true, show: true, edit: false } },
       isDeleted: listFilterShow(),
     },
   },

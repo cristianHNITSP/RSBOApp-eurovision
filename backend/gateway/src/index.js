@@ -220,7 +220,8 @@ app.use("/api/contactlenses", proxyRequest(SERVICES.inventory));
 app.use("/api/stats", proxyRequest(SERVICES.inventory));
 app.use("/api/devolutions", proxyRequest(SERVICES.inventory));
 app.use("/api/mermas", proxyRequest(SERVICES.inventory));
-app.use("/api/optica", proxyRequest(SERVICES.optica));
+// Óptica consolidada dentro de inventory-service (antes optica-service)
+app.use("/api/optica", proxyRequest(SERVICES.inventory));
 app.use("/api/notifications", proxyRequest(SERVICES.notification));
 app.use("/api/backorders", proxyRequest(SERVICES.backorder));
 

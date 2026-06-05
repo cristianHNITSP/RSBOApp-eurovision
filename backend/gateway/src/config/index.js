@@ -8,7 +8,6 @@ const requiredEnv = [
   'AUTH_SERVICE_URL',
   'USERS_SERVICE_URL',
   'INVENTORY_SERVICE_URL',
-  'OPTICA_SERVICE_URL',
   'NOTIFICATION_SERVICE_URL',
   'BACKORDER_SERVICE_URL'
 ];
@@ -26,7 +25,6 @@ module.exports = {
     auth: process.env.AUTH_SERVICE_URL,
     users: process.env.USERS_SERVICE_URL,
     inventory: process.env.INVENTORY_SERVICE_URL,
-    optica: process.env.OPTICA_SERVICE_URL,
     notification: process.env.NOTIFICATION_SERVICE_URL,
     backorder: process.env.BACKORDER_SERVICE_URL,
   },

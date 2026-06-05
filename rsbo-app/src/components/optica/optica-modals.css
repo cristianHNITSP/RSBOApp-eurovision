@@ -8,10 +8,23 @@
   backdrop-filter: none !important;
   box-shadow: var(--shadow-xl, 0 24px 48px var(--static-color-rgba-0-0-0-0-22)) !important;
   overflow: hidden;
-  max-width: 520px;
+  /* Centrado robusto en cualquier resolución: margin auto centra el card dentro
+     del wrapper .animation-content (que es full-width); el max-width con
+     calc(100vw - 2rem) garantiza márgenes laterales en pantallas estrechas
+     (evita que el modal se pegue/desborde a la izquierda). */
   width: 100%;
+  max-width: min(520px, calc(100vw - 2rem)) !important;
+  margin: 0 auto !important;
 }
-.glass-modal-card--wide { max-width: 660px; }
+.glass-modal-card--wide { max-width: min(660px, calc(100vw - 2rem)) !important; }
+
+/* El wrapper de animación de Buefy se centra y no fuerza ancho completo al card.
+   Acotado con :has(.glass-modal-card) para no afectar a otros modales de la app. */
+.modal:has(.glass-modal-card) .animation-content {
+  margin: 0 auto !important;
+  width: auto !important;
+  max-width: 100% !important;
+}
 
 .glass-modal-head {
   background: linear-gradient(135deg, var(--static-color-rgba-144-111-225-0-14), var(--static-color-rgba-236-72-153-0-08)) !important;

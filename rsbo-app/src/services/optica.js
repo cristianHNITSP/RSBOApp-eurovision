@@ -121,6 +121,24 @@ export const equiposService     = {
 };
 
 // ═══════════════════════════════════════════════════════════════
+//  Categorías (registro de tipos de producto)
+// ═══════════════════════════════════════════════════════════════
+
+export const categoriasService = {
+  /** Lista las categorías activas (ordenadas) registradas en el backend */
+  list() {
+    return api.get(`${BASE}/categorias`).catch((err) => { logErr("[OPTICA][CATEGORIAS][API] list ERROR", err); throw err; });
+  },
+
+  /** Valores únicos de un campo (autocompletado): GET /optica/:categoria/distinct?field= */
+  distinct(categoria, field) {
+    return api
+      .get(`${BASE}/${categoria}/distinct`, { params: { field } })
+      .catch((err) => { logErr("[OPTICA][CATEGORIAS][API] distinct ERROR", err); throw err; });
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════
 //  Logs de auditoría
 // ═══════════════════════════════════════════════════════════════
 

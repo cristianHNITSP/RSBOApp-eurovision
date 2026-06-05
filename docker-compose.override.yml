@@ -22,6 +22,19 @@
 #   docker-compose exec [servicio] sh      -> Entrar a la terminal de un contenedor (ej: exec mongo sh).
 #   docker system prune -a --volumes       -> LIMPIEZA TOTAL (Borra imágenes, redes y volúmenes huérfanos).
 #
+#===APAGAR DOCER DESDE EL SISTEMA OPERATIVO (Linux)========================================
+# sudo systemctl disable --now docker containerd docker.socket
+#
+# sudo systemctl enable --now docker containerd docker.socket
+#
+#==APAGAR SOLO LA SESSION DE DOCKER (Linux)===========================================================
+# 
+#sudo systemctl stop docker containerd docker.socket
+# 
+#PRENDER DESDE SESSION
+#
+# sudo systemctl start docker containerd docker.socket
+#
 # ==============================================================================
 
 services:
@@ -40,8 +53,8 @@ services:
     environment:
       # ✅ Valor de infraestructura (fijo dentro de Docker)
       VITE_PROXY_TARGET: "http://gateway:3000"
-    depends_on:
-      gateway: { condition: service_healthy }
+    # depends_on:
+    #   gateway: { condition: service_healthy }
     networks: [ rsbo-net ]
     restart: unless-stopped
 
@@ -83,12 +96,12 @@ services:
       - ./backend/inventory-service:/app
       - /app/node_modules
 
-  optica-service:
-    ports:
-      - "127.0.0.1:3003:3000"
-    volumes:
-      - ./backend/optica-service:/app
-      - /app/node_modules
+  # optica-service:
+  #   ports:
+  #     - "127.0.0.1:3003:3000"
+  #   volumes:
+  #     - ./backend/optica-service:/app
+  #     - /app/node_modules
 
   backorder-service:
     ports:

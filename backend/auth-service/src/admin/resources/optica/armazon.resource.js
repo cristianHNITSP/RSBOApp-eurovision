@@ -1,7 +1,8 @@
 const { NAV, navOf } = require("../../navigation");
 const { titleField, listFilterShow } = require("../../shared/propertyVisibility");
-const { autoGenerateHook } = require("../../shared/skuGenerator");
 
+// El SKU se auto-genera de forma inmutable en el modelo (hook pre-validate),
+// por eso es de solo lectura y no hay hook de generación aquí.
 const build = (Armazon) => ({
   resource: Armazon,
   options: {
@@ -15,10 +16,6 @@ const build = (Armazon) => ({
       precio: { isVisible: { list: true, filter: true, show: true, edit: true } },
       stock: { isVisible: { list: true, filter: true, show: true, edit: true } },
       isDeleted: { ...listFilterShow(), isVisible: { list: true, filter: true, show: true, edit: false } },
-    },
-    actions: {
-      new: { before: autoGenerateHook("ARM", "sku") },
-      edit: { before: autoGenerateHook("ARM", "sku") },
     },
   },
 });

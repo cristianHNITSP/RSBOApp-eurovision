@@ -2,6 +2,7 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import DynamicTabs from "@/components/DynamicTabs.vue";
+import SectionLoadingOverlay from "@/components/SectionLoadingOverlay.vue";
 
 // Composables
 import { useOpticaSection } from "@/composables/optica/useOpticaSection.js";
@@ -18,16 +19,8 @@ import EquiposSection from "@/components/optica/EquiposSection.vue";
 import OpticaConfirmModal from "@/components/optica/OpticaConfirmModal.vue";
 import OpticaFormModal from "@/components/optica/OpticaFormModal.vue";
 
-// Servicios y Constantes
+// Servicios
 import * as opticaSVC from "@/services/optica.js";
-import {
-  OPTICA_TABS,
-  ARMAZONES_CONFIG,
-  SOLUCIONES_CONFIG,
-  ACCESORIOS_CONFIG,
-  ESTUCHES_CONFIG,
-  EQUIPOS_CONFIG,
-} from "@/constants/optica.js";
 
 // Estilos
 import "./Optica.css";
@@ -39,9 +32,7 @@ const actor = computed(() => ({
   name: props.user?.name || props.user?.nombre || "Usuario",
 }));
 
-const activeTab = ref("armazones");
-
-// ── Composición de Lógica ──
+// ── Composición de Lógica (singleton) ──
 const SVC = {
   armazones: opticaSVC.armazonesService,
   soluciones: opticaSVC.solucionesService,
@@ -50,18 +41,35 @@ const SVC = {
   equipos: opticaSVC.equiposService,
 };
 
-const { sec, loadingAll, load, loadAll, selectRow, toggleTrash } = useOpticaSection(SVC);
+// activeTab/categorias/booting viven en el singleton (estado persistido + boot 1 vez).
+const {
+  sec, categorias, activeTab, booting, boot, dictFor, setCurrentUser,
+  reloadSection, goToPage, selectRow, toggleTrash,
+} = useOpticaSection(SVC);
+
+// Identidad del usuario actual → para no mostrarse a sí mismo el toast de tiempo real.
+setCurrentUser(props.user?._id || props.user?.id || null);
 const { confirm, openConfirm, onConfirmOk, onConfirmCancel } = useOpticaConfirm();
 const { fm, openCreate, openEdit, saveForm } = useOpticaForm();
+
+// Crear: pasa el diccionario de la categoría para sembrar los selects.
+const onCreate = (key) => openCreate(key, dictFor(key));
 const { doSoftDelete, doHardDelete, doRestore } = useOpticaActions(openConfirm);
 
 // Handlers específicos (wrappers para pasar SVC y actor)
-const handleSave = () => saveForm({ SVC, actor: actor.value, loadCallback: load });
-const handleDelete = (key, row) => doSoftDelete(key, row, SVC, actor.value, load);
-const handleHardDelete = (key, row) => doHardDelete(key, row, SVC, actor.value, load);
-const handleRestore = (key, row) => doRestore(key, row, SVC, actor.value, load);
+// Tras crear/editar/borrar se recarga la sección desde la página 1.
+const reloadCb = (key) => reloadSection(key);
+const handleSave = () => saveForm({ SVC, actor: actor.value, loadCallback: reloadCb });
+const handleDelete = (key, row) => doSoftDelete(key, row, SVC, actor.value, reloadCb);
+const handleHardDelete = (key, row) => doHardDelete(key, row, SVC, actor.value, reloadCb);
+const handleRestore = (key, row) => doRestore(key, row, SVC, actor.value, reloadCb);
 
-onMounted(loadAll);
+// Resumen del header: total de la categoría activa (la paginación impide sumar todo).
+const activeTotal = computed(() => sec[activeTab.value]?.total || 0);
+
+// ── Boot (Etapa 1: categorías + preferencias; Etapa 2: data de la tab activa) ──
+// Sólo corre la 1ª vez por sesión (singleton); al volver, reaparece al instante.
+onMounted(boot);
 
 // ── Lógica de Pantalla Completa ──
 const isFullscreenActive = ref(!!document.fullscreenElement);
@@ -111,61 +119,67 @@ onBeforeUnmount(() => { document.removeEventListener("fullscreenchange", updateF
         </div>
       </div>
 
-      <div class="optica-header-summary">
-        <b-taglist attached>
+      <div
+        class="optica-header-summary is-flex is-flex-wrap-wrap is-align-items-center is-justify-content-flex-end is-flex-direction-column-desktop is-align-items-flex-end-desktop is-justify-content-flex-start-desktop">
+        <b-taglist attached class="mb-0">
           <b-tag type="is-primary">
-            <template v-if="loadingAll"><b-icon icon="spinner" size="is-small"
+            <template v-if="sec[activeTab]?.loading"><b-icon icon="spinner" size="is-small"
                 class="fa-spin mr-1" />Cargando…</template>
-            <template v-else>
-              {{ sec.armazones.items.length + sec.soluciones.items.length + sec.accesorios.items.length +
-                sec.estuches.items.length + sec.equipos.items.length }} items
-            </template>
+            <template v-else>{{ activeTotal }} items</template>
           </b-tag>
-          <b-tag type="is-success">activos</b-tag>
+          <b-tag type="is-success">{{ sec[activeTab]?.showTrash ? 'en papelera' : 'activos' }}</b-tag>
         </b-taglist>
-        <p class="is-size-7 has-text-grey mt-1">5 categorías</p>
+        <p class="is-size-7 has-text-grey ml-2 mt-0 ml-0-desktop mt-1-desktop">{{ categorias.length }} categorías</p>
       </div>
     </header>
 
-    <div class="glass-wrapper">
-      <DynamicTabs v-model="activeTab" :tabs="OPTICA_TABS">
+    <div class="glass-wrapper section-boot-wrap" :class="{ 'is-booting': booting }">
+      <!-- Etapa 1: loading general mientras cargan categorías + preferencias -->
+      <SectionLoadingOverlay v-if="booting" label="Cargando óptica…" />
+
+      <DynamicTabs v-else v-model="activeTab" :tabs="categorias">
 
         <template #armazones>
-          <ArmazonesSection :section="sec.armazones" :config="ARMAZONES_CONFIG" @select="r => selectRow('armazones', r)"
-            @reload="() => load('armazones')" @toggle-trash="() => toggleTrash('armazones')"
-            @create="() => openCreate('armazones')" @edit="r => openEdit('armazones', r)"
+          <ArmazonesSection :section="sec.armazones" @select="r => selectRow('armazones', r)"
+            @reload="() => reloadSection('armazones')" @page-change="p => goToPage('armazones', p)"
+            @toggle-trash="() => toggleTrash('armazones')"
+            @create="() => onCreate('armazones')" @edit="r => openEdit('armazones', r)"
             @soft-delete="r => handleDelete('armazones', r)" @hard-delete="r => handleHardDelete('armazones', r)"
             @restore="r => handleRestore('armazones', r)" />
         </template>
 
         <template #soluciones>
-          <SolucionesSection :section="sec.soluciones" :config="SOLUCIONES_CONFIG"
-            @select="r => selectRow('soluciones', r)" @reload="() => load('soluciones')"
-            @toggle-trash="() => toggleTrash('soluciones')" @create="() => openCreate('soluciones')"
+          <SolucionesSection :section="sec.soluciones"
+            @select="r => selectRow('soluciones', r)" @reload="() => reloadSection('soluciones')"
+            @page-change="p => goToPage('soluciones', p)"
+            @toggle-trash="() => toggleTrash('soluciones')" @create="() => onCreate('soluciones')"
             @edit="r => openEdit('soluciones', r)" @soft-delete="r => handleDelete('soluciones', r)"
             @hard-delete="r => handleHardDelete('soluciones', r)" @restore="r => handleRestore('soluciones', r)" />
         </template>
 
         <template #accesorios>
-          <AccesoriosSection :section="sec.accesorios" :config="ACCESORIOS_CONFIG"
-            @select="r => selectRow('accesorios', r)" @reload="() => load('accesorios')"
-            @toggle-trash="() => toggleTrash('accesorios')" @create="() => openCreate('accesorios')"
+          <AccesoriosSection :section="sec.accesorios"
+            @select="r => selectRow('accesorios', r)" @reload="() => reloadSection('accesorios')"
+            @page-change="p => goToPage('accesorios', p)"
+            @toggle-trash="() => toggleTrash('accesorios')" @create="() => onCreate('accesorios')"
             @edit="r => openEdit('accesorios', r)" @soft-delete="r => handleDelete('accesorios', r)"
             @hard-delete="r => handleHardDelete('accesorios', r)" @restore="r => handleRestore('accesorios', r)" />
         </template>
 
         <template #estuches>
-          <EstuchesSection :section="sec.estuches" :config="ESTUCHES_CONFIG" @select="r => selectRow('estuches', r)"
-            @reload="() => load('estuches')" @toggle-trash="() => toggleTrash('estuches')"
-            @create="() => openCreate('estuches')" @edit="r => openEdit('estuches', r)"
+          <EstuchesSection :section="sec.estuches" @select="r => selectRow('estuches', r)"
+            @reload="() => reloadSection('estuches')" @page-change="p => goToPage('estuches', p)"
+            @toggle-trash="() => toggleTrash('estuches')"
+            @create="() => onCreate('estuches')" @edit="r => openEdit('estuches', r)"
             @soft-delete="r => handleDelete('estuches', r)" @hard-delete="r => handleHardDelete('estuches', r)"
             @restore="r => handleRestore('estuches', r)" />
         </template>
 
         <template #equipos>
-          <EquiposSection :section="sec.equipos" :config="EQUIPOS_CONFIG" @select="r => selectRow('equipos', r)"
-            @reload="() => load('equipos')" @toggle-trash="() => toggleTrash('equipos')"
-            @create="() => openCreate('equipos')" @edit="r => openEdit('equipos', r)"
+          <EquiposSection :section="sec.equipos" @select="r => selectRow('equipos', r)"
+            @reload="() => reloadSection('equipos')" @page-change="p => goToPage('equipos', p)"
+            @toggle-trash="() => toggleTrash('equipos')"
+            @create="() => onCreate('equipos')" @edit="r => openEdit('equipos', r)"
             @soft-delete="r => handleDelete('equipos', r)" @hard-delete="r => handleHardDelete('equipos', r)"
             @restore="r => handleRestore('equipos', r)" />
         </template>
@@ -180,3 +194,13 @@ onBeforeUnmount(() => { document.removeEventListener("fullscreenchange", updateF
 
   </section>
 </template>
+
+<style scoped>
+/* Contenedor relativo para el overlay de boot; reserva alto mientras carga. */
+.section-boot-wrap {
+  position: relative;
+}
+.section-boot-wrap.is-booting {
+  min-height: 420px;
+}
+</style>

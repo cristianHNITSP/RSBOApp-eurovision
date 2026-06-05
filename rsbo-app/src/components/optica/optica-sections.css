@@ -13,18 +13,25 @@
   border-radius: var(--radius-lg);
   overflow: hidden;
 
-  /* Glass base */
-  background: var(--surface-raised);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+  /* Glass base — blur controlado por token (--fx-blur=0 en accesibilidad) */
+  background: var(--surface-glass);
+  backdrop-filter: blur(var(--fx-blur)) saturate(1.4);
+  -webkit-backdrop-filter: blur(var(--fx-blur)) saturate(1.4);
 
   /* Borde glass */
-  border: 1px solid var(--border-strong);
-  box-shadow: var(--shadow-primary), inset 0 1px 0 var(--static-color-rgba-255-255-255-0-08);
+  border: var(--fx-glass-border);
+  box-shadow: var(--fx-glass-shadow), inset 0 1px 0 var(--static-color-rgba-255-255-255-0-08);
 
   color: var(--text-primary);
-  transition: box-shadow 300ms ease;
+  transition: box-shadow 300ms ease, background 300ms ease, border-color 300ms ease;
   animation: banner-enter 280ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Hover de toda la tarjeta — efecto sutil SIN desplazamiento (sin translate):
+   solo se aclara la superficie y el borde, adaptándose al tema vía tokens. */
+.item-banner:hover {
+  background: var(--surface-glass-hover);
+  border-color: var(--border-strong);
 }
 
 /* Aurora border — pseudo-elemento rotante */
@@ -70,18 +77,8 @@
 .item-banner[data-state="Fuera de servicio"]::after,
 .item-banner[data-state="Baja"]::after          { background: var(--c-danger);  opacity: 0.10; }
 
-/* Borde izquierdo de acento por estado */
-.item-banner {
-  border-left: 3px solid var(--c-primary);
-  transition: border-color 300ms ease, box-shadow 300ms ease;
-}
-.item-banner[data-state="Disponible"],
-.item-banner[data-state="Operativo"]     { border-left-color: var(--c-success); }
-.item-banner[data-state="Bajo stock"],
-.item-banner[data-state="Mantenimiento"] { border-left-color: var(--c-warning); }
-.item-banner[data-state="Agotado"],
-.item-banner[data-state="Fuera de servicio"],
-.item-banner[data-state="Baja"]          { border-left-color: var(--c-danger); }
+/* (La línea/borde izquierdo de acento se retiró: el estado se comunica con el
+   tinte de fondo ::after y los chips, no con una barra lateral.) */
 
 /* Todos los hijos por encima de los pseudo-elementos */
 .item-banner > * { position: relative; z-index: 1; }
@@ -131,6 +128,23 @@
 .item-banner__chips { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
 .item-banner__actions { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
 
+/* Hover de los botones de acción del banner — temas claro/oscuro vía tokens.
+   El "is-light" (Editar) usa superficies de token; el resto solo se elevan. */
+.item-banner__actions .button.is-light {
+  background: var(--surface-overlay);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+.item-banner__actions .button.is-light:hover {
+  background: var(--surface-glass-hover);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+.item-banner__actions .button:hover {
+  box-shadow: var(--shadow-sm);
+  filter: brightness(1.04);
+}
+
 /* ── I-CHIPS (dentro del banner) ── */
 .i-chip {
   border-radius: var(--radius-pill);
@@ -143,9 +157,11 @@
   color: var(--text-secondary);
   border: 1px solid var(--border);
   white-space: nowrap;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+  backdrop-filter: blur(var(--fx-blur));
+  -webkit-backdrop-filter: blur(var(--fx-blur));
+  transition: border-color 200ms ease, filter 200ms ease;
 }
+.i-chip:hover { filter: brightness(1.06); border-color: var(--border-strong); }
 .i-chip--ok     { color: var(--c-success); background: var(--c-success-alpha); border-color: var(--c-success); }
 .i-chip--warn   { color: var(--c-warning); background: var(--c-warning-alpha); border-color: var(--c-warning); }
 .i-chip--danger { color: var(--c-danger);  background: var(--c-danger-alpha);  border-color: var(--c-danger); }
@@ -166,8 +182,20 @@
 .section-toolbar :deep(.label) { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); }
 
 /* ── SKELETON ── */
-.skeleton-wrap { display: flex; flex-direction: column; gap: 0.55rem; padding: 0.25rem 0 0.5rem; }
+/* El skeleton ocupa exactamente el mismo alto que la tabla (b-table :height=360
+   + paginación inferior) para que el contenedor NO se redimensione al alternar
+   entre "cargando" y "cargado" ni en cada cambio de página. */
+.skeleton-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-height: 360px;          /* = alto del área scrollable de la b-table */
+  padding: 0.5rem 0 3.25rem;  /* el padding inferior reserva el sitio de la paginación */
+  box-sizing: border-box;
+  overflow: hidden;
+}
 .skeleton-row {
+  flex-shrink: 0;
   height: 2.6rem;
   border-radius: var(--radius-md);
   background: linear-gradient(90deg, var(--surface-raised) 25%, var(--border-light) 50%, var(--surface-raised) 75%);
@@ -237,6 +265,58 @@
 :deep(.pagination-link.is-current) {
   background: var(--c-primary);
   border-color: var(--c-primary);
+}
+
+/* ── OVERRIDES EFECTIVOS (CSS global, sin :deep) ──────────────────────────
+   El CSS de estas secciones se importa global (import "./XSection.css"), así
+   que los bloques :deep() de arriba quedan inertes. Estos selectores, acotados
+   por .optica-tab-content, sí aplican y theman filas/paginación por token. */
+
+/* Filas: hover y selección adaptados al tema (sustituyen el morado sólido
+   por defecto de Buefy por superficies translúcidas de token). */
+.optica-tab-content .b-table .table tbody tr { transition: background 120ms ease; cursor: pointer; }
+.optica-tab-content .b-table .table tbody tr:hover td { background: var(--row-hover-bg) !important; }
+.optica-tab-content .b-table .table tbody tr.is-selected td {
+  background: var(--row-selected-bg) !important;
+  color: var(--text-primary) !important;
+}
+.optica-tab-content .b-table .table tbody tr.is-selected td:first-child {
+  box-shadow: inset 3px 0 0 var(--row-selected-accent);
+}
+
+/* Paginación: centrada y prolija (la barra venía descuadrada a un lado). */
+.optica-tab-content .b-table .level {
+  justify-content: center;
+  margin-top: 0.85rem;
+}
+.optica-tab-content .b-table .level-left:empty { display: none; }
+.optica-tab-content .b-table .level-right {
+  margin: 0;
+  width: 100%;
+  justify-content: center;
+}
+.optica-tab-content .b-table nav.pagination {
+  justify-content: center;
+  margin: 0 auto;
+}
+.optica-tab-content .b-table .pagination-list { flex-grow: 0; justify-content: center; }
+
+/* ── CELDA RESUMEN (solo móvil) ── */
+.cell-resumen { display: flex; flex-direction: column; gap: 0.3rem; padding: 0.15rem 0; }
+.cell-resumen__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.cell-resumen__title { font-weight: 700; font-size: 0.9rem; color: var(--text-primary); }
+.cell-resumen__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  font-size: 0.8rem;
+  color: var(--text-muted);
 }
 
 /* ── STOCK BADGE + MONO TAG + DATE CELL ── */

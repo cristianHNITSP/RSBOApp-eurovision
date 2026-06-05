@@ -6,7 +6,10 @@ import {
   caducidadClass,
   rowClass,
 } from "@/composables/optica/useOpticaHelpers";
-import { EQUIPOS_CONFIG } from "@/constants/optica.js";
+import { useOpticaSection } from "@/composables/optica/useOpticaSection.js";
+const { filterOptionsFor } = useOpticaSection();
+import { useBreakpoint } from "@/composables/ui/useBreakpoint.js";
+const { isMobile, isTouch } = useBreakpoint();
 import OpticaToolbar from "./OpticaToolbar.vue";
 import "./EquiposSection.css";
 
@@ -23,6 +26,7 @@ defineEmits([
   "soft-delete",
   "hard-delete",
   "restore",
+  "page-change",
 ]);
 
 // ── BANNER TRANSITION HOOKS ──
@@ -157,7 +161,7 @@ function onBannerLeave(el, done) {
       :section="section"
       search-placeholder="Buscar SKU, nombre, serie…"
       filter-placeholder="Todos los estados"
-      :filter-options="EQUIPOS_CONFIG.estados"
+      :filter-options="filterOptionsFor('equipos')"
       @reload="$emit('reload')"
       @toggle-trash="$emit('toggle-trash')"
       @create="$emit('create')"
@@ -173,12 +177,7 @@ function onBannerLeave(el, done) {
     </div>
     <div v-else class="table-shell glass-card">
       <b-table
-        :data="
-          section.items.filter(
-            (r) =>
-              section.filterField === 'all' || r.estado === section.filterField
-          )
-        "
+        :data="section.items"
         :mobile-cards="false"
         sticky-header
         :height="360"
@@ -188,31 +187,49 @@ function onBannerLeave(el, done) {
         :selected="section.selected"
         @update:selected="(r) => $emit('select', r)"
         paginated
-        :per-page="10"
+        backend-pagination
+        :total="section.total"
+        :per-page="section.limit"
+        :current="section.page"
+        @page-change="(p) => $emit('page-change', p)"
         pagination-size="is-small"
       >
-        <b-table-column field="sku" label="SKU" sortable v-slot="{ row }">
+        <!-- Resumen compacto: única columna en móvil -->
+        <b-table-column label="Equipo" :visible="isMobile" v-slot="{ row }">
+          <div class="cell-resumen">
+            <div class="cell-resumen__top">
+              <span class="cell-resumen__title">{{ row.nombre }}</span>
+              <b-tag :type="estadoTag(row.estado)" size="is-small">{{ row.estado }}</b-tag>
+            </div>
+            <div class="cell-resumen__meta">
+              <span class="mono-tag">{{ row.sku }}</span>
+              <b-tag type="is-info" size="is-small">{{ row.tipo }}</b-tag>
+              <span>{{ row.marca }}{{ row.ubicacion ? " · " + row.ubicacion : "" }}</span>
+            </div>
+          </div>
+        </b-table-column>
+        <b-table-column field="sku" label="SKU" sortable :visible="!isMobile" v-slot="{ row }">
           <span class="mono-tag">{{ row.sku }}</span>
         </b-table-column>
-        <b-table-column field="nombre" label="Equipo" sortable v-slot="{ row }">
+        <b-table-column field="nombre" label="Equipo" sortable :visible="!isMobile" v-slot="{ row }">
           <strong>{{ row.nombre }}</strong>
         </b-table-column>
-        <b-table-column field="tipo" label="Área" sortable v-slot="{ row }">
+        <b-table-column field="tipo" label="Área" sortable :visible="!isMobile" v-slot="{ row }">
           <b-tag type="is-info" size="is-small">{{ row.tipo }}</b-tag>
         </b-table-column>
-        <b-table-column field="marca" label="Marca" sortable v-slot="{ row }">
+        <b-table-column field="marca" label="Marca" sortable :visible="!isTouch" v-slot="{ row }">
           {{ row.marca }}
         </b-table-column>
-        <b-table-column field="modelo" label="Modelo" v-slot="{ row }">
+        <b-table-column field="modelo" label="Modelo" :visible="!isTouch" v-slot="{ row }">
           {{ row.modelo || "—" }}
         </b-table-column>
-        <b-table-column field="serie" label="Serie" v-slot="{ row }">
+        <b-table-column field="serie" label="Serie" :visible="!isTouch" v-slot="{ row }">
           <span class="mono-tag">{{ row.serie || "—" }}</span>
         </b-table-column>
-        <b-table-column field="ubicacion" label="Ubicación" sortable v-slot="{ row }">
+        <b-table-column field="ubicacion" label="Ubicación" sortable :visible="!isTouch" v-slot="{ row }">
           {{ row.ubicacion || "—" }}
         </b-table-column>
-        <b-table-column field="estado" label="Estado" sortable v-slot="{ row }">
+        <b-table-column field="estado" label="Estado" sortable :visible="!isMobile" v-slot="{ row }">
           <b-tag :type="estadoTag(row.estado)" size="is-small">{{
             row.estado
           }}</b-tag>
@@ -221,6 +238,7 @@ function onBannerLeave(el, done) {
           field="mantenimiento"
           label="Prox. Mantto."
           sortable
+          :visible="!isTouch"
           v-slot="{ row }"
         >
           <span :class="caducidadClass(row.mantenimiento)" class="date-cell">{{

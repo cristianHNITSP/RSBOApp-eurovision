@@ -5,7 +5,10 @@ import {
   estadoTag,
   rowClass,
 } from "@/composables/optica/useOpticaHelpers";
-import { ARMAZONES_CONFIG } from "@/constants/optica.js";
+import { useOpticaSection } from "@/composables/optica/useOpticaSection.js";
+const { filterOptionsFor } = useOpticaSection();
+import { useBreakpoint } from "@/composables/ui/useBreakpoint.js";
+const { isMobile, isTouch } = useBreakpoint();
 import OpticaToolbar from "./OpticaToolbar.vue";
 import "./ArmazonesSection.css";
 
@@ -22,6 +25,7 @@ defineEmits([
   "soft-delete",
   "hard-delete",
   "restore",
+  "page-change",
 ]);
 
 // ── BANNER TRANSITION HOOKS ──
@@ -166,7 +170,7 @@ function onBannerLeave(el, done) {
       :section="section"
       search-placeholder="Buscar SKU, marca, modelo…"
       filter-placeholder="Todos los materiales"
-      :filter-options="ARMAZONES_CONFIG.materiales"
+      :filter-options="filterOptionsFor('armazones')"
       @reload="$emit('reload')"
       @toggle-trash="$emit('toggle-trash')"
       @create="$emit('create')"
@@ -185,12 +189,7 @@ function onBannerLeave(el, done) {
     <!-- Tabla -->
     <div v-else class="table-shell glass-card">
       <b-table
-        :data="
-          section.items.filter(
-            (r) =>
-              section.filterField === 'all' || r.material === section.filterField
-          )
-        "
+        :data="section.items"
         :mobile-cards="false"
         sticky-header
         :height="360"
@@ -200,38 +199,68 @@ function onBannerLeave(el, done) {
         :selected="section.selected"
         @update:selected="(r) => $emit('select', r)"
         paginated
-        :per-page="10"
+        backend-pagination
+        :total="section.total"
+        :per-page="section.limit"
+        :current="section.page"
+        @page-change="(p) => $emit('page-change', p)"
         pagination-size="is-small"
         :loading="section.loading"
       >
-        <b-table-column field="sku" label="SKU" sortable v-slot="{ row }">
+        <!-- Resumen compacto: única columna en móvil -->
+        <b-table-column label="Armazón" :visible="isMobile" v-slot="{ row }">
+          <div class="cell-resumen">
+            <div class="cell-resumen__top">
+              <span class="cell-resumen__title">{{ row.marca }} · {{ row.modelo }}</span>
+              <b-tag :type="estadoTag(armazonEstado(row))" size="is-small">{{
+                armazonEstado(row)
+              }}</b-tag>
+            </div>
+            <div class="cell-resumen__meta">
+              <span class="mono-tag">{{ row.sku }}</span>
+              <span>{{ fmt(row.precio) }}</span>
+              <span
+                class="stock-badge"
+                :class="
+                  (row.stock || 0) === 0
+                    ? 'stock-badge--danger'
+                    : (row.stock || 0) <= 3
+                    ? 'stock-badge--warn'
+                    : 'stock-badge--ok'
+                "
+                >{{ row.stock }} uds</span
+              >
+            </div>
+          </div>
+        </b-table-column>
+        <b-table-column field="sku" label="SKU" sortable :visible="!isMobile" v-slot="{ row }">
           <span class="mono-tag">{{ row.sku }}</span>
         </b-table-column>
-        <b-table-column field="marca" label="Marca" sortable v-slot="{ row }">
+        <b-table-column field="marca" label="Marca" sortable :visible="!isMobile" v-slot="{ row }">
           <strong>{{ row.marca }}</strong>
         </b-table-column>
-        <b-table-column field="modelo" label="Modelo" sortable v-slot="{ row }">
+        <b-table-column field="modelo" label="Modelo" sortable :visible="!isMobile" v-slot="{ row }">
           {{ row.modelo }}
         </b-table-column>
-        <b-table-column field="color" label="Color" v-slot="{ row }">
+        <b-table-column field="color" label="Color" :visible="!isTouch" v-slot="{ row }">
           {{ row.color || "—" }}
         </b-table-column>
-        <b-table-column field="material" label="Material" sortable v-slot="{ row }">
+        <b-table-column field="material" label="Material" sortable :visible="!isTouch" v-slot="{ row }">
           <b-tag type="is-light" size="is-small">{{ row.material }}</b-tag>
         </b-table-column>
-        <b-table-column field="tipo" label="Tipo" sortable v-slot="{ row }">
+        <b-table-column field="tipo" label="Tipo" sortable :visible="!isTouch" v-slot="{ row }">
           <b-tag type="is-info is-light" size="is-small">{{ row.tipo }}</b-tag>
         </b-table-column>
-        <b-table-column field="genero" label="Género" sortable v-slot="{ row }">
+        <b-table-column field="genero" label="Género" sortable :visible="!isTouch" v-slot="{ row }">
           {{ row.genero }}
         </b-table-column>
-        <b-table-column field="talla" label="Talla" v-slot="{ row }">
+        <b-table-column field="talla" label="Talla" :visible="!isTouch" v-slot="{ row }">
           <span class="mono-tag">{{ row.talla || "—" }}</span>
         </b-table-column>
-        <b-table-column field="precio" label="Precio" sortable numeric v-slot="{ row }">
+        <b-table-column field="precio" label="Precio" sortable numeric :visible="!isMobile" v-slot="{ row }">
           {{ fmt(row.precio) }}
         </b-table-column>
-        <b-table-column field="stock" label="Stock" sortable numeric v-slot="{ row }">
+        <b-table-column field="stock" label="Stock" sortable numeric :visible="!isMobile" v-slot="{ row }">
           <span
             class="stock-badge"
             :class="
@@ -244,14 +273,14 @@ function onBannerLeave(el, done) {
             >{{ row.stock }}</span
           >
         </b-table-column>
-        <b-table-column field="estuche" label="Estuche" centered v-slot="{ row }">
+        <b-table-column field="estuche" label="Estuche" centered :visible="!isTouch" v-slot="{ row }">
           <b-icon
             :icon="row.estuche ? 'check-circle' : 'times-circle'"
             :type="row.estuche ? 'is-success' : 'is-light'"
             size="is-small"
           />
         </b-table-column>
-        <b-table-column label="Estado" v-slot="{ row }">
+        <b-table-column label="Estado" :visible="!isMobile" v-slot="{ row }">
           <b-tag :type="estadoTag(armazonEstado(row))" size="is-small">{{
             armazonEstado(row)
           }}</b-tag>

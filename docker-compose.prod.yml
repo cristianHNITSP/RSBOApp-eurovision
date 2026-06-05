@@ -15,8 +15,8 @@ services:
     container_name: rsboapp-frontend
     ports:
       - "127.0.0.1:${FRONTEND_PORT_HOST:-4300}:80"
-    depends_on:
-      gateway: { condition: service_healthy }
+    # depends_on:
+    #   gateway: { condition: service_healthy }
     restart: unless-stopped
     networks: [rsbo-net]
     deploy:
@@ -50,12 +50,12 @@ services:
         limits:
           memory: 384M
 
-  optica-service:
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 256M
+  # optica-service:
+  #   restart: unless-stopped
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         memory: 256M
 
   backorder-service:
     restart: unless-stopped

@@ -6,7 +6,7 @@ const build = (Solucion) => ({
   options: {
     navigation: navOf(NAV.OPTICA, "Droplet"),
     properties: {
-      sku: titleField(),
+      sku: { ...titleField(), isVisible: { list: true, filter: true, show: true, edit: false } },
       isDeleted: listFilterShow(),
     },
   },

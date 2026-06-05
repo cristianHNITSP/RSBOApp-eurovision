@@ -226,6 +226,31 @@ async function getMeSessions(userId, currentToken) {
   })).sort((a,b) => (a.isCurrent ? -1 : 1));
 }
 
+async function revokeOtherSessions(userId, currentToken) {
+  const user = await User.findById(userId).select('+tokens');
+  if (!user) throw makeError(404, "No encontrado");
+  user.pruneExpiredTokens();
+
+  const before = (user.tokens || []).length;
+  user.tokens = (user.tokens || []).filter(t => t.token === currentToken);
+  await user.save();
+
+  return { success: true, revoked: Math.max(0, before - user.tokens.length) };
+}
+
+async function revokeSession(userId, sessionId) {
+  const user = await User.findById(userId).select('+tokens');
+  if (!user) throw makeError(404, "No encontrado");
+  user.pruneExpiredTokens();
+
+  const before = (user.tokens || []).length;
+  user.tokens = (user.tokens || []).filter(t => String(t._id) !== String(sessionId));
+  if (user.tokens.length === before) throw makeError(404, "Sesión no encontrada");
+
+  await user.save();
+  return { success: true, revoked: 1 };
+}
+
 async function changePasswordSelf(userId, { currentPassword, newPassword }) {
   const user = await User.findById(userId).select('+password +tokens');
   if (!user) throw makeError(404, "No encontrado");
@@ -250,5 +275,5 @@ function makeError(status, msg) {
 
 module.exports = {
   getRoles, getMe, listUsers, createUser, updateUser, updatePassword,
-  deleteUser, restoreUser, getMeSessions, changePasswordSelf
+  deleteUser, restoreUser, getMeSessions, revokeOtherSessions, revokeSession, changePasswordSelf
 };

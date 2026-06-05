@@ -130,6 +130,30 @@ router.patch("/active-tab", authMiddleware, csrfProtection, async (req, res) => 
 });
 
 /**
+ * @route PATCH /api/workspace/preferences/view-state
+ * @desc Update free-form view state for a context (e.g. óptica: page/filter/search per category)
+ */
+router.patch("/view-state", authMiddleware, csrfProtection, async (req, res) => {
+  try {
+    const { view_state, context = "inventory" } = req.body;
+    if (!view_state || typeof view_state !== "object") {
+      return res.status(400).json({ ok: false, message: "view_state object is required" });
+    }
+
+    const prefs = await UserWorkspacePreferences.findOneAndUpdate(
+      { userId: req.user.id, context },
+      { $set: { view_state } },
+      { new: true, upsert: true }
+    );
+
+    res.json({ ok: true, data: prefs });
+  } catch (error) {
+    console.error("[preferences.routes] Error:", error);
+    res.status(500).json({ ok: false, message: error.message });
+  }
+});
+
+/**
  * @route PATCH /api/workspace/preferences/catalog-section
  * @desc Update default catalog section
  */

@@ -30,6 +30,13 @@ const PREFERENCES = {
       return { resolvedTheme: resolved };
     }
   },
+  fontFamily: {
+    key: "ui-font-family",
+    default: "combo-satoshi-switzer",
+    apply: (val) => {
+      document.documentElement.dataset.fontFamily = val;
+    }
+  },
   fontSize: {
     key: "ui-font-size",
     default: "md",
@@ -150,6 +157,7 @@ function handleUiEvent(e) {
   const actionMap = {
     "set-theme": () => orchestrator.set("theme", value),
     "toggle-dark": () => orchestrator.toggle("theme"),
+    "set-font-family": () => orchestrator.set("fontFamily", value),
     "set-font": () => orchestrator.set("fontSize", value),
     "set-reduced-motion": () => orchestrator.set("reducedMotion", value),
     "toggle-reduced-motion": () => orchestrator.toggle("reducedMotion"),
@@ -202,6 +210,7 @@ export function useAccessibility() {
     // Acciones granulares expuestas
     setTheme: (v) => orchestrator.set("theme", v),
     toggleTheme: () => orchestrator.toggle("theme"),
+    setFontFamily: (v) => orchestrator.set("fontFamily", v),
     setFontSize: (v) => orchestrator.set("fontSize", v),
     setReducedMotion: (v) => orchestrator.set("reducedMotion", v),
     toggleReducedMotion: () => orchestrator.toggle("reducedMotion"),

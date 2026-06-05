@@ -46,6 +46,12 @@ const userWorkspacePreferencesSchema = new mongoose.Schema(
       type: String,
       enum: ["search", "recent_modified", "recent_opened"],
       default: "search"
+    },
+    // Estado de vista libre por contexto (ej. óptica: page/filtro/búsqueda por categoría).
+    // Forma libre para no acoplar cada sección al schema.
+    view_state: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {}
     }
   },
   { timestamps: true }

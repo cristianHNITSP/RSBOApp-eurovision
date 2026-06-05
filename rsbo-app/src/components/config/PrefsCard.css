@@ -1,5 +1,5 @@
 .prefs-card {
-  grid-column: span 6;
+  grid-column: span 12;
   background: var(--surface-solid);
   border: 1px solid var(--border-solid);
   border-radius: 12px;

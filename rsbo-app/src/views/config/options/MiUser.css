@@ -49,12 +49,6 @@
   background: var(--surface-overlay);
 }
 
-.um-card:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-lg);
-  border-color: var(--c-primary-alpha);
-}
-
 .card-glow-ok { box-shadow: 0 18px 50px var(--static-color-rgba-16-185-129-0-08), var(--shadow-2); }
 .card-glow-bad { box-shadow: 0 18px 50px var(--static-color-rgba-239-68-68-0-08), var(--shadow-2); }
 

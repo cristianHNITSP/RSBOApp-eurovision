@@ -89,6 +89,24 @@ export const setActiveTab = async (tabId, context = "inventory") => {
 };
 
 /**
+ * Update free-form view state for a context (ej. óptica: page/filtro/búsqueda por categoría)
+ * @param {Object} viewState
+ */
+export const setViewState = async (viewState, context = "inventory") => {
+  try {
+    const res = await api.patch(
+      "/workspace/preferences/view-state",
+      { view_state: viewState, context },
+      { withCredentials: true }
+    );
+    return res.data;
+  } catch (error) {
+    console.error("[preferencesService] Error updating view state:", error);
+    throw error;
+  }
+};
+
+/**
  * Save (upsert) an open tab
  * @param {Object} tab
  */

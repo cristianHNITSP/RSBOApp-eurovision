@@ -78,7 +78,7 @@
 
       <div class="column is-12">
         <b-field label="Nombre de usuario">
-          <b-input :value="user?.username || ''" expanded icon="at" disabled />
+          <b-input :model-value="user?.username || ''" expanded icon="at" disabled />
         </b-field>
       </div>
 
@@ -101,7 +101,7 @@
 
       <div class="column is-12-tablet is-6-desktop">
         <b-field label="Rol asignado">
-          <b-input :value="roleName" icon="user-tag" disabled />
+          <b-input :model-value="roleName" icon="user-tag" disabled />
         </b-field>
       </div>
 

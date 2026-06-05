@@ -23,7 +23,27 @@
         </PrefsRow>
       </PrefsCard>
 
-      <PrefsCard icon="text-height" title="Tipografía" tag="Texto">
+      <PrefsCard icon="text-height" title="Tipografía" tag="Texto" :wide="true">
+        <b-field label="Familia tipográfica" class="mb-4">
+          <b-select v-model="fontFamily" expanded>
+            <optgroup label="Fuentes individuales">
+              <option value="satoshi">Satoshi</option>
+              <option value="switzer">Switzer</option>
+              <option value="inter">Inter</option>
+              <option value="dm-sans">DM Sans</option>
+              <option value="space-grotesk">Space Grotesk</option>
+              <option value="outfit">Outfit</option>
+              <option value="system-ui">Sistema</option>
+            </optgroup>
+            <optgroup label="Combinaciones">
+              <option value="combo-satoshi-switzer">Satoshi + Switzer</option>
+              <option value="combo-dm-space">DM Sans + Space Grotesk</option>
+              <option value="combo-satoshi-space">Satoshi + Space Grotesk</option>
+              <option value="combo-inter-dm">Inter + DM Sans</option>
+            </optgroup>
+          </b-select>
+        </b-field>
+
         <PrefsRow
           label="Tamaño de fuente"
           help="Ajusta el tamaño de la fuente para una mejor comodidad."
@@ -145,6 +165,7 @@ import { useAccessibility } from '@/composables/ui/useAccessibility';
 const {
   state: a11y,
   setTheme,
+  setFontFamily,
   setFontSize,
   toggleReducedEffects,
   toggleContrast,
@@ -155,12 +176,15 @@ const {
 
 const isDark         = ref(a11y.resolvedTheme === 'dark');
 const reducedEffects = ref(a11y.reducedEffects);
+const fontFamily     = ref(a11y.fontFamily);
 const fontSize       = ref(a11y.fontSize);
 
 watch(() => a11y.resolvedTheme,   (val) => { isDark.value         = val === 'dark'; });
 watch(() => a11y.reducedEffects,  (val) => { reducedEffects.value = val; });
+watch(() => a11y.fontFamily,      (val) => { fontFamily.value     = val; });
 watch(() => a11y.fontSize,        (val) => { fontSize.value       = val; });
 
+watch(fontFamily, (val) => { setFontFamily(val); });
 watch(fontSize, (val) => { setFontSize(val); });
 watch(isDark,   (val) => {
   const target = val ? 'dark' : 'light';

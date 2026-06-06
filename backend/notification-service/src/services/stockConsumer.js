@@ -36,9 +36,9 @@ async function handle(event) {
   if (!event || !event.kind) return;
 
   if (event.kind === "stock.assessed") {
-    // Cadencia de "spam" como rate-limiter atómico en Redis: 1h en horario
-    // laboral (08–20h), 6h en horas muertas. Robusto a suspensión (por TTL).
-    const resurface = await acquireSpamSlot(event.sheetId);
+    // Cadencia de "spam" como rate-limiter atómico en Redis, GRADUADA por urgencia:
+    // crítico repesta seguido, advertencia espaciado (y siempre menos de noche).
+    const resurface = await acquireSpamSlot(event.sheetId, redis, event.urgencyScore);
     const { changed, action } = await svc.upsertStockAlert(event, { resurface });
     // Al regenerar el ciclo (3 días), libera el lock para que el nuevo arranque limpio.
     if (action === "regenerate") await releaseSpamSlot(event.sheetId);
@@ -50,17 +50,25 @@ async function handle(event) {
   }
 }
 
-/** TTL del lock según la hora: 1h laboral (08–20h), 6h en horas muertas. */
-function spamTtlSeconds(date = new Date()) {
+/**
+ * TTL del lock según urgencia + horario (insistencia graduada):
+ *   - Crítico (urgency ≥ 85): 1h laboral / 3h muertas  → repesta seguido.
+ *   - Advertencia (≥ 45):     4h laboral / 12h muertas → espaciado.
+ *   - Resto (aceptable):      24h                       → casi nunca.
+ * Cuanto más alta la urgencia, menor el TTL → reaparece antes (más insistente).
+ */
+function spamTtlSeconds(urgencyScore = 0, date = new Date()) {
   const h = date.getHours();
   const laboral = h >= 8 && h < 20;
-  return laboral ? 3600 : 6 * 3600;
+  if (urgencyScore >= 85) return laboral ? 3600 : 3 * 3600;
+  if (urgencyScore >= 45) return laboral ? 4 * 3600 : 12 * 3600;
+  return 24 * 3600;
 }
 
-/** Intenta tomar el "slot" de spam de la planilla (SET NX EX). true = toca revivir. */
-async function acquireSpamSlot(sheetId, client = redis) {
+/** Intenta tomar el "slot" de spam (SET NX EX). true = toca revivir. */
+async function acquireSpamSlot(sheetId, client = redis, urgencyScore = 0) {
   try {
-    const res = await client.set(`spam:${sheetId}`, "1", "EX", spamTtlSeconds(), "NX");
+    const res = await client.set(`spam:${sheetId}`, "1", "EX", spamTtlSeconds(urgencyScore), "NX");
     return res === "OK";
   } catch (e) {
     console.warn("[STOCK_CONSUMER] acquireSpamSlot error:", e?.message);

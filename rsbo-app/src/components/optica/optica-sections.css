@@ -332,6 +332,7 @@
   border: 1px solid transparent;
 }
 .stock-badge--ok     { color: var(--c-success); background: var(--c-success-alpha); border-color: var(--static-color-rgba-34-197-94-0-25); }
+.stock-badge--info   { color: var(--c-primary); background: var(--c-primary-alpha); border-color: var(--c-primary-alpha); }
 .stock-badge--warn   { color: var(--c-warning); background: var(--c-warning-alpha); border-color: var(--static-color-rgba-245-158-11-0-25); }
 .stock-badge--danger { color: var(--c-danger);  background: var(--c-danger-alpha);  border-color: var(--static-color-rgba-239-68-68-0-25); }
 

@@ -21,6 +21,7 @@ const { protect } = require("../../utils/auth");
 const { broadcast } = require("../../ws");
 const { logMovement } = require("./logHelper");
 const { sanitizeMiddleware } = require("./sanitizer");
+const { assessProductAsync, clearProductAlert } = require("../../services/opticaStockAlert.service");
 
 const escapeRegExp = (s = "") => String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -202,6 +203,7 @@ function makeOpticaCrud(Model, cfg) {
         id: String(item._id), sku: item.sku, label: itemLabel(item),
         ...actorOf(req), item: item.toJSON(),
       });
+      if (cfg.hasStock) assessProductAsync(item); // evalúa alerta de stock
       return res.status(201).json({ ok: true, data: item.toJSON() });
     } catch (err) {
       if (err?.code === 11000) {
@@ -252,6 +254,7 @@ function makeOpticaCrud(Model, cfg) {
 
         await logMovement(COLLECTION, updated._id, updated.sku, "UPDATE", { before, after: updated.toJSON() }, actor);
         broadcast("INV_CHANGE", { collection: COLLECTION, id: String(updated._id), newStock: updated.stock });
+        if (cfg.hasStock) assessProductAsync(updated);
         return res.json({ ok: true, data: updated.toJSON() });
       } catch (err) {
         if (err?.code === 11000) return res.status(409).json({ ok: false, error: "SKU duplicado" });
@@ -315,6 +318,7 @@ function makeOpticaCrud(Model, cfg) {
             id: String(updated._id),
             newStock: updated.stock,
           });
+          assessProductAsync(updated); // re-evalúa alerta de stock
           return res.json({ ok: true, data: updated.toJSON() });
         } catch (err) {
           console.error(`${tag} PATCH stock error:`, err);
@@ -347,6 +351,7 @@ function makeOpticaCrud(Model, cfg) {
         collection: COLLECTION, action: "delete",
         id: String(updated._id), sku: updated.sku, label: itemLabel(updated), ...actorOf(req),
       });
+      assessProductAsync(updated); // isDeleted=true → limpia su alerta
       return res.json({ ok: true, message: "Movido a papelera" });
     } catch (err) {
       console.error(`${tag} DELETE error:`, err);
@@ -364,6 +369,7 @@ function makeOpticaCrud(Model, cfg) {
       const snapshot = { sku: item.sku, ...item.toJSON() };
       await logMovement(COLLECTION, item._id, item.sku, "HARD_DELETE", { snapshot }, actor);
       await item.deleteOne();
+      clearProductAlert(item._id); // limpia su alerta si la tenía
       return res.json({ ok: true, message: "Eliminado permanentemente" });
     } catch (err) {
       console.error(`${tag} HARD DELETE error:`, err);
@@ -390,6 +396,7 @@ function makeOpticaCrud(Model, cfg) {
         collection: COLLECTION, action: "restore",
         id: String(updated._id), sku: updated.sku, label: itemLabel(updated), ...actorOf(req),
       });
+      if (cfg.hasStock) assessProductAsync(updated); // re-evalúa tras restaurar
       return res.json({ ok: true, data: updated.toJSON(), message: "Restaurado correctamente" });
     } catch (err) {
       console.error(`${tag} RESTORE error:`, err);

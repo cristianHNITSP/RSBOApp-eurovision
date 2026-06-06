@@ -1,8 +1,13 @@
 <script setup>
 import { ref, computed } from "vue";
 import { coordChips } from "../shared/useNotifFormat.js";
+import { useNotificationNavigate } from "@/composables/notifi/useNotificationNavigate.js";
 
 const props = defineProps({ notif: { type: Object, required: true } });
+
+const { goToNotification } = useNotificationNavigate();
+const openSheet = () => goToNotification(props.notif);
+const openCell = (cell) => goToNotification(props.notif, { cell });
 
 const isExpanded = ref(false);
 const selectedAxis = ref(null);
@@ -41,10 +46,13 @@ const currentCells = computed(() =>
       <code v-if="sheet.sku" class="summary-sku">{{ sheet.sku }}</code>
     </div>
 
-    <!-- Identidad de la planilla: nombre/SKU + tipo · baseKey · material · tratamiento · marca -->
-    <div class="sheet-id">
+    <!-- Identidad de la planilla: click → abre y enfoca la planilla/producto -->
+    <div class="sheet-id sheet-id--clickable" role="button" tabindex="0"
+      title="Abrir y enfocar en el inventario"
+      @click="openSheet" @keydown.enter="openSheet">
       <b-icon pack="fas" icon="layer-group" size="is-small" class="sheet-id__icon" />
       <span class="sheet-id__name">{{ sheet.name || meta.sheetLabel || "Planilla" }}</span>
+      <b-icon pack="fas" icon="arrow-up-right-from-square" size="is-small" class="sheet-id__go" />
     </div>
     <div v-if="sheetTags.length || sheet.proveedor" class="sheet-tags">
       <b-tag v-for="(t, i) in sheetTags" :key="i" type="is-light" size="is-small">{{ t }}</b-tag>
@@ -82,7 +90,9 @@ const currentCells = computed(() =>
 
         <div class="cell-list-container-mini" :style="{ maxHeight: hasAxisData ? '250px' : '400px' }">
           <ul class="cell-list">
-            <li v-for="(cell, idx) in currentCells" :key="idx" class="cell-row">
+            <li v-for="(cell, idx) in currentCells" :key="idx" class="cell-row cell-row--clickable"
+              role="button" tabindex="0" title="Abrir y enfocar esta dioptría"
+              @click.stop="openCell(cell)" @keydown.enter.stop="openCell(cell)">
               <span
                 class="level-badge"
                 :class="cell.level === 'CRITICO' ? 'level-badge--critico' : 'level-badge--bajo'"
@@ -132,6 +142,17 @@ const currentCells = computed(() =>
   margin-bottom: 0.3rem;
 }
 .sheet-id__icon { color: var(--c-primary); opacity: 0.8; }
+.sheet-id--clickable {
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 0.15rem 0.3rem;
+  margin: -0.15rem -0.3rem 0.3rem;
+  transition: background 140ms ease;
+}
+.sheet-id--clickable:hover { background: var(--c-primary-alpha); }
+.sheet-id__go { margin-left: auto; color: var(--c-primary); opacity: 0.65; }
+.cell-row--clickable { cursor: pointer; border-radius: 6px; transition: background 140ms ease; }
+.cell-row--clickable:hover { background: var(--c-primary-alpha); }
 .sheet-id__name {
   font-size: 0.74rem;
   font-weight: 700;

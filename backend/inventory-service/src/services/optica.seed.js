@@ -6,7 +6,7 @@
  * ni elimina categorías añadidas manualmente por el usuario.
  */
 const OpticaCategory = require("../models/optica/OpticaCategory");
-const { OPTICA_CATEGORIES } = require("../data/optica.constants");
+const { OPTICA_CATEGORIES, OPTICA_STOCK_THRESHOLDS } = require("../data/optica.constants");
 
 async function seedOpticaCategories() {
   try {
@@ -23,6 +23,7 @@ async function seedOpticaCategories() {
             order: c.order,
             skuPrefix: c.skuPrefix,
             hasStock: c.hasStock,
+            stockThresholds: c.stockThresholds || OPTICA_STOCK_THRESHOLDS,
             searchFields: c.searchFields || [],
             dictionaries: c.dictionaries || {},
             active: true,
@@ -45,9 +46,16 @@ async function seedOpticaCategories() {
             { skuPrefix: { $in: [null, "", "OPT"] } },
             { dictionaries: { $exists: false } },
             { dictionaries: {} },
+            { stockThresholds: { $exists: false } },
           ],
         },
-        update: { $set: { skuPrefix: c.skuPrefix, dictionaries: c.dictionaries || {} } },
+        update: {
+          $set: {
+            skuPrefix: c.skuPrefix,
+            dictionaries: c.dictionaries || {},
+            stockThresholds: c.stockThresholds || OPTICA_STOCK_THRESHOLDS,
+          },
+        },
       },
     }));
     const bf = await OpticaCategory.bulkWrite(backfill, { ordered: false });

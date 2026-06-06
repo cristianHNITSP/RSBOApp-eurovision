@@ -14,6 +14,12 @@ const OpticaCategorySchema = new mongoose.Schema(
     order:  { type: Number, default: 99 },
     skuPrefix: { type: String, default: "OPT", trim: true },           // prefijo del SKU
     hasStock: { type: Boolean, default: true },
+    // Umbrales de alerta de stock (absolutos). Editable por categoría sin redeploy.
+    stockThresholds: {
+      critical:   { type: Number, default: 3 },
+      low:        { type: Number, default: 8 },
+      acceptable: { type: Number, default: 15 },
+    },
     searchFields: { type: [String], default: [] },
     // Diccionarios de opciones por campo: { campo: { kind:"select"|"autocomplete", options:[...] } }
     dictionaries: { type: mongoose.Schema.Types.Mixed, default: {} },

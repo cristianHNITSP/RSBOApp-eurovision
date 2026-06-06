@@ -3,6 +3,7 @@ import { labToast } from "@/composables/shared/useLabToast.js";
 import { categoriasService } from "@/services/optica.js";
 import { getPreferences, setActiveTab, setViewState } from "@/services/preferencesService.js";
 import { OPTICA_TABS } from "@/constants/optica.js";
+import { opticaStockState } from "./useOpticaHelpers";
 
 /**
  * useOpticaSection.js — SINGLETON de la sección de Óptica.
@@ -182,6 +183,33 @@ function createStore(SVC) {
     return dictFor(key)?.[field]?.options || [];
   }
 
+  /** Umbrales de stock de una categoría (o null → el helper usa el default). */
+  function thresholdsFor(key) {
+    return categorias.value.find((c) => c.key === key)?.stockThresholds || null;
+  }
+
+  /** Clase del badge de stock (4 estados) según los umbrales de la categoría. */
+  function stockBadgeClass(key, stock) {
+    return "stock-badge--" + opticaStockState(stock, thresholdsFor(key)).badge;
+  }
+
+  /**
+   * Enfoca un producto por SKU (deep-link de notificación): cambia a su categoría,
+   * lo aísla con el buscador (página 1) y lo resalta en el banner.
+   */
+  async function focusBySku(key, sku) {
+    const s = sec[key];
+    if (!s || !sku) return;
+    activeTab.value = key;
+    s.searchQ = sku;
+    s.filterField = "all";
+    s.showTrash = false;
+    s.page = 1;
+    await load(key);
+    const item = s.items.find((i) => i.sku === sku);
+    if (item) selectRow(key, item);
+  }
+
   // Cambio de tab → carga perezosa + persiste categoría activa.
   watch(activeTab, (key) => {
     ensureLoaded(key);
@@ -211,6 +239,7 @@ function createStore(SVC) {
           icon: c.icon,
           skuPrefix: c.skuPrefix,
           dictionaries: c.dictionaries || {},
+          stockThresholds: c.stockThresholds || null,
         }));
       if (cats.length) categorias.value = cats;
     }
@@ -296,7 +325,7 @@ function createStore(SVC) {
 
   return {
     sec, loadingAll, categorias, activeTab, booting,
-    boot, setActive, setCurrentUser, dictFor, filterOptionsFor,
+    boot, setActive, setCurrentUser, dictFor, filterOptionsFor, thresholdsFor, stockBadgeClass, focusBySku,
     load, loadAll, reloadSection, goToPage, ensureLoaded,
     selectRow, toggleTrash,
   };

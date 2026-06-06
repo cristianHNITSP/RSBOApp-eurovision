@@ -30,6 +30,11 @@ const ac = (options = []) => ({ kind: "autocomplete", options });
 // Tipos válidos para el changelog (claves de categoría)
 const COLLECTION_KEYS = ["armazones", "lentes", "soluciones", "accesorios", "estuches", "equipos"];
 
+// Umbrales de stock por defecto (absolutos) para alertas de óptica.
+// Estándar para todas las categorías; cada OpticaCategory puede sobreescribirlo.
+//   stock <= critical → Crítico · <= low → Advertencia · <= acceptable → Aceptable · resto → Bueno
+const OPTICA_STOCK_THRESHOLDS = { critical: 3, low: 8, acceptable: 15 };
+
 /**
  * Registro de categorías = tipos de producto.
  * - key         : ruta y clave pública (frontend → /api/optica/<key>)
@@ -202,10 +207,15 @@ const SKU_PREFIX_BY_MODEL = Object.fromEntries(
   OPTICA_CATEGORIES.map((c) => [c.model, c.skuPrefix])
 );
 
+// Mapa nombre-de-discriminator → clave de categoría (para alertas/sweep).
+const KEY_BY_MODEL = Object.fromEntries(OPTICA_CATEGORIES.map((c) => [c.model, c.key]));
+
 module.exports = {
   ENUMS,
   COLLECTION_KEYS,
+  OPTICA_STOCK_THRESHOLDS,
   OPTICA_CATEGORIES,
   CATEGORY_BY_KEY,
   SKU_PREFIX_BY_MODEL,
+  KEY_BY_MODEL,
 };

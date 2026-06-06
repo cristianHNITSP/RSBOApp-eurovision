@@ -138,6 +138,9 @@ export const categoriasService = {
   },
 };
 
+/** Obtiene un producto por categoría + id (para validar deep-link de notificaciones). */
+export const getProduct = (categoria, id) => api.get(`${BASE}/${categoria}/${id}`);
+
 // ═══════════════════════════════════════════════════════════════
 //  Logs de auditoría
 // ═══════════════════════════════════════════════════════════════

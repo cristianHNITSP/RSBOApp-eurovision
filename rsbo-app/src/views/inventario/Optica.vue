@@ -1,6 +1,7 @@
 <!-- src/views/inventario/Optica.vue -->
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from "vue";
+import { ref, computed, watch, onMounted, onBeforeUnmount } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import DynamicTabs from "@/components/DynamicTabs.vue";
 import SectionLoadingOverlay from "@/components/SectionLoadingOverlay.vue";
 
@@ -44,7 +45,7 @@ const SVC = {
 // activeTab/categorias/booting viven en el singleton (estado persistido + boot 1 vez).
 const {
   sec, categorias, activeTab, booting, boot, dictFor, setCurrentUser,
-  reloadSection, goToPage, selectRow, toggleTrash,
+  reloadSection, goToPage, selectRow, toggleTrash, focusBySku,
 } = useOpticaSection(SVC);
 
 // Identidad del usuario actual → para no mostrarse a sí mismo el toast de tiempo real.
@@ -69,7 +70,21 @@ const activeTotal = computed(() => sec[activeTab.value]?.total || 0);
 
 // ── Boot (Etapa 1: categorías + preferencias; Etapa 2: data de la tab activa) ──
 // Sólo corre la 1ª vez por sesión (singleton); al volver, reaparece al instante.
-onMounted(boot);
+const route = useRoute();
+const router = useRouter();
+
+// Deep-link desde notificación: ?categoria&sku → enfoca el producto (búsqueda por SKU).
+async function consumeFocusQuery() {
+  const { categoria, sku } = route.query;
+  if (!categoria || !sku) return;
+  if (!categorias.value.some((c) => c.key === categoria)) return; // categoría inexistente/inactiva
+  await focusBySku(String(categoria), String(sku));
+  const q = { ...route.query }; delete q.categoria; delete q.sku;
+  router.replace({ query: Object.keys(q).length ? q : undefined });
+}
+
+onMounted(async () => { await boot(); await consumeFocusQuery(); });
+watch(() => [route.query.categoria, route.query.sku], consumeFocusQuery);
 
 // ── Lógica de Pantalla Completa ──
 const isFullscreenActive = ref(!!document.fullscreenElement);

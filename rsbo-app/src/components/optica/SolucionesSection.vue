@@ -7,7 +7,7 @@ import {
   rowClass,
 } from "@/composables/optica/useOpticaHelpers";
 import { useOpticaSection } from "@/composables/optica/useOpticaSection.js";
-const { filterOptionsFor } = useOpticaSection();
+const { filterOptionsFor, stockBadgeClass } = useOpticaSection();
 import { useBreakpoint } from "@/composables/ui/useBreakpoint.js";
 const { isMobile, isTouch } = useBreakpoint();
 import OpticaToolbar from "./OpticaToolbar.vue";
@@ -201,13 +201,7 @@ function onBannerLeave(el, done) {
               <span class="cell-resumen__title">{{ row.nombre }}</span>
               <span
                 class="stock-badge"
-                :class="
-                  (row.stock || 0) === 0
-                    ? 'stock-badge--danger'
-                    : (row.stock || 0) <= 10
-                    ? 'stock-badge--warn'
-                    : 'stock-badge--ok'
-                "
+                :class="stockBadgeClass('soluciones', row.stock)"
                 >{{ row.stock }}</span
               >
             </div>
@@ -238,13 +232,7 @@ function onBannerLeave(el, done) {
         <b-table-column field="stock" label="Stock" sortable numeric :visible="!isMobile" v-slot="{ row }">
           <span
             class="stock-badge"
-            :class="
-              (row.stock || 0) === 0
-                ? 'stock-badge--danger'
-                : (row.stock || 0) <= 10
-                ? 'stock-badge--warn'
-                : 'stock-badge--ok'
-            "
+            :class="stockBadgeClass('soluciones', row.stock)"
             >{{ row.stock }}</span
           >
         </b-table-column>

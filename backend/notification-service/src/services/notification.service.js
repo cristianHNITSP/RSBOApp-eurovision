@@ -356,8 +356,9 @@ function buildStockMessage(ev) {
 
 function buildStockFields(ev) {
   return {
-    title:    buildStockTitle(ev),
-    message:  buildStockMessage(ev),
+    // El emisor puede mandar título/mensaje legibles (óptica); si no, se arman.
+    title:    ev.title   || buildStockTitle(ev),
+    message:  ev.message || buildStockMessage(ev),
     type:     ev.critCount > 0 ? 'danger' : 'warning',
     priority: priorityFromScore(ev.urgencyScore || 0),
     metadata: {
@@ -365,6 +366,7 @@ function buildStockFields(ev) {
       sheetId:     ev.sheetId,
       sheetLabel:  ev.sheetLabel,
       sheet:       ev.sheet || null,   // identidad: name, sku, proveedor, marca, material, tratamiento, tipoLabel
+      isCL:        !!ev.isCL,          // destino del deep-link: lentes-contacto vs bases-micas
       tipo_matriz: ev.tipo_matriz,
       cells:       ev.cells,
       alertsByAxis: ev.alertsByAxis || null,

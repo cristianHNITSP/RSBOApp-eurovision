@@ -11,6 +11,7 @@ import { fetchCatalog } from "@/services/catalog";
 import { useSheetPagination } from "@/composables/api/useSheetPagination.js";
 import { useWorkspaceTabs } from "@/composables/tabsmanager/useWorkspaceTabs";
 import { useSectionBoot } from "@/composables/tabsmanager/useSectionBoot";
+import { useSheetFocus, sideFromCoords } from "@/composables/inventory/useSheetFocus.js";
 import { INVENTORY_LABELS, INVENTORY_CONFIG } from "@/data/inventory.data";
 
 const props = defineProps({
@@ -19,6 +20,7 @@ const props = defineProps({
 
 const route = useRoute();
 const router = useRouter();
+const sheetFocus = useSheetFocus();
 
 const activeInternalTab = ref(null);
 
@@ -93,9 +95,22 @@ async function focusSheetFromQuery(sheetId) {
       activeSheet.value = sheetId;
     }
   }
+  consumeCellFocus(sheetId);
   const newQuery = { ...route.query };
   delete newQuery.sheetId;
+  delete newQuery.focusCell;
   router.replace({ query: Object.keys(newQuery).length ? newQuery : undefined });
+}
+
+// Deep-link de dioptría: fija el lado interno y pide el foco de celda al grid.
+function consumeCellFocus(sheetId) {
+  const raw = route.query.focusCell;
+  if (!raw || !sheetId) return;
+  let coords = null;
+  try { coords = JSON.parse(decodeURIComponent(String(raw))); } catch { return; }
+  const side = sideFromCoords(coords);
+  if (side) activeInternalTab.value = side;
+  nextTick(() => sheetFocus.request({ sheetId, coords }));
 }
 
 // Solo cambios de query EN CALIENTE (tras el boot); el arranque lo maneja boot()
@@ -120,8 +135,10 @@ onMounted(async () => {
   const focusId = route.query.sheetId || null;
   await boot(focusId);            // catálogo + restaurar sesión + lista; sin salto
   if (focusId) {
+    consumeCellFocus(focusId);
     const newQuery = { ...route.query };
     delete newQuery.sheetId;
+    delete newQuery.focusCell;
     router.replace({ query: Object.keys(newQuery).length ? newQuery : undefined });
   }
 });

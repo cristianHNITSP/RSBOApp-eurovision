@@ -32,6 +32,24 @@ if (REDIS_URL && Redis) {
 // PRIMITIVAS (low-level)
 // ============================================================================
 
+/**
+ * Ejecuta `fn` solo si esta instancia adquiere el lock distribuido (`SET key NX EX`).
+ * Sirve para que un trabajo periódico (cron) corra en UNA réplica, no en todas.
+ * Si Redis no está disponible, degrada ejecutando `fn` (el dedup del consumidor
+ * sigue evitando duplicados aguas abajo).
+ * @returns {Promise<boolean>} true si ejecutó, false si otra instancia tenía el lock.
+ */
+async function withLeaderLock(key, ttlSec, fn) {
+  if (!ready) { await fn(); return true; }
+  let acquired = false;
+  try {
+    acquired = (await client.set(key, "1", "EX", ttlSec, "NX")) === "OK";
+  } catch { acquired = true; /* ante error de lock, no bloquear el trabajo */ }
+  if (!acquired) return false;
+  await fn();
+  return true;
+}
+
 async function cacheGet(key) {
   if (!ready) return null;
   try {
@@ -168,6 +186,7 @@ module.exports = {
   cacheGet,
   cacheSet,
   cacheDel,
+  withLeaderLock,
   invalidatePattern,
   sheetVersion,
   cacheMiddleware,

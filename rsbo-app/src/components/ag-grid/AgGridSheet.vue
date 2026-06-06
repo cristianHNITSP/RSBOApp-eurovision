@@ -139,6 +139,7 @@ import { useGridKeyboardShortcuts } from "@/composables/ag-grid/useGridKeyboardS
 import { useAgGridHandlers } from "@/composables/ag-grid/useAgGridHandlers";
 import { useAgGridFormulaBar } from "@/composables/ag-grid/useAgGridFormulaBar";
 import { labToast } from "@/composables/shared/useLabToast.js";
+import { useSheetFocus } from "@/composables/inventory/useSheetFocus.js";
 
 import { GRID_CONFIG } from "@/components/ag-grid/gridConfig";
 import { resolveDescriptorFactory, GUARD_PREFIX } from "@/components/ag-grid/descriptors";
@@ -332,6 +333,7 @@ async function loadView({ useMemo = true } = {}) {
       gridRows.value = cached;
       showVeil.value = false;
       await nextTick(); resetSort();
+      applyPendingFocus();
       return;
     }
   }
@@ -353,6 +355,7 @@ async function loadView({ useMemo = true } = {}) {
     rememberView(rows);
     gridRows.value = rows;
     await nextTick(); resetSort();
+    applyPendingFocus();
   } catch (e) {
     console.error("[AgGridSheet] loadView error:", e);
     gridRows.value = [];
@@ -360,6 +363,65 @@ async function loadView({ useMemo = true } = {}) {
     showVeil.value = false;
   }
 }
+
+// ─── Foco de celda (deep-link desde notificación) ────────────────
+const sheetFocus = useSheetFocus();
+
+/** Busca el nodo cuya fila (sph/base) coincide con las coords pedidas. */
+function findFocusNode(coords) {
+  const want = coords.sph ?? coords.base ?? coords.base_izq;
+  if (want == null) return null;
+  let found = null;
+  gridApi.value?.forEachNode((node) => {
+    const d = node.data || {};
+    const prim = d.sph ?? d.base ?? d.base_izq;
+    if (prim != null && Math.abs(Number(prim) - Number(want)) < 0.001) found = node;
+  });
+  return found;
+}
+
+/** colId tentativo de la columna alerta (cyl/add) o "existencias". */
+function guessFocusCol(coords) {
+  if (coords.cyl != null) return `cyl_${Math.abs(Number(coords.cyl)).toFixed(2)}`;
+  if (coords.add != null) return `add_${Number(coords.add).toFixed(2)}`;
+  return "existencias";
+}
+
+/** Si hay una petición de foco para ESTA planilla, hace scroll + flash de la dioptría. */
+function applyPendingFocus() {
+  const req = sheetFocus.peek();
+  if (!req || String(req.sheetId) !== String(props.sheetId) || !gridApi.value) return;
+  const coords = req.coords || {};
+  // Eje (tórico): asegurar el grado correcto antes de enfocar (dispara recarga).
+  if (descriptor?.ext?.degreeBar && coords.axis != null && Number(selectedDegree.value) !== Number(coords.axis)) {
+    setDegree(Number(coords.axis));
+    return;
+  }
+  nextTick(() => {
+    const node = findFocusNode(coords);
+    if (!node) {
+      sheetFocus.consume(props.sheetId);
+      labToast.warning("Esa dioptría ya no existe en la planilla.");
+      return;
+    }
+    try {
+      gridApi.value.ensureIndexVisible(node.rowIndex, "middle");
+      const colId = guessFocusCol(coords);
+      const hasCol = !!gridApi.value.getColumn?.(colId);
+      if (hasCol) {
+        gridApi.value.ensureColumnVisible(colId);
+        gridApi.value.setFocusedCell(node.rowIndex, colId);
+        gridApi.value.flashCells({ rowNodes: [node], columns: [colId] });
+      } else {
+        gridApi.value.flashCells({ rowNodes: [node] });
+      }
+    } catch { /* noop */ }
+    sheetFocus.consume(props.sheetId);
+  });
+}
+
+// Una petición nueva (sin recarga de vista) también dispara el foco.
+watch(sheetFocus.reqRef, () => applyPendingFocus());
 
 // Compat con useAgGridHandlers (refresh/discard): recargar la vista.
 async function switchViewReload({ clearCache = true } = {}) {

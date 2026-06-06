@@ -73,6 +73,21 @@ export const armazonEstado = (r) => {
 };
 
 /**
+ * Estado de stock graduado (4 niveles), alineado con el backend (stockState.js).
+ * stock ≤ critical → Crítico · ≤ low → Advertencia · ≤ acceptable → Aceptable · resto → Bueno
+ * @returns {{ level, label, badge }} badge ∈ danger|warn|info|ok
+ */
+export const OPTICA_STOCK_DEFAULTS = { critical: 3, low: 8, acceptable: 15 };
+export const opticaStockState = (stock, thresholds) => {
+  const t = thresholds || OPTICA_STOCK_DEFAULTS;
+  const n = Number(stock || 0);
+  if (n <= (t.critical ?? 3)) return { level: "CRITICO", label: "Stock crítico", badge: "danger" };
+  if (n <= (t.low ?? 8)) return { level: "BAJO", label: "Advertencia de stock", badge: "warn" };
+  if (n <= (t.acceptable ?? 15)) return { level: "NEUTRO", label: "Stock aceptable", badge: "info" };
+  return { level: "BUENO", label: "Stock bueno", badge: "ok" };
+};
+
+/**
  * Retorna el label amigable para una sección técnica.
  */
 export const labelFor = (s) =>

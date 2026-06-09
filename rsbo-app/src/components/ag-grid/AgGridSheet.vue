@@ -123,7 +123,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick, onMounted, toRefs } from "vue";
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount, toRefs } from "vue";
 import { AgGridVue } from "ag-grid-vue3";
 import { AllCommunityModule, ModuleRegistry } from "ag-grid-community";
 import navtools from "@/components/ag-grid/navtools.vue";
@@ -142,6 +142,7 @@ import { labToast } from "@/composables/shared/useLabToast.js";
 import { useSheetFocus } from "@/composables/inventory/useSheetFocus.js";
 
 import { GRID_CONFIG } from "@/components/ag-grid/gridConfig";
+import { norm } from "@/components/ag-grid/utils/ag-grid-utils";
 import { resolveDescriptorFactory, GUARD_PREFIX } from "@/components/ag-grid/descriptors";
 import { StockTooltip } from "@/components/ag-grid/StockTooltip";
 import { stockBadge } from "@/composables/ag-grid/stockTiers";
@@ -366,6 +367,10 @@ async function loadView({ useMemo = true } = {}) {
 
 // ─── Foco de celda (deep-link desde notificación) ────────────────
 const sheetFocus = useSheetFocus();
+// Reintentos máximos mientras se espera a que el lado pedido (sph±/base±) se
+// active; pasado el tope se aplica best-effort en el lado actual.
+const FOCUS_MAX_TRIES = 10;
+let _focusRetry = null; // timer único de respaldo (evita peticiones colgadas)
 
 /** Busca el nodo cuya fila (sph/base) coincide con las coords pedidas. */
 function findFocusNode(coords) {
@@ -387,10 +392,105 @@ function guessFocusCol(coords) {
   return "existencias";
 }
 
+/** Formatea un valor dióptrico con signo (+2.00 / -2.50). */
+function fmtSigned(n) {
+  const v = Number(n);
+  if (Number.isNaN(v)) return String(n);
+  return v > 0 ? `+${v.toFixed(2)}` : v.toFixed(2);
+}
+
+/** Foco por dioptría según MODO (búsqueda):
+ *   - row  → resalta toda la FILA (valor de fila ≈ sph/base).
+ *   - col  → resalta toda la COLUMNA (cyl/add).
+ *   - cell → enfoca la CELDA exacta (fila × columna) con scroll + foco + flash.
+ *  `req = { mode, row, col }`. Si no existe en la vista → aviso. */
+function applyDiopterFocus(req) {
+  const mode = req?.mode || (req?.col != null && req?.row == null ? "col" : "row");
+  const rowVal = req?.row != null ? Number(req.row) : null;
+  const colVal = req?.col != null ? Number(req.col) : null;
+  const near = (a, b) => Math.abs(Number(a) - Number(b)) < 0.001;
+  const flashOpts = { flashDuration: 2200, fadeDuration: 700 };
+  let hit = false;
+
+  // Nodo fila cuyo primario (sph/base) ≈ valor.
+  const findRowNode = (val) => {
+    let node = null;
+    gridApi.value.forEachNode((n) => {
+      const d = n.data || {};
+      const prim = d.sph ?? d.base ?? d.base_izq;
+      if (prim != null && near(prim, val)) node = n;
+    });
+    return node;
+  };
+  // colId(s) reales de una columna por valor (cyl_<norm> / add_<norm>_OD|OI).
+  const findCols = (val) => {
+    const cands = [`cyl_${norm(val)}`, `cyl_${norm(Math.abs(val))}`, `add_${norm(val)}_OD`, `add_${norm(val)}_OI`, `add_${norm(val)}`];
+    return [...new Set(cands)].filter((id) => gridApi.value.getColumn?.(id));
+  };
+
+  try {
+    if (mode === "cell" && rowVal != null && colVal != null) {
+      const node = findRowNode(rowVal);
+      const cols = findCols(colVal);
+      if (node && cols.length) {
+        gridApi.value.ensureIndexVisible(node.rowIndex, "middle");
+        gridApi.value.ensureColumnVisible(cols[0]);
+        gridApi.value.setFocusedCell(node.rowIndex, cols[0]);
+        gridApi.value.flashCells({ rowNodes: [node], columns: cols, ...flashOpts });
+        hit = true;
+      }
+    } else if (mode === "col" && colVal != null) {
+      const cols = findCols(colVal);
+      if (cols.length) {
+        gridApi.value.ensureColumnVisible(cols[0]);
+        const all = [];
+        gridApi.value.forEachNode((n) => all.push(n));
+        gridApi.value.flashCells({ rowNodes: all, columns: cols, ...flashOpts });
+        hit = true;
+      }
+    } else if (rowVal != null) {
+      const node = findRowNode(rowVal);
+      if (node) {
+        gridApi.value.ensureIndexVisible(node.rowIndex, "middle");
+        gridApi.value.flashCells({ rowNodes: [node], ...flashOpts });
+        hit = true;
+      }
+    }
+    const label = mode === "cell" ? `${fmtSigned(rowVal)} × ${fmtSigned(colVal)}`
+      : fmtSigned(mode === "col" ? colVal : rowVal);
+    if (hit) labToast.info(`Dioptría ${label} resaltada`);
+    else labToast.warning(`La dioptría ${label} no existe en esta vista.`);
+  } catch { /* noop */ }
+  sheetFocus.consume(props.sheetId);
+}
+
 /** Si hay una petición de foco para ESTA planilla, hace scroll + flash de la dioptría. */
 function applyPendingFocus() {
   const req = sheetFocus.peek();
   if (!req || String(req.sheetId) !== String(props.sheetId) || !gridApi.value) return;
+
+  // Esperar al LADO correcto (sph±/base±) antes de aplicar/consumir. Si el lado
+  // pedido aún no es el activo NO consumimos: pedimos el cambio de lado y dejamos
+  // que el watch de sphType → loadView reintente ya en el lado correcto. El tope
+  // + timer de respaldo evita que la petición quede colgada si ese lado no existe.
+  if (req.side && req.side !== props.sphType) {
+    req._tries = (req._tries || 0) + 1;
+    if (req._tries === 1) emit("update:internal", req.side); // dispara el cambio de lado
+    if (req._tries < FOCUS_MAX_TRIES) {
+      if (!_focusRetry) {
+        _focusRetry = setTimeout(() => { _focusRetry = null; applyPendingFocus(); }, 120);
+      }
+      return;
+    }
+    // Tope alcanzado: aplicar best-effort en el lado actual (puede avisar "no existe").
+  }
+
+  // Búsqueda de dioptría: foco por modo (row/col/cell).
+  if (req.mode || req.row != null || req.col != null || req.diopter != null) {
+    const dreq = req.mode ? req : { mode: "row", row: req.row ?? req.diopter, col: req.col };
+    nextTick(() => applyDiopterFocus(dreq));
+    return;
+  }
   const coords = req.coords || {};
   // Eje (tórico): asegurar el grado correcto antes de enfocar (dispara recarga).
   if (descriptor?.ext?.degreeBar && coords.axis != null && Number(selectedDegree.value) !== Number(coords.axis)) {
@@ -552,6 +652,10 @@ const onGridReady = async (p) => {
   gridApi.value = p.api;
   await nextTick();
   resetSort();
+  // Si la vista terminó de cargar antes de que el grid estuviera listo, el
+  // applyPendingFocus de loadView salió en vacío (sin gridApi). Reintentar aquí,
+  // pero solo si ya hay filas (no consumir/avisar sobre un grid vacío).
+  if (gridRows.value.length) applyPendingFocus();
 };
 
 const clearFilters = () => { if (gridApi.value) gridApi.value.setGridOption("filterModel", null); };
@@ -565,6 +669,7 @@ const resetSort = () => {
 const handleToggleFilters = () => clearFilters();
 
 onMounted(async () => { await loadAll(); });
+onBeforeUnmount(() => { if (_focusRetry) { clearTimeout(_focusRetry); _focusRetry = null; } });
 
 watch(() => props.sphType, async () => {
   gridHistory.clear();          // el historial es por-vista

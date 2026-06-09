@@ -2,10 +2,11 @@ import { ref } from "vue";
 
 /**
  * useSheetFocus — puente one-shot para enfocar una celda (dioptría) tras un deep-link.
- * La vista deja una "petición" { sheetId, coords }; el AgGridSheet correspondiente la
- * consume (scroll + flash) cuando su matriz está cargada. Singleton a nivel de módulo.
+ * La vista deja una "petición" { sheetId, coords|mode/row/col, side }; el AgGridSheet
+ * correspondiente la consume (scroll + flash) cuando su matriz está cargada Y está en
+ * el lado pedido (side: sph±/base±). Singleton a nivel de módulo.
  */
-const _req = ref(null); // { sheetId, coords } | null
+const _req = ref(null); // { sheetId, coords|mode/row/col, side } | null
 
 export function useSheetFocus() {
   return {

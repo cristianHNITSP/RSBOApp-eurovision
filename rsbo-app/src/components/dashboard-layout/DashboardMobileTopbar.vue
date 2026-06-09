@@ -9,15 +9,8 @@
     </div>
 
     <div class="mobile-topbar__right">
-      <b-tooltip label="Buscar" position="is-bottom" append-to-body>
-        <b-button
-          class="toolbar-btn"
-          type="is-light"
-          icon-pack="fas"
-          icon-left="search"
-          @click="$emit('toggle-search')"
-        />
-      </b-tooltip>
+      <!-- Buscador: Buefy convierte el dropdown en modal nativo en móvil -->
+      <GlobalSearch class="mobile-topbar__search" />
 
       <b-tooltip label="Notificaciones" position="is-bottom" append-to-body>
         <div class="has-badge-wrapper">
@@ -36,7 +29,14 @@
         </div>
       </b-tooltip>
 
-      <b-dropdown position="is-bottom-left" aria-role="menu" append-to-body class="mobile-more">
+
+      <b-dropdown 
+      position="is-bottom-left" 
+      aria-role="menu" 
+      append-to-body 
+      class="mobile-more"
+      >
+      
         <template #trigger>
           <b-button class="toolbar-btn" type="is-light" icon-pack="fas" icon-left="ellipsis-v" />
         </template>
@@ -59,12 +59,14 @@
           <b-icon icon="sign-out-alt" size="is-small" />&nbsp; Cerrar sesión
         </b-dropdown-item>
       </b-dropdown>
+
     </div>
   </div>
 </template>
 
 <script setup>
 import MenuToggle from "../MenuToggle.vue";
+import GlobalSearch from "../search/GlobalSearch.vue";
 
 defineProps({
   pageTitle: String,
@@ -74,9 +76,11 @@ defineProps({
   unreadNotifications: Number
 })
 
-defineEmits(['toggle-sidebar', 'toggle-search', 'toggle-notifications', 'profile', 'accessibility', 'security', 'logout'])
+defineEmits(['toggle-sidebar', 'toggle-notifications', 'profile', 'accessibility', 'security', 'logout'])
 </script>
 
 <style scoped>
 @import "./DashboardMobileTopbar.css";
+
+
 </style>

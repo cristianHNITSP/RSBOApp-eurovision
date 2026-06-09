@@ -83,9 +83,14 @@ router.post("/upsert-daily", async (req, res) => {
       return res.json({ skipped: true, reason: "unchanged" });
     }
 
-    // WS broadcast para actualizar el badge en el frontend
+    // WS broadcast para actualizar el badge en el frontend.
+    // Incluimos roles destino para que clientes de otros roles no refetcheen.
     try {
-      ws.broadcast("NOTIFICATION_NEW", { source: groupKey });
+      ws.broadcast("NOTIFICATION_NEW", {
+        source: groupKey,
+        targetRoles: notification?.targetRoles || targetRoles || [],
+        isGlobal: notification?.isGlobal ?? !!isGlobal,
+      });
     } catch { /* WS opcional */ }
 
     return res.status(accumulated ? 200 : 201).json({ notification, accumulated });

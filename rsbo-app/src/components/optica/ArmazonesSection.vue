@@ -176,8 +176,9 @@ function onBannerLeave(el, done) {
       @create="$emit('create')"
     />
 
-    <!-- Skeleton -->
-    <div v-if="section.loading" class="skeleton-wrap">
+    <!-- Skeleton: solo en la PRIMERA carga (sin datos aún). En cambios de página
+         la tabla permanece montada y usa el overlay :loading → sin parpadeo. -->
+    <div v-if="section.loading && !section.items.length" class="skeleton-wrap">
       <div
         v-for="i in 6"
         :key="i"
@@ -202,7 +203,7 @@ function onBannerLeave(el, done) {
         backend-pagination
         :total="section.total"
         :per-page="section.limit"
-        :current="section.page"
+        :current-page="section.page"
         @page-change="(p) => $emit('page-change', p)"
         pagination-size="is-small"
         :loading="section.loading"

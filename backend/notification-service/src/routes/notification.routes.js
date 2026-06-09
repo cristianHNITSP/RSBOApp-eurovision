@@ -31,10 +31,16 @@ function userCtx(req) {
   return { roleName: req.user.roleName, userId: req.user.id };
 }
 
-async function broadcastCount(roleName, userId, since) {
+// Notifica el badge. `audience` ({ targetRoles, isGlobal }) permite que clientes
+// de otros roles ignoren el evento y no refetcheen su conteo.
+async function broadcastCount(roleName, userId, since, audience = {}) {
   try {
     const count = await svc.countNew({ roleName, userId, since });
-    ws.broadcast('NOTIFICATION_NEW', { count });
+    ws.broadcast('NOTIFICATION_NEW', {
+      count,
+      targetRoles: audience.targetRoles || [],
+      isGlobal: !!audience.isGlobal,
+    });
   } catch {}
 }
 
@@ -78,7 +84,9 @@ router.post('/', auth, requireManager, async (req, res) => {
       createdByName: req.user.email,
     });
 
-    broadcastCount(req.user.roleName, req.user.id);
+    broadcastCount(req.user.roleName, req.user.id, undefined, {
+      targetRoles: notification.targetRoles, isGlobal: notification.isGlobal,
+    });
     res.status(201).json(notification);
   } catch (err) {
     console.error('POST /notification:', err);
@@ -113,7 +121,9 @@ router.post('/grouped', auth, async (req, res) => {
       createdByName:   req.user.email,
     });
 
-    broadcastCount(req.user.roleName, req.user.id);
+    broadcastCount(req.user.roleName, req.user.id, undefined, {
+      targetRoles: notification.targetRoles, isGlobal: notification.isGlobal,
+    });
     res.status(accumulated ? 200 : 201).json(notification);
   } catch (err) {
     console.error('POST /notification/grouped:', err);

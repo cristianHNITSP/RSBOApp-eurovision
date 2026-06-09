@@ -39,6 +39,9 @@ const CLMatrixMultifocal = require("../models/contactlenses/CLMatrixMultifocal")
 
 const TARGET_ROLES = ["eurovision"];
 const COOLDOWN_MS  = 5 * 60 * 60 * 1000; // 5 horas
+// Tope de celdas en el payload del evento (salvaguarda anti-documentos patológicos).
+// Los conteos/urgencia/hash se calculan sobre el set COMPLETO; solo se acota el display.
+const MAX_EVENT_CELLS = 500;
 
 const TIERS = [
   { maxDist: 1.00, critical: 3, low: 6,  neutral: 10 },
@@ -279,6 +282,12 @@ async function _emitAssessedEvent(sheet, alertCells, isCL, alertsByAxis) {
     .join("|");
   const hash = crypto.createHash("sha256").update(fingerprint).digest("hex");
 
+  // Salvaguarda: el payload de celdas se acota para no engordar Mongo/red en matrices
+  // patológicas. critCount/lowCount/urgencyScore/hash ya reflejan el estado COMPLETO.
+  const cellsPayload = alertCells.length > MAX_EVENT_CELLS
+    ? alertCells.slice(0, MAX_EVENT_CELLS)
+    : alertCells;
+
   await eventBus.publish({
     kind:         "stock.assessed",
     v:            1,
@@ -287,7 +296,7 @@ async function _emitAssessedEvent(sheet, alertCells, isCL, alertsByAxis) {
     sheet:        sheetInfo(sheet),
     isCL:         Boolean(isCL),
     tipo_matriz:  sheet.tipo_matriz,
-    cells:        alertCells,
+    cells:        cellsPayload,
     alertsByAxis,
     critCount,
     lowCount,

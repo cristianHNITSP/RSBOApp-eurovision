@@ -1,12 +1,10 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue';
-import { fetchNotifications, pinNotification, dismissNotifApi as apiDismissNotification } from '@/services/notifications.js';
-import { updateDevolutionStatus } from '@/services/devolutions.js';
-
+import { ref, computed, watch, onMounted } from 'vue';
+import { fetchNotifications, pinNotification, dismissNotifApi } from '@/services/notifications.js';
 import { labToast } from '@/composables/shared/useLabToast.js';
-import { coordChips } from '@/components/notifi/shared/useNotifFormat.js';
+import NotificationCard from '@/components/notifi/NotificationCard.vue';
 
-const props = defineProps({
+defineProps({
   user: { type: Object, default: null },
   loading: { type: Boolean, default: false }
 });
@@ -14,15 +12,12 @@ const props = defineProps({
 const notifications = ref([]);
 const isHistoryLoading = ref(true);
 
-const filterType = ref(''); // '', 'info', 'warning', 'danger', 'success'
-const dateRange = ref('indefinido'); // 'diario', 'semana', 'mes', 'indefinido'
+const filterType = ref('');            // '', 'info', 'warning', 'danger', 'success'
+const dateRange = ref('indefinido');   // 'diario' | 'semana' | 'mes' | 'indefinido'
 const showPinnedOnly = ref(false);
 const currentPage = ref(1);
 const perPage = 20;
-
 const total = ref(0);
-const expandedIds = ref(new Set());
-const selectedAxisMap = ref({}); // { notifId: axisLabel }
 
 async function loadNotifications() {
   isHistoryLoading.value = true;
@@ -34,14 +29,6 @@ async function loadNotifications() {
     });
     notifications.value = data.notifications ?? [];
     total.value = data.total ?? 0;
-    
-    // Initialize selected axis for toric notifications
-    notifications.value.forEach(n => {
-      if (!selectedAxisMap.value[n._id]) {
-        const axes = getAxes(n);
-        if (axes.length > 0) selectedAxisMap.value[n._id] = axes[0];
-      }
-    });
   } catch (e) {
     console.error(e);
     labToast.warning('Error al cargar notificaciones');
@@ -50,78 +37,17 @@ async function loadNotifications() {
   }
 }
 
-function canShowDetail(notif) {
-  return !!(notif.metadata && (
-    notif.metadata.type === 'stock_alert' ||
-    notif.metadata.type === 'pending_orders' ||
-    notif.metadata.type === 'new_order' ||
-    notif.metadata.type === 'correction' ||
-    notif.metadata.type === 'dev_approval'
-  ));
-}
-
-async function handleDevAction(devId, folio, action) {
-  try {
-    const status = action === 'approve' ? 'aprobada' : 'rechazada';
-    await updateDevolutionStatus(devId, status, `Acción rápida desde historial de notificaciones`);
-    labToast.success(`Devolución ${folio} ${action === 'approve' ? 'aprobada' : 'rechazada'}`);
-    
-    // Manual local update if needed, but easier to just reload or let user know
-    loadNotifications();
-  } catch (e) {
-    labToast.danger(e?.response?.data?.error || "Error al procesar acción");
-  }
-}
-
-function hasAxisData(notif) {
-  const cells = notif.metadata?.cells || [];
-  return cells.some(c => c.axis !== null && c.axis !== undefined);
-}
-
-function getAxes(notif) {
-  const cells = notif.metadata?.cells || [];
-  const axes = [...new Set(cells.map(c => String(c.axis)).filter(a => a !== 'null' && a !== 'undefined'))];
-  return axes.sort((a, b) => Number(b) - Number(a)); // 180 to 0
-}
-
-function getAlertsForAxis(notif, axis) {
-  const cells = notif.metadata?.cells || [];
-  return cells.filter(c => String(c.axis) === String(axis));
-}
-
-function getCurrentAlerts(notif) {
-  if (!hasAxisData(notif)) return notif.metadata?.cells || [];
-  const axis = selectedAxisMap.value[notif._id] || getAxes(notif)[0];
-  return getAlertsForAxis(notif, axis);
-}
-
-function toggleDetail(id) {
-  if (expandedIds.value.has(id)) expandedIds.value.delete(id);
-  else expandedIds.value.add(id);
-}
-
-function selectAxis(notifId, axis) {
-  selectedAxisMap.value[notifId] = axis;
-}
-
+// Filtros del lado cliente (tipo + fijadas); el server ya pagina/ordena por prioridad.
 const filteredNotifications = computed(() => {
-  let list = [...notifications.value];
-  if (filterType.value) {
-    list = list.filter(n => n.type === filterType.value);
-  }
-  if (showPinnedOnly.value) {
-    list = list.filter(n => n.isPinned);
-  }
-  return list.sort((a, b) => {
-    if (a.isPinned && !b.isPinned) return -1;
-    if (!a.isPinned && b.isPinned) return 1;
-    return 0;
-  });
+  let list = notifications.value;
+  if (filterType.value) list = list.filter((n) => n.type === filterType.value);
+  if (showPinnedOnly.value) list = list.filter((n) => n.isPinned);
+  return [...list].sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0));
 });
 
 async function togglePin(notif) {
   const prev = notif.isPinned;
-  notif.isPinned = !prev; // optimistic
+  notif.isPinned = !prev; // optimista
   try {
     await pinNotification(notif._id);
   } catch {
@@ -132,7 +58,7 @@ async function togglePin(notif) {
 
 async function dismissNotification(notif) {
   try {
-    await apiDismissNotification(notif._id);
+    await dismissNotifApi(notif._id);
     const idx = notifications.value.findIndex((n) => String(n._id) === String(notif._id));
     if (idx !== -1) notifications.value.splice(idx, 1);
   } catch {
@@ -146,53 +72,12 @@ function onPageChange(page) {
   loadNotifications();
 }
 
-import { watch } from 'vue';
 watch(dateRange, () => {
   currentPage.value = 1;
   loadNotifications();
 });
 
-function timeAgo(dateStr) {
-  if (!dateStr) return '';
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  const hours = Math.floor(diff / 3600000);
-  const days = Math.floor(diff / 86400000);
-  if (mins < 1) return 'ahora mismo';
-  if (mins < 60) return `hace ${mins} min`;
-  if (hours < 24) return `hace ${hours} h`;
-  if (days === 1) return 'ayer';
-  return `hace ${days} días`;
-}
-
-function sheetTags(notif) {
-  const s = notif.metadata?.sheet || {};
-  return [s.tipoLabel, s.baseKey, s.material, s.tratamiento, s.marca].filter(Boolean);
-}
-
-function getSquareColor(type) {
-  const map = {
-    info: '#007bff',
-    warning: '#ffc107',
-    danger: '#dc3545',
-    success: '#28a745',
-  };
-  return map[type] || '#6c757d';
-}
-
-function getIcon(type) {
-  const map = {
-    info: 'info-circle',
-    warning: 'exclamation-triangle',
-    danger: 'times-circle',
-    success: 'check-circle',
-  };
-  return map[type] || 'bell';
-}
-
-onMounted(() => {
-  loadNotifications();
-});
+onMounted(loadNotifications);
 </script>
 
 <template>
@@ -200,31 +85,38 @@ onMounted(() => {
     <div class="container is-max-desktop">
       <div class="notifications-container shadow-premium p-5">
 
-        <div class="page-header mb-5">
-          <h1 class="title is-4 has-text-weight-bold">Historial de Notificaciones</h1>
-          <div class="filters">
-            <b-field>
-              <b-select v-model="filterType" placeholder="Filtrar" size="is-small" rounded>
-                <option value="">Todos los tipos</option>
-                <option value="info">Info</option>
-                <option value="warning">Aviso</option>
-                <option value="danger">Crítico</option>
-                <option value="success">Éxito</option>
-              </b-select>
-            </b-field>
-            <b-field>
-              <b-select v-model="dateRange" size="is-small" rounded>
-                <option value="indefinido">Todas las fechas</option>
-                <option value="diario">Hoy</option>
-                <option value="semana">Última semana</option>
-                <option value="mes">Último mes</option>
-              </b-select>
-            </b-field>
-            <b-field>
+        <!-- Cabecera responsive con `level` nativo de Bulma (apila en móvil, sin @media) -->
+        <div class="level mb-5">
+          <div class="level-left">
+            <h1 class="title is-4 has-text-weight-bold">Historial de Notificaciones</h1>
+          </div>
+          <div class="level-right">
+            <div class="level-item">
+              <b-field class="mb-0">
+                <b-select v-model="filterType" placeholder="Filtrar" size="is-small" rounded>
+                  <option value="">Todos los tipos</option>
+                  <option value="info">Info</option>
+                  <option value="warning">Aviso</option>
+                  <option value="danger">Crítico</option>
+                  <option value="success">Éxito</option>
+                </b-select>
+              </b-field>
+            </div>
+            <div class="level-item">
+              <b-field class="mb-0">
+                <b-select v-model="dateRange" size="is-small" rounded>
+                  <option value="indefinido">Todas las fechas</option>
+                  <option value="diario">Hoy</option>
+                  <option value="semana">Última semana</option>
+                  <option value="mes">Último mes</option>
+                </b-select>
+              </b-field>
+            </div>
+            <div class="level-item">
               <b-checkbox v-model="showPinnedOnly" size="is-small" type="is-primary">
                 Solo fijadas
               </b-checkbox>
-            </b-field>
+            </div>
           </div>
         </div>
 
@@ -239,162 +131,22 @@ onMounted(() => {
         </div>
 
         <div v-else class="notifications-list">
-          <div v-for="notif in filteredNotifications" :key="notif._id" class="notif-row-container">
-            <div class="notif-row d-flex pt-3">
-              <!-- Square Icon -->
-              <div class="notif-square mr-3" :style="{ backgroundColor: getSquareColor(notif.type) }"
-                aria-hidden="true">
-                <b-icon :icon="getIcon(notif.type)" pack="fas" size="is-small" type="is-white" />
-              </div>
+          <NotificationCard
+            v-for="notif in filteredNotifications"
+            :key="notif._id"
+            :notif="notif"
+            @toggle-pin="togglePin"
+            @dismiss="dismissNotification"
+          />
 
-              <!-- Content Body -->
-              <div class="notif-content-body pb-3 border-bottom is-flex-grow-1">
-                <div class="is-flex is-justify-content-space-between is-align-items-start">
-                  <div>
-                    <span class="is-flex is-align-items-center mb-1">
-                      <b-tag type="is-dark" class="has-text-weight-bold mr-2" size="is-small">
-                        @{{ notif.createdByName || 'SISTEMA' }}
-                      </b-tag>
-                    </span>
-                    <h3 class="has-text-weight-bold is-size-6 mt-1 has-text-black">{{ notif.title }}</h3>
-                    <div v-if="notif.metadata?.type === 'stock_alert' && notif.metadata.sheet" class="sheet-id-row mt-1">
-                      <code v-if="notif.metadata.sheet.sku" class="sheet-sku">{{ notif.metadata.sheet.sku }}</code>
-                      <b-tag v-for="(t, i) in sheetTags(notif)" :key="i" type="is-light" size="is-small">{{ t }}</b-tag>
-                      <span v-if="notif.metadata.sheet.proveedor" class="sheet-prov">
-                        <b-icon pack="fas" icon="truck" size="is-small" /> {{ notif.metadata.sheet.proveedor }}
-                      </span>
-                    </div>
-                  </div>
-
-                  <!-- Row Actions -->
-                  <div class="notif-row-actions">
-                    <b-button type="is-ghost" size="is-small" :icon-pack="notif.isPinned ? 'fas' : 'far'"
-                      icon-left="star" :class="{ 'has-text-warning': notif.isPinned }" @click="togglePin(notif)" />
-                    <b-button type="is-ghost" size="is-small" icon-pack="fas" icon-left="times"
-                      class="has-text-grey-light hover-danger" @click="dismissNotification(notif)" />
-                  </div>
-                </div>
-
-                <p class="notif-message-text has-text-dark mt-2 mb-3">
-                  {{ notif.message }}
-                </p>
-
-                <div class="is-flex is-align-items-center mb-3">
-                  <span class="is-size-7 has-text-grey mr-3">
-                    <b-icon pack="fas" icon="clock" size="is-small" class="mr-1" />
-                    {{ timeAgo(notif.updatedAt || notif.createdAt) }}
-                  </span>
-
-                  <b-tag v-if="notif.priority === 'critical'" type="is-danger" class="has-text-weight-bold mr-2">ALTA PRIORIDAD</b-tag>
-                  <b-tag v-else-if="notif.type === 'warning'" type="is-warning" class="has-text-weight-bold mr-2">ATENCIÓN</b-tag>
-
-                  <b-button 
-                    v-if="canShowDetail(notif)"
-                    type="is-primary" 
-                    is-light 
-                    rounded 
-                    size="is-small"
-                    class="has-text-weight-bold ml-auto"
-                    :icon-right="expandedIds.has(notif._id) ? 'chevron-up' : 'chevron-down'"
-                    @click="toggleDetail(notif._id)"
-                  >
-                    {{ expandedIds.has(notif._id) ? 'OCULTAR DETALLE' : 'VER DETALLE' }}
-                  </b-button>
-                </div>
-
-                <!-- Expanded Detail Section -->
-                <transition name="fade">
-                  <div v-if="expandedIds.has(notif._id)" class="notif-detail-panel mt-3 p-0 bg-light rounded shadow-inner overflow-hidden">
-                    
-                    <!-- DETALLE: Alerta de stock -->
-                    <template v-if="notif.metadata.type === 'stock_alert'">
-                      <div v-if="hasAxisData(notif)" class="axis-navigator p-3 border-bottom-light bg-white">
-                        <p class="is-size-7 has-text-weight-bold mb-2 has-text-grey">NAVEGAR POR GRADOS (EJE):</p>
-                        <div class="axis-pills">
-                          <button
-                            v-for="axisLabel in getAxes(notif)"
-                            :key="axisLabel"
-                            class="axis-pill"
-                            :class="{ 'active': (selectedAxisMap[notif._id] || getAxes(notif)[0]) === axisLabel }"
-                            @click="selectAxis(notif._id, axisLabel)"
-                          >
-                            {{ axisLabel }}°
-                            <span class="count-badge">{{ getAlertsForAxis(notif, axisLabel).length }}</span>
-                          </button>
-                        </div>
-                      </div>
-
-                      <div class="cells-list-container" style="max-height: 400px; overflow-y: auto;">
-                        <div class="p-3">
-                          <div
-                            v-for="(cell, cidx) in getCurrentAlerts(notif)"
-                            :key="cidx"
-                            class="cell-item border-bottom-light"
-                          >
-                            <b-tag :type="cell.level === 'CRITICO' ? 'is-danger' : 'is-warning'" size="is-small" class="has-text-weight-bold cell-item__level">
-                              {{ cell.level }}
-                            </b-tag>
-                            <span class="cell-coords">
-                              <span v-for="(chip, ci) in coordChips(cell)" :key="ci" class="coord-chip">
-                                <span v-if="chip.k" class="coord-chip__k">{{ chip.k }}</span>
-                                <span class="coord-chip__v">{{ chip.v }}</span>
-                              </span>
-                            </span>
-                            <span class="cell-stock">{{ cell.existencias }} pza{{ cell.existencias !== 1 ? 's' : '' }}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </template>
-
-                    <!-- DETALLE: Devoluciones pendientes agrupadas -->
-                    <template v-else-if="notif.metadata.type === 'dev_approval'">
-                      <div class="p-3 bg-white border-bottom-light">
-                        <p class="is-size-7 has-text-weight-bold has-text-grey">DEVOLUCIONES ESPERANDO REVISIÓN:</p>
-                      </div>
-                      <div class="cells-list-container" style="max-height: 400px; overflow-y: auto;">
-                        <div class="p-0">
-                          <div v-for="dev in notif.metadata.devolutions" :key="dev.id" 
-                               class="p-3 border-bottom-light bg-white is-flex is-justify-content-space-between is-align-items-center">
-                            <div>
-                              <div class="is-flex is-align-items-center">
-                                <span class="has-text-weight-bold is-size-6 mr-2">{{ dev.folio }}</span>
-                                <b-tag type="is-light" size="is-small">{{ dev.reason }}</b-tag>
-                              </div>
-                              <p class="is-size-7 has-text-grey">{{ dev.cliente }} · {{ dev.itemsCount }} ítem(s)</p>
-                            </div>
-                            <div class="buttons are-small">
-                              <b-button type="is-success" icon-left="check" @click="handleDevAction(dev.id, dev.folio, 'approve')">
-                                Aprobar
-                              </b-button>
-                              <b-button type="is-danger" icon-left="times" @click="handleDevAction(dev.id, dev.folio, 'reject')">
-                                Rechazar
-                              </b-button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </template>
-
-                    <div class="p-2 has-text-centered border-top-light bg-white">
-                      <p class="is-size-7 has-text-grey-light">Detalle de notificación</p>
-                    </div>
-
-                  </div>
-                </transition>
-
-              </div>
-            </div>
-          </div>
-
-          <!-- Pagination -->
           <div class="pagination-wrapper mt-6" v-if="total > perPage">
-            <b-pagination 
-              :total="total" 
-              v-model="currentPage" 
-              :per-page="perPage" 
+            <b-pagination
+              :total="total"
+              v-model="currentPage"
+              :per-page="perPage"
               @change="onPageChange"
-              order="is-centered" 
-              rounded 
+              order="is-centered"
+              rounded
             />
           </div>
         </div>
@@ -415,231 +167,9 @@ onMounted(() => {
   box-shadow: var(--shadow-lg);
 }
 
-.notif-detail-panel {
-  background-color: var(--bg-muted);
-  border: 1px solid var(--border-subtle);
-}
-
-.shadow-inner {
-  box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
-}
-
-.axis-pills {
+.notifications-list {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  max-height: 132px;
-  overflow-y: auto;
-}
-
-.axis-pill {
-  border: 1px solid var(--border-subtle);
-  background: var(--surface);
-  padding: 0.4rem 0.75rem;
-  border-radius: 2rem;
-  font-size: 0.75rem;
-  font-weight: 700;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  transition: all 0.2s ease;
-  color: var(--text-secondary);
-}
-
-.axis-pill:hover {
-  border-color: #3b82f6;
-  color: #3b82f6;
-}
-
-.axis-pill.active {
-  background: #3b82f6;
-  border-color: #3b82f6;
-  color: white;
-}
-
-.count-badge {
-  background: rgba(0,0,0,0.1);
-  margin-left: 0.5rem;
-  padding: 0.1rem 0.4rem;
-  border-radius: 1rem;
-  font-size: 0.65rem;
-}
-
-.axis-pill.active .count-badge {
-  background: rgba(255,255,255,0.2);
-}
-
-.sheet-id-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-}
-.sheet-sku {
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.02em;
-  font-size: 0.7rem;
-  font-weight: 700;
-  color: var(--c-primary);
-  background: var(--c-primary-alpha);
-  padding: 0.05rem 0.4rem;
-  border-radius: 5px;
-}
-.sheet-prov {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.2rem;
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: var(--text-muted);
-}
-
-/* Scroll personalizado (estilo Sidebar) dentro del detalle — cross-browser */
-.cells-list-container {
-  scrollbar-width: thin;
-  scrollbar-color: var(--static-color-rgba-148-163-184-0-35) transparent;
-}
-.cells-list-container::-webkit-scrollbar {
-  width: 8px;
-}
-.cells-list-container::-webkit-scrollbar-track {
-  background: transparent;
-}
-.cells-list-container::-webkit-scrollbar-thumb {
-  background: var(--static-color-rgba-148-163-184-0-35);
-  border-radius: 999px;
-}
-.cells-list-container::-webkit-scrollbar-thumb:hover {
-  background: var(--static-color-rgba-148-163-184-0-55);
-}
-
-.border-bottom-light {
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.cell-item {
-  display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 0.6rem;
-  padding: 0.4rem 0;
-}
-
-.cell-item:last-child {
-  border-bottom: none;
-}
-
-.cell-item__level {
-  flex-shrink: 0;
-}
-
-.cell-coords {
-  flex: 1;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
-  min-width: 0;
-}
-
-.coord-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.2rem;
-  padding: 0.05rem 0.4rem;
-  border-radius: 5px;
-  background: var(--c-primary-alpha);
-  font-size: 0.68rem;
-  line-height: 1.35;
-}
-
-.coord-chip__k {
-  font-weight: 700;
-  color: var(--c-primary);
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-}
-
-.coord-chip__v {
-  font-weight: 700;
-  color: var(--text-primary);
-  font-variant-numeric: tabular-nums;
-}
-
-.cell-stock {
-  flex-shrink: 0;
-  font-size: 0.72rem;
-  font-weight: 800;
-  white-space: nowrap;
-  color: var(--text-primary);
-}
-
-.fade-enter-active, .fade-leave-active {
-  transition: opacity 0.3s ease, transform 0.3s ease;
-}
-.fade-enter-from, .fade-leave-to {
-  opacity: 0;
-  transform: translateY(-10px);
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.filters {
-  display: flex;
-  gap: 1.5rem;
-  align-items: center;
-}
-
-.notif-row {
-  display: flex;
-}
-
-.notif-square {
-  flex-shrink: 0;
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.notif-content-body {
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.notif-row-container:last-child .notif-content-body {
-  border-bottom: none;
-}
-
-.notif-message-text {
-  font-size: 0.875rem;
-  line-height: 1.4;
-  white-space: pre-wrap;
-}
-
-.hover-danger:hover {
-  color: #dc3545 !important;
-  background: rgba(220, 53, 69, 0.05) !important;
-}
-
-.notif-row-actions {
-  display: flex;
-  gap: 0.25rem;
-}
-
-@media (max-width: 768px) {
-  .page-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .notifications-page {
-    padding: 1rem;
-  }
 }
 </style>

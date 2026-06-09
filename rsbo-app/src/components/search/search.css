@@ -1,0 +1,180 @@
+/* search.css — estilos del buscador global (no scoped: el contenido del
+   modal se teletransporta, por eso CSS global por tokens). */
+
+/* Modos del buscador */
+.gs-root { display: flex; align-items: center; }
+.gs-root--input { width: 100%; max-width: 540px; }   /* desktop: input llena el centro */
+.gs-root--icon  { width: auto; }                      /* touch: icono compacto al end   */
+.gs-anchor { width: 100%; }
+
+/* Botón icono (touch): idéntico al botón de notificaciones (.toolbar-btn). */
+.gs-iconbtn :deep(.button),
+.gs-iconbtn .button {
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px var(--static-color-rgba-148-163-184-0-22);
+}
+
+/* Menú anclado bajo el input (Teleport to body) — posición vía JS (fixed). */
+.gs-anchored {
+  position: fixed;
+  z-index: 1000;
+}
+.gs-anchored__panel {
+  background: var(--surface-solid, var(--surface));
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+/* Panel del modal */
+.gs-modal { margin: 0; box-shadow: none; }
+.gs-modal .panel-block { padding: 0.75rem; }
+
+/* Resultados: scroll vertical con barra personalizada (cross-browser, por tokens) */
+.gs-modal-results {
+  max-height: 60vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--static-color-rgba-148-163-184-0-35) transparent;
+}
+.gs-modal-results::-webkit-scrollbar { width: 8px; }
+.gs-modal-results::-webkit-scrollbar-track { background: transparent; }
+.gs-modal-results::-webkit-scrollbar-thumb {
+  background: var(--static-color-rgba-148-163-184-0-35);
+  border-radius: 999px;
+}
+.gs-modal-results::-webkit-scrollbar-thumb:hover {
+  background: var(--static-color-rgba-148-163-184-0-55);
+}
+
+/* Contenedor de resultados (sin scroll propio: scrollea .gs-modal-results) */
+.gs-dropdown { min-width: 280px; }
+
+/* Cabecera de grupo */
+.gs-group-header {
+  display: flex; align-items: center; gap: 6px;
+  padding: 10px 14px 5px;
+  font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--text-muted);
+}
+.gs-group-header__icon { font-size: 0.7rem; }
+.gs-group-count {
+  margin-left: auto; background: var(--bg-muted); border-radius: 20px;
+  padding: 1px 7px; font-size: 0.65rem; font-weight: 600;
+  color: var(--text-subtle); letter-spacing: 0; text-transform: none;
+}
+.gs-clear-history {
+  margin-left: auto; background: none; border: none; cursor: pointer;
+  color: var(--text-subtle); font-size: 0.7rem; padding: 2px 4px;
+  border-radius: 4px; transition: color 0.12s, background 0.12s;
+}
+.gs-clear-history:hover { color: var(--c-danger); background: var(--c-danger-alpha); }
+
+/* Item */
+.gs-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 14px; cursor: pointer; transition: background 0.12s;
+}
+.gs-item:hover, .gs-item--active { background: var(--c-primary-alpha); }
+
+.gs-item__icon {
+  flex-shrink: 0; width: 34px; height: 34px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center; font-size: 0.82rem;
+}
+.gs-item__icon--route   { background: var(--c-primary-alpha); color: var(--c-primary); }
+.gs-item__icon--sheet   { background: var(--c-success-alpha); color: var(--c-success); }
+.gs-item__icon--lc      { background: var(--c-info-alpha); color: var(--c-info); }
+.gs-item__icon--optica  { background: var(--c-info-alpha); color: var(--c-info); }
+.gs-item__icon--diopter { background: var(--c-warning-alpha); color: var(--c-warning); }
+.gs-item__icon--history { background: var(--bg-muted); color: var(--text-muted); }
+
+.gs-item__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.gs-item__title {
+  font-size: 0.88rem; font-weight: 500; color: var(--text-primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.gs-item__sub { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.gs-item__material, .gs-item__trat { font-size: 0.75rem; color: var(--text-muted); }
+.gs-item__sku {
+  font-size: 0.7rem; font-weight: 700; color: var(--c-primary);
+  background: var(--c-primary-alpha); padding: 0 5px; border-radius: 5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.gs-item__badge {
+  display: inline-block; padding: 1px 7px; border-radius: 20px;
+  font-size: 0.65rem; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase;
+}
+.gs-item__badge--page    { background: var(--c-primary-alpha); color: var(--c-primary); }
+.gs-item__badge--tipo    { background: var(--c-success-alpha); color: var(--c-success); }
+.gs-item__badge--optica  { background: var(--c-info-alpha); color: var(--c-info); }
+.gs-item__badge--diopter { background: var(--c-warning-alpha); color: var(--c-warning); font-variant-numeric: tabular-nums; }
+
+/* Chips de dioptrías */
+.gs-item__chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+.gs-chip {
+  display: inline-block; padding: 1px 7px; border-radius: 6px;
+  font-size: 0.65rem; font-weight: 500; font-variant-numeric: tabular-nums;
+  background: var(--bg-muted); color: var(--text-secondary);
+  border: 1px solid var(--border); white-space: nowrap;
+}
+.gs-chip--match {
+  background: var(--c-warning-alpha); color: var(--text-primary);
+  border-color: var(--c-warning); font-weight: 700;
+}
+
+/* Botón quitar historial */
+.gs-remove-history {
+  flex-shrink: 0; background: none; border: none; cursor: pointer;
+  color: var(--text-subtle); font-size: 0.7rem; padding: 4px 6px;
+  border-radius: 6px; opacity: 0; transition: opacity 0.12s, color 0.12s, background 0.12s;
+}
+.gs-item--history:hover .gs-remove-history { opacity: 1; }
+.gs-remove-history:hover { color: var(--c-danger); background: var(--c-danger-alpha); }
+
+/* Flecha */
+.gs-item__arrow {
+  flex-shrink: 0; font-size: 0.7rem; color: var(--text-subtle);
+  transition: transform 0.12s, color 0.12s;
+}
+.gs-item:hover .gs-item__arrow, .gs-item--active .gs-item__arrow {
+  transform: translateX(3px); color: var(--text-muted);
+}
+
+/* Highlight */
+.gs-mark { background: var(--c-warning-alpha); color: var(--text-primary); border-radius: 3px; padding: 0 1px; font-style: normal; }
+
+/* Empty / hint */
+.gs-empty { display: flex; flex-direction: column; align-items: center; padding: 28px 16px; gap: 6px; }
+.gs-empty__icon { font-size: 1.6rem; color: var(--text-subtle); margin-bottom: 4px; }
+.gs-empty__title { font-size: 0.88rem; color: var(--text-secondary); }
+.gs-empty__sub { font-size: 0.78rem; color: var(--text-muted); text-align: center; }
+.gs-hint { display: flex; align-items: center; gap: 8px; padding: 10px 16px; font-size: 0.82rem; color: var(--text-muted); flex-wrap: wrap; }
+.gs-hint__icon { font-size: 0.9rem; flex-shrink: 0; }
+.gs-hint code { background: var(--bg-muted); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; font-size: 0.78rem; color: var(--c-primary); }
+
+/* Tutorial de dioptrías (3 modos) */
+.gs-hint--tutorial { flex-direction: column; align-items: stretch; gap: 6px; }
+.gs-hint__row { display: flex; align-items: center; gap: 8px; }
+.gs-hint__modes { margin: 2px 0 0 24px; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; font-size: 0.78rem; }
+.gs-hint__modes b { color: var(--text-secondary); }
+
+/* Skeleton */
+.gs-skeleton { display: flex; align-items: center; gap: 10px; padding: 10px 14px; }
+.gs-sk-icon { flex-shrink: 0; width: 34px; height: 34px; border-radius: 10px; background: var(--bg-muted); animation: gs-shimmer 1.4s infinite; }
+.gs-sk-lines { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+.gs-sk-line { height: 10px; border-radius: 6px; background: var(--bg-muted); animation: gs-shimmer 1.4s infinite; }
+.gs-sk-line--title { width: 60%; }
+.gs-sk-line--sub { width: 40%; }
+@keyframes gs-shimmer { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
+
+/* Footer */
+.gs-footer { display: flex; gap: 12px; padding: 7px 14px; border-top: 1px solid var(--border); font-size: 0.72rem; color: var(--text-subtle); flex-wrap: wrap; }
+.gs-footer__shortcut { margin-left: auto; }
+.gs-footer kbd { display: inline-block; background: var(--bg-muted); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; font-size: 0.68rem; color: var(--text-muted); margin-right: 2px; line-height: 1.6; }
+
+@media (prefers-reduced-motion: reduce) {
+  .gs-sk-icon, .gs-sk-line { animation: none; }
+}

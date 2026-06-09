@@ -37,11 +37,10 @@ function baseFilter(roleName) {
  * Excluye las descartadas por el usuario y añade isPinned/isRead por usuario.
  */
 async function listForUser({ roleName, userId, limit = 50, skip = 0, dateRange }) {
-  console.log(`[NOTIF-DEBUG] listForUser: role=${roleName}, userId=${userId}, dateRange=${dateRange}`);
   const userOid = new mongoose.Types.ObjectId(userId);
-  
+
   const filters = [visibilityFilter(roleName)];
-  
+
   if (!dateRange) {
     // Modo "activas" (panel)
     filters.push(notExpired(), { dismissedBy: { $nin: [userOid] } });
@@ -53,7 +52,7 @@ async function listForUser({ roleName, userId, limit = 50, skip = 0, dateRange }
       if (dateRange === 'diario') startDate.setHours(0,0,0,0);
       else if (dateRange === 'semana') startDate.setDate(now.getDate() - 7);
       else if (dateRange === 'mes') startDate.setMonth(now.getMonth() - 1);
-      
+
       filters.push({ createdAt: { $gte: startDate } });
     }
   }
@@ -62,38 +61,41 @@ async function listForUser({ roleName, userId, limit = 50, skip = 0, dateRange }
 
   const skipVal  = Math.max(0, parseInt(skip || "0"));
   const limitVal = Math.max(1, parseInt(limit || "50"));
+  // `total` solo lo necesita la vista historial (paginada). El panel lo omite → −1 query.
+  const needsTotal = !!dateRange;
 
-  const [notifications, total] = await Promise.all([
-    Notification.aggregate([
-      { $match: filter },
-      {
-        $addFields: {
-          priorityWeight: {
-            $switch: {
-              branches: [
-                { case: { $eq: ["$priority", "critical"] }, then: 4 },
-                { case: { $eq: ["$priority", "high"] },     then: 3 },
-                { case: { $eq: ["$priority", "medium"] },   then: 2 },
-                { case: { $eq: ["$priority", "low"] },      then: 1 }
-              ],
-              default: 0
-            }
+  const pipeline = [
+    { $match: filter },
+    {
+      $addFields: {
+        // isPinned por usuario, calculado en DB (evita enviar pinnedBy completo)
+        isPinned: { $in: [userOid, { $ifNull: ["$pinnedBy", []] }] },
+        priorityWeight: {
+          $switch: {
+            branches: [
+              { case: { $eq: ["$priority", "critical"] }, then: 4 },
+              { case: { $eq: ["$priority", "high"] },     then: 3 },
+              { case: { $eq: ["$priority", "medium"] },   then: 2 },
+              { case: { $eq: ["$priority", "low"] },      then: 1 }
+            ],
+            default: 0
           }
         }
-      },
-      { $sort: { priorityWeight: -1, createdAt: -1 } },
-      { $skip: skipVal },
-      { $limit: limitVal }
-    ]),
-    Notification.countDocuments(filter),
+      }
+    },
+    { $sort: { priorityWeight: -1, createdAt: -1 } },
+    { $skip: skipVal },
+    { $limit: limitVal },
+    // Recortar payload: campos internos que el cliente no usa.
+    { $project: { pinnedBy: 0, dismissedBy: 0, contentHash: 0, priorityWeight: 0 } },
+  ];
+
+  const [notifications, total] = await Promise.all([
+    Notification.aggregate(pipeline),
+    needsTotal ? Notification.countDocuments(filter) : Promise.resolve(undefined),
   ]);
 
-  const userStr = String(userId);
-  const result = notifications.map((n) => ({
-    ...n,
-    _id: String(n._id), // Asegurar que el ID sea string tras agregación
-    isPinned: (n.pinnedBy || []).some((id) => String(id) === userStr),
-  }));
+  const result = notifications.map((n) => ({ ...n, _id: String(n._id) }));
 
   return { notifications: result, total };
 }

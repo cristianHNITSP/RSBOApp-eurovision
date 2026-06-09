@@ -209,22 +209,35 @@
   transform: scale(0.96);
 }
 
-/* ── Animación de expansión líquida ────────────────────────────────────────── */
+/* ── Animación de expansión ────────────────────────────────────────────────
+   El detalle ahora es una lista virtualizada de alto acotado (NotificationCellList),
+   así que la animación es barata: opacity + transform como protagonistas y un
+   max-height ajustado (cap real ≈ header + ejes + viewport) para evitar el lag de
+   animar hasta 800px sobre contenido más corto. */
 .detail-expand-enter-active,
 .detail-expand-leave-active {
-  transition: 
-    max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
-    opacity 0.3s ease, 
-    transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.1);
-  max-height: 800px;
+  transition:
+    max-height 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.22s ease,
+    transform 0.28s cubic-bezier(0.22, 0.61, 0.36, 1);
+  max-height: 520px;
   overflow: hidden;
+  will-change: max-height, opacity, transform;
 }
 
 .detail-expand-enter-from,
 .detail-expand-leave-to {
   max-height: 0;
   opacity: 0;
-  transform: scale(0.98) translateY(-5px);
+  transform: translateY(-5px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .detail-expand-enter-active,
+  .detail-expand-leave-active {
+    transition: opacity 0.15s ease !important;
+    max-height: 520px;
+  }
 }
 
 /* ── Panel de Detalle (Efecto Bóveda / Vault) ──────────────────────────────── */

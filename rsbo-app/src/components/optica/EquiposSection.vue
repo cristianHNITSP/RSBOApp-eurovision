@@ -167,7 +167,7 @@ function onBannerLeave(el, done) {
       @create="$emit('create')"
     />
 
-    <div v-if="section.loading" class="skeleton-wrap">
+    <div v-if="section.loading && !section.items.length" class="skeleton-wrap">
       <div
         v-for="i in 6"
         :key="i"
@@ -190,9 +190,10 @@ function onBannerLeave(el, done) {
         backend-pagination
         :total="section.total"
         :per-page="section.limit"
-        :current="section.page"
+        :current-page="section.page"
         @page-change="(p) => $emit('page-change', p)"
         pagination-size="is-small"
+        :loading="section.loading"
       >
         <!-- Resumen compacto: única columna en móvil -->
         <b-table-column label="Equipo" :visible="isMobile" v-slot="{ row }">

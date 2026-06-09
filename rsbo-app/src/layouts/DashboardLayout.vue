@@ -72,7 +72,6 @@
             :bell-ringing="bellRinging"
             :unread-notifications="activeNotifications"
             @toggle-sidebar="toggleMobileSidebar"
-            @toggle-search="toggleMobileSearch"
             @toggle-notifications="showPanel ? closePanel() : openPanelMobile()"
             @profile="profile"
             @accessibility="goToAccessibility"
@@ -80,12 +79,6 @@
             @logout="logout"
           />
 
-          <!-- Overlay buscador móvil -->
-          <DashboardSearchOverlay
-            :is-open="mobileSearchOpen"
-            v-model="mobileSearchQuery"
-            @close="closeMobileSearch"
-          />
         </section>
 
         <!-- Body -->
@@ -114,13 +107,12 @@ import Sidebar from "../components/Sidebar.vue";
 import SidebarMobile from "../components/SidebarMobile.vue";
 import MenuToggle from "../components/MenuToggle.vue"; // Usado en MobileTopbar
 import NotificationPanel from "../components/NotificationPanel.vue";
-import GlobalSearch from "../components/GlobalSearch.vue";
+import GlobalSearch from "../components/search/GlobalSearch.vue";
 
 // Componentes atómicos de Layout
 import DashboardA11yLayer from "../components/dashboard-layout/DashboardA11yLayer.vue";
 import DashboardToolbar from "../components/dashboard-layout/DashboardToolbar.vue";
 import DashboardMobileTopbar from "../components/dashboard-layout/DashboardMobileTopbar.vue";
-import DashboardSearchOverlay from "../components/dashboard-layout/DashboardSearchOverlay.vue";
 import DashboardFooter from "../components/dashboard-layout/DashboardFooter.vue";
 
 // Composables
@@ -258,30 +250,11 @@ watch(isMobile, (nowMobile) => {
     isMobileSidebarVisible.value = true;
   } else {
     isMobileSidebarVisible.value = false;
-    mobileSearchOpen.value = false;
   }
 });
 
 watch(isSidebarCollapsed, (newVal) => {
   animateSidebarShift(newVal);
-});
-
-/* =========================
-   Mobile Search
-   ========================= */
-const mobileSearchOpen = ref(false);
-const mobileSearchQuery = ref("");
-
-function toggleMobileSearch() {
-  mobileSearchOpen.value = !mobileSearchOpen.value;
-}
-
-function closeMobileSearch() {
-  mobileSearchOpen.value = false;
-}
-
-watch(route, () => {
-  mobileSearchOpen.value = false;
 });
 
 /* =========================
@@ -330,10 +303,25 @@ async function refreshActiveCount() {
   } catch { /* silencioso */ }
 }
 
+// Debounce: colapsa ráfagas de eventos WS en una sola consulta de conteo.
+let _countRefreshTimer = null;
+function scheduleCountRefresh() {
+  clearTimeout(_countRefreshTimer);
+  _countRefreshTimer = setTimeout(refreshActiveCount, 400);
+}
+
+// ¿El evento va dirigido a este usuario? Sin info de audiencia → revalida (compat).
+function audienceMatches(payload) {
+  if (!payload || payload.isGlobal) return true;
+  const roles = payload.targetRoles;
+  if (!Array.isArray(roles) || roles.length === 0) return true;
+  return roles.includes(user.value?.roleName);
+}
+
 function _onLabWs(e) {
   const type = e?.detail?.type;
   if (type === "NOTIFICATION_NEW" || type === "STOCK_ALERT") {
-    refreshActiveCount();
+    if (audienceMatches(e?.detail?.payload)) scheduleCountRefresh();
   }
   
   // Real-time feedback para eventos de laboratorio
@@ -396,6 +384,7 @@ onBeforeUnmount(() => {
   else mql1020.removeListener(onMediaChange1020);
 
   window.removeEventListener("lab:ws", _onLabWs);
+  clearTimeout(_countRefreshTimer);
 });
 </script>
 

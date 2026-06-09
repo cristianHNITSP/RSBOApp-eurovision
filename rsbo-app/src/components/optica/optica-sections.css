@@ -12,6 +12,8 @@
   margin-bottom: 1rem;
   border-radius: var(--radius-lg);
   overflow: hidden;
+  /* Al hacer scrollIntoView (enfoque al seleccionar) deja aire bajo headers sticky */
+  scroll-margin-top: 84px;
 
   /* Glass base — blur controlado por token (--fx-blur=0 en accesibilidad) */
   background: var(--surface-glass);
@@ -189,7 +191,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
-  min-height: 360px;          /* = alto del área scrollable de la b-table */
+  min-height: 440px;          /* = alto TOTAL real de la b-table (body 360 + thead + paginación) */
   padding: 0.5rem 0 3.25rem;  /* el padding inferior reserva el sitio de la paginación */
   box-sizing: border-box;
   overflow: hidden;
@@ -207,10 +209,27 @@
   100% { background-position: -200% 0; }
 }
 
+/* Aparición suave al alternar skeleton↔tabla (evita el "corte" seco). */
+.skeleton-wrap,
+.table-shell {
+  animation: opt-fade-in 220ms ease both;
+}
+@keyframes opt-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-wrap,
+  .table-shell { animation: none; }
+}
+
 /* ── TABLE SHELL + BUEFY TABLE OVERRIDES ── */
 .table-shell {
   overflow: hidden;
   border-radius: var(--radius-md);
+  /* Reserva el alto total real de la b-table (body :height=360 + thead sticky +
+     barra de paginación) para que NO haya salto al pasar del skeleton a la tabla. */
+  min-height: 440px;
 }
 .glass-card {
   border: 1px solid var(--border-light);
@@ -393,4 +412,21 @@
   .item-banner__actions { flex-wrap: wrap; }
   .section-toolbar { flex-direction: column; align-items: stretch; }
   .toolbar-actions { justify-content: flex-end; }
+}
+
+/* ── RESPONSIVE VERTICAL (alto de viewport por dispositivo) ──────────────────
+   En pantallas bajas (móvil apaisado, laptops cortas) el banner se compacta para
+   no comerse el viewport y dejar ver la tabla. Sin position:fixed → no se "buggea"
+   al rotar/redimensionar; el after-enter ya deja max-height auto. */
+@media (max-height: 760px) {
+  .item-banner { padding: 0.7rem 1rem; gap: 0.6rem 1rem; scroll-margin-top: 64px; }
+  .item-banner__sub { display: none; }
+}
+@media (max-height: 600px) {
+  .item-banner { padding: 0.5rem 0.8rem; margin-bottom: 0.6rem; scroll-margin-top: 52px; }
+  .item-banner__name { font-size: 0.85rem; }
+  .item-banner__sku-badge { padding: 0.3rem 0.5rem; }
+  /* No forzar alto reservado cuando hay poco espacio vertical */
+  .table-shell,
+  .skeleton-wrap { min-height: 0; }
 }

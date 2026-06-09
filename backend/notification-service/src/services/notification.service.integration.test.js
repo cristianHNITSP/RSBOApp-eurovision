@@ -121,3 +121,56 @@ maybe("upsertStockAlert — ciclo de vida (CERO contadores)", () => {
     expect(doc.count).toBe(1);
   });
 });
+
+maybe("listForUser — proyección de payload (B1) y total condicional (B2)", () => {
+  const ROLE = "eurovision";
+  const makeNotif = (over = {}) =>
+    Notification.create({
+      title: "T", message: "M", type: "warning", priority: "high",
+      targetRoles: [ROLE], isGlobal: false,
+      createdBy: oid(), createdByName: "Sistema",
+      contentHash: "hhh", metadata: { type: "stock_alert", cells: [] },
+      ...over,
+    });
+
+  test("panel (sin dateRange): NO trae contentHash/dismissedBy/pinnedBy y total es undefined", async () => {
+    const userId = oid();
+    await makeNotif({ pinnedBy: [userId] });
+    const { notifications, total } = await svc.listForUser({ roleName: ROLE, userId, limit: 50 });
+
+    expect(total).toBeUndefined();              // B2: el panel no paga countDocuments
+    expect(notifications).toHaveLength(1);
+    const n = notifications[0];
+    expect(n.contentHash).toBeUndefined();      // B1: campos internos fuera
+    expect(n.dismissedBy).toBeUndefined();
+    expect(n.pinnedBy).toBeUndefined();
+    expect(n.isPinned).toBe(true);              // derivado en DB
+    expect(typeof n._id).toBe("string");
+  });
+
+  test("panel: excluye las descartadas por el usuario", async () => {
+    const userId = oid();
+    await makeNotif({ dismissedBy: [userId] });
+    const { notifications } = await svc.listForUser({ roleName: ROLE, userId, limit: 50 });
+    expect(notifications).toHaveLength(0);
+  });
+
+  test("isPinned=false cuando el pin es de otro usuario", async () => {
+    const userId = oid();
+    await makeNotif({ pinnedBy: [oid()] });
+    const { notifications } = await svc.listForUser({ roleName: ROLE, userId, limit: 50 });
+    expect(notifications[0].isPinned).toBe(false);
+  });
+
+  test("historial (con dateRange): total es numérico", async () => {
+    const userId = oid();
+    await makeNotif();
+    await makeNotif();
+    const { notifications, total } = await svc.listForUser({
+      roleName: ROLE, userId, limit: 50, dateRange: "indefinido",
+    });
+    expect(typeof total).toBe("number");
+    expect(total).toBe(2);
+    expect(notifications).toHaveLength(2);
+  });
+});

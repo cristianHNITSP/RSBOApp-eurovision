@@ -8,9 +8,11 @@ import { ref } from "vue";
  * default ni hay salto al restaurar la sesión.
  *
  * Secuencia (atada al estado real, sin timers):
- *   1. en paralelo: catálogo + restauración de sesión (whenHydrated) + lista (pager.init)
- *   2. decide la pestaña inicial: focusId (deep-link/búsqueda) gana; si no, la
- *      última sesión resuelta por el store (activeId); si no, "nueva".
+ *   1. en paralelo: catálogo + restauración de sesión (whenHydrated) + lista
+ *      (pager.init, con focusId si lo hay → carga su página).
+ *   2. pestaña inicial = última sesión del store (activeId) o "nueva". El deep-link
+ *      (focusId) lo abre useSheetDeepLink DESPUÉS del boot (openTemplate), porque
+ *      abrir una pestaña real no es solo setear el id.
  *   3. booting → false: recién aquí se revela el TabsManager ya apuntando al tab correcto.
  *
  * @param {object}   o
@@ -31,11 +33,11 @@ export function useSectionBoot({ pager, ws, loadCatalog, newTabId = "nueva" }) {
       pager.init(focusId || null),
     ]);
 
-    if (focusId && pager.sheets.find((s) => s.id === focusId)) {
-      activeSheet.value = focusId;                 // deep-link / búsqueda
-    } else {
-      activeSheet.value = ws?.activeId?.value || newTabId; // última sesión (o "nueva")
-    }
+    // Restaura SIEMPRE la última sesión. La apertura/activación de un deep-link
+    // (focusId) la hace useSheetDeepLink.consumeRouteFocus tras el boot, abriendo
+    // la planilla como pestaña real (openTemplate) — no basta con setear el id.
+    // Aun así pasamos focusId a pager.init (arriba) para cargar su página.
+    activeSheet.value = ws?.activeId?.value || newTabId;
 
     booting.value = false;
   }

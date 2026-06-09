@@ -1,25 +1,23 @@
 <!-- src/views/inventario/LentesContacto.vue -->
 <script setup>
-import { computed, ref, onMounted, watch, nextTick } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { computed, ref, onMounted } from "vue";
+import { useRoute } from "vue-router";
 import TabsManager from "@/components/TabsManager.vue";
 import SectionLoadingOverlay from "@/components/SectionLoadingOverlay.vue";
 import { labToast } from "@/composables/shared/useLabToast.js";
 
 
-import { listContactLensSheets } from "@/services/contactlenses";
+import { listContactLensSheets, getContactLensSheet } from "@/services/contactlenses";
 import { useSheetPagination } from "@/composables/api/useSheetPagination.js";
 import { useWorkspaceTabs } from "@/composables/tabsmanager/useWorkspaceTabs";
 import { useSectionBoot } from "@/composables/tabsmanager/useSectionBoot";
-import { useSheetFocus, sideFromCoords } from "@/composables/inventory/useSheetFocus.js";
+import { useSheetDeepLink } from "@/composables/inventory/useSheetDeepLink.js";
 
 const props = defineProps({
   user: { type: Object, required: false, default: null }
 });
 
-const route  = useRoute();
-const router = useRouter();
-const sheetFocus = useSheetFocus();
+const route = useRoute();
 
 const activeInternalTab = ref(null);
 
@@ -80,41 +78,11 @@ const dynamicSheets = computed(() => [
 ]);
 
 /* ─────────────────────────────────────────────────────────────────────────
-   Foco desde búsqueda global
+   Deep-link (buscador + notificaciones): abre la planilla como pestaña real,
+   fija el lado y deja la petición de foco. El watch en caliente lo cablea el
+   composable; el arranque en frío lo dispara onMounted tras el boot.
 ───────────────────────────────────────────────────────────────────────── */
-async function focusSheetFromQuery(sheetId) {
-  if (!sheetId) return;
-
-  if (pager.sheets.find((s) => s.id === sheetId)) {
-    activeSheet.value = sheetId;
-  } else {
-    await pager.init(sheetId);
-    await nextTick();
-    if (pager.sheets.find((s) => s.id === sheetId)) {
-      activeSheet.value = sheetId;
-    }
-  }
-
-  consumeCellFocus(sheetId);
-  const newQuery = { ...route.query };
-  delete newQuery.sheetId;
-  delete newQuery.focusCell;
-  router.replace({ query: Object.keys(newQuery).length ? newQuery : undefined });
-}
-
-// Deep-link de dioptría: fija el lado interno y pide el foco de celda al grid.
-function consumeCellFocus(sheetId) {
-  const raw = route.query.focusCell;
-  if (!raw || !sheetId) return;
-  let coords = null;
-  try { coords = JSON.parse(decodeURIComponent(String(raw))); } catch { return; }
-  const side = sideFromCoords(coords);
-  if (side) activeInternalTab.value = side;
-  nextTick(() => sheetFocus.request({ sheetId, coords }));
-}
-
-// Solo cambios de query EN CALIENTE (tras el boot); el arranque lo maneja boot()
-watch(() => route.query.sheetId, (id) => { if (id) focusSheetFromQuery(id); });
+const deepLink = useSheetDeepLink({ pager, ws, activeInternalTab, getSheetMeta: getContactLensSheet });
 
 /* ─────────────────────────────────────────────────────────────────────────
    Carga inicial (Etapa 1: loading global + restaurar sesión sin salto)
@@ -122,13 +90,7 @@ watch(() => route.query.sheetId, (id) => { if (id) focusSheetFromQuery(id); });
 onMounted(async () => {
   const focusId = route.query.sheetId || null;
   await boot(focusId);
-  if (focusId) {
-    consumeCellFocus(focusId);
-    const newQuery = { ...route.query };
-    delete newQuery.sheetId;
-    delete newQuery.focusCell;
-    router.replace({ query: Object.keys(newQuery).length ? newQuery : undefined });
-  }
+  if (focusId) await deepLink.consumeRouteFocus(focusId); // abre + enfoca + limpia query
 });
 
 /* ─────────────────────────────────────────────────────────────────────────

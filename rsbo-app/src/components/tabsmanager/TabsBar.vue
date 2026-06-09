@@ -238,6 +238,10 @@ function _setupObservers() {
 onMounted(() => {
   _setupSortable();
   _setupObservers();
+  // Deep-link (búsqueda/notificación desde otra página): la pestaña activa ya
+  // viene fijada al montar, así que el watch de activeId no dispara. Forzamos
+  // aquí el scroll + pulse inicial.
+  nextTick(() => scrollToActiveTab(props.activeId));
 });
 
 onBeforeUnmount(() => {
@@ -266,29 +270,36 @@ watch(
   }
 );
 
-// Scroll to active tab logic
+// ── Scroll + pulse hasta la pestaña activa ───────────────────────────────
+// Reintenta hasta que el tab exista en el DOM: al venir de un deep-link
+// (búsqueda/notificación) la pestaña puede renderizarse un instante después.
+function scrollToActiveTab(id, tries = 0) {
+  if (!id || id === "nueva") return;
+  // El scroll horizontal real vive en .tabs-sortable-zone (overflow-x:auto),
+  // NO en .tabs-wrapper. Las pestañas de planilla están dentro de esa zona.
+  const scroller = sortableZone.value;
+  const el = scroller?.querySelector(`[data-id="${id}"]`);
+  if (!el) {
+    if (tries < 12) setTimeout(() => scrollToActiveTab(id, tries + 1), 80); // ~1s máx
+    return;
+  }
+
+  // Centrar: delta del rect del tab respecto al scroller + su scrollLeft actual
+  // (robusto sin depender de offsetParent).
+  const sRect = scroller.getBoundingClientRect();
+  const eRect = el.getBoundingClientRect();
+  const target =
+    scroller.scrollLeft + (eRect.left - sRect.left) - scroller.clientWidth / 2 + eRect.width / 2;
+
+  scroller.scrollTo({ left: Math.max(0, target), behavior: "smooth" });
+  el.classList.add("tab-focus-pulse");
+  setTimeout(() => el.classList.remove("tab-focus-pulse"), 900);
+}
+
+// Cambios en caliente (clic / cambio de pestaña ya montada).
 watch(
   () => props.activeId,
-  async (id) => {
-    if (!id || id === "nueva") return;
-    await nextTick();
-    const container = tabsContainer.value;
-    if (!container) return;
-    const el = container.querySelector(`[data-id="${id}"]`);
-    if (!el) return;
-
-    const containerRect = container.getBoundingClientRect();
-    const elRect = el.getBoundingClientRect();
-    const scrollLeft =
-      container.scrollLeft +
-      (elRect.left - containerRect.left) -
-      containerRect.width / 2 +
-      elRect.width / 2;
-
-    container.scrollTo({ left: scrollLeft, behavior: "smooth" });
-    el.classList.add("tab-focus-pulse");
-    setTimeout(() => el.classList.remove("tab-focus-pulse"), 900);
-  }
+  async (id) => { await nextTick(); scrollToActiveTab(id); }
 );
 
 </script>

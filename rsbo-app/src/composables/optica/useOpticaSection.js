@@ -1,4 +1,4 @@
-import { reactive, ref, watch } from "vue";
+import { reactive, ref, watch, nextTick } from "vue";
 import { labToast } from "@/composables/shared/useLabToast.js";
 import { categoriasService } from "@/services/optica.js";
 import { getPreferences, setActiveTab, setViewState } from "@/services/preferencesService.js";
@@ -159,6 +159,22 @@ function createStore(SVC) {
     s.selected = row;
     s.bannerPulse = true;
     setTimeout(() => { s.bannerPulse = false; }, 400);
+    // Enfoca el banner: lo lleva a la vista en cualquier resolución/scroll.
+    // Solo hay un .item-banner montado (DynamicTabs renderiza la tab activa).
+    // Reintenta hasta que el banner exista: al venir de búsqueda (deep-link) el
+    // panel de DynamicTabs puede estar aún animando/montándose, así que esperamos.
+    if (typeof document !== "undefined" && row) {
+      let tries = 0;
+      const scrollToBanner = () => {
+        const el = document.querySelector(".optica-tab-content .item-banner");
+        if (el && el.scrollIntoView) {
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+          return;
+        }
+        if (tries++ < 20) setTimeout(scrollToBanner, 60); // ~1.2s máx
+      };
+      nextTick(() => requestAnimationFrame(scrollToBanner));
+    }
   }
 
   function toggleTrash(key) {

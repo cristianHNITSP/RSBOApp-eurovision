@@ -39,13 +39,18 @@ async function handle(event) {
     // Cadencia de "spam" como rate-limiter atómico en Redis, GRADUADA por urgencia:
     // crítico repesta seguido, advertencia espaciado (y siempre menos de noche).
     const resurface = await acquireSpamSlot(event.sheetId, redis, event.urgencyScore);
-    const { changed, action } = await svc.upsertStockAlert(event, { resurface });
+    const { changed, action, notification } = await svc.upsertStockAlert(event, { resurface });
     // Al regenerar el ciclo (3 días), libera el lock para que el nuevo arranque limpio.
     if (action === "regenerate") await releaseSpamSlot(event.sheetId);
-    if (changed) ws.broadcast("NOTIFICATION_NEW", { source: `stock_alert:${event.sheetId}` });
+    if (changed) ws.broadcast("NOTIFICATION_NEW", {
+      source: `stock_alert:${event.sheetId}`,
+      targetRoles: notification?.targetRoles || [],
+      isGlobal: !!notification?.isGlobal,
+    });
   } else if (event.kind === "stock.cleared") {
     const { changed } = await svc.clearStockAlert(event.sheetId);
     await releaseSpamSlot(event.sheetId);
+    // cleared: no conocemos roles aquí; broadcast neutro (todos revalidan su badge).
     if (changed) ws.broadcast("NOTIFICATION_NEW", { source: `stock_alert:${event.sheetId}` });
   }
 }

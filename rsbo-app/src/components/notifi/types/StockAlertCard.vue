@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from "vue";
-import { coordChips } from "../shared/useNotifFormat.js";
+import NotificationCellList from "../shared/NotificationCellList.vue";
 import { useNotificationNavigate } from "@/composables/notifi/useNotificationNavigate.js";
 
 const props = defineProps({ notif: { type: Object, required: true } });
@@ -10,7 +10,6 @@ const openSheet = () => goToNotification(props.notif);
 const openCell = (cell) => goToNotification(props.notif, { cell });
 
 const isExpanded = ref(false);
-const selectedAxis = ref(null);
 
 const meta = computed(() => props.notif.metadata || {});
 const sheet = computed(() => meta.value.sheet || {});
@@ -21,16 +20,6 @@ const sheetTags = computed(() => {
 const cells = computed(() => meta.value.cells || []);
 const critCount = computed(() => meta.value.critCount ?? cells.value.filter((c) => c.level === "CRITICO").length);
 const lowCount = computed(() => meta.value.lowCount ?? cells.value.filter((c) => c.level === "BAJO").length);
-
-const hasAxisData = computed(() => cells.value.some((c) => c.axis !== null && c.axis !== undefined));
-const axes = computed(() =>
-  [...new Set(cells.value.map((c) => String(c.axis)).filter((a) => a !== "null" && a !== "undefined"))]
-    .sort((a, b) => Number(b) - Number(a))
-);
-const activeAxis = computed(() => selectedAxis.value || axes.value[0]);
-const currentCells = computed(() =>
-  hasAxisData.value ? cells.value.filter((c) => String(c.axis) === String(activeAxis.value)) : cells.value
-);
 </script>
 
 <template>
@@ -61,56 +50,28 @@ const currentCells = computed(() =>
       </span>
     </div>
 
-    <button v-if="cells.length" class="detail-toggle" @click="isExpanded = !isExpanded">
+    <!-- Toggle propio (confiable): arranca colapsado y alterna isExpanded -->
+    <button
+      v-if="cells.length"
+      type="button"
+      class="detail-toggle"
+      :aria-expanded="isExpanded"
+      :aria-controls="`notif-detail-${notif._id}`"
+      @click="isExpanded = !isExpanded"
+    >
       <span>{{ isExpanded ? "Ocultar detalle" : "Ver detalle" }}</span>
       <b-icon pack="fas" :icon="isExpanded ? 'chevron-up' : 'chevron-down'" size="is-small" />
     </button>
 
+    <!-- Detalle: transición barata (opacity/transform/max-height acotado), lista extraída -->
     <transition name="detail-expand">
-      <div v-if="isExpanded && cells.length" class="detail-panel">
-        <div class="detail-header">
-          <span class="detail-header__label">{{ meta.sheetLabel }}</span>
-          <span class="detail-header__counts">
-            <span v-if="critCount > 0" class="level-badge level-badge--critico">{{ critCount }} CRÍTICO</span>
-          </span>
+      <div v-if="isExpanded && cells.length" :id="`notif-detail-${notif._id}`" class="detail-panel">
+        <div class="is-flex is-justify-content-space-between is-align-items-center mb-1">
+          <span class="is-size-7 has-text-weight-bold is-uppercase has-text-grey">{{ meta.sheetLabel }}</span>
+          <span v-if="critCount > 0" class="tag is-danger is-small">{{ critCount }} CRÍTICO</span>
         </div>
 
-        <!-- Navegador de grados (ejes) -->
-        <div v-if="hasAxisData" class="axis-navigator-mini mb-3">
-          <div class="axis-pills-mini">
-            <button
-              v-for="ax in axes"
-              :key="ax"
-              class="axis-pill-mini"
-              :class="{ active: activeAxis === ax }"
-              @click="selectedAxis = ax"
-            >{{ ax }}°</button>
-          </div>
-        </div>
-
-        <div class="cell-list-container-mini" :style="{ maxHeight: hasAxisData ? '250px' : '400px' }">
-          <ul class="cell-list">
-            <li v-for="(cell, idx) in currentCells" :key="idx" class="cell-row cell-row--clickable"
-              role="button" tabindex="0" title="Abrir y enfocar esta dioptría"
-              @click.stop="openCell(cell)" @keydown.enter.stop="openCell(cell)">
-              <span
-                class="level-badge"
-                :class="cell.level === 'CRITICO' ? 'level-badge--critico' : 'level-badge--bajo'"
-              >{{ cell.level }}</span>
-              <span class="cell-coords">
-                <span v-for="(chip, ci) in coordChips(cell)" :key="ci" class="coord-chip">
-                  <span v-if="chip.k" class="coord-chip__k">{{ chip.k }}</span>
-                  <span class="coord-chip__v">{{ chip.v }}</span>
-                </span>
-              </span>
-              <span class="cell-stock">{{ cell.existencias }} pza{{ cell.existencias !== 1 ? "s" : "" }}</span>
-            </li>
-          </ul>
-        </div>
-
-        <div v-if="hasAxisData" class="detail-footer-mini pt-2">
-          Mostrando eje {{ activeAxis }}° ({{ currentCells.length }} ítems)
-        </div>
+        <NotificationCellList :cells="cells" @cell-click="openCell" />
       </div>
     </transition>
   </div>
@@ -151,8 +112,6 @@ const currentCells = computed(() =>
 }
 .sheet-id--clickable:hover { background: var(--c-primary-alpha); }
 .sheet-id__go { margin-left: auto; color: var(--c-primary); opacity: 0.65; }
-.cell-row--clickable { cursor: pointer; border-radius: 6px; transition: background 140ms ease; }
-.cell-row--clickable:hover { background: var(--c-primary-alpha); }
 .sheet-id__name {
   font-size: 0.74rem;
   font-weight: 700;
@@ -174,32 +133,5 @@ const currentCells = computed(() =>
   font-size: 0.68rem;
   font-weight: 600;
   color: var(--text-muted);
-}
-.cell-coords {
-  flex: 1;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
-}
-.coord-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.2rem;
-  padding: 0.05rem 0.35rem;
-  border-radius: 5px;
-  background: var(--c-primary-alpha);
-  font-size: 0.62rem;
-  line-height: 1.3;
-}
-.coord-chip__k {
-  font-weight: 700;
-  color: var(--c-primary);
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-}
-.coord-chip__v {
-  font-weight: 700;
-  color: var(--text-primary);
-  font-variant-numeric: tabular-nums;
 }
 </style>

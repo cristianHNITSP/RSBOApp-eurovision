@@ -31,11 +31,17 @@ const devOrigins = APP_CONSTANTS.DEV_ORIGINS;
 const allowedOrigins = Array.from(new Set([...envOrigins, ...devOrigins]));
 console.log("✅ CORS allowed origins:", allowedOrigins);
 
+// En desarrollo se permite cualquier origen de red privada (LAN) para testear
+// desde móvil/tablet. En producción NO aplica (allowlist estricta).
+const IS_DEV = process.env.NODE_ENV !== "production";
+const LAN_ORIGIN_RX = /^https?:\/\/(localhost|127\.0\.0\.1|10(\.\d{1,3}){3}|192\.168(\.\d{1,3}){2}|172\.(1[6-9]|2\d|3[01])(\.\d{1,3}){2})(:\d+)?$/;
+const isAllowedOrigin = (origin) =>
+  !origin || allowedOrigins.includes(origin) || (IS_DEV && LAN_ORIGIN_RX.test(origin));
+
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) return callback(null, true);
+      if (isAllowedOrigin(origin)) return callback(null, true);
       console.warn(`❌ CORS bloqueado para origen no permitido: ${origin}`);
       return callback(new Error("Not allowed by CORS"));
     },

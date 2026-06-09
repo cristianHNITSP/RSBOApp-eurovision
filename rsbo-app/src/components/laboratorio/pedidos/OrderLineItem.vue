@@ -53,7 +53,7 @@ const mermaPrefill = computed(() => ({
   sheet:            props.line?.lineSheetId || props.orderSheetId,
   matrixKey:        props.line?.matrixKey,
   eye:              props.line?.eye || null,
-  codebar:          props.line?.codebar || null,
+  qr:               props.line?.qr || null,
   params:           props.line?.params  || {},
 }));
 

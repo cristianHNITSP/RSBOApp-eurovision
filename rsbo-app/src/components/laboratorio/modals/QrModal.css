@@ -1,6 +1,6 @@
-/* rsbo-app/src/components/laboratorio/modals/BarcodeModal.css */
+/* rsbo-app/src/components/laboratorio/modals/QrModal.css */
 
-.barcode-modal__code {
+.qr-modal__code {
   font-weight: 1000;
   font-size: 1.1rem;
   margin-bottom: .35rem;
@@ -8,7 +8,7 @@
   color: var(--text-primary);
 }
 
-.barcode-modal__img {
+.qr-modal__img {
   display: flex;
   justify-content: center;
   padding: .75rem;
@@ -17,14 +17,9 @@
   border-radius: 16px;
 }
 
-.barcode-wrap svg {
+.qr-modal__img .qr-img {
   max-width: 100%;
   height: auto;
-}
-
-.barcode-modal__validity {
-  display: flex;
-  justify-content: center;
 }
 
 .copy-feedback {

@@ -15,7 +15,7 @@
           <i class="fas fa-layer-group mr-2"></i>{{ lab.sheetsDB.value.length }} planillas
         </span>
         <span class="chip">
-          <i class="fas fa-barcode mr-2"></i>{{ lab.totalCodes.value }} códigos
+          <i class="fas fa-qrcode mr-2"></i>{{ lab.totalCodes.value }} códigos
         </span>
         <span class="chip">
           <i class="fas fa-clipboard-list mr-2"></i>{{ lab.ordersDB.value.length }} pedidos

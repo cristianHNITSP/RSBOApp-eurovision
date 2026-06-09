@@ -33,11 +33,11 @@
             </b-select>
           </b-field>
 
-          <b-field label="Código de barras (opcional)" class="mb-3">
+          <b-field label="Código QR (opcional)" class="mb-3">
             <b-input
-              v-model="lab.correction.codebar"
-              placeholder="Ej: 2790000000011"
-              icon="barcode"
+              v-model="lab.correction.qr"
+              placeholder="Ej: RSBO|...|SPH_CYL|..."
+              icon="qrcode"
             />
           </b-field>
 

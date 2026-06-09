@@ -23,7 +23,7 @@ export function useLabEvents() {
     rawCreatedAt: e?.createdAt || null,
     sheetId: e?.details?.sheetId || (e?.sheet ? String(e.sheet) : null),
     orderId: e?.order ? String(e.order) : null,
-    codebar: e?.details?.codebar || "",
+    qr: e?.details?.qr ?? e?.details?.codebar ?? "",
     message: e?.details?.message || "",
     actorName: e?.actor?.name || "—"
   });

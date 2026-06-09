@@ -12,6 +12,8 @@
       <!-- Buscador: Buefy convierte el dropdown en modal nativo en móvil -->
       <GlobalSearch class="mobile-topbar__search" />
 
+      <ScanMenu />
+
       <b-tooltip label="Notificaciones" position="is-bottom" append-to-body>
         <div class="has-badge-wrapper">
           <b-button
@@ -37,6 +39,7 @@
 <script setup>
 import MenuToggle from "../MenuToggle.vue";
 import GlobalSearch from "../search/GlobalSearch.vue";
+import ScanMenu from "../scan/ScanMenu.vue";
 
 defineProps({
   pageTitle: String,

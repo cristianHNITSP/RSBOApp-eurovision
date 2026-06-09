@@ -12,7 +12,6 @@ import {
 import { normalizeAck } from "@/utils/errorSanitizer";
 import { createGroupedNotification } from "@/services/notifications";
 import { normalizeOrder, getMicaTypeName, buildRowTitle } from "./useLabMappers";
-import { isEan13 } from "@/utils/ean13";
 import { labToast } from "@/composables/shared/useLabToast.js";
 
 export function useLabMutations({ getUser, sheets, items, orders, events, notify, mode }) {
@@ -30,10 +29,10 @@ export function useLabMutations({ getUser, sheets, items, orders, events, notify
   const scanCode = ref("");
 
   const correctionOpen = ref(false);
-  const correction = reactive({ orderId: "", codebar: "", message: "" });
+  const correction = reactive({ orderId: "", qr: "", message: "" });
 
-  const barcodeOpen = ref(false);
-  const barcodeValue = ref("");
+  const qrOpen = ref(false);
+  const qrValue = ref("");
 
   const actorRef = () => {
     if (typeof getUser === "function") {
@@ -47,28 +46,28 @@ export function useLabMutations({ getUser, sheets, items, orders, events, notify
     return undefined;
   };
 
-  const openBarcode = (cb) => {
-    barcodeValue.value = String(cb || "").trim();
-    barcodeOpen.value = true;
+  const openQr = (code) => {
+    qrValue.value = String(code || "").trim();
+    qrOpen.value = true;
   };
 
-  const copyCodebar = async (cb) => {
+  const copyQr = async (code) => {
     try {
-      await navigator.clipboard.writeText(cb);
+      await navigator.clipboard.writeText(code);
       labToast.show("Copiado al portapapeles", "is-success", 2000);
     } catch {
       notify("Error al copiar al portapapeles", "is-danger");
     }
   };
 
-  const printBarcode = (cb) => {
-    notify(`Imprimiendo etiqueta: ${cb} (Simulado)`, "is-info");
+  const printQr = (code) => {
+    notify(`Imprimiendo etiqueta QR: ${code} (Simulado)`, "is-info");
   };
 
   const addToDraft = (row) => {
     const sheet = sheets.selectedSheet.value;
     if (!sheet?.id) return;
-    const cb = String(row?.codebar || "").trim();
+    const cb = String(row?.qr || "").trim();
     if (!cb) return;
 
     const lineKey = `${sheet.id}__${cb}`;
@@ -83,7 +82,7 @@ export function useLabMutations({ getUser, sheets, items, orders, events, notify
     const micaType = getMicaTypeName(sheet.tipo_matriz);
     draftLines.value.push({
       key: lineKey,
-      codebar: cb,
+      qr: cb,
       title,
       qty: 1,
       stock: Number(row.existencias || 0),
@@ -104,7 +103,7 @@ export function useLabMutations({ getUser, sheets, items, orders, events, notify
         cliente: String(draftCliente.value || "").trim(),
         note: String(draftNote.value || "").trim(),
         lines: draftLines.value.map((l) => ({
-          codebar: l.codebar,
+          qr: l.qr,
           qty: Number(l.qty || 1),
           sheetId: l.sheetId
         })),
@@ -135,13 +134,13 @@ export function useLabMutations({ getUser, sheets, items, orders, events, notify
       notify("No se puede surtir un pedido cerrado o cancelado", "is-warning");
       return;
     }
-    // Sanitización: Solo dejar caracteres alfanuméricos
-    const cb = String(scanCode.value || "").trim().replace(/[^a-zA-Z0-9]/g, "");
+    // QR interno (RSBO|...): se conserva tal cual, sin sanitizar separadores.
+    const cb = String(scanCode.value || "").trim();
     if (!cb) return;
 
     loadingScan.value = true;
     try {
-      const { data } = await scanOrderService(order.id, { codebar: cb, qty: 1, actor: actorRef() });
+      const { data } = await scanOrderService(order.id, { qr: cb, qty: 1, actor: actorRef() });
       const updated = normalizeOrder(data?.data);
       
       orders.updateOrderInLocalDB(updated);
@@ -234,7 +233,7 @@ export function useLabMutations({ getUser, sheets, items, orders, events, notify
     if (!orderId || message.length < 3) return;
     loadingSubmitCorrection.value = true;
     try {
-      await requestCorrectionService({ orderId, codebar: correction.codebar || null, message, actor: actorRef() });
+      await requestCorrectionService({ orderId, qr: correction.qr || null, message, actor: actorRef() });
       correctionOpen.value = false;
       correction.message = "";
       await events.loadEvents();
@@ -290,12 +289,11 @@ export function useLabMutations({ getUser, sheets, items, orders, events, notify
     scanCode,
     correctionOpen,
     correction,
-    barcodeOpen,
-    barcodeValue,
-    isEan13,
-    openBarcode,
-    copyCodebar,
-    printBarcode,
+    qrOpen,
+    qrValue,
+    openQr,
+    copyQr,
+    printQr,
     addToDraft,
     createOrderFromDraft,
     scanAndDispatch,

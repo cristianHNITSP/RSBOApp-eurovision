@@ -1,9 +1,10 @@
 // vite.config.js
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
+import basicSsl from "@vitejs/plugin-basic-ssl";
 import path from "path";
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ command, mode }) => {
   // --- VALIDACIÓN FAIL-FAST (solo en dev: el proxy no existe en producción) ---
   if (mode !== "production") {
     const missing = ["VITE_PROXY_TARGET"].filter(key => !process.env[key]);
@@ -39,8 +40,12 @@ export default defineConfig(({ mode }) => {
     console.log(`${prefix} <-`, req.method, req.url, "| status:", proxyRes.statusCode);
   };
 
+  // HTTPS solo en el dev server (serve): habilita contexto seguro en la LAN
+  // para que la cámara (getUserMedia) funcione en iOS/Android/desktop.
+  const devHttpsPlugins = command === "serve" ? [basicSsl()] : [];
+
   return {
-    plugins: [vue()],
+    plugins: [vue(), ...devHttpsPlugins],
     resolve: {
       alias: { "@": path.resolve(__dirname, "./src") },
     },

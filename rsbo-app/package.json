@@ -1,7 +1,7 @@
 {
   "name": "rsbo-app",
   "private": true,
-  "version": "4.0.0",
+  "version": "4.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -18,12 +18,14 @@
     "buefy": "^3.0.7",
     "bulma": "^1.0.4",
     "exceljs": "^4.4.0",
+    "qr-scanner": "^1.4.2",
     "qrcode": "^1.5.4",
     "sortablejs": "^1.15.7",
     "vue": "^3.5.34",
     "vue-router": "^5.0.7"
   },
   "devDependencies": {
+    "@vitejs/plugin-basic-ssl": "^2.3.0",
     "@vitejs/plugin-vue": "^6.0.7",
     "sass-embedded": "^1.100.0",
     "terser": "^5.48.0",

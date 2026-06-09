@@ -1,6 +1,6 @@
 // src/inventory/services/chunkApply.service.js
 const { to2 } = require("../utils/numbers");
-const { makeSku, makeQr } = require("../utils/barcode");
+const { makeSku, makeQr } = require("../utils/qr");
 const {
   keyBase,
   keySphCyl,

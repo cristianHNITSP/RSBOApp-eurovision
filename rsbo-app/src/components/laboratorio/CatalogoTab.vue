@@ -100,7 +100,7 @@
           <div v-else class="qr-grid">
             <button v-for="row in lab.paginatedCatalog.value" :key="row._k"
               v-memo="[row._k, row.existencias, row.qr]" class="qr-card" type="button"
-              @click="lab.copyCodebar(row.qr)" :title="'Copiar: ' + (row.qr || '')">
+              @click="lab.copyQr(row.qr)" :title="'Copiar: ' + (row.qr || '')">
               <div class="qr-card__head">
                 <div class="qr-card__title">{{ lab.buildRowTitle(row, lab.selectedSheet.value) }}</div>
                 <span class="tag is-light qty-tag" :class="row.existencias > 0 ? 'is-success' : ''">
@@ -117,10 +117,10 @@
               </div>
 
               <div class="qr-card__qr">
-                <div v-if="row.qr" class="barcode-wrap">
+                <div v-if="row.qr" class="qr-wrap">
                   <QrCode :value="row.qr" :size="96" />
                 </div>
-                <div v-else class="barcode-fallback">
+                <div v-else class="qr-fallback">
                   <i class="fas fa-exclamation-circle mr-1"></i>
                   Sin código QR
                 </div>
@@ -154,7 +154,7 @@
 
 <script setup>
 import { inject } from "vue";
-import QrCode from "./barcode/QrCode.vue";
+import QrCode from "./qr/QrCode.vue";
 import SheetPickerInput from "@/components/ui/SheetPickerInput.vue";
 import "./laboratorio-shared.css";
 import "./CatalogoTab.css";

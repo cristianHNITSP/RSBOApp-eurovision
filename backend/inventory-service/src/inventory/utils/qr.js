@@ -1,28 +1,9 @@
-// src/inventory/utils/barcode.js
-const { BARCODE_PREFIX } = require("../constants/barcode");
+// src/inventory/utils/qr.js
 const { fmt2 } = require("./numbers");
-const { normNum, normStr } = require("./keys");
+const { normNum, normStr, denormNum } = require("./keys");
 
-const hashToDigits = (str, length) => {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++)
-    hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
-
-  let body = String(hash);
-  if (body.length > length) body = body.slice(-length);
-  else if (body.length < length) body = body.padStart(length, "0");
-  return body;
-};
-
-const ean13CheckDigit = (body12) => {
-  const digits = String(body12)
-    .split("")
-    .map((d) => parseInt(d, 10) || 0);
-  let sum = 0;
-  for (let i = 0; i < 12; i++) sum += digits[i] * (i % 2 === 0 ? 1 : 3);
-  const mod = sum % 10;
-  return (10 - mod) % 10;
-};
+// Prefijo del QR interno, único por (hoja, dioptría, ojo).
+const QR_PREFIX = "RSBO";
 
 const makeSku = (_sheetId, tipo, coords = {}) => {
   switch (tipo) {
@@ -45,35 +26,12 @@ const makeSku = (_sheetId, tipo, coords = {}) => {
   }
 };
 
-const makeCodebar = (sheetId, tipo, coords = {}) => {
-  const core = [
-    String(sheetId),
-    tipo,
-    normNum(coords.sph),
-    normNum(coords.cyl),
-    normNum(coords.add),
-    normNum(coords.base),
-    normStr(coords.eye),
-    normNum(coords.base_izq),
-    normNum(coords.base_der),
-    normNum(coords.axis),
-  ].join("|");
-
-  const numericPart = hashToDigits(core, 12 - BARCODE_PREFIX.length);
-  const body12 = `${BARCODE_PREFIX}${numericPart}`;
-  return `${body12}${ean13CheckDigit(body12)}`;
-};
-
-// Prefijo del QR interno (no es EAN-13, no se escanea como código de barra)
-const QR_PREFIX = "RSBO";
-
 /**
  * Genera el código QR interno, único por (hoja, dioptría, ojo).
  *
- * A diferencia de `makeCodebar` (que comprime con hash a 9 dígitos y puede colisionar),
- * este código es DETERMINÍSTICO y SIN PÉRDIDA: incorpora todas las coordenadas normalizadas,
- * por lo que dos dioptrías/ojos distintos nunca producen el mismo QR y re-sembrar la misma
- * celda devuelve siempre el mismo valor (idempotente).
+ * Es DETERMINÍSTICO y SIN PÉRDIDA: incorpora todas las coordenadas normalizadas,
+ * por lo que dos dioptrías/ojos distintos nunca producen el mismo QR y re-sembrar
+ * la misma celda devuelve siempre el mismo valor (idempotente).
  */
 const makeQr = (sheetId, tipo, coords = {}) =>
   [
@@ -90,4 +48,35 @@ const makeQr = (sheetId, tipo, coords = {}) =>
     normNum(coords.axis),
   ].join("|");
 
-module.exports = { makeSku, makeCodebar, makeQr, QR_PREFIX, hashToDigits, ean13CheckDigit };
+const denormStr = (s) => (s === "x" || s === undefined || s === null ? null : String(s));
+
+/**
+ * Inverso de `makeQr`: decodifica un QR interno a sus partes.
+ * @returns {{ sheetId, tipo, coords }} o `null` si el formato no es válido.
+ */
+const parseQr = (qr) => {
+  const raw = String(qr || "").trim();
+  if (!raw) return null;
+  const parts = raw.split("|");
+  if (parts.length !== 11 || parts[0] !== QR_PREFIX) return null;
+
+  const [, sheetId, tipo, sph, cyl, add, base, eye, base_izq, base_der, axis] = parts;
+  if (!sheetId || !tipo) return null;
+
+  return {
+    sheetId,
+    tipo,
+    coords: {
+      sph: denormNum(sph),
+      cyl: denormNum(cyl),
+      add: denormNum(add),
+      base: denormNum(base),
+      eye: denormStr(eye),
+      base_izq: denormNum(base_izq),
+      base_der: denormNum(base_der),
+      axis: denormNum(axis),
+    },
+  };
+};
+
+module.exports = { makeSku, makeQr, parseQr, QR_PREFIX };

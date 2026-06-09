@@ -3,7 +3,7 @@ const defaultRangesByTipo = require("../constants/defaultRanges");
 const PHYSICAL_LIMITS = require("../constants/physicalLimits");
 
 const { frange, clampRange } = require("../utils/ranges");
-const { makeSku, makeQr } = require("../utils/barcode");
+const { makeSku, makeQr } = require("../utils/qr");
 const { keyBase, keySphCyl, keyBifocal, keyProg, keyTorico, normalizeCylConvention } = require("../utils/keys");
 const { PER_BASE_AXIS } = require("../utils/axisConfig");
 

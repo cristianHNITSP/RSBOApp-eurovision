@@ -93,13 +93,13 @@
   padding: 0.6rem;
 }
 
-.barcode-wrap {
+.qr-wrap {
   width: 100%;
   display: flex;
   justify-content: center;
 }
 
-.barcode-fallback {
+.qr-fallback {
   font-weight: 900;
   color: var(--text-muted);
 }
@@ -121,7 +121,8 @@
   border-radius: 999px;
 }
 
-.barcode-wrap svg {
+.qr-wrap svg,
+.qr-wrap .qr-img {
   max-width: 100%;
   height: auto;
 }

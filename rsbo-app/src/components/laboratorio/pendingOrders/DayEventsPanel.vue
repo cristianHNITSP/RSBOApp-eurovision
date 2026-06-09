@@ -61,8 +61,8 @@
             <span class="log-card__date">{{ e.at }}</span>
           </div>
           <div class="log-card__code mono">
-            <i class="fas fa-barcode mr-1"></i>
-            {{ e.codebar || "—" }}
+            <i class="fas fa-qrcode mr-1"></i>
+            {{ e.qr || "—" }}
           </div>
           <div class="log-card__meta">
             <span>{{ e.title }}</span>

@@ -22,6 +22,8 @@
     <!-- RIGHT -->
     <div class="dashboard-toolbar__right">
       <div class="dashboard-actions">
+        <ScanMenu />
+
         <b-tooltip label="Notificaciones" position="is-bottom" append-to-body :triggers="['hover']">
           <div class="has-badge-wrapper">
             <b-button class="toolbar-btn" type="is-light" :icon-right="showPanel ? 'close' : 'bell'"
@@ -41,6 +43,8 @@
 </template>
 
 <script setup>
+import ScanMenu from "../scan/ScanMenu.vue";
+
 defineProps({
   currentRouteName: String,
   pageTitle: String,

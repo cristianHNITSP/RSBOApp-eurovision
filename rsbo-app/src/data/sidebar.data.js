@@ -46,8 +46,8 @@ export const SIDEBAR_MENU = [
   },
   
   { group: "Otros" },
-  { label: "Ajustes", icon: "cog", path: "/l/config.panel" },
-  { label: "Ayuda", icon: "question-circle", path: "/l/Ayuda" },
+  // { label: "Ajustes", icon: "cog", path: "/l/config.panel" }, // (oculto: Preferencias/Seguridad ya viven en el menú de usuario del footer)
+  { label: "Ayuda", icon: "question-circle", path: "/l/ayuda?tab=inicio" },
 ];
 
 export const SIDEBAR_CONFIG = {

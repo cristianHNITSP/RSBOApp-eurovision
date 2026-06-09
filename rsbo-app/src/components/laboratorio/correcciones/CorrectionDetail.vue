@@ -53,7 +53,7 @@
           <div class="edit-line" v-for="el in editState.lines" :key="el.lineId">
             <div class="edit-line__info">
               <div class="edit-line__title">
-                {{ lab?.lineHuman?.(el, lab?.sheetById?.(el.lineSheetId || order.sheetId)) || el.codebar }}
+                {{ lab?.lineHuman?.(el, lab?.sheetById?.(el.lineSheetId || order.sheetId)) || el.qr }}
               </div>
               <div class="edit-line__meta">
                 <span class="mica-type-tag-sm">{{ el.micaType || "—" }}</span>
@@ -212,7 +212,7 @@
                 :key="lc.lineId"
                 class="history-item__diff"
               >
-                <span class="diff-label">{{ lc.codebar }}:</span>
+                <span class="diff-label">{{ lc.qr }}:</span>
                 <template v-if="lc.action === 'removed'">
                   <span class="diff-removed">Línea eliminada</span>
                 </template>
@@ -263,7 +263,7 @@ function syncEditState() {
     tipoMatriz: l.tipoMatriz,
     micaType: l.micaType,
     lineSheetId: l.lineSheetId,
-    codebar: l.codebar,
+    qr: l.qr,
     eye: l.eye,
     params: l.params || {}
   }));
@@ -322,7 +322,7 @@ function historyIcon(type) {
     ORDER_CANCEL: "fas fa-ban",
     ORDER_CLOSE: "fas fa-check-double",
     ORDER_RESET: "fas fa-undo",
-    EXIT_SCAN: "fas fa-barcode",
+    EXIT_SCAN: "fas fa-qrcode",
     CORRECTION_REQUEST: "fas fa-exclamation-triangle"
   };
   return map[type] || "fas fa-circle";

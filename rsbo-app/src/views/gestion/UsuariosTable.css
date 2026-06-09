@@ -16,6 +16,13 @@
   table-layout: fixed;
 }
 
+/* Fila seleccionada: color de texto desde token (sustituye el hsl(221,14%,14%)
+   por defecto de Bulma) — aplica en todos los breakpoints, incluido móvil. */
+:deep(.b-table .table tr.is-selected td),
+:deep(.b-table .table tr.is-selected th) {
+  color: var(--text-primary);
+}
+
 :deep(.b-table .table td),
 :deep(.b-table .table th) {
   vertical-align: middle;

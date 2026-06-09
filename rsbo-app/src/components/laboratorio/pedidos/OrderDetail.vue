@@ -50,12 +50,12 @@
       </div>
 
       <!-- Scanner -->
-      <b-field :label="order.status === 'cerrado' ? 'Pedido cerrado' : 'Código (EAN-13)'" class="mb-2">
+      <b-field :label="order.status === 'cerrado' ? 'Pedido cerrado' : 'Código QR'" class="mb-2">
         <b-input
-          ref="barcodeInput"
+          ref="qrInput"
           v-model="lab.scanCode.value"
           :placeholder="order.status === 'cerrado' ? 'No se puede surtir un pedido cerrado' : 'Escanea o escribe el código…'"
-          icon="barcode"
+          icon="qrcode"
           :disabled="order.status === 'cerrado' || order.status === 'cancelado'"
           @keyup.enter="lab.scanAndDispatch"
         />
@@ -166,11 +166,14 @@ const emit = defineEmits(["ask-reset", "ask-close"]);
 const lab = inject("lab");
 if (!lab) throw new Error("OrderDetail necesita provide('lab', ...)");
 
-const barcodeInput = ref(null);
+const qrInput = ref(null);
 
-// Escenario A: Auto-enviar si se detecta un EAN-13 válido (soluciona escáneres sin tecla Enter)
+// Un QR interno completo es "RSBO|...|..." con 11 segmentos.
+const isQr = (v) => String(v || "").startsWith("RSBO|") && String(v).split("|").length === 11;
+
+// Escenario A: Auto-enviar si se detecta un QR completo (escáneres sin tecla Enter)
 watch(() => lab.scanCode.value, (newVal) => {
-  if (lab.isEan13(newVal) && props.order?.status !== "cerrado" && props.order?.status !== "cancelado") {
+  if (isQr(newVal) && props.order?.status !== "cerrado" && props.order?.status !== "cancelado") {
     lab.scanAndDispatch();
   }
 });
@@ -179,7 +182,7 @@ watch(() => lab.scanCode.value, (newVal) => {
 watch(() => lab.loadingScan.value, (loading) => {
   if (!loading) {
     nextTick(() => {
-      barcodeInput.value?.focus();
+      qrInput.value?.focus();
     });
   }
 });

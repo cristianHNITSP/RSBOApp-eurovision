@@ -22,7 +22,7 @@ const { makeUniqueSheetSku, ensureSheetSku } = require("../inventory/utils/sku")
 const { to2, isDef, isMultipleOfStep } = require("../inventory/utils/numbers");
 const { clampRange } = require("../inventory/utils/ranges");
 const { normNum, parseKey, denormNum, keySphCyl, keyTorico, keyProgresivo, normalizeCylConvention } = require("../inventory/utils/keys");
-const { makeSku, makeQr } = require("../inventory/utils/barcode");
+const { makeSku, makeQr } = require("../inventory/utils/qr");
 
 // Services (100% reutilizables — reciben `models` como parámetro)
 const { seedRootForSheet, seedFullForSheet } = require("../inventory/services/seed.service");
@@ -35,6 +35,7 @@ const {
   applyChunkTorico
 } = require("../inventory/services/chunkApply.service");
 const { maybeExtendMetaRangesFromRows } = require("../inventory/services/metaRangesExtend.service");
+const { makeResolveQr } = require("../inventory/services/resolveQr.service");
 const { broadcast } = require("../ws");
 const {
   cacheMiddleware, KEYS, sheetVersion,
@@ -439,6 +440,43 @@ router.get("/sheets/by-sku/:sku", async (req, res) => {
   } catch (err) {
     console.error("GET /contactlenses/sheets/by-sku/:sku error:", err);
     res.status(500).json({ ok: false, message: "Error al buscar por SKU" });
+  }
+});
+
+/**
+ * Resuelve un QR interno a su hoja + dioptría (decodifica e identifica dentro de la hoja).
+ * GET /api/contactlenses/resolve/:qr
+ */
+const getCLModel = (tipo) => ({
+  BASE: MatrixBase,
+  SPH_CYL: MatrixSphCyl,
+  SPH_ADD: MatrixBifocal,
+  BASE_ADD: MatrixProgresivo,
+  SPH_CYL_AXIS: MatrixTorico,
+}[tipo] || null);
+
+const resolveQrCL = makeResolveQr({
+  SheetModel: ContactLensesSheet,
+  getModel: getCLModel,
+  segmentByTipo: {
+    BASE: "base",
+    SPH_CYL: "sph-cyl",
+    SPH_CYL_AXIS: "torico",
+    BASE_ADD: "multifocal",
+    SPH_ADD: null, // lentes de contacto no edita celdas bifocal de forma unitaria
+  },
+});
+
+router.get("/resolve/:qr", async (req, res) => {
+  try {
+    const result = await resolveQrCL(req.params.qr);
+    if (result.status === 200) {
+      return res.json({ ok: true, data: { family: "contactlenses", ...result.data } });
+    }
+    return res.status(result.status).json({ ok: false, message: result.message });
+  } catch (err) {
+    console.error("GET /contactlenses/resolve/:qr error:", err);
+    return res.status(500).json({ ok: false, message: "Error al resolver código" });
   }
 });
 

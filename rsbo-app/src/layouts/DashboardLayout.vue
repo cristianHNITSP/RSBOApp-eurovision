@@ -40,6 +40,10 @@
         @update-count="activeNotifications = $event"
       />
 
+      <!-- Modales del flujo de escaneo QR (montados una sola vez) -->
+      <ScanHost />
+
+
       <!-- Overlay blur sidebar móvil -->
       <transition name="fade-glass">
         <div v-if="isMobile && isMobileSidebarVisible" class="blur-overlay sidebar-mobile-overlay" @click="collapseSidebar"></div>
@@ -108,6 +112,7 @@ import SidebarMobile from "../components/SidebarMobile.vue";
 import MenuToggle from "../components/MenuToggle.vue"; // Usado en MobileTopbar
 import NotificationPanel from "../components/NotificationPanel.vue";
 import GlobalSearch from "../components/search/GlobalSearch.vue";
+import ScanHost from "../components/scan/ScanHost.vue";
 
 // Componentes atómicos de Layout
 import DashboardA11yLayer from "../components/dashboard-layout/DashboardA11yLayer.vue";

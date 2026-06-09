@@ -21,7 +21,7 @@
         <div class="panel__body">
           <div class="quick-actions">
             <button class="quick-action-btn quick-action-btn--surtir" @click="goSurtir">
-              <i class="fas fa-barcode quick-action-btn__icon"></i>
+              <i class="fas fa-qrcode quick-action-btn__icon"></i>
               <div>
                 <div class="quick-action-btn__label">Ir a surtir</div>
                 <div class="quick-action-btn__hint">Escaneo → salida</div>
@@ -136,7 +136,7 @@
                     </div>
                     <div class="exit-item__meta">
                       <span class="exit-chip exit-chip--type">{{ s.micaType }}</span>
-                      <span v-if="s.codebar" class="exit-chip exit-chip--code mono">{{ s.codebar }}</span>
+                      <span v-if="s.qr" class="exit-chip exit-chip--code mono">{{ s.qr }}</span>
                     </div>
                   </div>
                 </div>

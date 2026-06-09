@@ -55,7 +55,7 @@ export const normalizeOrder = (o) => {
         lineId: String(l?.lineId ?? l?.id ?? `line_${i}`),
         qty: Number(l?.qty || 0),
         picked: Number(l?.picked || 0),
-        codebar: String(l?.codebar || ""),
+        qr: String(l?.qr ?? l?.codebar ?? ""),
         params,
         eye: l?.eye ?? null,
         tipoMatriz: l?.tipo_matriz || null,
@@ -84,7 +84,7 @@ export const mapExitEvent = (e) => ({
   at: fmtShort(e?.createdAt),
   rawCreatedAt: e?.createdAt || null,
   sheetId: e?.details?.sheetId || (e?.sheet ? String(e.sheet) : null),
-  codebar: e?.details?.codebar || "",
+  qr: e?.details?.qr ?? e?.details?.codebar ?? "",
   title: e?.details?.title || "Salida",
   micaType: e?.details?.micaType || "—"
 });

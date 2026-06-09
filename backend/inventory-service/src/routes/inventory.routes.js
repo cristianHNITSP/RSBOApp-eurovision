@@ -22,7 +22,7 @@ const { makeUniqueSheetSku, ensureSheetSku } = require("../inventory/utils/sku")
 const { to2, isDef, isMultipleOfStep } = require("../inventory/utils/numbers");
 const { clampRange } = require("../inventory/utils/ranges");
 const { parseKey, denormNum, keyBase, keySphCyl, keyBifocal, keyProgresivo, normalizeCylConvention } = require("../inventory/utils/keys");
-const { makeSku, makeQr } = require("../inventory/utils/barcode");
+const { makeSku, makeQr } = require("../inventory/utils/qr");
 const { isFlatMatrix, getMatrixModel } = require("../utils/matrix");
 
 // Services
@@ -36,6 +36,7 @@ const {
   applyChunkProgresivo
 } = require("../inventory/services/chunkApply.service");
 const { maybeExtendMetaRangesFromRows } = require("../inventory/services/metaRangesExtend.service");
+const { makeResolveQr } = require("../inventory/services/resolveQr.service");
 const {
   cacheMiddleware, KEYS, sheetVersion,
   invalidateSheetItems, invalidateSheetMeta, invalidateSheetsList, invalidateStats,
@@ -511,64 +512,33 @@ router.get("/sheets/by-sku/:sku", async (req, res) => {
 });
 
 /**
- * Resuelve un qr buscando en todas las matrices de hojas activas.
+ * Resuelve un QR interno a su hoja + dioptría (decodifica e identifica dentro de la hoja).
  * GET /api/inventory/resolve/:qr
  */
-router.get("/resolve/:qr", async (req, res) => {
-  try {
-    const cb = String(req.params.qr || "").trim();
-    if (!cb) return res.status(400).json({ ok: false, message: "Qr requerido" });
-
-    const sheets = await InventorySheet.find({ isDeleted: { $ne: true } }).lean();
-
-    for (const sheet of sheets) {
-      const Model = models[getMatrixModelName(sheet.tipo_matriz)];
-      if (!Model) continue;
-
-      const doc = await Model.findOne({ sheet: sheet._id }).lean();
-      if (!doc) continue;
-
-      for (const [key, cell] of Object.entries(doc.cells || {})) {
-        if (isFlatMatrix(sheet.tipo_matriz)) {
-          if (cell.qr === cb) {
-            return res.json({
-              ok: true,
-              data: {
-                sheet,
-                matrixKey: key,
-                eye: null,
-                item: cell
-              }
-            });
-          }
-        } else {
-          // Per eye
-          if (cell.OD?.qr === cb) {
-            return res.json({ ok: true, data: { sheet, matrixKey: key, eye: "OD", item: cell.OD } });
-          }
-          if (cell.OI?.qr === cb) {
-            return res.json({ ok: true, data: { sheet, matrixKey: key, eye: "OI", item: cell.OI } });
-          }
-        }
-      }
-    }
-
-    res.status(404).json({ ok: false, message: "Item no encontrado" });
-  } catch (err) {
-    console.error("GET /resolve/:qr error:", err);
-    res.status(500).json({ ok: false, message: "Error al resolver código" });
-  }
+const resolveQrInventory = makeResolveQr({
+  SheetModel: InventorySheet,
+  getModel: getMatrixModel,
+  segmentByTipo: {
+    BASE: "base",
+    SPH_CYL: "sph-cyl",
+    SPH_ADD: "bifocal",
+    BASE_ADD: "progresivo",
+    SPH_CYL_AXIS: null, // inventario no edita celdas tórico
+  },
 });
 
-function getMatrixModelName(tipo) {
-  switch (tipo) {
-    case "BASE": return "MatrixBase";
-    case "SPH_CYL": return "MatrixSphCyl";
-    case "SPH_ADD": return "MatrixBifocal";
-    case "BASE_ADD": return "MatrixProgresivo";
-    default: return null;
+router.get("/resolve/:qr", async (req, res) => {
+  try {
+    const result = await resolveQrInventory(req.params.qr);
+    if (result.status === 200) {
+      return res.json({ ok: true, data: { family: "inventory", ...result.data } });
+    }
+    return res.status(result.status).json({ ok: false, message: result.message });
+  } catch (err) {
+    console.error("GET /resolve/:qr error:", err);
+    return res.status(500).json({ ok: false, message: "Error al resolver código" });
   }
-}
+});
 
 // ======================= PATCH SHEET =======================
 

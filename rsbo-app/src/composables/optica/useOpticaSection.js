@@ -163,12 +163,31 @@ function createStore(SVC) {
     // Solo hay un .item-banner montado (DynamicTabs renderiza la tab activa).
     // Reintenta hasta que el banner exista: al venir de búsqueda (deep-link) el
     // panel de DynamicTabs puede estar aún animando/montándose, así que esperamos.
+    //
+    // No usamos scrollIntoView + scroll-margin-top fijo: el alto del header sticky
+    // varía por resolución (topbar móvil vs toolbar desktop). En su lugar medimos
+    // el contenedor de scroll (.main-content) y el header real en runtime, así el
+    // banner queda siempre justo bajo el header sin importar la resolución.
     if (typeof document !== "undefined" && row) {
       let tries = 0;
       const scrollToBanner = () => {
         const el = document.querySelector(".optica-tab-content .item-banner");
-        if (el && el.scrollIntoView) {
-          el.scrollIntoView({ behavior: "smooth", block: "start" });
+        if (el) {
+          const scroller = el.closest(".main-content");
+          if (scroller) {
+            const header = scroller.querySelector(".dashboard-header");
+            const headerH = header ? header.getBoundingClientRect().height : 0;
+            const GAP = 12; // aire entre header y banner
+            const top =
+              scroller.scrollTop +
+              el.getBoundingClientRect().top -
+              scroller.getBoundingClientRect().top -
+              headerH -
+              GAP;
+            scroller.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+          } else if (el.scrollIntoView) {
+            el.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
           return;
         }
         if (tries++ < 20) setTimeout(scrollToBanner, 60); // ~1.2s máx

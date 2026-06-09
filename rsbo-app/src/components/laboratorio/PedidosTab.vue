@@ -84,8 +84,8 @@
                 <div class="prod__name">{{ lab.buildRowTitle(props.row, lab.selectedSheet.value) }}</div>
                 <div class="prod__meta">
                   <span class="meta-k">
-                    <i class="fas fa-barcode mr-1"></i>
-                    <span class="mono big-code">{{ props.row.codebar || "sin código" }}</span>
+                    <i class="fas fa-qrcode mr-1"></i>
+                    <span class="mono big-code">{{ props.row.qr || "sin código" }}</span>
                   </span>
                   <span class="mica-type-badge">
                     {{ lab.getMicaTypeName(lab.selectedSheet.value?.tipo_matriz) }}
@@ -100,8 +100,8 @@
                   size="is-small"
                   type="is-light"
                   icon-left="eye"
-                  :disabled="!props.row.codebar || !lab.isEan13(props.row.codebar)"
-                  @click="lab.openBarcode(props.row.codebar)"
+                  :disabled="!props.row.qr"
+                  @click="lab.openQr(props.row.qr)"
                 >
                   Ver
                 </b-button>
@@ -110,8 +110,8 @@
                   size="is-small"
                   type="is-light"
                   icon-left="copy"
-                  :disabled="!props.row.codebar"
-                  @click="lab.copyCodebar(props.row.codebar)"
+                  :disabled="!props.row.qr"
+                  @click="lab.copyQr(props.row.qr)"
                 >
                   Copiar
                 </b-button>

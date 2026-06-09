@@ -31,7 +31,7 @@ export function useLabExports({ orders, items, events, sheets, notify }) {
       const columns = [
         { key: "_title", label: "Producto", transform: (r) => buildRowTitle(r, sheet), width: 32 },
         { key: "existencias", label: "Existencias", width: 14, align: "center" },
-        { key: "codebar", label: "Codigo de Barras", width: 18 },
+        { key: "qr", label: "Código QR", width: 24 },
         { key: "sku", label: "Referencia", width: 14 }
       ];
       await exportToXlsx({
@@ -102,7 +102,7 @@ export function useLabExports({ orders, items, events, sheets, notify }) {
     notify(`Exportando pedido ${order.folio}...`, "is-info");
     try {
       const columns = [
-        { key: "codebar", label: "Código", width: 18 },
+        { key: "qr", label: "Código QR", width: 24 },
         { key: "micaType", label: "Tipo", width: 20 },
         { key: "qty", label: "Cant.", width: 10 },
         { key: "picked", label: "Surtido", width: 10 }

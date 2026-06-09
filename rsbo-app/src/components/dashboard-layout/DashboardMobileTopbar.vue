@@ -29,37 +29,7 @@
         </div>
       </b-tooltip>
 
-
-      <b-dropdown 
-      position="is-bottom-left" 
-      aria-role="menu" 
-      append-to-body 
-      class="mobile-more"
-      >
-      
-        <template #trigger>
-          <b-button class="toolbar-btn" type="is-light" icon-pack="fas" icon-left="ellipsis-v" />
-        </template>
-
-        <b-dropdown-item aria-role="menu-item" @click="$emit('profile')">
-          <b-icon icon="user" size="is-small" />&nbsp; Perfil
-        </b-dropdown-item>
-
-        <b-dropdown-item aria-role="menu-item" @click="$emit('accessibility')">
-          <b-icon icon="universal-access" size="is-small" />&nbsp; Accesibilidad
-        </b-dropdown-item>
-
-        <b-dropdown-item aria-role="menu-item" @click="$emit('security')">
-          <b-icon icon="shield-alt" size="is-small" />&nbsp; Seguridad
-        </b-dropdown-item>
-
-        <hr class="dropdown-divider" />
-
-        <b-dropdown-item aria-role="menu-item" @click="$emit('logout')">
-          <b-icon icon="sign-out-alt" size="is-small" />&nbsp; Cerrar sesión
-        </b-dropdown-item>
-      </b-dropdown>
-
+      <!-- El menú de usuario (Perfil/Preferencias/Seguridad/Cerrar sesión) vive ahora en el footer de la sidebar -->
     </div>
   </div>
 </template>
@@ -76,7 +46,7 @@ defineProps({
   unreadNotifications: Number
 })
 
-defineEmits(['toggle-sidebar', 'toggle-notifications', 'profile', 'accessibility', 'security', 'logout'])
+defineEmits(['toggle-sidebar', 'toggle-notifications'])
 </script>
 
 <style scoped>

@@ -225,6 +225,29 @@
     font-weight: 500;
 }
 
+/* ===== Modo árbol COLAPSADO: hijos como mini-iconos centrados ===== */
+.sidebar.is-collapsed .menu-submenu-tree {
+    padding-left: 0;
+    align-items: center;
+}
+
+.sidebar.is-collapsed .menu-item.is-child {
+    padding: 0.4rem 0;
+    justify-content: center;
+    width: 100%;
+}
+
+.sidebar.is-collapsed .menu-item.is-child .menu-item-inner {
+    flex: 0 0 auto;
+    justify-content: center;
+    gap: 0;
+}
+
+/* Línea guía sutil del árbol cuando hay espacio (expandido) */
+.menu-submenu-tree {
+    position: relative;
+}
+
 /* Expansion Animation */
 .menu-expand-enter-active,
 .menu-expand-leave-active {

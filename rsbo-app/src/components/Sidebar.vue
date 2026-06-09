@@ -15,16 +15,15 @@
         @toggle="toggleSidebar"
       />
 
-      <!-- MENÚ -->
+      <!-- MENÚ (modo árbol: submenús inline, igual que en móvil) -->
       <SidebarMenu
         :menu-items="computedMenuItems"
         :is-collapsed="isCollapsed"
-        :active-submenu="activeSubmenu"
         :is-child-active="isChildActive"
-        @toggle-submenu="toggleSubmenu"
+        mode="tree"
       />
 
-      <!-- FOOTER USUARIO -->
+      <!-- FOOTER USUARIO (avatar + menú: Perfil, Preferencias, Seguridad, Cerrar sesión) -->
       <SidebarFooter
         :loading="loading"
         :avatar-loaded="avatarLoaded"
@@ -33,10 +32,21 @@
         :filtered-user="filteredUser"
         @avatar-load="onAvatarLoad"
         @avatar-error="onAvatarError"
+        @profile="$emit('profile')"
+        @accessibility="$emit('accessibility')"
+        @security="$emit('security')"
+        @logout="$emit('logout')"
       />
     </aside>
 
-    <!-- SUBMENU LATERAL -->
+    <!--
+      SUBMENU LATERAL (panel flotante) — DESACTIVADO.
+      Se conserva comentado para poder retomar el diseño de panel en el futuro.
+      Si se reactiva: pasar mode="panel" (o quitar mode) al SidebarMenu de arriba y
+      volver a enlazar :active-submenu / @toggle-submenu, además de descomentar
+      el import, los métodos (toggleSubmenu/openSubmenu/closeSubmenu/navigateTo)
+      y el computed submenuStyles en el bloque <script>.
+
     <SidebarSubmenuPanel
       ref="submenuRef"
       :active-submenu="activeSubmenu"
@@ -45,6 +55,7 @@
       @close="closeSubmenu"
       @navigate="navigateTo"
     />
+    -->
   </div>
 </template>
 
@@ -52,17 +63,19 @@
 import SidebarHeader from "./sidebar/SidebarHeader.vue";
 import SidebarMenu from "./sidebar/SidebarMenu.vue";
 import SidebarFooter from "./sidebar/SidebarFooter.vue";
-import SidebarSubmenuPanel from "./sidebar/SidebarSubmenuPanel.vue";
+// Panel flotante de submenú desactivado (modo árbol). Conservar para retomar en el futuro.
+// import SidebarSubmenuPanel from "./sidebar/SidebarSubmenuPanel.vue";
 import { SIDEBAR_MENU, SIDEBAR_CONFIG } from "../data/sidebar.data";
 import { getAvatar, AVATAR_DEFAULTS } from "@/utils/avatarHelper";
 
 export default {
   name: "Sidebar",
+  emits: ["toggle", "profile", "accessibility", "security", "logout"],
   components: {
     SidebarHeader,
     SidebarMenu,
     SidebarFooter,
-    SidebarSubmenuPanel
+    // SidebarSubmenuPanel
   },
   props: {
     user: { type: Object, default: () => ({ name: "Cargando...", role: "", avatar: "" }) },
@@ -74,7 +87,7 @@ export default {
   data() {
     return {
       isCollapsed: this.collapsed,
-      activeSubmenu: null,
+      // activeSubmenu: null, // (panel flotante desactivado)
       avatarUrl: AVATAR_DEFAULTS.SIDEBAR,
       avatarLoaded: false,
       sidebarConfig: SIDEBAR_CONFIG
@@ -116,17 +129,17 @@ export default {
         return newItem;
       });
     },
-    submenuStyles() {
-      return {
-        position: "fixed",
-        top: "0",
-        bottom: "0",
-        width: this.sidebarConfig.SUBMENU_WIDTH,
-        left: this.isCollapsed ? this.sidebarConfig.WIDTH_COLLAPSED : this.sidebarConfig.WIDTH_EXPANDED,
-        zIndex: 20,
-        transition: "left 0.22s ease",
-      };
-    },
+    // submenuStyles() { // (panel flotante desactivado — retomar en el futuro)
+    //   return {
+    //     position: "fixed",
+    //     top: "0",
+    //     bottom: "0",
+    //     width: this.sidebarConfig.SUBMENU_WIDTH,
+    //     left: this.isCollapsed ? this.sidebarConfig.WIDTH_COLLAPSED : this.sidebarConfig.WIDTH_EXPANDED,
+    //     zIndex: 20,
+    //     transition: "left 0.22s ease",
+    //   };
+    // },
   },
   watch: {
     collapsed(newVal) {
@@ -163,6 +176,8 @@ export default {
       this.isCollapsed = !this.isCollapsed;
       this.$emit("toggle", this.isCollapsed);
     },
+    /* === Panel flotante de submenú — DESACTIVADO (modo árbol) ===
+       Conservar para retomar el diseño en el futuro.
     toggleSubmenu(item) {
       if (this.activeSubmenu === item) this.closeSubmenu();
       else {
@@ -209,6 +224,7 @@ export default {
       this.$router.push(path);
       this.activeSubmenu = null;
     },
+    === fin panel flotante === */
     isActive(path) {
       // Usar fullPath para que coincidan rutas con query params (como ?tab=...)
       return this.$route.fullPath === path || this.$route.path === path;

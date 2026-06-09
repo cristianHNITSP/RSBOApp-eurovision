@@ -12,6 +12,10 @@
         :user="user"
         :loading="loading"
         :pending-orders="pendingOrdersCount"
+        @profile="profile"
+        @accessibility="goToAccessibility"
+        @security="goToSecurity"
+        @logout="logout"
       />
 
       <!-- Mobile Sidebar -->
@@ -22,6 +26,10 @@
           :loading="loading"
           :pending-orders="pendingOrdersCount"
           @close="collapseSidebar"
+          @profile="profile"
+          @accessibility="goToAccessibility"
+          @security="goToSecurity"
+          @logout="logout"
         />
       </transition>
 
@@ -53,10 +61,6 @@
             :bell-ringing="bellRinging"
             :unread-notifications="activeNotifications"
             @toggle-notifications="showPanel ? handleClosePanel() : openPanelMobile()"
-            @profile="profile"
-            @accessibility="goToAccessibility"
-            @security="goToSecurity"
-            @logout="logout"
           >
             <template #search>
               <GlobalSearch />
@@ -73,10 +77,6 @@
             :unread-notifications="activeNotifications"
             @toggle-sidebar="toggleMobileSidebar"
             @toggle-notifications="showPanel ? closePanel() : openPanelMobile()"
-            @profile="profile"
-            @accessibility="goToAccessibility"
-            @security="goToSecurity"
-            @logout="logout"
           />
 
         </section>

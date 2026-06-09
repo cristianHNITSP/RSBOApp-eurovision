@@ -18,11 +18,80 @@
     gap: 0.75rem;
 }
 
+/* Dropdown ocupa todo el ancho del footer para que el trigger se vea como una fila */
+.user-menu-dd {
+    width: 100%;
+}
+
+.user-menu-dd :deep(.dropdown-trigger) {
+    width: 100%;
+}
+
 .user-profile {
     display: flex;
     align-items: center;
     gap: 0.6rem;
     min-width: 0;
+
+    padding: 0.35rem 0.4rem;
+    border-radius: 12px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.25s ease;
+}
+
+.user-profile:hover,
+.user-profile.is-open {
+    background: var(--static-color-rgba-148-163-184-0-16);
+    border-color: var(--static-color-rgba-148-163-184-0-32);
+    box-shadow: 0 10px 22px var(--static-color-rgba-15-23-42-0-12);
+}
+
+/* Colapsado: centrar el avatar y quitar relleno extra */
+.user-menu-dd.is-collapsed .user-profile {
+    justify-content: center;
+    padding: 0.35rem 0;
+}
+
+/* Caret que indica que sube el menú */
+.user-menu-caret {
+    margin-left: auto;
+    color: var(--text-muted);
+    transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.user-profile.is-open .user-menu-caret {
+    color: var(--c-primary);
+    transform: translateY(-1px);
+}
+
+/* Cabecera del menú flotante */
+.user-menu-head {
+    display: flex;
+    flex-direction: column;
+    gap: 0.05rem;
+    padding: 0.6rem 1rem 0.5rem;
+    min-width: 0;
+}
+
+.user-menu-head__name {
+    font-weight: 900;
+    font-size: 0.86rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
+.user-menu-head__role {
+    font-size: 0.74rem;
+    color: var(--text-muted);
+}
+
+/* Resaltar "Cerrar sesión" en tono de peligro */
+.user-menu-logout :deep(.icon),
+.user-menu-logout {
+    color: var(--c-danger, var(--static-color-ef4444));
 }
 
 .user-avatar {

@@ -24,6 +24,10 @@
         :filtered-user="filteredUser"
         @avatar-load="onAvatarLoad"
         @avatar-error="onAvatarError"
+        @profile="onUserAction('profile')"
+        @accessibility="onUserAction('accessibility')"
+        @security="onUserAction('security')"
+        @logout="onUserAction('logout')"
       />
     </aside>
   </div>
@@ -38,6 +42,7 @@ import { getAvatar, AVATAR_DEFAULTS } from "@/utils/avatarHelper";
 
 export default {
   name: "SidebarMobile",
+  emits: ["close", "profile", "accessibility", "security", "logout"],
   components: {
     SidebarHeader,
     SidebarMenu,
@@ -110,6 +115,11 @@ export default {
   methods: {
     onAvatarLoad() { this.avatarLoaded = true; },
     onAvatarError() { this.avatarUrl = AVATAR_DEFAULTS.SIDEBAR; this.avatarLoaded = true; },
+    onUserAction(action) {
+      // Propaga la acción al layout y cierra el overlay móvil.
+      this.$emit(action);
+      this.$emit('close');
+    },
     navigateTo(path) {
       this.$router.push(path);
       this.$emit('close');

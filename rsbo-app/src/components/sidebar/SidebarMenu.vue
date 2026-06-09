@@ -56,6 +56,7 @@
               :class="{ 'is-active': isActive(child.path) }"
               active-class=""
               exact-active-class=""
+              :title="isCollapsed ? child.label : ''"
               @click.native="$emit('navigate')"
               @click="$emit('navigate')"
             >
@@ -63,7 +64,7 @@
                 <span class="menu-item-icon">
                   <b-icon :icon="child.icon" size="is-small" />
                 </span>
-                <span class="menu-item-label">
+                <span class="menu-item-label" v-if="!isCollapsed">
                   {{ child.label }}
                 </span>
               </div>

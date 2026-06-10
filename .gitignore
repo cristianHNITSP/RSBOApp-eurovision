@@ -79,3 +79,7 @@ rsbo-app/stress_test.cjs
 rsbo-app/security_audit.cjs
 rsbo-app/concurrency_audit.cjs
 NOTAS_FUTURO.md
+
+# Credenciales / secretos
+token.txt
+.env.bak

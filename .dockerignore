@@ -1,0 +1,14 @@
+# Contexto de build = raíz del repo (lo usa backend/gateway/Dockerfile.prod).
+# Excluimos lo pesado/no necesario para no inflar el contexto ni copiar
+# node_modules del host (los instala cada etapa).
+**/node_modules
+**/dist
+**/.vite
+.git
+**/.env
+**/.env.*
+**/*.log
+**/coverage
+**/.DS_Store
+*.bak
+**/audit_results.json

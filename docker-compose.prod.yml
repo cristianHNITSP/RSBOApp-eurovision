@@ -3,36 +3,26 @@
 # ============================================================
 
 services:
-  # ─── FRONTEND (Producción: Nginx) ─────────────────────────
-  rsbo-frontend:
+  # ─── GATEWAY EDGE (Nginx + API Node en un solo contenedor) ────────────────
+  # nginx sirve el SPA (Vite) y proxya /api, /admin, /ws al Node interno.
+  # Sustituye al antiguo contenedor rsbo-frontend: nginx ya vive AQUÍ.
+  gateway:
     build:
-      context: ./rsbo-app
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/gateway/Dockerfile
       target: prod
       args:
         VITE_API_URL: ${VITE_API_URL:-/api}
         VITE_WS_URL: ${VITE_WS_URL:-/ws}
-    container_name: rsboapp-frontend
     ports:
       - "127.0.0.1:${FRONTEND_PORT_HOST:-4300}:80"
-    # depends_on:
-    #   gateway: { condition: service_healthy }
-    restart: unless-stopped
-    networks: [rsbo-net]
-    deploy:
-      resources:
-        limits:
-          memory: 256M
-
-  # ─── GATEWAY ──────────────────────────────────────────────
-  gateway:
-    ports:
-      - "127.0.0.1:${GATEWAY_PORT_HOST:-3000}:3000"
+    # nginx (master) necesita root para bind :80; la base fija user=node → lo revertimos aquí.
+    user: "root"
     restart: unless-stopped
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 384M
 
   # ─── AUTH & ADMIN ─────────────────────────────────────────
   auth-service:

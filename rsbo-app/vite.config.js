@@ -94,6 +94,15 @@ export default defineConfig(({ command, mode }) => {
       },
     },
 
+    // Bulma emite media queries no estándar con var()/calc() dentro de la
+    // condición (ej. `@media (max-width: calc(var(--..) - 1px))`). lightningcss
+    // (minificador por defecto de rolldown-vite) las considera inválidas y
+    // aborta el build. `errorRecovery` las ignora (recupera) y continúa,
+    // permitiendo minificar el CSS igualmente.
+    css: {
+      lightningcss: { errorRecovery: true },
+    },
+
     build: {
       sourcemap: false,
       minify: "terser",

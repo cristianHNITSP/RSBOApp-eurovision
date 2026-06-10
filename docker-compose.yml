@@ -19,7 +19,11 @@ x-healthcheck-node: &node-healthcheck
 services:
   # ─── GATEWAY (Entry point) ────────────────────────────────
   gateway:
-    build: { context: ./backend/gateway }
+    # Dockerfile único multi-stage; dev usa el target "api" (Node-only :3000).
+    build:
+      context: .
+      dockerfile: backend/gateway/Dockerfile
+      target: api
     container_name: rsboapp-gateway
     env_file: [./.env, ./backend/gateway/.env]
     depends_on:

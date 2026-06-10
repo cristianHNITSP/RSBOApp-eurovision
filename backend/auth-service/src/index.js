@@ -84,6 +84,7 @@ app.use(cookieParser());
 
 // Bloquea claves con operadores Mongo ($, .) en body/query/params
 app.use(mongoSanitize());
+app.use(require("./validators/_helpers").blockProtoPollution);
 
 if (config.env !== "production") {
   app.use((req, _res, next) => {
@@ -126,9 +127,12 @@ async function start() {
 
   app.use((err, req, res, _next) => {
     const status = err.statusCode || err.status || 500;
-    const message = typeof err?.message === "string" && err.message.trim() ? err.message : "Error interno del servidor";
-    console.error("❌ Error global:", status, message);
-    res.status(status).json({ error: message });
+    // 5xx → mensaje genérico (no filtrar detalle interno); 4xx → mensaje del error.
+    const clientMsg = status >= 500
+      ? "Error interno del servidor"
+      : (typeof err?.message === "string" && err.message.trim() ? err.message : "Solicitud inválida");
+    console.error("❌ Error global:", status, err?.message);
+    res.status(status).json({ error: clientMsg });
   });
 
   app.listen(PORT, HOST, () => {

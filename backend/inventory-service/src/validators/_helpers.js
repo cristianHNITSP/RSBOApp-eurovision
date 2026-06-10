@@ -65,7 +65,30 @@ const boundedObjectBytes = (field, maxBytes, { location = body } = {}) =>
     return true;
   });
 
+/**
+ * Middleware anti prototype-pollution: rechaza payloads que contengan claves
+ * `__proto__`/`constructor`/`prototype` (express-mongo-sanitize NO las filtra).
+ * Defensa en profundidad: el código no hace deep-merge de req.body, pero esto
+ * cierra el vector por completo.
+ */
+const FORBIDDEN_KEYS = ["__proto__", "constructor", "prototype"];
+function blockProtoPollution(req, res, next) {
+  const bad = (o, d = 0) => {
+    if (!o || typeof o !== "object" || d > 8) return false;
+    for (const k of Object.keys(o)) {
+      if (FORBIDDEN_KEYS.includes(k)) return true;
+      if (bad(o[k], d + 1)) return true;
+    }
+    return false;
+  };
+  if (bad(req.body) || bad(req.query) || bad(req.params)) {
+    return res.status(400).json({ ok: false, error: "Payload con claves no permitidas" });
+  }
+  next();
+}
+
 module.exports = {
   runValidation, objectIdParam, boundedString, nonNegativeNumber,
-  enumField, boolField, isoDate, boundedObjectBytes, body, param, query,
+  enumField, boolField, isoDate, boundedObjectBytes, blockProtoPollution,
+  body, param, query,
 };

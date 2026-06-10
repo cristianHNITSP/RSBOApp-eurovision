@@ -6,6 +6,16 @@ const http = require("http");
 const { WebSocketServer } = require("ws");
 const { createProxyMiddleware } = require("http-proxy-middleware");
 const mongoSanitize = require("express-mongo-sanitize");
+const crypto = require("crypto");
+
+// Token compartido S2S para autenticar el WS interno (relay → clientes).
+const INTERNAL_WS_TOKEN = process.env.INTERNAL_SERVICE_TOKEN || "";
+function tokenEq(provided, expected) {
+  if (!provided || !expected) return false;
+  const a = Buffer.from(String(provided));
+  const b = Buffer.from(String(expected));
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
 
 const app = express();
 
@@ -110,6 +120,21 @@ app.use((req, res, next) => {
 
 // Bloquea claves con operadores Mongo ($, .) en body/query/params
 app.use(mongoSanitize());
+
+// Anti prototype-pollution (mongo-sanitize no filtra __proto__/constructor/prototype)
+app.use((req, res, next) => {
+  const FORBIDDEN = ["__proto__", "constructor", "prototype"];
+  const bad = (o, d = 0) => {
+    if (!o || typeof o !== "object" || d > 8) return false;
+    for (const k of Object.keys(o)) {
+      if (FORBIDDEN.includes(k)) return true;
+      if (bad(o[k], d + 1)) return true;
+    }
+    return false;
+  };
+  if (bad(req.body)) return res.status(400).json({ error: "Payload con claves no permitidas" });
+  next();
+});
 
 const SERVICES = config.services;
 
@@ -274,8 +299,6 @@ app.get("/api/health", (_req, res) => {
 });
 
 // 🔹 WebSocket
-app.get("/health", (req, res) => res.json({ status: "UP", service: "gateway", timestamp: new Date().toISOString() }));
-
 const PORT = config.port;
 const server = http.createServer(app);
 
@@ -287,8 +310,20 @@ const wssInternal = new WebSocketServer({ noServer: true });
 server.on("upgrade", (req, socket, head) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
   if (url.pathname === "/ws") {
+    // Anti-CSWSH: solo orígenes permitidos pueden abrir el WS de frontend.
+    if (!isAllowedOrigin(req.headers.origin)) {
+      console.warn("❌ WS /ws rechazado por origen:", req.headers.origin);
+      socket.destroy();
+      return;
+    }
     wss.handleUpgrade(req, socket, head, (ws) => wss.emit("connection", ws, req));
   } else if (url.pathname === "/ws-internal") {
+    // S2S: exige el token interno (igual que las rutas HTTP /internal).
+    if (!tokenEq(req.headers["x-service-token"], INTERNAL_WS_TOKEN)) {
+      console.warn("❌ WS /ws-internal rechazado: token inválido/ausente");
+      socket.destroy();
+      return;
+    }
     wssInternal.handleUpgrade(req, socket, head, (ws) => wssInternal.emit("connection", ws, req));
   } else {
     socket.destroy();

@@ -67,6 +67,7 @@ app.use(cookieParser());
 
 // Bloquea claves con operadores Mongo ($, .) en body/query/params
 app.use(mongoSanitize());
+app.use(require("./validators/_helpers").blockProtoPollution);
 
 mongoose
   .connect(config.mongo.uri)
@@ -98,8 +99,9 @@ app.use("/api/notification/internal", require("./routes/internal.routes"));
 
 app.use((err, _req, res, _next) => {
   console.error("[Notification ERROR]", err);
-  const status = err.status || 500;
-  res.status(status).json({ error: err.message || "Internal error" });
+  const status = err.status || err.statusCode || 500;
+  const clientMsg = status >= 500 ? "Error interno del servidor" : (err.message || "Solicitud inválida");
+  res.status(status).json({ error: clientMsg });
 });
 
 const notificationWs = require("./ws");

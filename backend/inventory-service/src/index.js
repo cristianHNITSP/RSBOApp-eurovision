@@ -64,6 +64,7 @@ app.use((err, req, res, next) => {
 app.use(cookieParser());
 // Anti NoSQL-injection: elimina claves con `$`/`.` de body, query y params
 app.use(mongoSanitize());
+app.use(require("./validators/_helpers").blockProtoPollution);
 
 // Rate-limit global (defensa en profundidad además del gateway)
 const globalLimiter = rateLimit({
@@ -113,8 +114,9 @@ app.use("/api/optica", opticaLimiter, require("./routes/optica"));
 
 app.use((err, _req, res, _next) => {
   console.error("[Inventory ERROR]", err);
-  const status = err.status || 500;
-  res.status(status).json({ error: err.message || "Internal error" });
+  const status = err.status || err.statusCode || 500;
+  const clientMsg = status >= 500 ? "Error interno del servidor" : (err.message || "Solicitud inválida");
+  res.status(status).json({ error: clientMsg });
 });
 
 const labWs = require("./ws");

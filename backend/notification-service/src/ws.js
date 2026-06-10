@@ -3,12 +3,14 @@ const WebSocket = require("ws");
 
 const GATEWAY_WS = config.gateway.wsUrl;
 const RECONNECT_DELAY = 4000;
+// El gateway exige este token en el handshake del /ws-internal.
+const SERVICE_TOKEN = process.env.INTERNAL_SERVICE_TOKEN || "";
 
 let _ws = null;
 
 function connect() {
   try {
-    _ws = new WebSocket(GATEWAY_WS);
+    _ws = new WebSocket(GATEWAY_WS, { headers: { "x-service-token": SERVICE_TOKEN } });
     _ws.on("open", () => console.log("[WS] Conectado al Gateway WS"));
     _ws.on("close", () => {
       _ws = null;

@@ -13,6 +13,7 @@ const MatrixBifocal = require("../models/contactlenses/CLMatrixBifocal");
 const MatrixTorico = require("../models/contactlenses/CLMatrixTorico");
 const MatrixProgresivo = require("../models/contactlenses/CLMatrixMultifocal");
 const { protect } = require("../utils/auth");
+const { csrfProtection } = require("../middlewares/csrf.middleware");
 
 // Inventory modules (100% reutilizables, sin cambios)
 const PHYSICAL_LIMITS = require("../inventory/constants/physicalLimits");
@@ -84,6 +85,8 @@ router.use((req, res, next) => {
 
 // Proteger todas las rutas: requiere sesión activa
 router.use(protect());
+// CSRF en métodos mutantes (self-skip en GET/HEAD/OPTIONS)
+router.use(csrfProtection);
 
 const handleValidation = (req, res, next) => {
   const errors = validationResult(req);
@@ -1060,7 +1063,7 @@ router.post(
 router.post(
   "/sheets/:sheetId/chunk",
   param("sheetId").isMongoId(),
-  body("rows").isArray().withMessage("rows debe ser un arreglo"),
+  body("rows").isArray({ max: 40000 }).withMessage("rows debe ser un arreglo (máx 40000)"),
   body("actor").optional().isObject(),
   handleValidation,
   async (req, res) => {

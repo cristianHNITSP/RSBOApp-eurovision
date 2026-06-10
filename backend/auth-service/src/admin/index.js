@@ -2,7 +2,7 @@
  * Punto de entrada del panel AdminJS.
  *
  * Orquesta:
- *   1. Conexiones MongoDB (auth/inventory/notification/backorder/optica)
+ *   1. Conexiones MongoDB (auth/inventory/notification/optica)
  *   2. Registro de modelos en cada conexión
  *   3. Construcción del array de resources
  *   4. Instancia AdminJS + branding

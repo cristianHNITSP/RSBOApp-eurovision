@@ -42,7 +42,7 @@ const addMonths = (date, months) => {
 
 const InventorySheetSchema = new mongoose.Schema(
   {
-    nombre: { type: String, required: true, trim: true, alias: "name" },
+    nombre: { type: String, required: true, trim: true, alias: "name", maxlength: 200 },
 
     proveedor: { type: PartySchema, default: () => ({ id: null, name: "" }) },
     marca: { type: PartySchema, default: () => ({ id: null, name: "" }) },
@@ -67,8 +67,8 @@ const InventorySheetSchema = new mongoose.Schema(
     fechaCreacion: { type: Date, default: null },
     fechaCaducidad: { type: Date, default: null },
 
-    numFactura: { type: String, trim: true, default: "" },
-    loteProducto: { type: String, trim: true, default: "" },
+    numFactura: { type: String, trim: true, default: "", maxlength: 120 },
+    loteProducto: { type: String, trim: true, default: "", maxlength: 120 },
     fechaCompra: { type: Date, default: null },
 
 
@@ -106,8 +106,8 @@ precioCompra: { type: Number, required: true, min: 0 },
     },
 
     meta: {
-      observaciones: { type: String, default: "" },
-      notas: { type: String, default: "" }
+      observaciones: { type: String, default: "", maxlength: 2000 },
+      notas: { type: String, default: "", maxlength: 2000 }
     }
   },
   { timestamps: true }

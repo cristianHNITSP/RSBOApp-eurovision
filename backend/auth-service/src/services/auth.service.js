@@ -1,9 +1,13 @@
 // services/auth.service.js
 const config = require("../config");
-const jwt = require("jsonwebtoken");
+const { signJwt, verifyJwt } = require("../utils/jwt");
 const bcrypt = require("bcrypt");
 const DOMPurify = require("isomorphic-dompurify");
 const User = require("../models/User");
+
+// Hash bcrypt fijo para comparar en login cuando el usuario no existe
+// (evita la diferencia de timing que delataría la existencia de la cuenta).
+const DUMMY_BCRYPT_HASH = bcrypt.hashSync("rsbo-invalid-credentials-placeholder", 10);
 
 function makeError(statusCode, message) {
   const err = new Error(message);
@@ -59,7 +63,13 @@ async function login({ username, password, ip, userAgent }) {
     .select("+password +tokens +isActive +deletedAt +role +username +name")
     .populate("role", "name");
 
-  if (!user) throw makeError(401, "Usuario o contraseña incorrectos");
+  // ✅ Anti-enumeración: comparamos la contraseña SIEMPRE (con un hash dummy si el
+  // usuario no existe) para no filtrar la existencia de la cuenta ni por mensaje
+  // ni por timing. El estado (papelera/desactivada) solo se revela tras autenticar.
+  const pepper = config.secrets.pepper;
+  const hashToCompare = user?.password || DUMMY_BCRYPT_HASH;
+  const valid = await bcrypt.compare(cleanPassword + pepper, hashToCompare);
+  if (!user || !valid) throw makeError(401, "Usuario o contraseña incorrectos");
 
   if (user.deletedAt) {
     throw makeError(403, "Tu cuenta está en papelera. Pide al administrador que la restaure.");
@@ -69,19 +79,13 @@ async function login({ username, password, ip, userAgent }) {
     throw makeError(403, "Tu cuenta está desactivada. Contacta al administrador.");
   }
 
-  // ✅ Comparar con Pepper
-  const pepper = config.secrets.pepper;
-  const valid = await bcrypt.compare(cleanPassword + pepper, user.password);
-  if (!valid) throw makeError(401, "Usuario o contraseña incorrectos");
-
-  const token = jwt.sign(
+  const token = signJwt(
     {
       id: user._id,
       username: user.username,
       role: user.role?._id?.toString() ?? user.role?.toString(),
       roleName: user.role?.name ?? null,
     },
-    config.secrets.jwt,
     { expiresIn: JWT_EXPIRES_IN }
   );
 
@@ -138,7 +142,7 @@ function buildSessionPayload(decodedUser) {
 async function renewTokenIfNeeded(userId, currentToken) {
   let decoded;
   try {
-    decoded = jwt.verify(currentToken, config.secrets.jwt);
+    decoded = verifyJwt(currentToken);
   } catch {
     return { renewed: false };
   }
@@ -148,9 +152,8 @@ async function renewTokenIfNeeded(userId, currentToken) {
     return { renewed: false };
   }
 
-  const newToken = jwt.sign(
+  const newToken = signJwt(
     { id: decoded.id, username: decoded.username, role: decoded.role, roleName: decoded.roleName },
-    config.secrets.jwt,
     { expiresIn: JWT_EXPIRES_IN }
   );
 
@@ -187,7 +190,7 @@ function getSessionInfo(currentToken) {
   if (!currentToken) return null;
   let decoded;
   try {
-    decoded = jwt.verify(currentToken, config.secrets.jwt);
+    decoded = verifyJwt(currentToken);
   } catch {
     return null;
   }

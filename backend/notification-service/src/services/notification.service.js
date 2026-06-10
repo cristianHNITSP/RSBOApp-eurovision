@@ -159,15 +159,18 @@ async function createOrAccumulate({ groupKey, title, messageTemplate, type, prio
     return { notification: n, accumulated: false };
   }
 
-  const existing = await Notification.findOne({ groupKey, ...notExpired() });
+  // Incremento ATÓMICO del contador (evita lost-update con acumulaciones
+  // concurrentes); el mensaje se recalcula con el count ya consistente.
+  const accumulated = await Notification.findOneAndUpdate(
+    { groupKey, ...notExpired() },
+    { $inc: { count: 1 }, $set: { title } },
+    { new: true }
+  );
 
-  if (existing) {
-    existing.count += 1;
-    existing.message = messageTemplate(existing.count);
-    existing.title   = title;
-    existing.updatedAt = new Date();
-    await existing.save();
-    return { notification: existing, accumulated: true };
+  if (accumulated) {
+    accumulated.message = messageTemplate(accumulated.count);
+    await accumulated.save();
+    return { notification: accumulated, accumulated: true };
   }
 
   const n = await Notification.create({
@@ -197,18 +200,20 @@ async function togglePin({ notificationId, roleName, userId }) {
   const filter = {
     $and: [visibilityFilter(roleName), notExpired(), { _id: notificationId }],
   };
-  const notification = await Notification.findOne(filter);
+  // Lectura solo para decidir la dirección del toggle.
+  const notification = await Notification.findOne(filter).select("pinnedBy").lean();
   if (!notification) return null;
 
   const userStr = String(userId);
-  const idx = (notification.pinnedBy || []).findIndex((id) => String(id) === userStr);
-  if (idx === -1) {
-    notification.pinnedBy.push(userId);
-  } else {
-    notification.pinnedBy.splice(idx, 1);
-  }
-  await notification.save();
-  return { isPinned: idx === -1 };
+  const isPinned = (notification.pinnedBy || []).some((id) => String(id) === userStr);
+
+  // Mutación ATÓMICA e idempotente (sin duplicados ni lost-update).
+  const update = isPinned
+    ? { $pull: { pinnedBy: userId } }
+    : { $addToSet: { pinnedBy: userId } };
+  await Notification.updateOne({ _id: notificationId }, update);
+
+  return { isPinned: !isPinned };
 }
 
 /**
@@ -219,21 +224,13 @@ async function dismiss({ notificationId, roleName, userId }) {
   const filter = {
     $and: [visibilityFilter(roleName), notExpired(), { _id: notificationId }],
   };
-  const notification = await Notification.findOne(filter);
-  if (!notification) return null;
-
-  const userStr = String(userId);
-
-  const alreadyDismissed = (notification.dismissedBy || []).some((id) => String(id) === userStr);
-  if (!alreadyDismissed) {
-    notification.dismissedBy.push(userId);
-  }
-
-  // También quitar el pin si estaba fijado
-  const pinIdx = (notification.pinnedBy || []).findIndex((id) => String(id) === userStr);
-  if (pinIdx !== -1) notification.pinnedBy.splice(pinIdx, 1);
-
-  await notification.save();
+  // Mutación ATÓMICA: marca descartada y quita el pin en una sola operación.
+  const updated = await Notification.findOneAndUpdate(
+    filter,
+    { $addToSet: { dismissedBy: userId }, $pull: { pinnedBy: userId } },
+    { new: true, projection: { _id: 1 } }
+  );
+  if (!updated) return null;
   return { dismissed: true };
 }
 
@@ -272,25 +269,19 @@ async function upsertDaily({ groupKey, date, title, message, metadata, type, pri
     expiresAt.setDate(expiresAt.getDate() + 4);
   }
 
-  const existing = await Notification.findOne({ groupKey, date: today });
-
-  if (existing) {
+  // Aplica la actualización sobre un documento existente (misma lógica para el
+  // camino normal y para el reintento tras colisión de índice único).
+  const applyExistingUpdate = async (existing) => {
     if (existing.contentHash === contentHash) {
-      // Fingerprint idéntico: No hacer nada, retornar skipped
       return { notification: existing, accumulated: true, skipped: true };
     }
-
     existing.title    = title;
     existing.message  = message;
     existing.metadata = metadata ?? existing.metadata;
     existing.contentHash = contentHash;
-    // No incrementamos count automáticamente si es una notificación de estado agrupada
-    // a menos que el llamador lo pida explícitamente (ej. nuevas alertas)
-    existing.count    = 1; 
-    existing.dismissedBy = []; // Reset dismissed so it pops up again for everyone
-    if (type)     existing.type     = type;
-    
-    // Solo escalar prioridad hacia arriba si tiene pins activos
+    existing.count    = 1;
+    existing.dismissedBy = [];
+    if (type) existing.type = type;
     if (priority) {
       const PRIO_ORDER = { low: 0, medium: 1, high: 2, critical: 3 };
       const hasPins = (existing.pinnedBy || []).length > 0;
@@ -302,26 +293,37 @@ async function upsertDaily({ groupKey, date, title, message, metadata, type, pri
     existing.markModified('metadata');
     await existing.save();
     return { notification: existing, accumulated: true };
+  };
+
+  const existing = await Notification.findOne({ groupKey, date: today });
+  if (existing) return applyExistingUpdate(existing);
+
+  try {
+    const n = await Notification.create({
+      groupKey,
+      date:          today,
+      title,
+      message,
+      metadata:      metadata ?? null,
+      type:          type     ?? 'warning',
+      priority:      priority ?? 'high',
+      targetRoles:   isGlobal ? [] : (targetRoles ?? []),
+      isGlobal:      Boolean(isGlobal),
+      expiresAt:     expiresAt,
+      count:         1,
+      contentHash,
+      createdBy,
+      createdByName: createdByName ?? '',
+    });
+    return { notification: n, accumulated: false };
+  } catch (err) {
+    // Otro proceso creó el {groupKey,date} en paralelo (índice único) → re-leer y actualizar.
+    if (err && err.code === 11000) {
+      const created = await Notification.findOne({ groupKey, date: today });
+      if (created) return applyExistingUpdate(created);
+    }
+    throw err;
   }
-
-  const n = await Notification.create({
-    groupKey,
-    date:          today,
-    title,
-    message,
-    metadata:      metadata ?? null,
-    type:          type     ?? 'warning',
-    priority:      priority ?? 'high',
-    targetRoles:   isGlobal ? [] : (targetRoles ?? []),
-    isGlobal:      Boolean(isGlobal),
-    expiresAt:     expiresAt,
-    count:         1,
-    contentHash,
-    createdBy,
-    createdByName: createdByName ?? '',
-  });
-
-  return { notification: n, accumulated: false };
 }
 
 // ============================================================================

@@ -15,7 +15,9 @@
 
 const router = require('express').Router();
 const auth   = require('../middlewares/auth.middleware');
+const { csrfProtection } = require('../middlewares/csrf.middleware');
 const { requireManager, requireAdmin } = require('../middlewares/permissions.middleware');
+const V      = require('../validators/notification.validators');
 const svc    = require('../services/notification.service');
 const ws     = require('../ws');
 
@@ -45,7 +47,7 @@ async function broadcastCount(roleName, userId, since, audience = {}) {
 }
 
 // ─── GET / ──────────────────────────────────────────────────────────────────
-router.get('/', auth, async (req, res) => {
+router.get('/', auth, V.listQuery, async (req, res) => {
   try {
     const { limit, skip, dateRange } = req.query;
     const data = await svc.listForUser({ ...userCtx(req), limit, skip, dateRange });
@@ -68,13 +70,9 @@ router.get('/count', auth, async (req, res) => {
 });
 
 // ─── POST / ──────────────────────────────────────────────────────────────────
-router.post('/', auth, requireManager, async (req, res) => {
+router.post('/', auth, csrfProtection, requireManager, V.createNotification, async (req, res) => {
   try {
     const { title, message, type, priority, targetRoles, isGlobal, expiresAt } = req.body;
-
-    if (!title?.trim() || !message?.trim()) {
-      return res.status(400).json({ error: 'title y message son obligatorios' });
-    }
 
     const notification = await svc.create({
       title: title.trim(),
@@ -97,13 +95,9 @@ router.post('/', auth, requireManager, async (req, res) => {
 // ─── POST /grouped ────────────────────────────────────────────────────────────
 // Accesible a todos los roles autenticados (ventas, laboratorio, etc.)
 // porque se llama desde el cliente después de acciones del negocio.
-router.post('/grouped', auth, async (req, res) => {
+router.post('/grouped', auth, csrfProtection, V.createGrouped, async (req, res) => {
   try {
     const { groupKey, title, messageTemplate, type, priority, targetRoles, isGlobal } = req.body;
-
-    if (!title?.trim() || !messageTemplate?.trim()) {
-      return res.status(400).json({ error: 'title y messageTemplate son obligatorios' });
-    }
 
     // messageTemplate es un string con "{count}" como placeholder
     const template = (count) =>
@@ -134,7 +128,7 @@ router.post('/grouped', auth, async (req, res) => {
 
 
 // ─── PATCH /:id/pin ──────────────────────────────────────────────────────────
-router.patch('/:id/pin', auth, async (req, res) => {
+router.patch('/:id/pin', auth, csrfProtection, V.idParam, async (req, res) => {
   try {
     const result = await svc.togglePin({
       notificationId: req.params.id,
@@ -149,7 +143,7 @@ router.patch('/:id/pin', auth, async (req, res) => {
 });
 
 // ─── PATCH /:id/dismiss ───────────────────────────────────────────────────────
-router.patch('/:id/dismiss', auth, async (req, res) => {
+router.patch('/:id/dismiss', auth, csrfProtection, V.idParam, async (req, res) => {
   try {
     const result = await svc.dismiss({
       notificationId: req.params.id,
@@ -164,7 +158,7 @@ router.patch('/:id/dismiss', auth, async (req, res) => {
 });
 
 // ─── PUT /:id ─────────────────────────────────────────────────────────────────
-router.put('/:id', auth, requireAdmin, async (req, res) => {
+router.put('/:id', auth, csrfProtection, requireAdmin, V.updateNotification, async (req, res) => {
   try {
     const updated = await svc.update(req.params.id, req.body);
     if (!updated) return res.status(404).json({ error: 'Notificación no encontrada' });
@@ -176,7 +170,7 @@ router.put('/:id', auth, requireAdmin, async (req, res) => {
 });
 
 // ─── DELETE /:id ──────────────────────────────────────────────────────────────
-router.delete('/:id', auth, requireAdmin, async (req, res) => {
+router.delete('/:id', auth, csrfProtection, requireAdmin, V.idParam, async (req, res) => {
   try {
     const deleted = await svc.remove(req.params.id);
     if (!deleted) return res.status(404).json({ error: 'Notificación no encontrada' });

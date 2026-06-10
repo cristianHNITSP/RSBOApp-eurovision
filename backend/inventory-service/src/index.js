@@ -49,10 +49,31 @@ app.use(
   })
 );
 
-app.use(express.json());
+// Inventario envía matrices de dioptrías completas en un solo chunk; ~0.8 MB
+// peor caso real. 2mb da holgura sin abrir la puerta a payloads abusivos.
+app.use(express.json({ limit: "2mb" }));
+
+// Body JSON malformado → 400 (en vez de 500 sin contexto)
+app.use((err, req, res, next) => {
+  if (err instanceof SyntaxError && err.status === 400 && "body" in err) {
+    return res.status(400).json({ ok: false, error: "JSON inválido o cuerpo vacío con Content-Type application/json" });
+  }
+  return next(err);
+});
+
 app.use(cookieParser());
 // Anti NoSQL-injection: elimina claves con `$`/`.` de body, query y params
 app.use(mongoSanitize());
+
+// Rate-limit global (defensa en profundidad además del gateway)
+const globalLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 600,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, error: "Demasiadas peticiones, intenta más tarde" },
+});
+app.use(globalLimiter);
 
 const { seedCatalog } = require("./services/catalog.seed");
 const { seedOpticaCategories } = require("./services/optica.seed");

@@ -10,23 +10,25 @@ const userWorkspacePreferencesSchema = new mongoose.Schema(
     context: {
       type: String,
       default: "inventory",
-      required: true
+      required: true,
+      maxlength: 40,
+      match: /^[a-z0-9_-]+$/i
     },
     pinned_templates: [
       {
-        id: String,
-        name: String,
-        sku: String,
-        tipo_matriz: String,
+        id: { type: String, maxlength: 200 },
+        name: { type: String, maxlength: 200 },
+        sku: { type: String, maxlength: 200 },
+        tipo_matriz: { type: String, maxlength: 60 },
         pinnedAt: { type: Date, default: Date.now }
       }
     ],
     open_tabs: [
       {
-        id: String,
-        name: String,
-        sku: String,
-        tipo_matriz: String,
+        id: { type: String, maxlength: 200 },
+        name: { type: String, maxlength: 200 },
+        sku: { type: String, maxlength: 200 },
+        tipo_matriz: { type: String, maxlength: 60 },
         opened_at: { type: Date, default: Date.now },
         is_pinned: { type: Boolean, default: false },
         pinned_at: { type: Date, default: null }
@@ -34,14 +36,14 @@ const userWorkspacePreferencesSchema = new mongoose.Schema(
     ],
     recent_templates: [
       {
-        id: String,
-        name: String,
-        sku: String,
-        tipo_matriz: String,
+        id: { type: String, maxlength: 200 },
+        name: { type: String, maxlength: 200 },
+        sku: { type: String, maxlength: 200 },
+        tipo_matriz: { type: String, maxlength: 60 },
         lastModified: { type: Date, default: Date.now }
       }
     ],
-    active_tab_id: { type: String, default: "nueva" },
+    active_tab_id: { type: String, default: "nueva", maxlength: 200 },
     catalog_default_section: {
       type: String,
       enum: ["search", "recent_modified", "recent_opened"],
@@ -51,7 +53,16 @@ const userWorkspacePreferencesSchema = new mongoose.Schema(
     // Forma libre para no acoplar cada sección al schema.
     view_state: {
       type: mongoose.Schema.Types.Mixed,
-      default: {}
+      default: {},
+      validate: {
+        validator: (v) => {
+          if (v == null) return true;
+          if (typeof v !== "object") return false;
+          // Rechaza tamaños abusivos (DoS de almacenamiento)
+          return Buffer.byteLength(JSON.stringify(v), "utf8") <= 64 * 1024;
+        },
+        message: "view_state inválido o excede 64KB"
+      }
     }
   },
   { timestamps: true }

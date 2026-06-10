@@ -6,7 +6,7 @@
  * @module middlewares/auth
  */
 
-const jwt = require('jsonwebtoken');
+const { verifyJwt } = require('../utils/jwt');
 
 /**
  * Middleware de autenticación
@@ -19,14 +19,10 @@ const jwt = require('jsonwebtoken');
  * @returns {void}
  */
 function authMiddleware(req, res, next) {
-  console.log('--- authMiddleware ---');
-  console.log('Cookies recibidas:', req.cookies);
-
   const token = req.cookies.auth_token;
 
   // Caso 1: no hay token -> usuario no ha iniciado sesión / cookie borrada
   if (!token) {
-    console.warn('No se encontró token en la cookie');
     return res.status(401).json({
       error: 'NO_TOKEN',
       message: 'No autorizado: token de sesión no proporcionado'
@@ -34,15 +30,12 @@ function authMiddleware(req, res, next) {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log('Token decodificado correctamente:', decoded);
+    const decoded = verifyJwt(token);
 
     // Adjuntar info del usuario al request
     req.user = decoded;
     next();
   } catch (err) {
-    console.error('Error verificando token:', err.message);
-
     // Caso 2: token expirado
     if (err.name === 'TokenExpiredError') {
       return res.status(401).json({

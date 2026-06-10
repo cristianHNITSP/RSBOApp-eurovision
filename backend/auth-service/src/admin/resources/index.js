@@ -8,14 +8,12 @@
 const { buildAuthResources }         = require("./auth");
 const { buildInventoryResources }    = require("./inventory");
 const { buildNotificationResources } = require("./notification");
-const { buildBackorderResources }    = require("./backorder");
 const { buildOpticaResources }       = require("./optica");
 
 const buildAllResources = (models) => [
   ...buildAuthResources(models.auth),
   ...buildInventoryResources(models.inventory),
   ...buildNotificationResources(models.notification),
-  ...buildBackorderResources(models.backorder),
   ...buildOpticaResources(models.optica),
 ];
 

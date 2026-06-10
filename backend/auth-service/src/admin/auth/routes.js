@@ -2,7 +2,7 @@
  * Endpoints SSO y logout de AdminJS.
  * Deben registrarse en Express ANTES del router AdminJS para tener prioridad.
  */
-const jwt = require("jsonwebtoken");
+const { verifyJwt } = require("../../utils/jwt");
 const User = require("../../models/User");
 const { SESSION_KEY } = require("./session");
 
@@ -21,7 +21,7 @@ const ssoHandler = (req, res) => {
   const token = req.cookies?.auth_token;
   if (!token) return res.redirect("/");
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = verifyJwt(token);
     if (decoded.roleName !== "root") return res.redirect("/");
     const safeToken = escapeHtml(token);
     return res.send(
@@ -52,7 +52,7 @@ const logoutHandler = async (req, res) => {
   const token = req.cookies?.auth_token;
   if (token) {
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = verifyJwt(token);
       await User.findByIdAndUpdate(decoded.id, { $pull: { tokens: { token } } });
     } catch { /* token ya inválido */ }
   }

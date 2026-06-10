@@ -6,10 +6,10 @@ const materialTreatmentOverrideSchema = new mongoose.Schema({
 }, { _id: false });
 
 const catalogBaseSchema = new mongoose.Schema({
-  key:        { type: String, required: true, unique: true, trim: true },
-  label:      { type: String, required: true, trim: true },
+  key:        { type: String, required: true, unique: true, trim: true, maxlength: 60 },
+  label:      { type: String, required: true, trim: true, maxlength: 120 },
   tipo_matriz:{ type: String, required: true, enum: ['BASE', 'SPH_CYL', 'SPH_ADD', 'BASE_ADD'] },
-  orden:      { type: Number, default: 0 },
+  orden:      { type: Number, default: 0, min: 0 },
   activo:     { type: Boolean, default: true },
   materiales: [{ type: String, trim: true }],
   tratamientos: [{ type: String, trim: true }],

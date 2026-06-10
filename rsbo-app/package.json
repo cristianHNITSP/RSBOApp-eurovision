@@ -1,7 +1,7 @@
 {
   "name": "rsbo-app",
   "private": true,
-  "version": "4.1.0",
+  "version": "5.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -14,7 +14,7 @@
     "@vueuse/motion": "^3.0.3",
     "ag-grid-community": "^35.3.0",
     "ag-grid-vue3": "^35.3.0",
-    "axios": "^1.16.1",
+    "axios": "^1.17.0",
     "buefy": "^3.0.7",
     "bulma": "^1.0.4",
     "exceljs": "^4.4.0",

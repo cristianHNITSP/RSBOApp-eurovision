@@ -5,11 +5,13 @@ const axios = require("axios");
 const http = require("http");
 const { WebSocketServer } = require("ws");
 const { createProxyMiddleware } = require("http-proxy-middleware");
+const mongoSanitize = require("express-mongo-sanitize");
 
 const app = express();
 
 // 👇 Importante si algún día pones reverse proxy TLS (Nginx/Caddy)
 app.set("trust proxy", 1);
+app.disable("x-powered-by");
 
 // ── Rate Limiter simple (in-memory, sin dependencia externa) ──────────────
 const rateLimitStore = new Map();
@@ -19,7 +21,9 @@ const RATE_LIMIT_LOGIN   = 8;             // máx intentos de login por ventana
 
 function rateLimit(max = RATE_LIMIT_MAX) {
   return (req, res, next) => {
-    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || 'unknown';
+    // Con `trust proxy` fijado, req.ip ya resuelve el primer hop confiable.
+    // Usar el header X-Forwarded-For crudo sería spoofeable por el cliente.
+    const ip = req.ip || 'unknown';
     const key = `${ip}::${max}`;
     const now = Date.now();
     let entry = rateLimitStore.get(key);
@@ -77,16 +81,35 @@ app.use(
 
 
 // ── Cabeceras de seguridad ────────────────────────────────────────────────
-app.use((_req, res, next) => {
+app.use((req, res, next) => {
   res.set('X-Content-Type-Options',  'nosniff');
   res.set('X-Frame-Options',          'SAMEORIGIN');
   res.set('X-XSS-Protection',         '1; mode=block');
   res.set('Referrer-Policy',          'strict-origin-when-cross-origin');
   res.set('Permissions-Policy',       'camera=(), microphone=(), geolocation=()');
+  // HSTS solo tiene sentido sobre HTTPS (real o tras reverse proxy TLS)
+  if (isHttpsRequest(req)) {
+    res.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
   next();
 });
 
-app.use(express.json());
+// ── Body parser con límite por prefijo ────────────────────────────────────
+// Inventario envía matrices completas de dioptrías en un solo chunk (~0.8 MB
+// peor caso real), así que esos prefijos usan 2mb; el resto se acota a 256kb.
+const jsonSmall = express.json({ limit: "256kb" });
+const jsonLarge = express.json({ limit: "2mb" });
+const LARGE_BODY_PREFIXES = [
+  "/api/inventory", "/api/contactlenses", "/api/laboratory", "/api/catalog",
+  "/api/search", "/api/stats", "/api/devolutions", "/api/mermas", "/api/optica",
+];
+app.use((req, res, next) => {
+  const useLarge = LARGE_BODY_PREFIXES.some((p) => req.path.startsWith(p));
+  return (useLarge ? jsonLarge : jsonSmall)(req, res, next);
+});
+
+// Bloquea claves con operadores Mongo ($, .) en body/query/params
+app.use(mongoSanitize());
 
 const SERVICES = config.services;
 
@@ -118,16 +141,10 @@ const proxyRequest = (serviceUrl) => async (req, res) => {
     }
 
     const targetUrl = `${serviceUrl}${req.originalUrl}`;
-    console.log(`🔁 Proxying ${req.method} ${req.originalUrl} -> ${targetUrl}`);
+    console.log(`🔁 Proxying ${req.method} ${req.originalUrl}`);
 
-    if (req.method === "POST" || req.method === "PATCH" || req.method === "PUT") {
-      console.log("📦 Payload Body:", JSON.stringify(req.body, null, 2));
-    }
-
-    // 📥 Log de cookies recibidas del cliente
-    console.log("📥 Cookies recibidas del navegador:", req.headers.cookie || "(none)");
-
-    // Headers a omitir (o que axios/el microservicio deben manejar)
+    // Headers a omitir (hop-by-hop, los que axios/el microservicio manejan,
+    // y cabeceras internas/sensibles que el cliente NUNCA debe poder inyectar)
     const headersToOmit = new Set([
       "host",
       "connection",
@@ -140,13 +157,18 @@ const proxyRequest = (serviceUrl) => async (req, res) => {
       "trailer",
       "transfer-encoding",
       "upgrade",
+      // anti-spoofing hacia servicios internos
+      "x-service-token",
     ]);
+    // Prefijos de cabeceras de confianza interna que el cliente no debe falsificar
+    const blockedHeaderPrefixes = ["x-user-", "x-internal-"];
 
     const forwardedHeaders = {};
     for (const [key, value] of Object.entries(req.headers)) {
-      if (!headersToOmit.has(key.toLowerCase())) {
-        forwardedHeaders[key] = value;
-      }
+      const lk = key.toLowerCase();
+      if (headersToOmit.has(lk)) continue;
+      if (blockedHeaderPrefixes.some((p) => lk.startsWith(p))) continue;
+      forwardedHeaders[key] = value;
     }
 
     // Asegurar cookie solo si existe
@@ -171,9 +193,7 @@ const proxyRequest = (serviceUrl) => async (req, res) => {
       withCredentials: true,
     });
 
-    // 📤 Log de cookies enviadas por el microservicio
     const setCookie = response.headers["set-cookie"];
-    console.log("📤 Cookies enviadas por el microservicio:", setCookie || "(none)");
 
     // ✅ Reescritura de cookies según si el cliente llegó por HTTPS real o HTTP
     if (setCookie?.length) {
@@ -186,10 +206,15 @@ const proxyRequest = (serviceUrl) => async (req, res) => {
     // (Puedes también forward de headers específicos si te interesa)
     return res.status(response.status).send(response.data);
   } catch (err) {
-    const status = err.response?.status || 500;
-    const data = err.response?.data || { error: err.message };
-    console.error("❌ Proxy error:", data);
-    return res.status(status).send(data);
+    // Si el microservicio respondió (4xx/5xx), reenviamos su body tal cual:
+    // ya es una respuesta de aplicación controlada.
+    if (err.response) {
+      return res.status(err.response.status).send(err.response.data);
+    }
+    // Error de transporte (timeout, ECONNREFUSED, etc.): NO filtrar err.message
+    // al cliente. Log server-side + respuesta genérica.
+    console.error(`❌ Proxy transport error [${req.method} ${req.originalUrl}]:`, err.code || err.message);
+    return res.status(502).json({ error: "BAD_GATEWAY", message: "Servicio no disponible" });
   }
 };
 
@@ -230,7 +255,6 @@ app.use("/api/mermas", proxyRequest(SERVICES.inventory));
 // Óptica consolidada dentro de inventory-service (antes optica-service)
 app.use("/api/optica", proxyRequest(SERVICES.inventory));
 app.use("/api/notifications", proxyRequest(SERVICES.notification));
-app.use("/api/backorders", proxyRequest(SERVICES.backorder));
 
 // 🔹 Ruta principal
 app.get("/", (_req, res) => res.send("🚀 RSBO Gateway funcionando"));

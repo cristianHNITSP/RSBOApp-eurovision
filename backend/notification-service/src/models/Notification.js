@@ -56,6 +56,7 @@ const notificationSchema = new mongoose.Schema(
     createdByName: {
       type: String,
       default: '',
+      maxlength: 120,
     },
     /** Usuarios que fijaron esta notificación (per-user, persistente) */
     pinnedBy: {
@@ -80,6 +81,7 @@ const notificationSchema = new mongoose.Schema(
     groupKey: {
       type: String,
       default: null,
+      maxlength: 200,
     },
     /** Cuántas veces se ha acumulado este grupo (≥1) */
     count: {
@@ -91,6 +93,7 @@ const notificationSchema = new mongoose.Schema(
     date: {
       type: String,
       default: null,
+      match: /^\d{4}-\d{2}-\d{2}$/,
     },
     /**
      * Datos detallados para el panel expandible del frontend.
@@ -100,11 +103,23 @@ const notificationSchema = new mongoose.Schema(
     metadata: {
       type: mongoose.Schema.Types.Mixed,
       default: null,
+      validate: {
+        validator: (v) => {
+          if (v == null) return true;
+          if (typeof v !== "object") return false;
+          // Rechaza claves con operadores Mongo y tamaños abusivos
+          const json = JSON.stringify(v);
+          if (/[$]|\\./.test(Object.keys(v).join(""))) return false;
+          return Buffer.byteLength(json, "utf8") <= 32 * 1024;
+        },
+        message: "metadata inválida (claves no permitidas o excede 32KB)",
+      },
     },
     /** Hash del contenido (title + message + metadata) para evitar actualizaciones nulas */
     contentHash: {
       type: String,
       default: null,
+      maxlength: 64,
     },
   },
   { timestamps: true }
@@ -113,7 +128,15 @@ const notificationSchema = new mongoose.Schema(
 // Índices útiles
 notificationSchema.index({ targetRoles: 1, priority: -1, createdAt: -1 });
 notificationSchema.index({ isGlobal: 1, priority: -1, createdAt: -1 });
-notificationSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0, partialFilterExpression: { expiresAt: { $ne: null } } });
-notificationSchema.index({ groupKey: 1, date: 1 });
+// TTL: borra el doc cuando expiresAt vence. El partialFilterExpression usa
+// `$type: "date"` (Mongo NO admite `$ne`/`$not` en índices parciales) para
+// aplicar el TTL solo a documentos con fecha de expiración.
+notificationSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0, partialFilterExpression: { expiresAt: { $type: "date" } } });
+// Único cuando AMBOS son strings (agrupación diaria): evita documentos duplicados
+// {groupKey,date} bajo concurrencia. No aplica a notificaciones sin groupKey/date.
+notificationSchema.index(
+  { groupKey: 1, date: 1 },
+  { unique: true, partialFilterExpression: { groupKey: { $type: "string" }, date: { $type: "string" } } }
+);
 
 module.exports = mongoose.model('Notification', notificationSchema);

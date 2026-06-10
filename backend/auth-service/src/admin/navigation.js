@@ -11,7 +11,6 @@ const NAV = {
   CL_MATRIX:     { name: "CL Matrices",   defaultIcon: "Circle" },
   NOTIFICATION:  { name: "Notificaciones", defaultIcon: "Bell" },
   LOG:           { name: "Logs",          defaultIcon: "FileText" },
-  BACKORDER:     { name: "BackOrder",     defaultIcon: "Clock" },
   OPTICA:        { name: "Óptica",        defaultIcon: "Glasses" },
 };
 

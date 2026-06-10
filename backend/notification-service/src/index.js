@@ -7,6 +7,9 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
+const helmet = require("helmet");
+const mongoSanitize = require("express-mongo-sanitize");
+const rateLimit = require("express-rate-limit");
 const { APP_CONSTANTS } = require("./data/constants");
 
 const app = express();
@@ -15,6 +18,17 @@ const PORT = config.port;
 const HOST = config.host;
 
 app.set("trust proxy", 1);
+app.disable("x-powered-by");
+app.use(helmet({ contentSecurityPolicy: false }));
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 500,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Demasiadas peticiones, intenta más tarde." },
+});
+app.use(limiter);
 
 const envOrigins = config.cors.origins;
 const devOrigins = APP_CONSTANTS.DEV_ORIGINS;
@@ -39,19 +53,35 @@ app.use(
   })
 );
 
-app.use(express.json());
+app.use(express.json({ limit: "256kb" }));
+
+// Body JSON malformado → 400 (en vez de 500 sin contexto)
+app.use((err, req, res, next) => {
+  if (err instanceof SyntaxError && err.status === 400 && "body" in err) {
+    return res.status(400).json({ error: "JSON inválido o cuerpo vacío con Content-Type application/json" });
+  }
+  return next(err);
+});
+
 app.use(cookieParser());
 
-// Logger de depuración
-app.use((req, res, next) => {
-  console.log(`[DEBUG] ${req.method} ${req.url}`);
-  next();
-});
+// Bloquea claves con operadores Mongo ($, .) en body/query/params
+app.use(mongoSanitize());
 
 mongoose
   .connect(config.mongo.uri)
-  .then(() => {
+  .then(async () => {
     console.log("✅ Connected to MongoDB (notification)");
+    // Reconcilia índices con el schema (crea el único parcial {groupKey,date} y
+    // el TTL corregido aunque la colección ya tuviera índices antiguos).
+    // autoIndex NO recrea un índice existente con opciones distintas.
+    try {
+      const Notification = require("./models/Notification");
+      await Notification.syncIndexes();
+      console.log("✅ Índices de Notification sincronizados");
+    } catch (e) {
+      console.error("⚠️  syncIndexes(Notification):", e.message);
+    }
   })
   .catch((err) => {
     console.error("MongoDB connection error:", err);

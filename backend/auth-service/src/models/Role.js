@@ -14,7 +14,7 @@
  */
 
 const mongoose = require('mongoose');
-const { VALID_ROLES } = require('../data/roles');
+const { VALID_ROLES, VALID_PERMISSIONS } = require('../data/roles');
 
 const roleSchema = new mongoose.Schema({
   name: {
@@ -27,10 +27,12 @@ const roleSchema = new mongoose.Schema({
   },
   description: {
     type: String,
+    maxlength: 300,
     description: 'Descripción detallada del rol y sus responsabilidades'
   },
   permissions: [{
     type: String,
+    enum: VALID_PERMISSIONS,
     description: 'Array de identificadores de permiso (ej.: manage_users, view_reports)'
   }]
 });

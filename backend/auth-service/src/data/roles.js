@@ -92,8 +92,15 @@ const ROLES_DATA = [
 
 const VALID_ROLES = Object.values(ROLES);
 
+// Whitelist de permisos = unión de todos los definidos en ROLES_DATA.
+// Restringe Role.permissions para que AdminJS/scripts no introduzcan inválidos.
+const VALID_PERMISSIONS = Array.from(
+  new Set(ROLES_DATA.flatMap((r) => r.permissions))
+);
+
 module.exports = {
   ROLES,
   ROLES_DATA,
-  VALID_ROLES
+  VALID_ROLES,
+  VALID_PERMISSIONS
 };

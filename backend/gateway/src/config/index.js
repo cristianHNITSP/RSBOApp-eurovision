@@ -8,8 +8,7 @@ const requiredEnv = [
   'AUTH_SERVICE_URL',
   'USERS_SERVICE_URL',
   'INVENTORY_SERVICE_URL',
-  'NOTIFICATION_SERVICE_URL',
-  'BACKORDER_SERVICE_URL'
+  'NOTIFICATION_SERVICE_URL'
 ];
 
 const missing = requiredEnv.filter(k => !process.env[k]);
@@ -26,7 +25,6 @@ module.exports = {
     users: process.env.USERS_SERVICE_URL,
     inventory: process.env.INVENTORY_SERVICE_URL,
     notification: process.env.NOTIFICATION_SERVICE_URL,
-    backorder: process.env.BACKORDER_SERVICE_URL,
   },
   cors: {
     origins: [

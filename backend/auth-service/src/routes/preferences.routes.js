@@ -3,12 +3,13 @@ const router = express.Router();
 const UserWorkspacePreferences = require("../models/UserWorkspacePreferences");
 const authMiddleware = require("../middlewares/auth.middleware");
 const { csrfProtection } = require("../middlewares/csrf.middleware");
+const PV = require("../validators/preferences.validators");
 
 /**
  * @route GET /api/workspace/preferences
  * @desc Get user workspace preferences (pinned and recent tabs)
  */
-router.get("/", authMiddleware, async (req, res) => {
+router.get("/", authMiddleware, PV.getPrefs, async (req, res) => {
   try {
     const context = req.query.context || "inventory";
     let prefs = await UserWorkspacePreferences.findOne({ userId: req.user.id, context });
@@ -37,7 +38,7 @@ router.get("/", authMiddleware, async (req, res) => {
  * @route PUT /api/workspace/preferences/pinned
  * @desc Update pinned templates
  */
-router.put("/pinned", authMiddleware, csrfProtection, async (req, res) => {
+router.put("/pinned", authMiddleware, csrfProtection, PV.putPinned, async (req, res) => {
   try {
     const { pinned_templates, context = "inventory" } = req.body;
     
@@ -58,7 +59,7 @@ router.put("/pinned", authMiddleware, csrfProtection, async (req, res) => {
  * @route PATCH /api/workspace/preferences/recent
  * @desc Add template to recent list
  */
-router.patch("/recent", authMiddleware, csrfProtection, async (req, res) => {
+router.patch("/recent", authMiddleware, csrfProtection, PV.patchRecent, async (req, res) => {
   try {
     const { template, context = "inventory" } = req.body;
     console.log(`[preferences.routes] PATCH /recent | context: ${context} | templateId: ${template?.id}`);
@@ -111,7 +112,7 @@ router.patch("/recent", authMiddleware, csrfProtection, async (req, res) => {
  * @route PATCH /api/workspace/preferences/active-tab
  * @desc Update active tab id
  */
-router.patch("/active-tab", authMiddleware, csrfProtection, async (req, res) => {
+router.patch("/active-tab", authMiddleware, csrfProtection, PV.patchActiveTab, async (req, res) => {
   try {
     const { tabId, context = "inventory" } = req.body;
     if (!tabId) return res.status(400).json({ ok: false, message: "tabId is required" });
@@ -133,7 +134,7 @@ router.patch("/active-tab", authMiddleware, csrfProtection, async (req, res) => 
  * @route PATCH /api/workspace/preferences/view-state
  * @desc Update free-form view state for a context (e.g. óptica: page/filter/search per category)
  */
-router.patch("/view-state", authMiddleware, csrfProtection, async (req, res) => {
+router.patch("/view-state", authMiddleware, csrfProtection, PV.patchViewState, async (req, res) => {
   try {
     const { view_state, context = "inventory" } = req.body;
     if (!view_state || typeof view_state !== "object") {
@@ -157,7 +158,7 @@ router.patch("/view-state", authMiddleware, csrfProtection, async (req, res) => 
  * @route PATCH /api/workspace/preferences/catalog-section
  * @desc Update default catalog section
  */
-router.patch("/catalog-section", authMiddleware, csrfProtection, async (req, res) => {
+router.patch("/catalog-section", authMiddleware, csrfProtection, PV.patchCatalogSection, async (req, res) => {
   try {
     const { section, context = "inventory" } = req.body;
     const allowed = new Set(["search", "recent_modified", "recent_opened"]);
@@ -205,7 +206,7 @@ router.delete("/recent/:id", authMiddleware, csrfProtection, async (req, res) =>
  * @route POST /api/workspace/preferences/open-tabs
  * @desc Upsert one open tab entry
  */
-router.post("/open-tabs", authMiddleware, csrfProtection, async (req, res) => {
+router.post("/open-tabs", authMiddleware, csrfProtection, PV.postOpenTabs, async (req, res) => {
   try {
     const { tab, context = "inventory" } = req.body;
     if (!tab?.id) return res.status(400).json({ ok: false, message: "tab.id is required" });

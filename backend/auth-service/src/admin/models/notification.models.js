@@ -7,20 +7,20 @@ const registerNotificationModels = (conn) => {
   const VALID_ROLES = ["root", "eurovision", "supervisor", "ventas", "laboratorio"];
 
   const Notification = conn.model("Notification", new mongoose.Schema({
-    title:         { type: String, required: true },
-    message:       { type: String, required: true },
+    title:         { type: String, required: true, maxlength: 120 },
+    message:       { type: String, required: true, maxlength: 2000 },
     type:          { type: String, enum: ["info", "warning", "danger", "success"], default: "info" },
     priority:      { type: String, enum: ["low", "medium", "high", "critical"], default: "low" },
     targetRoles:   [{ type: String, enum: VALID_ROLES }],
     isGlobal:      { type: Boolean, default: false },
     createdBy:     ObjectId,
-    createdByName: String,
+    createdByName: { type: String, maxlength: 120 },
     readBy:        Mixed,
     pinnedBy:      [ObjectId],
     dismissedBy:   [ObjectId],
     expiresAt:     Date,
-    groupKey:      String,
-    count:         { type: Number, default: 1 },
+    groupKey:      { type: String, maxlength: 200 },
+    count:         { type: Number, default: 1, min: 1 },
   }, { timestamps: true }));
 
   return { Notification };

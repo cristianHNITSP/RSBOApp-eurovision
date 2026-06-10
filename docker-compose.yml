@@ -39,7 +39,6 @@ services:
       INVENTORY_MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${INVENTORY_DB}?authSource=admin"
       NOTIFICATION_MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${NOTIFICATION_DB}?authSource=admin"
       # OPTICA_MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${OPTICA_DB}?authSource=admin"
-      BACKORDER_MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${BACKORDER_DB}?authSource=admin"
       MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${AUTH_DB}?authSource=admin"
     depends_on:
       mongo: { condition: service_healthy }
@@ -83,23 +82,6 @@ services:
   #   healthcheck: *node-healthcheck
   #   logging: *default-logging
   #   restart: unless-stopped
-
-  # ─── BACKORDER SERVICE ────────────────────────────────────
-  backorder-service:
-    build: { context: ./backend/backorder-service }
-    container_name: rsboapp-backorder
-    env_file: [./.env, ./backend/backorder-service/.env]
-    environment:
-      MONGO_URI: "mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/${BACKORDER_DB}?authSource=admin"
-      # GATEWAY_WS_URL: "ws://gateway:3000/ws-internal"
-      NOTIFICATION_SERVICE_URL: "http://notification-service:3000"
-    depends_on:
-      mongo: { condition: service_healthy }
-    networks: [rsbo-net]
-    user: "node"
-    healthcheck: *node-healthcheck
-    logging: *default-logging
-    restart: unless-stopped
 
   # ─── NOTIFICATION SERVICE ─────────────────────────────────
   notification-service:

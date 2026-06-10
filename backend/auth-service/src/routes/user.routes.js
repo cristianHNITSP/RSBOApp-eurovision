@@ -4,6 +4,7 @@ const router = express.Router();
 const authMiddleware = require("../middlewares/auth.middleware");
 const { csrfProtection } = require("../middlewares/csrf.middleware");
 const { requirePermissions } = require("../middlewares/permissions.middleware");
+const V = require("../validators/user.validators");
 const userService = require("../services/user.service");
 
 const canManageOrSelf = (req, res, next) => {
@@ -11,7 +12,7 @@ const canManageOrSelf = (req, res, next) => {
   return requirePermissions(["manage_users"])(req, res, next);
 };
 
-router.get("/", authMiddleware, requirePermissions(["manage_users"]), async (req, res) => {
+router.get("/", authMiddleware, requirePermissions(["manage_users"]), V.listUsers, async (req, res) => {
   try {
     const data = await userService.listUsers(req.query);
     return res.json(data);
@@ -21,7 +22,7 @@ router.get("/", authMiddleware, requirePermissions(["manage_users"]), async (req
   }
 });
 
-router.post("/", authMiddleware, csrfProtection, requirePermissions(["manage_users"]), async (req, res) => {
+router.post("/", authMiddleware, csrfProtection, requirePermissions(["manage_users"]), V.createUser, async (req, res) => {
   try {
     const created = await userService.createUser(req.body);
     return res.json(created);
@@ -55,7 +56,7 @@ router.delete('/me/sessions/others', authMiddleware, csrfProtection, async (req,
   }
 });
 
-router.delete('/me/sessions/:sessionId', authMiddleware, csrfProtection, async (req, res) => {
+router.delete('/me/sessions/:sessionId', authMiddleware, csrfProtection, [require("../validators/_helpers").objectIdParam("sessionId"), require("../validators/_helpers").runValidation], async (req, res) => {
   try {
     const result = await userService.revokeSession(req.user.id, req.params.sessionId);
     return res.json(result);
@@ -64,12 +65,9 @@ router.delete('/me/sessions/:sessionId', authMiddleware, csrfProtection, async (
   }
 });
 
-router.patch('/me/password', authMiddleware, csrfProtection, async (req, res) => {
+router.patch('/me/password', authMiddleware, csrfProtection, V.changePasswordSelf, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({ error: 'currentPassword y newPassword son requeridos' });
-    }
     const result = await userService.changePasswordSelf(req.user.id, { currentPassword, newPassword });
     res.clearCookie('auth_token', {
       httpOnly: true,
@@ -103,7 +101,7 @@ router.get("/roles", authMiddleware, requirePermissions(["manage_users"]), async
   }
 });
 
-router.put("/:id", authMiddleware, csrfProtection, canManageOrSelf, async (req, res) => {
+router.put("/:id", authMiddleware, csrfProtection, canManageOrSelf, V.updateUser, async (req, res) => {
   try {
     const updated = await userService.updateUser(req.params.id, req.body);
     return res.json(updated);
@@ -114,7 +112,7 @@ router.put("/:id", authMiddleware, csrfProtection, canManageOrSelf, async (req, 
   }
 });
 
-router.put("/:id/password", authMiddleware, csrfProtection, canManageOrSelf, async (req, res) => {
+router.put("/:id/password", authMiddleware, csrfProtection, canManageOrSelf, V.updatePasswordAdmin, async (req, res) => {
   try {
     const result = await userService.updatePassword(req.params.id, req.body.password);
     return res.json(result);
@@ -125,7 +123,7 @@ router.put("/:id/password", authMiddleware, csrfProtection, canManageOrSelf, asy
   }
 });
 
-router.put("/:id/restore", authMiddleware, csrfProtection, requirePermissions(["manage_users"]), async (req, res) => {
+router.put("/:id/restore", authMiddleware, csrfProtection, requirePermissions(["manage_users"]), V.idParam, async (req, res) => {
   try {
     // ✅ restore idempotente: siempre 200 si ya estaba restaurado o no existe
     const result = await userService.restoreUser(req.params.id);
@@ -138,7 +136,7 @@ router.put("/:id/restore", authMiddleware, csrfProtection, requirePermissions(["
 });
 
 // DELETE (soft delete, idempotente)
-router.delete("/:id", authMiddleware, csrfProtection, requirePermissions(["manage_users"]), async (req, res) => {
+router.delete("/:id", authMiddleware, csrfProtection, requirePermissions(["manage_users"]), V.idParam, async (req, res) => {
   try {
     const result = await userService.deleteUser(req.params.id);
     // ✅ SIEMPRE JSON (evita "respuesta vacía")

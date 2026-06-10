@@ -1,9 +1,9 @@
 const mongoose = require('mongoose');
 
 const catalogTreatmentSchema = new mongoose.Schema({
-  key:    { type: String, required: true, unique: true, trim: true },
-  label:  { type: String, required: true, trim: true },
-  orden:  { type: Number, default: 0 },
+  key:    { type: String, required: true, unique: true, trim: true, maxlength: 60 },
+  label:  { type: String, required: true, trim: true, maxlength: 120 },
+  orden:  { type: Number, default: 0, min: 0 },
   activo: { type: Boolean, default: true },
   // Simple variants list (used for most treatments)
   variants: [{ type: String, trim: true }],

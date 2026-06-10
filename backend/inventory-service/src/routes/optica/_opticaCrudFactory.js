@@ -18,6 +18,7 @@ const express = require("express");
 const { body, param, validationResult } = require("express-validator");
 
 const { protect } = require("../../utils/auth");
+const { csrfProtection } = require("../../middlewares/csrf.middleware");
 const { broadcast } = require("../../ws");
 const { logMovement } = require("./logHelper");
 const { sanitizeMiddleware } = require("./sanitizer");
@@ -110,6 +111,8 @@ function makeOpticaCrud(Model, cfg) {
   };
 
   router.use(protect());
+  // CSRF en métodos mutantes (self-skip en GET/HEAD/OPTIONS)
+  router.use(csrfProtection);
 
   const tag = `[OPTICA][${COLLECTION.toUpperCase()}]`;
 

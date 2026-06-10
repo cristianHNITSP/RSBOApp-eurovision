@@ -57,13 +57,6 @@ services:
   #       limits:
   #         memory: 256M
 
-  backorder-service:
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 256M
-
   notification-service:
     restart: unless-stopped
     deploy:

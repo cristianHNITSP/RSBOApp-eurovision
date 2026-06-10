@@ -9,10 +9,10 @@ const registerInventoryModels = (conn) => {
 
   // ─── InventorySheet ───────────────────────────────────────────────────────
   const InventorySheet = conn.model("InventorySheet", new mongoose.Schema({
-    nombre:         { type: String, required: true },
+    nombre:         { type: String, required: true, maxlength: 200 },
     proveedor:      PartySchema,
     marca:          PartySchema,
-    sku:            { type: String, unique: true },
+    sku:            { type: String, unique: true, maxlength: 120 },
     tipo_matriz:    { type: String, enum: ["BASE", "SPH_CYL", "SPH_ADD", "BASE_ADD"] },
     baseKey:        String,
     material:       String,
@@ -21,11 +21,11 @@ const registerInventoryModels = (conn) => {
     tratamientos:   [String],
     fechaCreacion:  Date,
     fechaCaducidad: Date,
-    numFactura:     String,
-    loteProducto:   String,
+    numFactura:     { type: String, maxlength: 120 },
+    loteProducto:   { type: String, maxlength: 120 },
     fechaCompra:    Date,
-    precioVenta:    { type: Number, default: 0 },
-    precioCompra:   { type: Number, default: 0 },
+    precioVenta:    { type: Number, default: 0, min: 0 },
+    precioCompra:   { type: Number, default: 0, min: 0 },
     isDeleted:      { type: Boolean, default: false },
     deletedAt:      Date,
     meta:           { observaciones: String, notas: String },
@@ -40,8 +40,8 @@ const registerInventoryModels = (conn) => {
     tipo_matriz:   { type: String, enum: ["BASE", "SPH_CYL", "SPH_ADD", "BASE_ADD"] },
     baseKey:       String,
     material:      String,
-    stock:         { type: Number, default: 0 },
-    precioVenta:   { type: Number, default: 0 },
+    stock:         { type: Number, default: 0, min: 0 },
+    precioVenta:   { type: Number, default: 0, min: 0 },
     isDeleted:     { type: Boolean, default: false },
   }, { timestamps: true }));
 

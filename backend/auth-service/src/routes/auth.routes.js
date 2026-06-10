@@ -6,14 +6,35 @@
 const express = require('express');
 const router = express.Router();
 
+const rateLimit = require('express-rate-limit');
 const authMiddleware = require('../middlewares/auth.middleware');
 const { generateCsrfToken, setCsrfTokenOnResponse } = require('../middlewares/csrf.middleware');
+const { body, runValidation } = require('../validators/_helpers');
 const authService = require('../services/auth.service');
 const User = require('../models/User');
 const DOMPurify = require('isomorphic-dompurify');
 
+// Rate-limit específico anti fuerza bruta (defensa en profundidad: el gateway
+// también limita, pero esto protege si se accede directo al servicio).
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  message: { error: 'Demasiados intentos de inicio de sesión. Intenta más tarde.' },
+});
+
+const validateLogin = [
+  body('username').exists({ checkNull: true }).withMessage('username requerido').bail()
+    .isString().trim().isLength({ min: 1, max: 64 }).withMessage('username inválido'),
+  body('password').exists({ checkNull: true }).withMessage('password requerido').bail()
+    .isString().isLength({ min: 1, max: 128 }).withMessage('password inválido'),
+  runValidation,
+];
+
 // POST /api/access/login
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimiter, validateLogin, async (req, res) => {
   try {
     const username = req.body.username;
     const password = req.body.password;
@@ -116,7 +137,7 @@ router.get('/check-session', authMiddleware, async (req, res) => {
         User.updateOne(
           { _id: user._id, 'tokens.token': token },
           { $set: { 'tokens.$.lastUsedAt': new Date() } }
-        ).catch(() => {});
+        ).catch((e) => console.warn('check-session: fallo al actualizar lastUsedAt:', e.message));
       }
     }
 

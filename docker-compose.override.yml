@@ -103,13 +103,6 @@ services:
   #     - ./backend/optica-service:/app
   #     - /app/node_modules
 
-  backorder-service:
-    ports:
-      - "127.0.0.1:3004:3000"
-    volumes:
-      - ./backend/backorder-service:/app
-      - /app/node_modules
-
   notification-service:
     ports:
       - "127.0.0.1:3005:3000"

@@ -14,6 +14,8 @@
 
 const router = require('express').Router();
 const { protect } = require('../utils/auth');
+const { csrfProtection } = require('../middlewares/csrf.middleware');
+const { body, runValidation } = require('../validators/_helpers');
 
 const CatalogBase = require('../models/CatalogBase');
 const CatalogTreatment = require('../models/CatalogTreatment');
@@ -21,9 +23,34 @@ const InventorySheet = require('../models/InventorySheet');
 const ContactLensesSheet = require('../models/ContactLensesSheet');
 
 const ADMIN_ROLES = ['root', 'eurovision'];
+const TIPO_MATRIZ = ['BASE', 'SPH_CYL', 'SPH_ADD', 'BASE_ADD'];
 
 // ── Auth middleware (only for write operations) ──────────────────────────────
 const requireAdmin = protect(ADMIN_ROLES);
+
+// ── Whitelists anti mass-assignment ──────────────────────────────────────────
+const BASE_FIELDS = ['key', 'label', 'tipo_matriz', 'orden', 'activo', 'materiales', 'tratamientos', 'materialTreatmentOverrides'];
+const BASE_UPDATE_FIELDS = BASE_FIELDS.filter((f) => f !== 'key');
+const TREATMENT_FIELDS = ['key', 'label', 'orden', 'activo', 'variants', 'variantsByMaterial', 'allowedMaterials', 'allowedBases'];
+const TREATMENT_UPDATE_FIELDS = TREATMENT_FIELDS.filter((f) => f !== 'key');
+const pick = (src, fields) => fields.reduce((o, f) => (f in src ? ((o[f] = src[f]), o) : o), {});
+
+const validateBase = [
+  body('key').exists().withMessage('key requerido').bail().isString().trim().isLength({ min: 1, max: 60 }),
+  body('label').optional().isString().trim().isLength({ max: 120 }),
+  body('tipo_matriz').optional().isIn(TIPO_MATRIZ).withMessage('tipo_matriz inválido'),
+  body('orden').optional().isInt({ min: 0 }),
+  body('activo').optional().isBoolean(),
+  runValidation,
+];
+
+const validateTreatment = [
+  body('key').exists().withMessage('key requerido').bail().isString().trim().isLength({ min: 1, max: 60 }),
+  body('label').exists().withMessage('label requerido').bail().isString().trim().isLength({ min: 1, max: 120 }),
+  body('orden').optional().isInt({ min: 0 }),
+  body('activo').optional().isBoolean(),
+  runValidation,
+];
 
 // ── GET /api/catalog ─────────────────────────────────────────────────────────
 router.get('/', protect(), async (_req, res) => {
@@ -103,9 +130,10 @@ router.get('/vendors', protect(), async (req, res) => {
 });
 
 // ── POST /api/catalog/bases ──────────────────────────────────────────────────
-router.post('/bases', requireAdmin, async (req, res) => {
+router.post('/bases', requireAdmin, csrfProtection, validateBase, async (req, res) => {
   try {
-    const base = await CatalogBase.create(req.body);
+    // Whitelist anti mass-assignment (no se pasa req.body crudo a create)
+    const base = await CatalogBase.create(pick(req.body, BASE_FIELDS));
     res.status(201).json({ ok: true, data: base });
   } catch (err) {
     console.error('POST /catalog/bases:', err);
@@ -114,9 +142,9 @@ router.post('/bases', requireAdmin, async (req, res) => {
 });
 
 // ── POST /api/catalog/treatments ─────────────────────────────────────────────
-router.post('/treatments', requireAdmin, async (req, res) => {
+router.post('/treatments', requireAdmin, csrfProtection, validateTreatment, async (req, res) => {
   try {
-    const treatment = await CatalogTreatment.create(req.body);
+    const treatment = await CatalogTreatment.create(pick(req.body, TREATMENT_FIELDS));
     res.status(201).json({ ok: true, data: treatment });
   } catch (err) {
     console.error('POST /catalog/treatments:', err);
@@ -125,7 +153,7 @@ router.post('/treatments', requireAdmin, async (req, res) => {
 });
 
 // ── PUT /api/catalog/bases/:key ───────────────────────────────────────────────
-router.put('/bases/:key', requireAdmin, async (req, res) => {
+router.put('/bases/:key', requireAdmin, csrfProtection, async (req, res) => {
   try {
     const allowed = ['label', 'tipo_matriz', 'orden', 'activo', 'materiales', 'tratamientos', 'materialTreatmentOverrides'];
     const updates = {};
@@ -142,7 +170,7 @@ router.put('/bases/:key', requireAdmin, async (req, res) => {
 });
 
 // ── PUT /api/catalog/treatments/:key ─────────────────────────────────────────
-router.put('/treatments/:key', requireAdmin, async (req, res) => {
+router.put('/treatments/:key', requireAdmin, csrfProtection, async (req, res) => {
   try {
     const allowed = ['label', 'orden', 'activo', 'variants', 'variantsByMaterial', 'allowedMaterials', 'allowedBases'];
     const updates = {};
@@ -159,7 +187,7 @@ router.put('/treatments/:key', requireAdmin, async (req, res) => {
 });
 
 // ── DELETE /api/catalog/bases/:key ───────────────────────────────────────────
-router.delete('/bases/:key', requireAdmin, async (req, res) => {
+router.delete('/bases/:key', requireAdmin, csrfProtection, async (req, res) => {
   try {
     const base = await CatalogBase.findOneAndUpdate({ key: req.params.key }, { $set: { activo: false } }, { new: true });
     if (!base) return res.status(404).json({ error: 'Base no encontrada' });
@@ -170,7 +198,7 @@ router.delete('/bases/:key', requireAdmin, async (req, res) => {
 });
 
 // ── DELETE /api/catalog/treatments/:key ──────────────────────────────────────
-router.delete('/treatments/:key', requireAdmin, async (req, res) => {
+router.delete('/treatments/:key', requireAdmin, csrfProtection, async (req, res) => {
   try {
     const treatment = await CatalogTreatment.findOneAndUpdate({ key: req.params.key }, { $set: { activo: false } }, { new: true });
     if (!treatment) return res.status(404).json({ error: 'Tratamiento no encontrado' });

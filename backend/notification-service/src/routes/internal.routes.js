@@ -13,6 +13,7 @@
 
 const router = require("express").Router();
 const mongoose = require("mongoose");
+const rateLimit = require("express-rate-limit");
 const { requireServiceToken } = require("../middlewares/internal.middleware");
 const svc = require("../services/notification.service");
 const ws  = require("../ws");
@@ -20,7 +21,17 @@ const ws  = require("../ws");
 const SYSTEM_OID = new mongoose.Types.ObjectId("000000000000000000000001");
 const DEFAULT_COOLDOWN_MS = 5 * 60 * 60 * 1000; // 5 horas
 
-// Todas las rutas internas requieren token
+// Rate-limit defensivo: aunque sean S2S, un servicio comprometido no debe poder
+// spamear upserts/deletes sin freno.
+const internalLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Todas las rutas internas requieren token + rate-limit
+router.use(internalLimiter);
 router.use(requireServiceToken);
 
 // ─── POST /internal/upsert-daily ────────────────────────────────────────────
@@ -118,7 +129,13 @@ router.post("/delete", async (req, res) => {
     }
 
     if (groupKeyPattern) {
-      await Notification.deleteMany({ groupKey: { $regex: groupKeyPattern } });
+      // Tratado como PREFIJO literal escapado y anclado. NO se acepta regex
+      // arbitrario del llamador (evita ReDoS y borrados masivos tipo ".*").
+      if (typeof groupKeyPattern !== "string" || groupKeyPattern.length > 200) {
+        return res.status(400).json({ error: "groupKeyPattern inválido" });
+      }
+      const escaped = groupKeyPattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      await Notification.deleteMany({ groupKey: { $regex: new RegExp("^" + escaped) } });
     } else if (groupKey && date) {
       await Notification.deleteOne({ groupKey, date });
     } else {

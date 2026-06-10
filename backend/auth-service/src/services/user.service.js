@@ -227,27 +227,31 @@ async function getMeSessions(userId, currentToken) {
 }
 
 async function revokeOtherSessions(userId, currentToken) {
-  const user = await User.findById(userId).select('+tokens');
-  if (!user) throw makeError(404, "No encontrado");
-  user.pruneExpiredTokens();
+  // $pull atómico: elimina todos los tokens distintos del actual sin
+  // read-modify-write (evita perder sesiones creadas en paralelo).
+  const prev = await User.findByIdAndUpdate(
+    userId,
+    { $pull: { tokens: { token: { $ne: currentToken } } } },
+    { new: false, select: '+tokens' }
+  );
+  if (!prev) throw makeError(404, "No encontrado");
 
-  const before = (user.tokens || []).length;
-  user.tokens = (user.tokens || []).filter(t => t.token === currentToken);
-  await user.save();
-
-  return { success: true, revoked: Math.max(0, before - user.tokens.length) };
+  const beforeCount = (prev.tokens || []).length;
+  const keptCount = (prev.tokens || []).filter(t => t.token === currentToken).length;
+  return { success: true, revoked: Math.max(0, beforeCount - keptCount) };
 }
 
 async function revokeSession(userId, sessionId) {
-  const user = await User.findById(userId).select('+tokens');
-  if (!user) throw makeError(404, "No encontrado");
-  user.pruneExpiredTokens();
+  // $pull atómico por _id del subdocumento de token.
+  const prev = await User.findByIdAndUpdate(
+    userId,
+    { $pull: { tokens: { _id: sessionId } } },
+    { new: false, select: '+tokens' }
+  );
+  if (!prev) throw makeError(404, "No encontrado");
 
-  const before = (user.tokens || []).length;
-  user.tokens = (user.tokens || []).filter(t => String(t._id) !== String(sessionId));
-  if (user.tokens.length === before) throw makeError(404, "Sesión no encontrada");
-
-  await user.save();
+  const existed = (prev.tokens || []).some(t => String(t._id) === String(sessionId));
+  if (!existed) throw makeError(404, "Sesión no encontrada");
   return { success: true, revoked: 1 };
 }
 

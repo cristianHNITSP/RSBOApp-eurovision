@@ -7,14 +7,12 @@
 const { getAuthConnection }            = require("./auth.connection");
 const { createInventoryConnection }    = require("./inventory.connection");
 const { createNotificationConnection } = require("./notification.connection");
-const { createBackorderConnection }    = require("./backorder.connection");
 const { createOpticaConnection }       = require("./optica.connection");
 
 const createConnections = () => ({
   auth:         getAuthConnection(),
   inventory:    createInventoryConnection(),
   notification: createNotificationConnection(),
-  backorder:    createBackorderConnection(),
   optica:       createOpticaConnection(),
 });
 

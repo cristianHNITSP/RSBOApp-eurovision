@@ -1,22 +1,22 @@
 const mongoose = require("mongoose");
 
 const tokenSchema = new mongoose.Schema({
-  token:       { type: String, required: true },
+  token:       { type: String, required: true, maxlength: 1024 },
   createdAt:   { type: Date,   default: Date.now },
   expiresAt:   { type: Date },
   lastUsedAt:  { type: Date,   default: null },
   deviceInfo: {
-    ip:         String,
-    userAgent:  String,
-    deviceName: String,
-    os:         String,
-    browser:    String,
+    ip:         { type: String, maxlength: 64 },
+    userAgent:  { type: String, maxlength: 512 },
+    deviceName: { type: String, maxlength: 128 },
+    os:         { type: String, maxlength: 64 },
+    browser:    { type: String, maxlength: 64 },
   },
 });
 
 const userSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true, trim: true },
+    name: { type: String, required: true, trim: true, minlength: 2, maxlength: 80 },
     username: {
       type: String,
       required: true,
@@ -35,9 +35,9 @@ const userSchema = new mongoose.Schema(
     lastLogin: { type: Date },
 
     profile: {
-      avatar: String,
-      bio: String,
-      phone: String,
+      avatar: { type: String, maxlength: 500 },
+      bio:    { type: String, maxlength: 500 },
+      phone:  { type: String, maxlength: 20 },
     },
 
     deletedAt: { type: Date, default: null },

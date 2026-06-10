@@ -97,8 +97,8 @@ watch(
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  border: 2px solid rgba(121, 87, 213, 0.15);
-  border-top-color: rgba(139, 92, 246, 0.85);
+  border: 2px solid var(--c-primary-alpha);
+  border-top-color: var(--c-primary);
   animation: spin 0.8s cubic-bezier(0.5, 0, 0.5, 1) infinite;
 }
 

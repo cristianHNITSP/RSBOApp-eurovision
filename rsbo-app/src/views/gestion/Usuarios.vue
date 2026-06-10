@@ -1,6 +1,6 @@
 <template>
   <div class="view-usuarios-root">
-    <div class="view-hero">
+    <div class="px-5 pt-5">
       <UserBanner
         ref="bannerRef"
         :user="selectedUser"
@@ -16,7 +16,7 @@
       />
     </div>
 
-    <section class="view-main">
+    <section class="p-5">
       <UsuariosHeader :stats="stats" :roles="roles" />
 
       <UsuariosFilters
@@ -24,7 +24,6 @@
         v-model:role-filter="roleFilter"
         v-model:status-filter="statusFilter"
         :roles="roles"
-        :is-mobile="isMobile"
       />
 
       <UsuariosTable
@@ -88,7 +87,7 @@ import UsuariosTable   from "./UsuariosTable.vue";
 
 const {
   roles, total, stats, permissionsCatalog,
-  loading: usersLoading, saving, isMobile,
+  loading: usersLoading, saving,
   searchQuery, roleFilter, statusFilter,
   perPage, currentPage,
   selectedUser, bannerRef,
@@ -107,4 +106,3 @@ const {
 onMounted(init);
 </script>
 
-<style src="./usuarios.css" scoped />

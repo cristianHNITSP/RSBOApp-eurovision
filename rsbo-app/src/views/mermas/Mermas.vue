@@ -32,8 +32,8 @@ defineProps({
   justify-content: center;
   min-height: 80vh;
   padding: 2rem;
-  background: radial-gradient(circle at top right, rgba(124, 58, 237, 0.05), transparent),
-              radial-gradient(circle at bottom left, rgba(236, 72, 153, 0.05), transparent);
+  background: radial-gradient(circle at top right, var(--c-primary-alpha), transparent),
+              radial-gradient(circle at bottom left, var(--c-sidebar-pink-alpha), transparent);
 }
 
 .maintenance-card {
@@ -51,7 +51,7 @@ defineProps({
 .maintenance-icon {
   width: 80px;
   height: 80px;
-  background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  background: var(--c-primary);
   color: white;
   border-radius: 20px;
   display: flex;
@@ -59,7 +59,7 @@ defineProps({
   justify-content: center;
   font-size: 2.5rem;
   margin: 0 auto 2rem;
-  box-shadow: 0 10px 20px rgba(124, 58, 237, 0.3);
+  box-shadow: 0 10px 20px var(--c-primary-alpha);
 }
 
 .maintenance-title {
@@ -72,7 +72,7 @@ defineProps({
 .maintenance-subtitle {
   font-size: 1.1rem;
   font-weight: 600;
-  color: #7c3aed;
+  color: var(--c-primary);
   margin-bottom: 1.5rem;
 }
 

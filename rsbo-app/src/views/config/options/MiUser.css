@@ -1,8 +1,8 @@
 /* ── Root + glows ─────────────────────────────────────────────────────────── */
 .user-manager.um-root {
   --primary: var(--c-primary);
-  --c2: var(--static-color-9a6dff);
-  --c3: var(--static-color-ec4899);
+  --c2: var(--c-primary);
+  --c3: var(--c-sidebar-pink);
   --border: var(--static-color-rgba-148-163-184-0-22);
   --shadow: var(--shadow-soft);
   --shadow-2: 0 18px 50px var(--static-color-rgba-15-23-42-0-12);
@@ -10,25 +10,7 @@
   position: relative;
 }
 
-.um-glow {
-  position: absolute;
-  width: 420px;
-  height: 420px;
-  border-radius: 999px;
-  filter: blur(55px);
-  opacity: 0.25;
-  pointer-events: none;
-}
-.um-glow--a {
-  top: -80px;
-  right: -80px;
-  background: radial-gradient(circle, var(--static-color-rgba-79-70-229-0-75), transparent 60%);
-}
-.um-glow--b {
-  bottom: -80px;
-  left: -80px;
-  background: radial-gradient(circle, var(--static-color-rgba-236-72-153-0-55), transparent 60%);
-}
+/* Mate: glows decorativos eliminados (ver guía oftálmica) */
 
 /* ── Card system (glass) ──────────────────────────────────────────────────── */
 .um-card {
@@ -49,8 +31,9 @@
   background: var(--surface-overlay);
 }
 
-.card-glow-ok { box-shadow: 0 18px 50px var(--static-color-rgba-16-185-129-0-08), var(--shadow-2); }
-.card-glow-bad { box-shadow: 0 18px 50px var(--static-color-rgba-239-68-68-0-08), var(--shadow-2); }
+/* Mate: estado con borde de acento, sin glow */
+.card-glow-ok { border-color: var(--c-success); }
+.card-glow-bad { border-color: var(--c-danger); }
 
 /* ── Pills ────────────────────────────────────────────────────────────────── */
 .pill-row { display: flex; flex-wrap: wrap; gap: 0.45rem; align-items: center; }
@@ -71,30 +54,30 @@
 .pill--primary {
   color: var(--primary);
   background: var(--c-primary-alpha);
-  border-color: var(--static-color-rgba-79-70-229-0-18);
+  border-color: var(--c-primary-alpha);
 }
 .pill--light {
   color: var(--primary);
-  background: var(--static-color-rgba-79-70-229-0-06);
-  border-color: var(--static-color-rgba-79-70-229-0-12);
+  background: var(--c-primary-alpha);
+  border-color: var(--c-primary-alpha);
 }
 .pill--strong {
-  background: linear-gradient(90deg, var(--static-color-rgba-121-87-213-0-16), var(--static-color-rgba-236-72-153-0-10));
-  border-color: var(--static-color-rgba-121-87-213-0-35);
+  background: var(--c-primary-alpha);
+  border-color: var(--c-primary-alpha);
   color: var(--text-primary);
 }
 .pill--ok {
-  background: var(--static-color-rgba-16-185-129-0-10);
-  border-color: var(--static-color-rgba-16-185-129-0-22);
+  background: var(--c-success-alpha);
+  border-color: var(--c-success-alpha);
   color: var(--text-primary);
 }
 .pill--bad {
-  background: var(--static-color-rgba-239-68-68-0-10);
-  border-color: var(--static-color-rgba-239-68-68-0-22);
+  background: var(--c-danger-alpha);
+  border-color: var(--c-danger-alpha);
   color: var(--text-primary);
 }
 .role-pill {
-  box-shadow: 0 10px 24px var(--static-color-rgba-79-70-229-0-14);
+  box-shadow: 0 10px 24px var(--c-primary-alpha);
 }
 
 /* ── Left column layout ───────────────────────────────────────────────────── */
@@ -105,7 +88,7 @@
   gap: 0.75rem;
   flex-wrap: wrap;
   padding: 0.9rem 0.95rem 0.65rem;
-  background: radial-gradient(circle at 0 0, var(--c-primary-alpha), transparent 55%), var(--surface-overlay);
+  background: var(--surface-overlay);
   border-bottom: 1px solid var(--border);
 }
 
@@ -118,23 +101,19 @@
   display: inline-grid;
   place-items: center;
 }
+/* Mate: anillo sólido sutil */
 .avatar-ring {
   position: absolute;
   width: 112px;
   height: 112px;
   border-radius: 999px;
-  background: conic-gradient(from 180deg, var(--static-color-rgba-79-70-229-0-55), var(--static-color-rgba-154-109-255-0-45), var(--static-color-rgba-236-72-153-0-45), var(--static-color-rgba-79-70-229-0-55));
-  filter: blur(0.2px);
-  opacity: 0.22;
+  background: var(--c-primary-alpha);
   pointer-events: none;
 }
 
 .um-title {
   font-weight: 900;
-  background: linear-gradient(90deg, var(--text-primary), var(--text-muted));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--text-primary);
 }
 
 .email-row {
@@ -179,8 +158,8 @@
   margin-right: 0.35rem;
   box-shadow: 0 0 0 2px var(--static-color-rgba-148-163-184-0-25);
 }
-.dot--ok { background: var(--static-color-10b981); }
-.dot--bad { background: var(--static-color-ef4444); }
+.dot--ok { background: var(--c-success); }
+.dot--bad { background: var(--c-danger); }
 
 .section-seguridad {
   margin-top: 0.25rem;
@@ -224,7 +203,7 @@
 
 .btn-cta {
   border-radius: 14px !important;
-  box-shadow: 0 16px 32px var(--static-color-rgba-79-70-229-0-18);
+  box-shadow: 0 16px 32px var(--c-primary-alpha);
 }
 
 .hint-line {
@@ -233,8 +212,8 @@
   align-items: center;
   font-size: 0.82rem;
   color: var(--text-muted);
-  background: var(--static-color-rgba-79-70-229-0-06);
-  border: 1px solid var(--static-color-rgba-79-70-229-0-15);
+  background: var(--c-primary-alpha);
+  border: 1px solid var(--c-primary-alpha);
   padding: 0.65rem 0.75rem;
   border-radius: 14px;
 }
@@ -281,13 +260,13 @@
 
 .pulse-animation { animation: pulse 1.35s infinite; }
 @keyframes pulse {
-  0% { box-shadow: 0 0 0 0 var(--static-color-rgba-79-70-229-0-35); }
-  70% { box-shadow: 0 0 0 12px var(--static-color-rgba-79-70-229-0); }
-  100% { box-shadow: 0 0 0 0 var(--static-color-rgba-79-70-229-0); }
+  0% { box-shadow: 0 0 0 0 var(--c-primary-alpha); }
+  70% { box-shadow: 0 0 0 12px var(--c-primary-alpha); }
+  100% { box-shadow: 0 0 0 0 var(--c-primary-alpha); }
 }
 
-:deep(.message.is-danger) { border-left: 4px solid var(--static-color-ef4444); }
-:deep(.message.is-success) { border-left: 4px solid var(--static-color-10b981); }
+:deep(.message.is-danger) { border-left: 4px solid var(--c-danger); }
+:deep(.message.is-success) { border-left: 4px solid var(--c-success); }
 :deep(.message .message-body) { border-radius: 14px; }
 
 :deep(textarea.textarea-bio) {
@@ -298,7 +277,7 @@
 
 :deep(.input),
 :deep(.textarea) { border-radius: 14px; }
-:deep(.control .icon) { color: var(--static-color-rgba-79-70-229-0-85); }
+:deep(.control .icon) { color: var(--c-primary); }
 
 /* ── Responsive ───────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {

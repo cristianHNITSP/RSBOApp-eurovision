@@ -38,11 +38,11 @@ defineProps({
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  border: 2.5px solid var(--static-color-rgba-167-139-250-0-18);
-  border-top-color: var(--static-color-rgba-139-92-246-0-95);
-  border-right-color: var(--static-color-rgba-167-139-250-0-55);
+  border: 2.5px solid var(--c-primary-alpha);
+  border-top-color: var(--c-primary);
+  border-right-color: var(--c-primary);
   animation: section-loading-spin 0.85s cubic-bezier(0.5, 0, 0.5, 1) infinite;
-  box-shadow: 0 0 14px var(--static-color-rgba-121-87-213-0-35);
+  box-shadow: 0 0 14px var(--c-primary-alpha);
 }
 
 .section-loading__label {
@@ -50,7 +50,7 @@ defineProps({
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--static-color-rgba-167-139-250-0-7);
+  color: var(--c-primary);
 }
 
 @keyframes section-loading-spin {

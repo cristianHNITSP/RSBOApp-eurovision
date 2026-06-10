@@ -4,7 +4,13 @@ import { computed, ref, onMounted } from "vue";
 import { useRoute } from "vue-router";
 import TabsManager from "@/components/TabsManager.vue";
 import SectionLoadingOverlay from "@/components/SectionLoadingOverlay.vue";
+import PageSectionHeader from "@/components/ui/PageSectionHeader.vue";
 import { labToast } from "@/composables/shared/useLabToast.js";
+
+const CL_QUICK_CARDS = [
+  { icon: "plus-square", title: "Nueva planilla", text: "Selecciona el tipo y material" },
+  { icon: "save", title: "Guardar cambios", text: 'Edita el stock y pulsa "Guardar cambios"' },
+];
 
 
 import { listContactLensSheets, getContactLensSheet } from "@/services/contactlenses";
@@ -154,39 +160,13 @@ function reordenarSheets({ oldIndex, newIndex }) {
 <template>
   <section class="section section-cl">
 
-    <header class="page-section-header">
-      <div>
-        <div class="psh-top-row">
-          <div>
-            <span class="cl-pill">
-              <b-icon icon="eye" size="is-small" class="mr-1" />
-              Inventario
-            </span>
-            <h2>Lentes de Contacto</h2>
-            <p class="psh-desc">Gestiona el stock de lentes de contacto: esféricos, tóricos, coloridos y multifocales.</p>
-          </div>
-
-          <!-- VIEW TOGGLE (disabled) -->
-        </div>
-
-        <div class="psh-quick mt-3">
-          <div class="psh-quick__card">
-            <div class="psh-quick__icon"><i class="fas fa-plus-square"></i></div>
-            <div>
-              <p class="psh-quick__title">Nueva planilla</p>
-              <p class="psh-quick__text">Selecciona el tipo y material</p>
-            </div>
-          </div>
-          <div class="psh-quick__card">
-            <div class="psh-quick__icon"><i class="fas fa-save"></i></div>
-            <div>
-              <p class="psh-quick__title">Guardar cambios</p>
-              <p class="psh-quick__text">Edita el stock y pulsa "Guardar cambios"</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </header>
+    <PageSectionHeader
+      pill="Inventario"
+      icon="eye"
+      title="Lentes de Contacto"
+      description="Gestiona el stock de lentes de contacto: esféricos, tóricos, coloridos y multifocales."
+      :quick-items="CL_QUICK_CARDS"
+    />
 
     <div class="section-boot-wrap" :class="{ 'is-booting': booting }">
       <Transition name="boot">
@@ -230,20 +210,6 @@ function reordenarSheets({ oldIndex, newIndex }) {
   border-radius: 8px;
   padding: 1.5rem;
   background-color: var(--surface-solid);
-}
-
-.cl-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--c-primary);
-  background: var(--c-primary-alpha);
-  padding: 0.2rem 0.45rem;
-  border-radius: 999px;
-  margin-bottom: 0.35rem;
 }
 
 .contenido-planilla {

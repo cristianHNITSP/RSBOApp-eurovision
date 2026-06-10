@@ -23,21 +23,21 @@
             <div class="an-trio-sep"></div>
             <div class="an-trio-item">
               <div class="at-lbl">Entradas</div>
-              <div class="at-val" style="color:#10b981" v-if="!isLoading">{{ fmtn(s?.entries30d) }}</div>
+              <div class="at-val" style="color:var(--c-success)" v-if="!isLoading">{{ fmtn(s?.entries30d) }}</div>
               <b-skeleton v-else :width="70" :height="32" animated />
               <div class="at-cap">{{ entriesPct }}% de los movimientos totales</div>
             </div>
             <div class="an-trio-sep"></div>
             <div class="an-trio-item">
               <div class="at-lbl">Salidas</div>
-              <div class="at-val" style="color:#3b82f6" v-if="!isLoading">{{ fmtn(s?.exits30d) }}</div>
+              <div class="at-val" style="color:var(--c-info)" v-if="!isLoading">{{ fmtn(s?.exits30d) }}</div>
               <b-skeleton v-else :width="70" :height="32" animated />
               <div class="at-cap">{{ exitsPct }}% de los movimientos totales</div>
             </div>
             <div class="an-trio-sep"></div>
             <div class="an-trio-item">
               <div class="at-lbl">Hoy</div>
-              <div class="at-val" style="color:#f59e0b" v-if="!isLoading">{{ s?.movementsToday ?? 0 }}</div>
+              <div class="at-val" style="color:var(--c-warning)" v-if="!isLoading">{{ s?.movementsToday ?? 0 }}</div>
               <b-skeleton v-else :width="60" :height="32" animated />
               <div class="at-cap">Actividad del día</div>
             </div>
@@ -48,7 +48,7 @@
               <span class="an-bar-lbl">Entradas</span>
               <div class="an-bar-track">
                 <div class="an-bar-fill"
-                  :style="{ width: entriesPct + '%', background: 'linear-gradient(90deg,#10b981,#34d399)' }"></div>
+                  :style="{ width: entriesPct + '%', background: 'var(--c-success)' }"></div>
               </div>
               <span class="an-bar-pct">{{ entriesPct }}%</span>
             </div>
@@ -56,7 +56,7 @@
               <span class="an-bar-lbl">Salidas</span>
               <div class="an-bar-track">
                 <div class="an-bar-fill"
-                  :style="{ width: exitsPct + '%', background: 'linear-gradient(90deg,#3b82f6,#60a5fa)' }"></div>
+                  :style="{ width: exitsPct + '%', background: 'var(--c-info)' }"></div>
               </div>
               <span class="an-bar-pct">{{ exitsPct }}%</span>
             </div>
@@ -73,12 +73,12 @@
             </div>
             <div class="an-chip">
               <div class="ach-lbl">Sin stock</div>
-              <div class="ach-val" style="color:#f59e0b">{{ fmtn((s?.totalCombinations ?? 0) - (s?.withStock ?? 0)) }}
+              <div class="ach-val" style="color:var(--c-warning)">{{ fmtn((s?.totalCombinations ?? 0) - (s?.withStock ?? 0)) }}
               </div>
             </div>
             <div class="an-chip">
               <div class="ach-lbl">Cobertura</div>
-              <div class="ach-val" style="color:#10b981">{{ s?.coveragePct ?? 0 }}%</div>
+              <div class="ach-val" style="color:var(--c-success)">{{ s?.coveragePct ?? 0 }}%</div>
             </div>
             <div class="an-chip">
               <div class="ach-lbl">Promedio por celda</div>
@@ -90,9 +90,9 @@
 
       <!-- Inventory families -->
       <div class="gcard mb-5">
-        <div class="gcard-bar" style="background:linear-gradient(90deg,#3b82f6,#06b6d4)"></div>
+        <div class="gcard-bar" style="background:var(--c-info)"></div>
         <div class="gc-head">
-          <div class="gc-ico" style="background:rgba(59,130,246,.16);color:#3b82f6"><i class="fas fa-chart-pie"></i>
+          <div class="gc-ico" style="background:var(--c-info-alpha);color:var(--c-info)"><i class="fas fa-chart-pie"></i>
           </div>
           <div>
             <div class="gc-title">Distribución por tipo de lente óptico</div>
@@ -107,7 +107,7 @@
                     class="an-family-pct">{{ fam.percentage }}%</span></div>
                 <div class="an-bar-track">
                   <div class="an-bar-fill"
-                    :style="{ width: fam.percentage + '%', background: 'linear-gradient(90deg,#3b82f6,var(--c-primary))' }">
+                    :style="{ width: fam.percentage + '%', background: 'var(--c-info)' }">
                   </div>
                 </div>
               </div>
@@ -124,9 +124,9 @@
 
       <!-- Lentes de Contacto -->
       <div class="gcard mb-5">
-        <div class="gcard-bar" style="background:linear-gradient(90deg,#06b6d4,#0d9488)"></div>
+        <div class="gcard-bar" style="background:var(--c-info)"></div>
         <div class="gc-head">
-          <div class="gc-ico" style="background:rgba(6,182,212,.16);color:#06b6d4"><i class="fas fa-eye"></i></div>
+          <div class="gc-ico" style="background:var(--c-info-alpha);color:var(--c-info)"><i class="fas fa-eye"></i></div>
           <div>
             <div class="gc-title">Inventario de Lentes de Contacto</div>
             <div class="gc-sub">Existencias, cobertura y distribución por tipo de lente de contacto</div>
@@ -136,28 +136,28 @@
           <div class="an-trio">
             <div class="an-trio-item">
               <div class="at-lbl">Catálogos activos</div>
-              <div class="at-val" style="color:#06b6d4" v-if="!isLoading">{{ s?.clActiveSheets ?? 0 }}</div><b-skeleton
+              <div class="at-val" style="color:var(--c-info)" v-if="!isLoading">{{ s?.clActiveSheets ?? 0 }}</div><b-skeleton
                 v-else :width="50" :height="32" animated />
               <div class="at-cap">Plantillas de lentes de contacto</div>
             </div>
             <div class="an-trio-sep"></div>
             <div class="an-trio-item">
               <div class="at-lbl">Piezas en almacén</div>
-              <div class="at-val" style="color:#0d9488" v-if="!isLoading">{{ fmtn(s?.clTotalStock) }}</div><b-skeleton
+              <div class="at-val" style="color:var(--c-success)" v-if="!isLoading">{{ fmtn(s?.clTotalStock) }}</div><b-skeleton
                 v-else :width="70" :height="32" animated />
               <div class="at-cap">Total de piezas físicas</div>
             </div>
             <div class="an-trio-sep"></div>
             <div class="an-trio-item">
               <div class="at-lbl">Graduaciones</div>
-              <div class="at-val" style="color:#3b82f6" v-if="!isLoading">{{ fmtn(s?.clTotalCombinations) }}</div>
+              <div class="at-val" style="color:var(--c-info)" v-if="!isLoading">{{ fmtn(s?.clTotalCombinations) }}</div>
               <b-skeleton v-else :width="70" :height="32" animated />
               <div class="at-cap">Esférica, Cilíndrica, Eje, Adición</div>
             </div>
             <div class="an-trio-sep"></div>
             <div class="an-trio-item">
               <div class="at-lbl">Cobertura</div>
-              <div class="at-val" style="color:#10b981" v-if="!isLoading">{{ s?.clCoveragePct ?? 0 }}%</div><b-skeleton
+              <div class="at-val" style="color:var(--c-success)" v-if="!isLoading">{{ s?.clCoveragePct ?? 0 }}%</div><b-skeleton
                 v-else :width="50" :height="32" animated />
               <div class="at-cap">{{ fmtn(s?.clWithStock) }} con stock</div>
             </div>
@@ -173,7 +173,7 @@
             </div>
             <div class="an-chip">
               <div class="ach-lbl">Sin stock</div>
-              <div class="ach-val" style="color:#f59e0b">{{ fmtn((s?.clTotalCombinations ?? 0) - (s?.clWithStock ?? 0))
+              <div class="ach-val" style="color:var(--c-warning)">{{ fmtn((s?.clTotalCombinations ?? 0) - (s?.clWithStock ?? 0))
                 }}</div>
             </div>
           </div>
@@ -185,7 +185,7 @@
                     class="an-family-pct">{{ fam.percentage }}%</span></div>
                 <div class="an-bar-track">
                   <div class="an-bar-fill"
-                    :style="{ width: fam.percentage + '%', background: 'linear-gradient(90deg,#06b6d4,#0d9488)' }">
+                    :style="{ width: fam.percentage + '%', background: 'var(--c-info)' }">
                   </div>
                 </div>
                 <div class="an-family-detail"><span>{{ fmtn(fam.stock) }} existencias</span><span>{{
@@ -205,9 +205,9 @@
 
       <!-- Low stock CL -->
       <div v-if="s?.clTopLowStock?.length" class="gcard mb-5">
-        <div class="gcard-bar" style="background:linear-gradient(90deg,#f59e0b,#ef4444)"></div>
+        <div class="gcard-bar" style="background:var(--c-warning)"></div>
         <div class="gc-head">
-          <div class="gc-ico" style="background:rgba(245,158,11,.16);color:#f59e0b"><i
+          <div class="gc-ico" style="background:var(--c-warning-alpha);color:var(--c-warning)"><i
               class="fas fa-triangle-exclamation"></i></div>
           <div>
             <div class="gc-title">Menor cobertura — Lentes de Contacto</div>
@@ -222,11 +222,11 @@
                 <div class="als-tipo">{{ sh.tipo }}</div>
               </div>
               <div class="als-metrics"><span class="als-stock">{{ fmtn(sh.stock) }} piezas</span><span class="als-cov"
-                  :style="{ color: sh.coverage < 30 ? '#ef4444' : sh.coverage < 60 ? '#f59e0b' : '#10b981' }">{{
+                  :style="{ color: sh.coverage < 30 ? 'var(--c-danger)' : sh.coverage < 60 ? 'var(--c-warning)' : 'var(--c-success)' }">{{
                   sh.coverage }}%</span></div>
               <div class="an-bar-track als-bar">
                 <div class="an-bar-fill"
-                  :style="{ width: sh.coverage + '%', background: sh.coverage < 30 ? '#ef4444' : sh.coverage < 60 ? '#f59e0b' : '#10b981' }">
+                  :style="{ width: sh.coverage + '%', background: sh.coverage < 30 ? 'var(--c-danger)' : sh.coverage < 60 ? 'var(--c-warning)' : 'var(--c-success)' }">
                 </div>
               </div>
             </div>
@@ -236,9 +236,9 @@
 
       <!-- High stock CL -->
       <div v-if="s?.clTopHighStock?.length" class="gcard mb-5">
-        <div class="gcard-bar" style="background:linear-gradient(90deg,#10b981,#06b6d4)"></div>
+        <div class="gcard-bar" style="background:var(--c-success)"></div>
         <div class="gc-head">
-          <div class="gc-ico" style="background:rgba(16,185,129,.16);color:#10b981"><i class="fas fa-ranking-star"></i>
+          <div class="gc-ico" style="background:var(--c-success-alpha);color:var(--c-success)"><i class="fas fa-ranking-star"></i>
           </div>
           <div>
             <div class="gc-title">Mayor stock — Lentes de Contacto</div>
@@ -252,7 +252,7 @@
                 <div class="als-name">{{ sh.nombre }}</div>
                 <div class="als-tipo">{{ sh.tipo }}</div>
               </div>
-              <div class="als-metrics"><span class="als-stock" style="color:#10b981">{{ fmtn(sh.stock) }}
+              <div class="als-metrics"><span class="als-stock" style="color:var(--c-success)">{{ fmtn(sh.stock) }}
                   piezas</span><span class="als-cov">{{ sh.coverage }}%</span></div>
             </div>
           </div>
@@ -261,9 +261,9 @@
 
       <!-- Low stock Optico -->
       <div v-if="s?.opticTopLowStock?.length" class="gcard mb-5">
-        <div class="gcard-bar" style="background:linear-gradient(90deg,#f59e0b,#ec4899)"></div>
+        <div class="gcard-bar" style="background:var(--c-warning)"></div>
         <div class="gc-head">
-          <div class="gc-ico" style="background:rgba(245,158,11,.16);color:#f59e0b"><i
+          <div class="gc-ico" style="background:var(--c-warning-alpha);color:var(--c-warning)"><i
               class="fas fa-triangle-exclamation"></i></div>
           <div>
             <div class="gc-title">Menor cobertura — Inventario Optico</div>
@@ -278,11 +278,11 @@
                 <div class="als-tipo">{{ sh.tipo }}</div>
               </div>
               <div class="als-metrics"><span class="als-stock">{{ fmtn(sh.stock) }} piezas</span><span class="als-cov"
-                  :style="{ color: sh.coverage < 30 ? '#ef4444' : sh.coverage < 60 ? '#f59e0b' : '#10b981' }">{{
+                  :style="{ color: sh.coverage < 30 ? 'var(--c-danger)' : sh.coverage < 60 ? 'var(--c-warning)' : 'var(--c-success)' }">{{
                   sh.coverage }}%</span></div>
               <div class="an-bar-track als-bar">
                 <div class="an-bar-fill"
-                  :style="{ width: sh.coverage + '%', background: sh.coverage < 30 ? '#ef4444' : sh.coverage < 60 ? '#f59e0b' : '#10b981' }">
+                  :style="{ width: sh.coverage + '%', background: sh.coverage < 30 ? 'var(--c-danger)' : sh.coverage < 60 ? 'var(--c-warning)' : 'var(--c-success)' }">
                 </div>
               </div>
             </div>
@@ -294,9 +294,9 @@
     <!-- Sidebar inventario -->
     <div class="an-col-side">
       <div class="gcard mb-4">
-        <div class="gcard-bar" style="background:linear-gradient(90deg,#10b981,#3b82f6)"></div>
+        <div class="gcard-bar" style="background:var(--c-success)"></div>
         <div class="gc-head">
-          <div class="gc-ico" style="background:rgba(16,185,129,.16);color:#10b981"><i class="fas fa-database"></i>
+          <div class="gc-ico" style="background:var(--c-success-alpha);color:var(--c-success)"><i class="fas fa-database"></i>
           </div>
           <div>
             <div class="gc-title">Cobertura de inventario óptico</div>
@@ -307,7 +307,7 @@
           <template v-if="!isLoading">
             <div class="cov-row"><span class="cov-k">Graduaciones totales</span><b class="cov-v">{{
               fmtn(s?.totalCombinations) }}</b></div>
-            <div class="cov-row"><span class="cov-k">Con stock</span><b class="cov-v" style="color:#10b981">{{
+            <div class="cov-row"><span class="cov-k">Con stock</span><b class="cov-v" style="color:var(--c-success)">{{
               fmtn(s?.withStock) }}</b></div>
             <div class="cov-row"><span class="cov-k">Cobertura</span><b class="cov-v">{{ s?.coveragePct ?? 0 }}%</b>
             </div>
@@ -325,9 +325,9 @@
         </div>
       </div>
       <div class="gcard mb-4">
-        <div class="gcard-bar" style="background:linear-gradient(90deg,#06b6d4,#0d9488)"></div>
+        <div class="gcard-bar" style="background:var(--c-info)"></div>
         <div class="gc-head">
-          <div class="gc-ico" style="background:rgba(6,182,212,.16);color:#06b6d4"><i class="fas fa-eye"></i></div>
+          <div class="gc-ico" style="background:var(--c-info-alpha);color:var(--c-info)"><i class="fas fa-eye"></i></div>
           <div>
             <div class="gc-title">Cobertura lentes de contacto</div>
             <div class="gc-sub">Estado del stock de lentes de contacto</div>
@@ -339,7 +339,7 @@
                 }}</b></div>
             <div class="cov-row"><span class="cov-k">Graduaciones totales</span><b class="cov-v">{{
               fmtn(s?.clTotalCombinations) }}</b></div>
-            <div class="cov-row"><span class="cov-k">Con stock</span><b class="cov-v" style="color:#10b981">{{
+            <div class="cov-row"><span class="cov-k">Con stock</span><b class="cov-v" style="color:var(--c-success)">{{
               fmtn(s?.clWithStock) }}</b></div>
             <div class="cov-row"><span class="cov-k">Cobertura</span><b class="cov-v">{{ s?.clCoveragePct ?? 0 }}%</b>
             </div>

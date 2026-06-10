@@ -1,6 +1,6 @@
 .help-soft {
   margin-top: 0.7rem;
-  border: 1px dashed var(--static-color-rgba-79-70-229-0-25);
+  border: 1px dashed var(--c-primary-alpha);
   background: var(--c-primary-alpha);
   border-radius: 12px;
   padding: 0.65rem 0.7rem;

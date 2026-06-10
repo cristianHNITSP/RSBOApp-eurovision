@@ -93,10 +93,10 @@
   flex-shrink: 0;
   transition: all 0.3s ease;
 }
-.notif-type-bar--info    { background: linear-gradient(to bottom, var(--static-color-60a5fa), var(--static-color-3b82f6)); }
-.notif-type-bar--warning { background: linear-gradient(to bottom, var(--static-color-fbbf24), var(--static-color-f59e0b)); }
+.notif-type-bar--info    { background: linear-gradient(to bottom, var(--c-info), var(--c-info)); }
+.notif-type-bar--warning { background: linear-gradient(to bottom, var(--c-warning), var(--c-warning)); }
 
-.notif-type-bar--success { background: linear-gradient(to bottom, var(--static-color-34d399), var(--static-color-10b981)); }
+.notif-type-bar--success { background: linear-gradient(to bottom, var(--c-success), var(--c-success)); }
 
 .notif-body {
   flex: 1;
@@ -177,8 +177,8 @@
   box-shadow: 0 4px 12px rgba(var(--c-primary-rgb, 59, 130, 246), 0.3);
 }
 
-.action-icon--dismiss:hover { background: var(--static-color-ef4444); box-shadow: 0 4px 12px var(--static-color-rgba-239-68-68-0-3); }
-.action-icon--pinned { color: var(--static-color-f59e0b) !important; background: var(--static-color-rgba-245-158-11-0-1); }
+.action-icon--dismiss:hover { background: var(--c-danger); box-shadow: 0 4px 12px var(--c-danger-alpha); }
+.action-icon--pinned { color: var(--c-warning) !important; background: var(--c-warning-alpha); }
 /* ── Botón Ver Detalle (Estilo Apple Link) ─────────────────────────────────── */
 .detail-toggle {
   display: inline-flex;
@@ -438,8 +438,8 @@
 }
 
 .axis-pill-mini.active {
-  background: var(--static-color-3b82f6);
-  border-color: var(--static-color-3b82f6);
+  background: var(--c-info);
+  border-color: var(--c-info);
   color: white;
 }
 

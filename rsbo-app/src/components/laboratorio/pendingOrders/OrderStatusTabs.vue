@@ -68,8 +68,8 @@ function countByStatus(tabValue) {
 }
 
 .status-tab--active {
-  background: linear-gradient(135deg, rgba(144, 111, 225, 0.18), rgba(236, 72, 153, 0.10));
-  border-color: rgba(144, 111, 225, 0.45);
+  background: var(--c-primary-alpha);
+  border-color: var(--c-primary-alpha);
   color: var(--text-primary);
 }
 

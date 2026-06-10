@@ -1,5 +1,6 @@
-@import url('https://api.fontshare.com/v2/css?f[]=satoshi@1&f[]=switzer@1&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Space+Grotesk:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap');
+/* Las fuentes se cargan desde index.html con <link rel="preconnect"> +
+   <link rel="stylesheet"> — NO usar @import aquí: encadena descargas y
+   bloquea el primer paint en cada carga fría. */
 
 /* ============================================================
    global.css — Overrides de Buefy/Bulma + utilidades globales
@@ -244,7 +245,7 @@ strong {
 
 /* Re-apply colored buttons after the generic override above */
 [data-theme="dark"] .button.is-primary {
-  background: linear-gradient(135deg, var(--c-primary), var(--c-primary-dark)) !important;
+  background: var(--c-primary) !important;
   border-color: transparent !important;
   color: var(--text-on-primary) !important;
 }
@@ -709,7 +710,7 @@ html[data-theme="dark"] {
 }
 
 .button.is-primary {
-  background: linear-gradient(135deg, var(--c-primary), var(--c-primary-dark)) !important;
+  background: var(--c-primary) !important;
   border-color: transparent !important;
   box-shadow: 0 4px 12px var(--c-primary-alpha);
 }
@@ -785,7 +786,7 @@ html[data-theme="dark"] {
 }
 
 .tabs.is-toggle li.is-active a {
-  background: linear-gradient(135deg, var(--c-primary-alpha), var(--static-color-rgba-236-72-153-0-10)) !important;
+  background: var(--c-primary-alpha) !important;
   border-color: var(--c-primary-alpha) !important;
   color: var(--c-primary) !important;
 }
@@ -869,25 +870,25 @@ button.dropdown-item:hover {
 .notification.is-success {
   background: var(--c-success-alpha) !important;
   color: var(--c-success) !important;
-  border: 1px solid var(--static-color-rgba-34-197-94-0-28) !important;
+  border: 1px solid var(--c-success-alpha) !important;
 }
 
 .notification.is-danger {
   background: var(--c-danger-alpha) !important;
   color: var(--c-danger) !important;
-  border: 1px solid var(--static-color-rgba-239-68-68-0-28) !important;
+  border: 1px solid var(--c-danger-alpha) !important;
 }
 
 .notification.is-warning {
   background: var(--c-warning-alpha) !important;
   color: var(--c-warning) !important;
-  border: 1px solid var(--static-color-rgba-245-158-11-0-28) !important;
+  border: 1px solid var(--c-warning-alpha) !important;
 }
 
 .notification.is-info {
   background: var(--c-info-alpha) !important;
   color: var(--c-info) !important;
-  border: 1px solid var(--static-color-rgba-59-130-246-0-28) !important;
+  border: 1px solid var(--c-info-alpha) !important;
 }
 
 /* --- Card (Buefy .card component) --- */
@@ -1209,32 +1210,32 @@ button.dropdown-item:hover {
 
 .notices .snackbar.is-success,
 .notices .toast.is-success {
-  background: linear-gradient(90deg, var(--c-success-alpha), var(--c-primary-alpha)) !important;
-  border: 1px solid var(--static-color-rgba-34-197-94-0-35) !important;
+  background: var(--surface-raised) !important;
+  border: 1px solid var(--c-success-alpha) !important;
   color: var(--c-success) !important;
   box-shadow: var(--shadow-md) !important;
 }
 
 .notices .snackbar.is-danger,
 .notices .toast.is-danger {
-  background: linear-gradient(90deg, var(--c-danger-alpha), var(--c-primary-alpha)) !important;
-  border: 1px solid var(--static-color-rgba-239-68-68-0-35) !important;
+  background: var(--surface-raised) !important;
+  border: 1px solid var(--c-danger-alpha) !important;
   color: var(--c-danger) !important;
   box-shadow: var(--shadow-md) !important;
 }
 
 .notices .snackbar.is-warning,
 .notices .toast.is-warning {
-  background: linear-gradient(90deg, var(--c-warning-alpha), var(--c-primary-alpha)) !important;
-  border: 1px solid var(--static-color-rgba-245-158-11-0-35) !important;
+  background: var(--surface-raised) !important;
+  border: 1px solid var(--c-warning-alpha) !important;
   color: var(--c-warning) !important;
   box-shadow: var(--shadow-md) !important;
 }
 
 .notices .snackbar.is-info,
 .notices .toast.is-info {
-  background: linear-gradient(90deg, var(--c-info-alpha), var(--c-primary-alpha)) !important;
-  border: 1px solid var(--static-color-rgba-59-130-246-0-30) !important;
+  background: var(--surface-raised) !important;
+  border: 1px solid var(--c-info-alpha) !important;
   color: var(--c-info) !important;
   box-shadow: var(--shadow-md) !important;
 }
@@ -1249,11 +1250,8 @@ button.dropdown-item:hover {
   gap: 1.5rem;
   padding: 1rem 1.25rem;
   border-radius: 14px;
-  background:
-    radial-gradient(circle at 0 0, var(--static-color-rgba-79-70-229-0-12), transparent 55%),
-    radial-gradient(circle at 100% 0, var(--static-color-rgba-236-72-153-0-10), transparent 55%),
-    radial-gradient(circle at 60% 100%, var(--static-color-rgba-249-115-22-0-10), transparent 55%),
-    var(--surface-solid);
+  /* Mate: superficie sólida, sin degradados decorativos */
+  background: var(--surface-solid);
   border: 1px solid var(--border);
   margin-bottom: 1.5rem;
 }
@@ -1595,15 +1593,15 @@ button.dropdown-item:hover {
 }
 
 .gcard-devol {
-  border-color: var(--static-color-rgba-245-158-11-0-2);
+  border-color: var(--c-warning-alpha);
 }
 
 .gcard-lab {
-  border-color: var(--static-color-rgba-6-182-212-0-2);
+  border-color: var(--c-info-alpha);
 }
 
 .gcard-corrections {
-  border-color: var(--static-color-rgba-239-68-68-0-2);
+  border-color: var(--c-danger-alpha);
 }
 
 /* Card header */
@@ -1681,15 +1679,15 @@ button.dropdown-item:hover {
 }
 
 .sp-ok {
-  background: var(--static-color-rgba-16-185-129--12);
-  color: var(--static-color-10b981);
-  border: 1px solid var(--static-color-rgba-16-185-129--25);
+  background: var(--c-success-alpha);
+  color: var(--c-success);
+  border: 1px solid var(--c-success-alpha);
 }
 
 .sp-warn {
-  background: var(--static-color-rgba-245-158-11--12);
-  color: var(--static-color-d97706);
-  border: 1px solid var(--static-color-rgba-245-158-11--25);
+  background: var(--c-warning-alpha);
+  color: var(--c-warning);
+  border: 1px solid var(--c-warning-alpha);
 }
 
 .gc-action-btn {
@@ -1700,7 +1698,7 @@ button.dropdown-item:hover {
   font-weight: 600;
   color: var(--c-primary);
   background: var(--c-primary-alpha);
-  border: 1px solid var(--static-color-rgba-144-111-225--25);
+  border: 1px solid var(--c-primary-alpha);
   padding: 0.3rem 0.7rem;
   border-radius: 999px;
   cursor: pointer;
@@ -1708,12 +1706,12 @@ button.dropdown-item:hover {
 }
 
 .gc-action-btn:hover {
-  background: var(--static-color-rgba-144-111-225--22);
+  background: var(--c-primary-alpha);
 }
 
 .gc-badge-count {
-  background: var(--static-color-rgba-239-68-68--12);
-  color: var(--static-color-ef4444);
+  background: var(--c-danger-alpha);
+  color: var(--c-danger);
   border-radius: 9px;
   padding: 0.15rem 0.55rem;
   font-size: 0.72rem;
@@ -1727,33 +1725,33 @@ button.dropdown-item:hover {
 }
 
 .accent-blue {
-  background: var(--static-color-rgba-59-130-246--15);
-  color: var(--static-color-3b82f6);
+  background: var(--c-info-alpha);
+  color: var(--c-info);
 }
 
 .accent-green {
-  background: var(--static-color-rgba-16-185-129--15);
-  color: var(--static-color-10b981);
+  background: var(--c-success-alpha);
+  color: var(--c-success);
 }
 
 .accent-cyan {
-  background: var(--static-color-rgba-6-182-212--15);
-  color: var(--static-color-06b6d4);
+  background: var(--c-info-alpha);
+  color: var(--c-info);
 }
 
 .accent-teal {
-  background: var(--static-color-rgba-20-184-166--15);
-  color: var(--static-color-14b8a6);
+  background: var(--c-success-alpha);
+  color: var(--c-success);
 }
 
 .accent-orange {
-  background: var(--static-color-rgba-245-158-11--15);
-  color: var(--static-color-f59e0b);
+  background: var(--c-warning-alpha);
+  color: var(--c-warning);
 }
 
 .accent-red {
-  background: var(--static-color-rgba-239-68-68--15);
-  color: var(--static-color-ef4444);
+  background: var(--c-danger-alpha);
+  color: var(--c-danger);
 }
 
 /* Cell grid */
@@ -1776,7 +1774,7 @@ button.dropdown-item:hover {
 }
 
 .mcell-orange {
-  border-color: var(--static-color-rgba-245-158-11-0-25);
+  border-color: var(--c-warning-alpha);
 }
 
 .mcell-label {
@@ -1795,11 +1793,11 @@ button.dropdown-item:hover {
 }
 
 .mcell-val.warn {
-  color: var(--static-color-f59e0b);
+  color: var(--c-warning);
 }
 
 .mcell-val.ok {
-  color: var(--static-color-10b981);
+  color: var(--c-success);
 }
 
 .mcell-val.accent {
@@ -1807,7 +1805,7 @@ button.dropdown-item:hover {
 }
 
 .mcell-val.danger {
-  color: var(--static-color-ef4444);
+  color: var(--c-danger);
 }
 
 .mcell-desc {
@@ -1817,11 +1815,7 @@ button.dropdown-item:hover {
 
 .mesh-bg {
   background-color: var(--bg-base);
-  background-image:
-    radial-gradient(at 0% 0%, var(--static-color-rgba-144-111-225-0-15) 0px, transparent 50%),
-    radial-gradient(at 100% 0%, var(--static-color-rgba-236-72-153-0-1) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, var(--static-color-rgba-249-115-22-0-1) 0px, transparent 50%),
-    radial-gradient(at 0% 100%, var(--static-color-rgba-59-130-246-0-1) 0px, transparent 50%);
+  /* Mate: fondo plano sin mesh decorativo */
 }
 
 /* ============================================================
@@ -1834,16 +1828,9 @@ button.dropdown-item:hover {
   overflow: hidden;
 }
 
+/* Mate: sin remolino decorativo */
 .liquid-glass::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle, var(--static-color-rgba-255-255-255-0-1) 0%, transparent 70%);
-  animation: liquid-swirl 15s infinite linear;
-  pointer-events: none;
+  content: none;
 }
 
 @keyframes liquid-swirl {
@@ -1873,9 +1860,8 @@ button.dropdown-item:hover {
   right: -50px;
   width: 400px;
   height: 400px;
-  background: radial-gradient(circle, var(--c-primary-alpha) 0%, transparent 70%);
-  filter: blur(80px);
-  animation: float-glow 8s infinite ease-in-out;
+  /* Mate: glow decorativo desactivado */
+  display: none;
 }
 
 .hero-glow--b {
@@ -1884,9 +1870,8 @@ button.dropdown-item:hover {
   left: -50px;
   width: 350px;
   height: 350px;
-  background: radial-gradient(circle, var(--c-sidebar-pink-alpha) 0%, transparent 70%);
-  filter: blur(70px);
-  animation: float-glow 10s infinite ease-in-out reverse;
+  /* Mate: glow decorativo desactivado */
+  display: none;
 }
 
 @keyframes float-glow {
@@ -1915,7 +1900,7 @@ button.dropdown-item:hover {
 }
 
 .premium-btn {
-  background: linear-gradient(135deg, var(--c-primary), var(--c-primary-dark)) !important;
+  background: var(--c-primary) !important;
   color: white !important;
   border: none !important;
   box-shadow: 0 4px 15px var(--c-primary-alpha);

@@ -25,7 +25,7 @@
   font-weight: 800;
   background: var(--c-primary-alpha);
   color: var(--c-primary);
-  border: 1px solid var(--static-color-rgba-79-70-229-0-20);
+  border: 1px solid var(--c-primary-alpha);
   flex: 0 0 auto;
 }
 

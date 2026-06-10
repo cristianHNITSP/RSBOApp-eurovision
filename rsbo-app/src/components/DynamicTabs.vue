@@ -151,13 +151,11 @@ function select(tab) {
   position: absolute;
   top: 0.3rem;
   height: calc(100% - 0.6rem);
-  background: linear-gradient(135deg,
-      rgba(144, 111, 225, 0.22),
-      rgba(236, 72, 153, 0.13));
-  border: 1px solid rgba(144, 111, 225, 0.35);
+  background: var(--c-primary-alpha);
+  border: 1px solid var(--c-primary-alpha);
   border-radius: calc(var(--radius-pill, 999px) - 4px);
   box-shadow:
-    0 2px 10px rgba(144, 111, 225, 0.22),
+    0 2px 10px var(--c-primary-alpha),
     inset 0 1px 0 rgba(255, 255, 255, 0.14);
   pointer-events: none;
   transition:

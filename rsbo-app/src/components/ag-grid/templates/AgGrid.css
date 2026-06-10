@@ -132,9 +132,9 @@
   top: 6px;
   right: 10px;
   z-index: 6;
-  background: var(--static-color-rgba-167-139-250-0-18);
-  border: 1px solid var(--static-color-rgba-167-139-250-0-35);
-  color: var(--static-color-7c3aed);
+  background: var(--c-primary-alpha);
+  border: 1px solid var(--c-primary-alpha);
+  color: var(--c-primary);
   font-size: 10px;
   font-family: monospace;
   padding: 2px 7px;
@@ -398,13 +398,13 @@
   border: none !important;
   outline: none !important;
   box-shadow: inset 0 0 0 2px var(--c-primary) !important;
-  background: var(--static-color-rgba-121-87-213-0-05) !important;
+  background: var(--c-primary-alpha) !important;
   transition: box-shadow 0.1s ease;
 }
 
 [data-theme="dark"] .ag-grid-glass :deep(.ag-cell-focus:not(.ag-cell-inline-editing)) {
   box-shadow: inset 0 0 0 2px var(--c-primary-light) !important;
-  background: var(--static-color-rgba-167-139-250-0-08) !important;
+  background: var(--c-primary-alpha) !important;
 }
 /* ═══════════════════════════════════════════════════════════════
    FULLSCREEN MODAL FIX

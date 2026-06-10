@@ -1,22 +1,22 @@
 <template>
-  <div class="panel-usuarios-filters">
-    <b-field grouped group-multiline>
-      <b-field label="Buscar usuario" class="panel-usuarios-filter-field" expanded>
+  <div class="columns is-multiline is-variable is-3">
+    <div class="column is-12-mobile is-6-tablet is-4-desktop">
+      <b-field label="Buscar usuario">
         <b-input
           :model-value="searchQuery"
           @update:model-value="$emit('update:searchQuery', $event)"
-          :size="isMobile ? '' : 'is-small'"
           icon="search"
           placeholder="Buscar por nombre o usuario…"
           expanded
         />
       </b-field>
+    </div>
 
-      <b-field label="Filtrar por rol" class="panel-usuarios-filter-field" expanded>
+    <div class="column is-12-mobile is-6-tablet is-4-desktop">
+      <b-field label="Filtrar por rol">
         <b-select
           :model-value="roleFilter"
           @update:model-value="$emit('update:roleFilter', $event)"
-          :size="isMobile ? '' : 'is-small'"
           expanded
         >
           <option value="all">Todos los roles</option>
@@ -25,12 +25,13 @@
           </option>
         </b-select>
       </b-field>
+    </div>
 
-      <b-field label="Filtrar por estado de usuario" class="panel-usuarios-filter-field" expanded>
+    <div class="column is-12-mobile is-6-tablet is-4-desktop">
+      <b-field label="Filtrar por estado de usuario">
         <b-select
           :model-value="statusFilter"
           @update:model-value="$emit('update:statusFilter', $event)"
-          :size="isMobile ? '' : 'is-small'"
           expanded
         >
           <option value="all">Todos</option>
@@ -39,7 +40,7 @@
           <option value="trash">Papelera</option>
         </b-select>
       </b-field>
-    </b-field>
+    </div>
   </div>
 </template>
 
@@ -51,10 +52,7 @@ defineProps({
   roleFilter:  String,
   statusFilter: String,
   roles:     { type: Array, default: () => [] },
-  isMobile:  { type: Boolean, default: false },
 });
 
 defineEmits(["update:searchQuery", "update:roleFilter", "update:statusFilter"]);
 </script>
-
-<style src="./UsuariosFilters.css" scoped />

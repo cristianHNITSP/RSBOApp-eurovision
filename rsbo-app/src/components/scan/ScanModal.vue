@@ -6,6 +6,8 @@
     trap-focus
     :destroy-on-hide="true"
     :can-cancel="['escape', 'outside']"
+    :width="440"
+    animation="lq-pop"
     aria-role="dialog"
     aria-modal
     @close="stopCamera"
@@ -18,40 +20,53 @@
       </header>
 
       <section class="modal-card-body scan-card__body">
-        <!-- Cámara activa -->
-        <div v-show="phase === 'scanning'" class="scan-video-wrap">
-          <video ref="video" class="scan-video" muted playsinline autoplay />
-          <div class="scan-frame" aria-hidden="true" />
-          <p class="help has-text-centered mt-2">Apunta la cámara al código QR</p>
-        </div>
-
-        <!-- Inicio / reintento (gesto de usuario: requisito de iOS/Safari) -->
-        <div v-if="phase === 'idle'" class="has-text-centered py-4">
-          <b-icon icon="camera" pack="fas" size="is-large" type="is-primary" />
-          <p class="mt-2 mb-3">Activa la cámara para escanear el código QR.</p>
-          <b-button type="is-primary" icon-left="camera" @click="startCamera">Activar cámara</b-button>
-        </div>
-
-        <!-- Cámara no disponible / error -->
-        <div v-else-if="phase === 'error'" class="notification is-warning is-light py-3">
-          <p class="mb-2"><b-icon icon="video-slash" pack="fas" size="is-small" />&nbsp; {{ cameraMsg }}</p>
-
-          <!-- Guía breve para habilitar el permiso, según el dispositivo -->
-          <div class="scan-perm-hint">
-            <p class="is-size-7 has-text-weight-semibold mb-1">
-              <b-icon icon="circle-info" pack="fas" size="is-small" />&nbsp; Asegúrate de tener activado el permiso de cámara:
-            </p>
-            <p class="is-size-7">{{ permissionHint }}</p>
+        <!-- Escenario de TAMAÑO FIJO: los estados (validando / activar /
+             escaneando / error) se intercambian dentro sin alterar jamás
+             las dimensiones del modal (cero parpadeo de layout). -->
+        <div class="scan-stage">
+          <!-- Validando cámara (corre tras la animación de entrada — guía §4) -->
+          <div v-if="phase === 'checking'" class="has-text-centered">
+            <b-icon icon="spinner" pack="fas" custom-class="fa-spin" size="is-large" type="is-primary" />
+            <p class="mt-3 has-text-grey">Buscando cámara…</p>
           </div>
 
-          <b-button v-if="canRetry" size="is-small" type="is-warning" icon-left="rotate-right" class="mt-2" @click="startCamera">
-            Reintentar cámara
-          </b-button>
+          <!-- Inicio / reintento (gesto de usuario: requisito de iOS/Safari) -->
+          <div v-else-if="phase === 'idle'" class="has-text-centered">
+            <b-icon icon="camera" pack="fas" size="is-large" type="is-primary" />
+            <p class="mt-2 mb-3">Activa la cámara para escanear el código QR.</p>
+            <b-button type="is-primary" icon-left="camera" @click="startCamera">Activar cámara</b-button>
+          </div>
+
+          <!-- Cámara no disponible / error (con scroll propio si no cabe) -->
+          <div v-else-if="phase === 'error'" class="notification is-warning is-light py-3 mb-0 scan-error">
+            <p class="mb-2"><b-icon icon="video-slash" pack="fas" size="is-small" />&nbsp; {{ cameraMsg }}</p>
+
+            <!-- Guía breve para habilitar el permiso, según el dispositivo -->
+            <div class="scan-perm-hint">
+              <p class="is-size-7 has-text-weight-semibold mb-1">
+                <b-icon icon="circle-info" pack="fas" size="is-small" />&nbsp; Asegúrate de tener activado el permiso de cámara:
+              </p>
+              <p class="is-size-7">{{ permissionHint }}</p>
+            </div>
+
+            <b-button v-if="canRetry" size="is-small" type="is-warning" icon-left="rotate-right" class="mt-2" @click="startCamera">
+              Reintentar cámara
+            </b-button>
+          </div>
+
+          <!-- Cámara activa (v-show: el <video> debe existir al iniciar el scanner) -->
+          <div v-show="phase === 'scanning'" class="scan-video-wrap">
+            <video ref="video" class="scan-video" muted playsinline autoplay />
+            <div class="scan-frame" aria-hidden="true" />
+            <p class="help has-text-centered scan-video-hint">Apunta la cámara al código QR</p>
+          </div>
         </div>
 
-        <!-- Fallback manual (siempre disponible) -->
-        <div class="columns is-mobile is-vcentered mt-3 mb-0">
-          <div class="column">
+        <!-- Fallback manual (siempre disponible).
+             En móvil se apila (input arriba, botón abajo a lo ancho);
+             en tablet+ van en línea. -->
+        <div class="columns is-multiline is-vcentered is-variable is-2 mt-3 mb-0">
+          <div class="column is-12-mobile">
             <b-field class="mb-0">
               <b-input
                 v-model="manualCode"
@@ -63,10 +78,11 @@
               />
             </b-field>
           </div>
-          <div class="column is-narrow">
+          <div class="column is-12-mobile is-narrow-tablet">
             <b-button
               type="is-primary"
               icon-left="check"
+              expanded
               :loading="scan.resolving.value"
               :disabled="!manualCode.trim()"
               @click="submitManual"
@@ -100,10 +116,16 @@ const permissionHint = computed(() => {
 
 const video = ref(null);
 const manualCode = ref("");
-const phase = ref("idle"); // 'idle' | 'scanning' | 'error'
+const phase = ref("checking"); // 'checking' | 'idle' | 'scanning' | 'error'
 const cameraMsg = ref("");
 const canRetry = ref(false);
 let qrScanner = null;
+let bootTimer = null;
+
+/* Duración de la entrada lq-pop (0.5s) + margen: la validación de cámara
+   corre DESPUÉS de la animación (guía liquid-glass §4), con el loader
+   "Buscando cámara…" centrado mientras tanto. */
+const ENTER_ANIM_MS = 550;
 
 // La cámara solo está disponible en contexto seguro (HTTPS o localhost).
 function cameraSupported() {
@@ -174,35 +196,45 @@ function close() {
   scan.scanOpen.value = false;
 }
 
-// Al abrir: en contexto seguro intentamos auto-arrancar (escritorio/Android);
-// si el gesto de usuario es obligatorio (iOS) o falla, queda el botón "Activar cámara".
+// Al abrir: loader "Buscando cámara…" mientras corre la animación de entrada;
+// al terminar, en contexto seguro intentamos auto-arrancar (escritorio/Android).
+// Si el gesto de usuario es obligatorio (iOS) o falla, queda el reintento.
 watch(
   () => scan.scanOpen.value,
   (open) => {
+    clearTimeout(bootTimer);
     if (open) {
       manualCode.value = "";
-      phase.value = "idle";
+      phase.value = "checking";
       canRetry.value = false;
-      if (cameraSupported()) startCamera();
-      else fail("La cámara requiere una conexión segura (HTTPS). Abre la app por HTTPS o ingresa el código manualmente.", false);
+      bootTimer = setTimeout(() => {
+        if (cameraSupported()) startCamera();
+        else fail("La cámara requiere una conexión segura (HTTPS). Abre la app por HTTPS o ingresa el código manualmente.", false);
+      }, ENTER_ANIM_MS);
     } else {
       stopCamera();
     }
   }
 );
 
-onBeforeUnmount(stopCamera);
+onBeforeUnmount(() => {
+  clearTimeout(bootTimer);
+  stopCamera();
+});
 </script>
 
 <style scoped>
+/* La entrada liquid-glass la da el b-modal (animation="lq-pop": blur→0 +
+   respiración en scaleY). El "rebote" del texto no era la animación, sino
+   el modal cambiando de altura entre estados → resuelto con .scan-stage. */
 .scan-card {
   width: 100%;
   max-width: 440px;
+  margin-inline: auto;
   border-radius: 18px;
   overflow: hidden;
   background: var(--surface);
   box-shadow: var(--shadow-lg);
-  animation: scan-liquid-in 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) both;
 }
 
 .scan-card__head {
@@ -210,8 +242,28 @@ onBeforeUnmount(stopCamera);
   border-bottom: 1px solid var(--border);
 }
 
+/* Escenario de tamaño FIJO: su altura depende solo del viewport, nunca del
+   estado interno → el modal jamás "salta" al pasar de loader a cámara/error. */
+.scan-stage {
+  height: clamp(220px, 42vh, 300px);
+  display: grid;
+  place-items: center;
+}
+
+.scan-stage > * {
+  grid-area: 1 / 1;
+  width: 100%;
+}
+
+/* El error puede ser más largo que el escenario: scroll propio, no crece. */
+.scan-error {
+  max-height: 100%;
+  overflow-y: auto;
+}
+
 .scan-video-wrap {
   position: relative;
+  height: 100%;
   border-radius: 14px;
   overflow: hidden;
   background: var(--bg-subtle);
@@ -219,7 +271,7 @@ onBeforeUnmount(stopCamera);
 
 .scan-video {
   width: 100%;
-  max-height: 280px;
+  height: 100%;
   object-fit: cover;
   display: block;
 }
@@ -233,6 +285,15 @@ onBeforeUnmount(stopCamera);
   pointer-events: none;
 }
 
+.scan-video-hint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0.4rem;
+  color: var(--text-on-brand);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
 .scan-perm-hint {
   border-top: 1px solid var(--border);
   margin-top: 0.5rem;
@@ -240,13 +301,4 @@ onBeforeUnmount(stopCamera);
   line-height: 1.35;
 }
 
-@keyframes scan-liquid-in {
-  0%   { opacity: 0; transform: scale(0.94); filter: blur(var(--fx-blur, 10px)); }
-  60%  { opacity: 1; transform: scale(1.012); filter: blur(0); }
-  100% { transform: scale(1); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .scan-card { animation: none; }
-}
 </style>

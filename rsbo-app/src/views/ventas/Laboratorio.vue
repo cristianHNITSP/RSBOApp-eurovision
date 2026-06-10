@@ -65,7 +65,7 @@ defineProps({
 .mh-icon {
   width: 60px;
   height: 60px;
-  background: linear-gradient(135deg, #06b6d4, #3b82f6);
+  background: var(--c-info);
   color: white;
   border-radius: 15px;
   display: flex;
@@ -95,7 +95,7 @@ defineProps({
 
 .tm-icon {
   font-size: 3rem;
-  color: #06b6d4;
+  color: var(--c-info);
   margin-bottom: 1.5rem;
   opacity: 0.5;
 }

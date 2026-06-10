@@ -1,28 +1,29 @@
+/* Barra compacta: una sola línea visual, controles a 2.1rem */
 .mobile-topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.6rem;
-  min-height: 52px;
+  gap: 0.5rem;
+  min-height: 44px;
 }
 
 .mobile-topbar__left {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.5rem;
   min-width: 0;
 }
 
 .mobile-title-wrap {
   display: flex;
   flex-direction: column;
-  gap: 0.05rem;
   min-width: 0;
 }
 
 .mobile-title {
-  font-weight: 900;
-  font-size: 0.98rem;
+  font-weight: 800;
+  font-size: 0.9rem;
+  line-height: 1.15;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -30,7 +31,8 @@
 }
 
 .mobile-subtitle {
-  font-size: 0.78rem;
+  font-size: 0.68rem;
+  line-height: 1.1;
   color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -40,7 +42,14 @@
 .mobile-topbar__right {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.4rem;
+}
+
+/* Controles compactos (botones de Buefy dentro del topbar) */
+.mobile-topbar :deep(.button) {
+  height: 2.15rem;
+  padding-left: 0.65rem;
+  padding-right: 0.65rem;
 }
 
 /* Reutilización parcial de Toolbar badges si es necesario, 

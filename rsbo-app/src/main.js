@@ -10,6 +10,7 @@ import "@fortawesome/fontawesome-free/css/all.css";
 
 import "./assets/css/tokens.css";
 import "./assets/css/global.css";
+import "./assets/css/liquid-glass.css";
 import router from "./router";
 
 const app = createApp(App);

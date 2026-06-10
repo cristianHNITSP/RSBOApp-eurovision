@@ -9,11 +9,7 @@
   align-items: flex-start;
   padding: 1rem;
   border-radius: 14px;
-  background:
-    radial-gradient(circle at 0 0, var(--static-color-rgba-79-70-229-0-12), transparent 55%),
-    radial-gradient(circle at 100% 0, var(--static-color-rgba-236-72-153-0-10), transparent 55%),
-    radial-gradient(circle at 60% 100%, var(--static-color-rgba-249-115-22-0-10), transparent 55%),
-    var(--surface-solid);
+  background: var(--surface-solid);
   border: 1px solid var(--border);
 }
 
@@ -41,7 +37,7 @@
   padding: 0.2rem 0.55rem;
   border-radius: 999px;
   margin-bottom: 0.45rem;
-  border: 1px solid var(--static-color-rgba-79-70-229-0-18);
+  border: 1px solid var(--c-primary-alpha);
 }
 
 .help-meta {

@@ -1,14 +1,20 @@
 <template>
-  <div class="prefs-card" :class="{ 'prefs-card--wide': wide }">
-    <div class="prefs-card__head">
-      <div class="prefs-title">
-        <b-icon :icon="icon" size="is-small" class="mr-2" />
-        {{ title }}
+  <div class="column is-12-mobile" :class="wide ? 'is-12' : 'is-12-tablet'">
+    <div class="prefs-card">
+      <div class="level is-mobile mb-3">
+        <div class="level-left">
+          <div class="prefs-title">
+            <b-icon :icon="icon" size="is-small" class="mr-2" />
+            {{ title }}
+          </div>
+        </div>
+        <div class="level-right">
+          <b-tag type="is-light" rounded size="is-small">{{ tag }}</b-tag>
+        </div>
       </div>
-      <b-tag type="is-light" rounded size="is-small">{{ tag }}</b-tag>
-    </div>
 
-    <slot />
+      <slot />
+    </div>
   </div>
 </template>
 

@@ -1,18 +1,13 @@
+/* Tarjeta mate — el layout/responsive lo da Bulma (columns) */
 .sec-card {
-  grid-column: span 6;
-  background: color-mix(in srgb, var(--surface-solid) 72%, transparent);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+  height: 100%;
+  background: var(--surface-solid);
   border: 1px solid var(--border-solid);
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-xs);
   display: flex;
   flex-direction: column;
-}
-
-.sec-card--wide {
-  grid-column: span 12;
 }
 
 .sec-card__head {
@@ -21,7 +16,7 @@
   justify-content: space-between;
   padding: 0.85rem 1rem;
   border-bottom: 1px solid var(--border-solid);
-  background: color-mix(in srgb, var(--bg-subtle) 60%, transparent);
+  background: var(--bg-subtle);
   flex-wrap: wrap;
   gap: 0.5rem;
 }
@@ -37,10 +32,4 @@
   display: inline-flex;
   align-items: center;
   font-size: 0.9rem;
-}
-
-@media screen and (max-width: 768px) {
-  .sec-card {
-    grid-column: span 12;
-  }
 }

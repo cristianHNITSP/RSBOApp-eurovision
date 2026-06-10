@@ -1,5 +1,5 @@
 <template>
-  <b-modal :model-value="modelValue" has-modal-card trap-focus :destroy-on-hide="true" animation="zoom-in"
+  <b-modal :model-value="modelValue" has-modal-card trap-focus :destroy-on-hide="true" animation="lq-pop"
     :can-cancel="['escape', 'outside']" @update:model-value="emit('update:modelValue', $event)">
     <div class="modal-card">
       <header class="modal-card-head">
@@ -22,7 +22,7 @@
         </b-field>
       </section>
 
-      <footer class="modal-card-foot" style="justify-content: flex-end; gap: 0.5rem">
+      <footer class="modal-card-foot is-justify-content-flex-end">
         <b-button @click="emit('update:modelValue', false)">Cancelar</b-button>
         <b-button type="is-primary" :loading="saving" @click="save">Guardar</b-button>
       </footer>
@@ -59,4 +59,3 @@ watch(() => props.user, (u) => {
 
 function save() { emit('save', { ...form }) }
 </script>
-<style src="./UserEditModal.css" scoped></style>

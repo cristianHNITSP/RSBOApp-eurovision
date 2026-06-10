@@ -142,8 +142,8 @@ const isMobile =
   gap: 0.75rem;
   padding: 0.55rem 0.65rem;
   border-radius: 0.9rem;
-  border: 1px solid rgba(245, 158, 11, 0.35);
-  background: linear-gradient(90deg, rgba(245, 158, 11, 0.16), rgba(124, 58, 237, 0.10));
+  border: 1px solid var(--c-warning-alpha);
+  background: var(--c-warning-alpha);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   box-shadow: var(--shadow-md);
@@ -163,8 +163,8 @@ const isMobile =
   width: 28px;
   height: 28px;
   border-radius: 999px;
-  background: rgba(245, 158, 11, 0.18);
-  border: 1px solid rgba(245, 158, 11, 0.25);
+  background: var(--c-warning-alpha);
+  border: 1px solid var(--c-warning-alpha);
   flex: 0 0 auto;
 }
 

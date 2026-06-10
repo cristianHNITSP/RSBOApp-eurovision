@@ -31,8 +31,8 @@
     pointer-events: none;
     opacity: 0.4;
     background:
-        radial-gradient(circle at 0% 0%, var(--static-color-rgba-121-87-213-0-15), transparent 50%),
-        radial-gradient(circle at 100% 100%, var(--static-color-rgba-236-72-153-0-1), transparent 50%);
+        radial-gradient(circle at 0% 0%, var(--c-primary-alpha), transparent 50%),
+        radial-gradient(circle at 100% 100%, var(--c-sidebar-pink-alpha), transparent 50%);
 }
 
 .sidebar-mobile>* {

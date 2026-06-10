@@ -12,41 +12,43 @@ export const DASHBOARD_CONFIG = {
   }
 };
 
+/* Paleta del logo: colores de rol vívidos, sólidos y mate (sin gradientes).
+   Los pills usan tokens CSS para adaptarse a claro/oscuro automáticamente. */
 export const ROLE_META = {
-  root: { 
-    label: 'Administrador del sistema', 
-    icon: 'fas fa-crown', 
-    ring: '#dc2626', 
-    banner: 'linear-gradient(90deg, #dc2626, #ea580c)', 
-    pill: { background: 'rgba(220,38,38,.15)', color: '#dc2626', border: '1px solid rgba(220,38,38,.3)' } 
+  root: {
+    label: 'Administrador del sistema',
+    icon: 'fas fa-crown',
+    ring: '#db3b4b',
+    banner: '#db3b4b',
+    pill: { background: 'var(--c-danger-alpha)', color: 'var(--c-danger)', border: '1px solid var(--c-danger-alpha)' }
   },
-  eurovision: { 
-    label: 'Encargado Eurovisión', 
-    icon: 'fas fa-star', 
-    ring: '#906fe1', 
-    banner: 'linear-gradient(90deg, #906fe1, #2563eb)', 
-    pill: { background: 'rgba(144,111,225,.15)', color: '#906fe1', border: '1px solid rgba(144,111,225,.3)' } 
+  eurovision: {
+    label: 'Encargado Eurovisión',
+    icon: 'fas fa-star',
+    ring: '#a332bd',
+    banner: '#a332bd',
+    pill: { background: 'var(--c-primary-alpha)', color: 'var(--c-primary)', border: '1px solid var(--c-primary-alpha)' }
   },
-  supervisor: { 
-    label: 'Supervisor de operaciones', 
-    icon: 'fas fa-eye', 
-    ring: '#0891b2', 
-    banner: 'linear-gradient(90deg, #0891b2, #0d9488)', 
-    pill: { background: 'rgba(8,145,178,.15)', color: '#0891b2', border: '1px solid rgba(8,145,178,.3)' } 
+  supervisor: {
+    label: 'Supervisor de operaciones',
+    icon: 'fas fa-eye',
+    ring: '#0f97a8',
+    banner: '#0f97a8',
+    pill: { background: 'var(--c-cyan-alpha)', color: 'var(--c-cyan)', border: '1px solid var(--c-cyan-alpha)' }
   },
-  ventas: { 
-    label: 'Personal de ventas', 
-    icon: 'fas fa-cart-shopping', 
-    ring: '#16a34a', 
-    banner: 'linear-gradient(90deg, #16a34a, #65a30d)', 
-    pill: { background: 'rgba(22,163,74,.15)', color: '#16a34a', border: '1px solid rgba(22,163,74,.3)' } 
+  ventas: {
+    label: 'Personal de ventas',
+    icon: 'fas fa-cart-shopping',
+    ring: '#148a4e',
+    banner: '#148a4e',
+    pill: { background: 'var(--c-success-alpha)', color: 'var(--c-success)', border: '1px solid var(--c-success-alpha)' }
   },
-  laboratorio: { 
-    label: 'Técnico de laboratorio', 
-    icon: 'fas fa-microscope', 
-    ring: '#0284c7', 
-    banner: 'linear-gradient(90deg, #0284c7, #906fe1)', 
-    pill: { background: 'rgba(2,132,199,.15)', color: '#0284c7', border: '1px solid rgba(2,132,199,.3)' } 
+  laboratorio: {
+    label: 'Técnico de laboratorio',
+    icon: 'fas fa-microscope',
+    ring: '#176fdb',
+    banner: '#176fdb',
+    pill: { background: 'var(--c-info-alpha)', color: 'var(--c-info)', border: '1px solid var(--c-info-alpha)' }
   },
 };
 

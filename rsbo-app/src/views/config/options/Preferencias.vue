@@ -11,7 +11,7 @@
       </div>
     </header>
 
-    <div class="prefs-grid">
+    <div class="columns is-multiline is-variable is-3 lq-stagger">
       <PrefsCard icon="palette" title="Apariencia" tag="UI">
         <PrefsRow
           label="Modo oscuro"

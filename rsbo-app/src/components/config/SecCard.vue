@@ -1,10 +1,12 @@
 <template>
-  <div class="sec-card" :class="{ 'sec-card--wide': wide }">
-    <div class="sec-card__head">
-      <slot name="head" />
-    </div>
-    <div class="sec-card__body">
-      <slot />
+  <div class="column is-12-mobile" :class="wide ? 'is-12' : 'is-6-tablet'">
+    <div class="sec-card">
+      <div class="sec-card__head">
+        <slot name="head" />
+      </div>
+      <div class="sec-card__body">
+        <slot />
+      </div>
     </div>
   </div>
 </template>

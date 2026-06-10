@@ -70,7 +70,7 @@
 .degree-pill {
   padding: 0.2rem 0.55rem;
   border-radius: 999px;
-  border: 1px solid var(--static-color-rgba-79-70-229-0-20);
+  border: 1px solid var(--c-primary-alpha);
   background: transparent;
   font-size: 0.72rem;
   cursor: pointer;
@@ -79,13 +79,13 @@
 }
 
 .degree-pill:hover {
-  background: var(--static-color-rgba-79-70-229-0-08);
-  border-color: var(--static-color-rgba-79-70-229-0-35);
+  background: var(--c-primary-alpha);
+  border-color: var(--c-primary-alpha);
 }
 
 .degree-pill--active {
-  background: var(--static-color-rgba-79-70-229-0-15);
-  border-color: var(--static-color-rgba-79-70-229-0-55);
+  background: var(--c-primary-alpha);
+  border-color: var(--c-primary);
   font-weight: 700;
 }
 
@@ -101,10 +101,7 @@
   overflow: hidden;
 
   /* Fondo — receta idéntica al sidebar: primary sutil + pink sutil, base sólida */
-  background:
-    radial-gradient(circle at 0 0, var(--static-color-rgba-121-87-213-0-07), transparent 55%),
-    radial-gradient(circle at 100% 100%, var(--static-color-rgba-236-72-153-0-05), transparent 55%),
-    var(--surface-solid);
+  background: var(--surface-solid);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 
@@ -183,7 +180,7 @@
   inset: 0;
   pointer-events: none;
   background: radial-gradient(ellipse 60% 40% at 50% 50%,
-      var(--static-color-rgba-121-87-213-0-05) 0%,
+      var(--c-primary-alpha) 0%,
       transparent 70%);
   animation: glow-pulse 3s ease-in-out infinite;
 }
@@ -636,13 +633,13 @@
   border: none !important;
   outline: none !important;
   box-shadow: inset 0 0 0 2px var(--c-primary) !important;
-  background: var(--static-color-rgba-79-70-229-0-06) !important;
+  background: var(--c-primary-alpha) !important;
   transition: box-shadow 0.1s ease;
 }
 
 [data-theme="dark"] .ag-grid-glass :deep(.ag-cell-focus:not(.ag-cell-inline-editing)) {
   box-shadow: inset 0 0 0 2px var(--c-primary-light) !important;
-  background: var(--static-color-rgba-167-139-250-0-08) !important;
+  background: var(--c-primary-alpha) !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════

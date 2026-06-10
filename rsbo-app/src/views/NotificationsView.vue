@@ -83,7 +83,7 @@ onMounted(loadNotifications);
 <template>
   <div class="notifications-page">
     <div class="container is-max-desktop">
-      <div class="notifications-container shadow-premium p-5">
+      <div class="notifications-container shadow-premium p-5 lq-enter">
 
         <!-- Cabecera responsive con `level` nativo de Bulma (apila en móvil, sin @media) -->
         <div class="level mb-5">
@@ -158,13 +158,13 @@ onMounted(loadNotifications);
 
 <style scoped>
 .notifications-container {
-  background: var(--surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: 0.75rem;
+  background: var(--surface-solid);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
 }
 
 .shadow-premium {
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-sm);
 }
 
 .notifications-list {

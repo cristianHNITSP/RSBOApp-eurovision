@@ -1,0 +1,194 @@
+/* ============================================================
+   RSBOApp — Liquid Glass (utilidades compartidas)
+   Contrato visual: LIQUID_GLASS_ANIMATIONS.md
+   - Entrada con blur → 0 (el "glass" que se enfoca)
+   - Rebote SOLO en scale/scaleY con transform-origin en el borde anclado
+   - translate monótono (nunca pasa de la posición final)
+   - Salidas cortas y directas
+   - Respeta prefers-reduced-motion y [data-reduced-motion]
+   ============================================================ */
+
+/* ----------------------------------------------------------
+   Keyframes base
+   ---------------------------------------------------------- */
+
+/* Tarjeta / sección que entra asentándose (anclada abajo-centro) */
+@keyframes lq-card-in {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+    filter: blur(var(--fx-anim-blur, 12px));
+  }
+
+  60% {
+    opacity: 1;
+    transform: translateY(0) scale(1.006);
+    filter: blur(0);
+  }
+
+  100% {
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+/* Dropdown / panel anclado arriba */
+@keyframes lq-drop-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px) scaleY(0.94);
+    filter: blur(var(--fx-anim-blur, 12px));
+  }
+
+  60% {
+    opacity: 1;
+    transform: translateY(0) scaleY(1.01);
+    filter: blur(0);
+  }
+
+  100% {
+    transform: translateY(0) scaleY(1);
+    filter: blur(0);
+  }
+}
+
+/* Bottom sheet / panel anclado abajo */
+@keyframes lq-sheet-in {
+  0% {
+    opacity: 0;
+    transform: translateY(100%) scaleY(0.92);
+    filter: blur(var(--fx-anim-blur, 12px));
+  }
+
+  60% {
+    opacity: 1;
+    transform: translateY(0) scaleY(1.012);
+    filter: blur(0);
+  }
+
+  100% {
+    transform: translateY(0) scaleY(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes lq-fade-out {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes lq-sheet-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+}
+
+/* ----------------------------------------------------------
+   Clases utilitarias de entrada (aplicar al elemento raíz)
+   ---------------------------------------------------------- */
+.lq-enter {
+  transform-origin: bottom center;
+  animation: lq-card-in 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.lq-enter-top {
+  transform-origin: top center;
+  animation: lq-drop-in 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+/* Stagger: hijos directos entran en cascada líquida */
+.lq-stagger>* {
+  transform-origin: bottom center;
+  animation: lq-card-in 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.lq-stagger>*:nth-child(1) { animation-delay: 0.03s; }
+.lq-stagger>*:nth-child(2) { animation-delay: 0.08s; }
+.lq-stagger>*:nth-child(3) { animation-delay: 0.13s; }
+.lq-stagger>*:nth-child(4) { animation-delay: 0.18s; }
+.lq-stagger>*:nth-child(5) { animation-delay: 0.23s; }
+.lq-stagger>*:nth-child(6) { animation-delay: 0.28s; }
+.lq-stagger>*:nth-child(7) { animation-delay: 0.33s; }
+.lq-stagger>*:nth-child(8) { animation-delay: 0.38s; }
+.lq-stagger>*:nth-child(n+9) { animation-delay: 0.42s; }
+
+/* ----------------------------------------------------------
+   Clases de <Transition> de Vue
+   <Transition name="lq-pop">  → dropdown (anclado arriba)
+   <Transition name="lq-sheet"> → bottom sheet (anclado abajo)
+   <Transition name="lq-fade">  → fade sutil
+   ---------------------------------------------------------- */
+.lq-pop-enter-active {
+  transform-origin: top center;
+  animation: lq-drop-in 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.lq-pop-leave-active {
+  transform-origin: top center;
+  animation: lq-fade-out 0.22s cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+.lq-sheet-enter-active {
+  transform-origin: bottom center;
+  animation: lq-sheet-in 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.lq-sheet-leave-active {
+  transform-origin: bottom center;
+  animation: lq-sheet-out 0.3s cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+.lq-fade-enter-active {
+  transition: opacity 0.3s ease-out;
+}
+
+.lq-fade-leave-active {
+  transition: opacity 0.2s ease-in;
+}
+
+.lq-fade-enter-from,
+.lq-fade-leave-to {
+  opacity: 0;
+}
+
+/* ----------------------------------------------------------
+   Reduced motion: solo fade corto (sin escala/blur/desplazamiento)
+   [data-reduced-motion] ya anula duraciones vía tokens.css; este
+   bloque cubre prefers-reduced-motion del sistema.
+   ---------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+
+  .lq-enter,
+  .lq-enter-top,
+  .lq-stagger>*,
+  .lq-pop-enter-active,
+  .lq-sheet-enter-active {
+    animation: lq-reduced-fade 0.15s ease both;
+  }
+
+  .lq-pop-leave-active,
+  .lq-sheet-leave-active {
+    animation: lq-fade-out 0.1s ease both;
+  }
+}
+
+@keyframes lq-reduced-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}

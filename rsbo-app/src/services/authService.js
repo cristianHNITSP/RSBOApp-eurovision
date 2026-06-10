@@ -102,7 +102,16 @@ export const useAuthService = ($buefy) => {
       if (data?.roleName === "root") {
         window.location.href = "/admin/sso";
       } else {
-        router.push({ name: "home" });
+        try {
+          await router.push({ name: "home" });
+        } catch (navErr) {
+          console.warn("[Auth] Navegación SPA falló tras login:", navErr);
+        }
+        // Si la navegación no llegó (guard abortado, chunk dinámico roto,
+        // caché de Vite obsoleta…), garantizar la entrada con recarga dura.
+        if (router.currentRoute.value.name !== "home") {
+          window.location.assign("/l/home");
+        }
       }
     } catch (err) {
       // Bloqueo por rate limiter

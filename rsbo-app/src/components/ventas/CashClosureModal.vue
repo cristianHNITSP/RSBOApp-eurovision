@@ -226,7 +226,7 @@ function formatDate(d) {
 }
 
 .total-ventas-hero {
-  background: linear-gradient(135deg, var(--c-primary), #7957d5);
+  background: var(--c-primary);
   padding: 1.25rem;
   border-radius: 20px;
   display: flex;

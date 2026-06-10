@@ -6,7 +6,7 @@
 }
 
 .nice-table :deep(.table thead th) {
-  background: linear-gradient(180deg, var(--c-primary-alpha), var(--static-color-rgba-144-111-225-0-05));
+  background: var(--c-primary-alpha);
   backdrop-filter: none;
   color: var(--text-primary);
   font-weight: 1000;

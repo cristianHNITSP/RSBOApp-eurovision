@@ -4,6 +4,13 @@ import { ref, computed, watch, onMounted, onBeforeUnmount } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import DynamicTabs from "@/components/DynamicTabs.vue";
 import SectionLoadingOverlay from "@/components/SectionLoadingOverlay.vue";
+import PageSectionHeader from "@/components/ui/PageSectionHeader.vue";
+
+const OPTICA_QUICK_CARDS = [
+  { icon: "glasses", title: "Armazones", text: "Stock, marcas y modelos" },
+  { icon: "tools", title: "Equipos", text: "Estado y mantenimientos" },
+  { icon: "trash-restore", title: "Papelera", text: "Los eliminados se pueden restaurar" },
+];
 
 // Composables
 import { useOpticaSection } from "@/composables/optica/useOpticaSection.js";
@@ -99,44 +106,15 @@ onBeforeUnmount(() => { document.removeEventListener("fullscreenchange", updateF
   <section class="optica-section" :class="{ 'ag-grid-fullscreen-container': isFullscreenActive }"
     v-motion-fade-visible-once>
 
-    <header class="optica-page-header page-section-header">
-      <div>
-        <span class="optica-pill">
-          <b-icon icon="store" size="is-small" class="mr-1" />
-          Inventario Óptica
-        </span>
-        <h2>Gestión de Óptica</h2>
-        <p class="psh-desc">Armazones, soluciones, accesorios, estuches y equipos — control total con historial de
-          cambios.</p>
-
-        <div class="psh-quick mt-3">
-          <div class="psh-quick__card">
-            <div class="psh-quick__icon"><i class="fas fa-glasses"></i></div>
-            <div>
-              <p class="psh-quick__title">Armazones</p>
-              <p class="psh-quick__text">Stock, marcas y modelos</p>
-            </div>
-          </div>
-          <div class="psh-quick__card">
-            <div class="psh-quick__icon"><i class="fas fa-tools"></i></div>
-            <div>
-              <p class="psh-quick__title">Equipos</p>
-              <p class="psh-quick__text">Estado y mantenimientos</p>
-            </div>
-          </div>
-          <div class="psh-quick__card">
-            <div class="psh-quick__icon"><i class="fas fa-trash-restore"></i></div>
-            <div>
-              <p class="psh-quick__title">Papelera</p>
-              <p class="psh-quick__text">Los eliminados se pueden restaurar</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div
-        class="optica-header-summary is-flex is-flex-wrap-wrap is-align-items-center is-justify-content-flex-end is-flex-direction-column-desktop is-align-items-flex-end-desktop is-justify-content-flex-start-desktop">
-        <b-taglist attached class="mb-0">
+    <PageSectionHeader
+      pill="Inventario Óptica"
+      icon="store"
+      title="Gestión de Óptica"
+      description="Armazones, soluciones, accesorios, estuches y equipos — control total con historial de cambios."
+      :quick-items="OPTICA_QUICK_CARDS"
+    >
+      <template #meta>
+        <b-taglist attached class="is-justify-content-flex-end mb-1">
           <b-tag type="is-primary">
             <template v-if="sec[activeTab]?.loading"><b-icon icon="spinner" size="is-small"
                 class="fa-spin mr-1" />Cargando…</template>
@@ -144,9 +122,9 @@ onBeforeUnmount(() => { document.removeEventListener("fullscreenchange", updateF
           </b-tag>
           <b-tag type="is-success">{{ sec[activeTab]?.showTrash ? 'en papelera' : 'activos' }}</b-tag>
         </b-taglist>
-        <p class="is-size-7 has-text-grey ml-2 mt-0 ml-0-desktop mt-1-desktop">{{ categorias.length }} categorías</p>
-      </div>
-    </header>
+        <p class="is-size-7 has-text-grey">{{ categorias.length }} categorías</p>
+      </template>
+    </PageSectionHeader>
 
     <div class="glass-wrapper section-boot-wrap" :class="{ 'is-booting': booting }">
       <!-- Etapa 1: loading general mientras cargan categorías + preferencias -->

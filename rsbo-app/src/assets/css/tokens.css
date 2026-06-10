@@ -7,96 +7,113 @@
    LIGHT MODE — valores por defecto en :root
    ---------------------------------------------------------- */
 :root {
-  /* === Brand / Estado === */
-  --c-primary: #906fe1;
-  --c-primary-dark: #7957d5;
-  --c-primary-light: #9a6dff;
-  --c-primary-alpha: rgba(144, 111, 225, 0.18);
+  /* === Brand / Estado ===
+     Paleta del logo Eurovisión (vívida) con contraste verificado:
+     acentos cromáticos de luminancia media sobre fondos gris mate.
+     El fondo neutro protege contra glare/halos (queratocono);
+     los acentos llevan el color. Texto blanco sobre cada sólido ≥ 4.5:1. */
+  --c-primary: #a332bd;          /* púrpura del logo (#B030CD profundizado) */
+  --c-primary-dark: #8e28a6;
+  --c-primary-light: #c05bd8;
+  --c-primary-alpha: rgba(163, 50, 189, 0.14);
 
-  --c-success: #22c55e;
-  --c-success-alpha: rgba(34, 197, 94, 0.16);
-  --c-warning: #f59e0b;
-  --c-warning-alpha: rgba(245, 158, 11, 0.18);
-  --c-danger: #ef4444;
-  --c-danger-alpha: rgba(239, 68, 68, 0.16);
-  --c-info: #3b82f6;
-  --c-info-alpha: rgba(59, 130, 246, 0.14);
+  --c-success: #148a4e;
+  --c-success-alpha: rgba(20, 138, 78, 0.14);
+  --c-warning: #c28a00;          /* ámbar del logo (#FFB800 profundizado) */
+  --c-warning-alpha: rgba(194, 138, 0, 0.15);
+  --c-danger: #db3b4b;           /* rosa-rojo del logo (#FF3377 → semántica) */
+  --c-danger-alpha: rgba(219, 59, 75, 0.13);
+  --c-info: #176fdb;             /* azul del logo (#1B85F3 profundizado) */
+  --c-info-alpha: rgba(23, 111, 219, 0.13);
 
-  /* === Sidebar Colors === */
-  --c-sidebar-warm: #f97316;
-  --c-sidebar-warm-alpha: rgba(249, 115, 22, 0.18);
-  --c-sidebar-pink: #ec4899;
-  --c-sidebar-pink-alpha: rgba(236, 72, 153, 0.18);
+  /* === Sidebar Colors (naranja y rosa del logo) === */
+  --c-sidebar-warm: #e0550f;
+  --c-sidebar-warm-alpha: rgba(224, 85, 15, 0.14);
+  --c-sidebar-pink: #ed3d7e;
+  --c-sidebar-pink-alpha: rgba(237, 61, 126, 0.14);
 
-  /* === Fondos === */
-  --bg-base: #ffffff;
-  --bg-subtle: #f9fafb;
-  --bg-muted: #f3f4f6;
+  /* === Acentos extra del logo (cian) === */
+  --c-cyan: #0f97a8;
+  --c-cyan-alpha: rgba(15, 151, 168, 0.14);
 
-  /* === Superficies (cards, paneles, dropdowns) === */
-  --surface: rgba(255, 255, 255, 0.88);
-  --surface-solid: #ffffff;
-  --surface-raised: rgba(255, 255, 255, 0.92);
-  --surface-overlay: rgba(255, 255, 255, 0.58);
-  --surface-glass: rgba(255, 255, 255, 0.45);
+  /* === Panel de marca (login, heros de identidad) ===
+     Área grande de color: sólido profundo con texto claro garantizado. */
+  --surface-brand: #8e28a6;
+  --surface-brand-deep: #76208b;
+  --text-on-brand: #f7f2f9;
 
-  /* === Texto === */
-  --text-primary: #0f172a;
-  --text-secondary: rgba(15, 23, 42, 0.82);
-  --text-muted: rgba(15, 23, 42, 0.62);
-  --text-subtle: rgba(15, 23, 42, 0.45);
-  --text-disabled: rgba(15, 23, 42, 0.28);
-  --text-on-primary: #ffffff;
-  --text-strong: hsl(0, 0%, 21%);
+  /* === Fondos ===
+     Gris cálido suave: sin blanco puro (glare) ni negro puro. */
+  --bg-base: #efefec;
+  --bg-subtle: #e9e9e5;
+  --bg-muted: #e2e2dd;
+
+  /* === Superficies (cards, paneles, dropdowns) ===
+     Mate: 100% sólidas, sin canal alpha. */
+  --surface: #f7f7f4;
+  --surface-solid: #f7f7f4;
+  --surface-raised: #fcfcfa;
+  --surface-overlay: #f2f2ee;
+  --surface-glass: #f2f2ee;
+
+  /* === Texto ===
+     Pizarra oscura en lugar de negro puro (menos ghosting). */
+  --text-primary: #2b3138;
+  --text-secondary: rgba(43, 49, 56, 0.84);
+  --text-muted: rgba(43, 49, 56, 0.62);
+  --text-subtle: rgba(43, 49, 56, 0.45);
+  --text-disabled: rgba(43, 49, 56, 0.30);
+  --text-on-primary: #f7f7f4;
+  --text-strong: #3a4149;
 
   /* === Bordes === */
-  --border: rgba(148, 163, 184, 0.22);
-  --border-light: rgba(148, 163, 184, 0.14);
-  --border-strong: rgba(148, 163, 184, 0.40);
-  --border-solid: #e5e7eb;
-  --border-input: #dbdbdb;
+  --border: rgba(120, 126, 134, 0.24);
+  --border-light: rgba(120, 126, 134, 0.14);
+  --border-strong: rgba(120, 126, 134, 0.42);
+  --border-solid: #d8d8d2;
+  --border-input: #c9cbc6;
 
-  /* === Sombras === */
-  --shadow-xs: 0 1px 3px rgba(15, 23, 42, 0.06);
-  --shadow-sm: 0 4px 12px rgba(15, 23, 42, 0.06);
-  --shadow-md: 0 10px 30px rgba(15, 23, 42, 0.08);
-  --shadow-lg: 0 18px 50px rgba(15, 23, 42, 0.12);
-  --shadow-xl: 0 25px 80px rgba(15, 23, 42, 0.15);
-  --shadow-2xl: 0 35px 120px rgba(15, 23, 42, 0.18);
-  --shadow-soft: 0 14px 40px rgba(15, 23, 42, 0.10);
-  --shadow-primary: 0 14px 30px rgba(88, 28, 135, 0.18);
-  --shadow-glow: 0 0 20px var(--c-primary-alpha);
-  --shadow-inner: inset 0 2px 4px rgba(255, 255, 255, 0.4);
+  /* === Sombras (mate: difusas y cortas, sin dramatismo) === */
+  --shadow-xs: 0 1px 2px rgba(40, 44, 52, 0.05);
+  --shadow-sm: 0 2px 6px rgba(40, 44, 52, 0.06);
+  --shadow-md: 0 4px 14px rgba(40, 44, 52, 0.07);
+  --shadow-lg: 0 8px 24px rgba(40, 44, 52, 0.09);
+  --shadow-xl: 0 12px 36px rgba(40, 44, 52, 0.10);
+  --shadow-2xl: 0 16px 48px rgba(40, 44, 52, 0.12);
+  --shadow-soft: 0 6px 18px rgba(40, 44, 52, 0.07);
+  --shadow-primary: 0 6px 18px rgba(142, 40, 166, 0.16);
+  --shadow-glow: 0 0 0 3px var(--c-primary-alpha);
+  --shadow-inner: none;
 
-  /* === Glassmorphism FX (controlables por reduced-effects) === */
-  --fx-blur: 12px;
-  --fx-surface-a: 0.88;
-  --fx-grad-a1: 0.12;
-  --fx-grad-a2: 0.10;
-  --fx-grad-a3: 0.10;
-  --fx-shadow-a: 0.12;
+  /* === FX (mate: sin backdrop blur en superficies) ===
+     --fx-blur queda en 0: las superficies son sólidas.
+     --fx-anim-blur es SOLO para la entrada liquid-glass (blur que se enfoca
+     a 0). 8px: dentro del contrato (8-12px) y ~2x más barato de rasterizar
+     que 12px en superficies grandes (evita jank en cargas frías). */
+  --fx-blur: 0px;
+  --fx-anim-blur: 8px;
+  --fx-surface-a: 1;
+  --fx-grad-a1: 0;
+  --fx-grad-a2: 0;
+  --fx-grad-a3: 0;
+  --fx-shadow-a: 0.08;
 
-  /* === Liquid Glass & Effects === */
-  --fx-liquid-grad: linear-gradient(135deg, var(--c-primary-alpha), rgba(236, 72, 153, 0.08), var(--c-info-alpha));
-  --fx-glass-border: 1px solid rgba(255, 255, 255, 0.4);
-  --fx-glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.12);
+  /* === Liquid Glass & Effects (versión mate) === */
+  --fx-liquid-grad: linear-gradient(135deg, var(--c-primary-alpha), var(--c-info-alpha));
+  --fx-glass-border: 1px solid var(--border-solid);
+  --fx-glass-shadow: var(--shadow-md);
   --fx-shine: var(--ag-skel-shine);
 
   /* === Hover / selección (theme-aware) ===
      Estados de interacción reutilizables: filas de tabla, tarjetas glass.
      Definidos por tema para que el hover se vea bien en claro y oscuro. */
-  --surface-glass-hover: rgba(255, 255, 255, 0.66);
+  --surface-glass-hover: #ecece7;
   --row-hover-bg: var(--c-primary-alpha);
-  --row-selected-bg: var(--static-color-rgba-144-111-225-0-13);
+  --row-selected-bg: rgba(163, 50, 189, 0.12);
   --row-selected-accent: var(--c-primary);
 
-  /* === Gradiente de fondo de la app === */
-  --grad-header-bg:
-    radial-gradient(circle at 0% 0%, rgba(144, 111, 225, 0.22), transparent 50%),
-    radial-gradient(circle at 100% 0%, rgba(236, 72, 153, 0.18), transparent 50%),
-    radial-gradient(circle at 50% 100%, rgba(249, 115, 22, 0.15), transparent 50%),
-    radial-gradient(circle at 80% 30%, rgba(59, 130, 246, 0.12), transparent 50%),
-    var(--bg-base);
+  /* === Fondo de la app: plano, sin degradados decorativos (mate) === */
+  --grad-header-bg: var(--bg-base);
 
   /* === Border radius === */
   --radius-sm: 8px;
@@ -106,7 +123,7 @@
   --radius-pill: 999px;
 
   /* === Layout === */
-  --layout-header-h: 80px;
+  --layout-header-h: 62px;
 
   /* === Espaciado base === */
   --space-xs: 0.25rem;
@@ -138,40 +155,39 @@
   /* Alias border-light para backward compat */
   --border-light-compat: #dbdbdb;
 
-  /* === AG-Grid tokens === */
-  --ag-bg: #ffffff;
-  --ag-fg: #2d2242;
-  --ag-border: #e5e5f0;
-  --ag-header-bg: #f5f3ff;
-  --ag-header-fg: #4527a0;
-  --ag-odd-row: #fbfbff;
-  --ag-row-hover: #f3f0ff;
-  --ag-selected: rgba(144, 111, 225, 0.12);
-  --ag-cell-border: rgba(100, 149, 237, 0.30);
+  /* === AG-Grid tokens (mate) === */
+  --ag-bg: #f7f7f4;
+  --ag-fg: #2b3138;
+  --ag-border: #d8d8d2;
+  --ag-header-bg: #ecece7;
+  --ag-header-fg: #7a2f8c;
+  --ag-odd-row: #f2f2ee;
+  --ag-row-hover: #f0e7f3;
+  --ag-selected: rgba(163, 50, 189, 0.12);
+  --ag-cell-border: rgba(163, 50, 189, 0.26);
 
-  /* === AG-Grid glassmorphism === */
-  --ag-glass-bg: rgba(255, 255, 255, 0.55);
-  --ag-glass-bg-strong: rgba(255, 255, 255, 0.72);
+  /* === AG-Grid: superficies sólidas (sin glassmorphism) === */
+  --ag-glass-bg: #f7f7f4;
+  --ag-glass-bg-strong: #fcfcfa;
   --ag-pinned-bg: var(--surface);
   --ag-pinned-bg-strong: var(--surface-raised);
-  --ag-pinned-border: rgba(148, 163, 184, 0.12);
-  --ag-glass-border: rgba(121, 87, 213, 0.18);
-  --ag-glass-header-bg: rgba(245, 243, 255, 0.72);
-  --ag-glass-header-fg: #4527a0;
-  --ag-glass-row-hover: rgba(121, 87, 213, 0.08);
-  --ag-glass-shadow: 0 8px 28px -12px rgba(67, 40, 140, 0.22),
-    0 1px 0 rgba(255, 255, 255, 0.6) inset;
-  --ag-glass-blur: 14px;
+  --ag-pinned-border: rgba(120, 126, 134, 0.14);
+  --ag-glass-border: rgba(163, 50, 189, 0.20);
+  --ag-glass-header-bg: #ecece7;
+  --ag-glass-header-fg: #7a2f8c;
+  --ag-glass-row-hover: rgba(163, 50, 189, 0.08);
+  --ag-glass-shadow: var(--shadow-sm);
+  --ag-glass-blur: 0px;
 
-  --ag-skel-base: rgba(226, 232, 240, 0.55);
-  --ag-skel-shine: rgba(255, 255, 255, 0.85);
+  --ag-skel-base: #e6e6e1;
+  --ag-skel-shine: #f4f4f0;
 
-  --ag-stock-low-bg: rgba(245, 158, 11, 0.14);
-  --ag-stock-low-edge: rgba(245, 158, 11, 0.55);
-  --ag-stock-low-fg: #92400e;
-  --ag-stock-zero-bg: rgba(239, 68, 68, 0.13);
-  --ag-stock-zero-edge: rgba(239, 68, 68, 0.60);
-  --ag-stock-zero-fg: #991b1b;
+  --ag-stock-low-bg: rgba(194, 138, 0, 0.13);
+  --ag-stock-low-edge: rgba(194, 138, 0, 0.50);
+  --ag-stock-low-fg: #8a6200;
+  --ag-stock-zero-bg: rgba(219, 59, 75, 0.12);
+  --ag-stock-zero-edge: rgba(219, 59, 75, 0.55);
+  --ag-stock-zero-fg: #a52937;
 
   --ag-stock-low-row-bg: rgba(245, 158, 11, 0.05);
   --ag-stock-zero-row-bg: rgba(239, 68, 68, 0.04);
@@ -182,29 +198,33 @@
 
   /* === Bulma 1.x color bridge ===
      Bulma 1.x genera TODOS sus colores desde vars HSL.
-     Sin esto, usa su default teal (171°) en todos los componentes. */
-  --bulma-primary-h: 258;
-  --bulma-primary-s: 65%;
-  --bulma-primary-l: 66%;
-  --bulma-primary-invert-l: 100%;
-  --bulma-primary-on-scheme-l: 45%;
-  --bulma-link-h: 258;
-  --bulma-link-s: 65%;
-  --bulma-link-l: 66%;
-  --bulma-link-invert-l: 100%;
-  --bulma-link-on-scheme-l: 45%;
-  --bulma-success-h: 142;
-  --bulma-success-s: 71%;
-  --bulma-success-l: 45%;
-  --bulma-warning-h: 38;
-  --bulma-warning-s: 92%;
-  --bulma-warning-l: 50%;
-  --bulma-danger-h: 0;
-  --bulma-danger-s: 84%;
-  --bulma-danger-l: 60%;
-  --bulma-info-h: 217;
-  --bulma-info-s: 91%;
-  --bulma-info-l: 60%;
+     Paleta del logo: tonos vívidos con luminancia controlada. */
+  --bulma-primary-h: 289;
+  --bulma-primary-s: 58%;
+  --bulma-primary-l: 47%;
+  --bulma-primary-invert-l: 98%;
+  --bulma-primary-on-scheme-l: 40%;
+  --bulma-link-h: 289;
+  --bulma-link-s: 58%;
+  --bulma-link-l: 47%;
+  --bulma-link-invert-l: 98%;
+  --bulma-link-on-scheme-l: 40%;
+  --bulma-success-h: 150;
+  --bulma-success-s: 75%;
+  --bulma-success-l: 31%;
+  --bulma-warning-h: 43;
+  --bulma-warning-s: 100%;
+  --bulma-warning-l: 38%;
+  --bulma-danger-h: 354;
+  --bulma-danger-s: 69%;
+  --bulma-danger-l: 55%;
+  --bulma-info-h: 213;
+  --bulma-info-s: 81%;
+  --bulma-info-l: 47%;
+  /* Esquema base de Bulma sobre gris cálido (sin blanco puro) */
+  --bulma-scheme-main-l: 96%;
+  --bulma-scheme-h: 60;
+  --bulma-scheme-s: 6%;
 
   /* --- COLORES ESTÁTICOS EXTRAÍDOS MASIVAMENTE --- */
   /* Estos colores no tienen override en modo oscuro. */
@@ -542,89 +562,99 @@
    DARK MODE — overrides sobre :root
    ---------------------------------------------------------- */
 [data-theme="dark"] {
-  /* === Brand / Estado (más brillantes para legibilidad en dark) === */
-  --c-primary: #a788f0;
-  --c-primary-dark: #9270e8;
-  --c-primary-light: #b89df5;
-  --c-primary-alpha: rgba(167, 136, 240, 0.20);
+  /* === Brand / Estado ===
+     Dark con paleta del logo: los acentos se ACLARAN (+15-20 L) para que
+     no se vean lodosos sobre el gris medio, manteniendo el croma.
+     Contraste verificado sobre #23262b y #2a2e34 (≥ 4.5:1). */
+  --c-primary: #c964de;
+  --c-primary-dark: #b84fd4;
+  --c-primary-light: #d98aeb;
+  --c-primary-alpha: rgba(201, 100, 222, 0.18);
 
-  --c-success: #34d66a;
-  --c-success-alpha: rgba(52, 214, 106, 0.18);
-  --c-warning: #fbbf24;
-  --c-warning-alpha: rgba(251, 191, 36, 0.18);
-  --c-danger: #f87171;
-  --c-danger-alpha: rgba(248, 113, 113, 0.18);
-  --c-info: #60a5fa;
-  --c-info-alpha: rgba(96, 165, 250, 0.16);
+  --c-success: #3fcb85;
+  --c-success-alpha: rgba(63, 203, 133, 0.16);
+  --c-warning: #ffc533;
+  --c-warning-alpha: rgba(255, 197, 51, 0.16);
+  --c-danger: #ff7575;
+  --c-danger-alpha: rgba(255, 117, 117, 0.16);
+  --c-info: #62adf8;
+  --c-info-alpha: rgba(98, 173, 248, 0.15);
 
-  --c-sidebar-warm: #fb923c;
-  --c-sidebar-warm-alpha: rgba(251, 146, 60, 0.20);
-  --c-sidebar-pink: #f472b6;
-  --c-sidebar-pink-alpha: rgba(244, 114, 182, 0.20);
+  --c-sidebar-warm: #ff824e;
+  --c-sidebar-warm-alpha: rgba(255, 130, 78, 0.16);
+  --c-sidebar-pink: #ff7fab;
+  --c-sidebar-pink-alpha: rgba(255, 127, 171, 0.16);
 
-  /* === Fondos === */
-  --bg-base: #0f1117;
-  --bg-subtle: #161b22;
-  --bg-muted: #1e2432;
+  /* === Acentos extra del logo (cian) === */
+  --c-cyan: #2fc9dd;
+  --c-cyan-alpha: rgba(47, 201, 221, 0.15);
 
-  /* === Superficies === */
-  --surface: rgba(22, 27, 34, 0.92);
-  --surface-solid: #161b22;
-  --surface-raised: rgba(30, 36, 50, 0.95);
-  --surface-overlay: rgba(22, 27, 34, 0.62);
-  --surface-glass: rgba(15, 17, 23, 0.65);
+  /* === Panel de marca — dark: púrpura profundo, rico sin deslumbrar
+     (NO el primario claro #c964de, que en áreas grandes se ve neón) === */
+  --surface-brand: #6d1f80;
+  --surface-brand-deep: #581968;
+  --text-on-brand: #f6effa;
 
-  /* === Texto === */
-  --text-primary: #f0f4ff;
-  --text-secondary: rgba(240, 244, 255, 0.88);
-  --text-muted: rgba(240, 244, 255, 0.60);
-  --text-subtle: rgba(240, 244, 255, 0.40);
-  --text-disabled: rgba(240, 244, 255, 0.22);
-  --text-on-primary: #ffffff;
+  /* === Fondos ===
+     Gris medio mate — nunca negro puro (evita starbursts con queratocono). */
+  --bg-base: #23262b;
+  --bg-subtle: #282c32;
+  --bg-muted: #2e333a;
+
+  /* === Superficies (sólidas, mate) === */
+  --surface: #2a2e34;
+  --surface-solid: #2a2e34;
+  --surface-raised: #31363e;
+  --surface-overlay: #2e333a;
+  --surface-glass: #2e333a;
+
+  /* === Texto (off-white suave, sin blanco puro) === */
+  --text-primary: #e2e5ea;
+  --text-secondary: rgba(226, 229, 234, 0.86);
+  --text-muted: rgba(226, 229, 234, 0.60);
+  --text-subtle: rgba(226, 229, 234, 0.42);
+  --text-disabled: rgba(226, 229, 234, 0.24);
+  --text-on-primary: #23262b;
   --text-strong: var(--c-sidebar-warm);
 
   /* === Bordes === */
-  --border: rgba(148, 163, 184, 0.14);
-  --border-light: rgba(148, 163, 184, 0.08);
-  --border-strong: rgba(148, 163, 184, 0.28);
-  --border-solid: #2d3748;
-  --border-input: #374151;
+  --border: rgba(180, 186, 194, 0.14);
+  --border-light: rgba(180, 186, 194, 0.08);
+  --border-strong: rgba(180, 186, 194, 0.28);
+  --border-solid: #3a4048;
+  --border-input: #454c55;
 
-  /* === Sombras (más intensas en dark para dar profundidad) === */
-  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.30);
-  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.30);
-  --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.40);
-  --shadow-lg: 0 18px 50px rgba(0, 0, 0, 0.50);
-  --shadow-xl: 0 25px 80px rgba(0, 0, 0, 0.65);
-  --shadow-2xl: 0 35px 120px rgba(0, 0, 0, 0.80);
-  --shadow-soft: 0 14px 40px rgba(0, 0, 0, 0.38);
-  --shadow-primary: 0 14px 30px rgba(88, 28, 135, 0.45);
-  --shadow-glow: 0 0 25px rgba(167, 136, 240, 0.15);
-  --shadow-inner: inset 0 1px 1px rgba(255, 255, 255, 0.05);
+  /* === Sombras (mate: cortas, dan elevación sin dramatismo) === */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.22);
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.24);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.28);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.32);
+  --shadow-xl: 0 12px 36px rgba(0, 0, 0, 0.36);
+  --shadow-2xl: 0 16px 48px rgba(0, 0, 0, 0.40);
+  --shadow-soft: 0 6px 18px rgba(0, 0, 0, 0.26);
+  --shadow-primary: 0 6px 18px rgba(0, 0, 0, 0.30);
+  --shadow-glow: 0 0 0 3px var(--c-primary-alpha);
+  --shadow-inner: none;
 
   /* === Hover / selección (theme-aware) — dark === */
-  --surface-glass-hover: rgba(30, 36, 50, 0.82);
-  --row-selected-bg: rgba(167, 136, 240, 0.20);
+  --surface-glass-hover: #343a42;
+  --row-selected-bg: rgba(201, 100, 222, 0.18);
 
-  /* === FX tokens (glassmorphism dark: más opaco, mismo blur) === */
-  --fx-surface-a: 0.92;
-  --fx-grad-a1: 0.18;
-  --fx-grad-a2: 0.14;
-  --fx-grad-a3: 0.14;
-  --fx-shadow-a: 0.45;
+  /* === FX tokens (mate: opaco, sin blur) === */
+  --fx-surface-a: 1;
+  --fx-grad-a1: 0;
+  --fx-grad-a2: 0;
+  --fx-grad-a3: 0;
+  --fx-shadow-a: 0.30;
 
-  /* === Gradiente de fondo (tonos más profundos) === */
-  --grad-header-bg:
-    radial-gradient(circle at 0% 0%, rgba(144, 111, 225, 0.28), transparent 50%),
-    radial-gradient(circle at 100% 0%, rgba(236, 72, 153, 0.22), transparent 50%),
-    radial-gradient(circle at 50% 100%, rgba(249, 115, 22, 0.18), transparent 50%),
-    #0f1117;
+  /* === Fondo plano mate === */
+  --grad-header-bg: #23262b;
 
   /* === Aliases de compatibilidad === */
-  --white: #ffffff;
+  --white: #e2e5ea;
   /* Fallback for white surfaces */
   --bg-card: var(--surface-solid);
-  --hover-color-menus: #1e2432;
+  --hover-color-menus: #2e333a;
   --text: var(--text-primary);
   --muted: var(--text-muted);
   --shadow: var(--shadow-lg);
@@ -632,39 +662,38 @@
   --card: var(--surface);
   --card2: var(--surface-overlay);
 
-  /* === AG-Grid dark === */
-  --ag-bg: #161b22;
-  --ag-fg: #e2e8f0;
-  --ag-border: #2d3748;
-  --ag-header-bg: #1a1f2e;
-  --ag-header-fg: #c4b5fd;
-  --ag-odd-row: #18202e;
-  --ag-row-hover: #1e2a40;
-  --ag-selected: rgba(167, 136, 240, 0.16);
-  --ag-cell-border: rgba(167, 136, 240, 0.30);
+  /* === AG-Grid dark (mate) === */
+  --ag-bg: #2a2e34;
+  --ag-fg: #e2e5ea;
+  --ag-border: #3a4048;
+  --ag-header-bg: #2e333a;
+  --ag-header-fg: #d98aeb;
+  --ag-odd-row: #2c3037;
+  --ag-row-hover: #383343;
+  --ag-selected: rgba(201, 100, 222, 0.16);
+  --ag-cell-border: rgba(201, 100, 222, 0.26);
 
-  /* === AG-Grid glassmorphism (dark: carbón + violeta perlado) === */
-  --ag-glass-bg: rgba(22, 27, 34, 0.55);
-  --ag-glass-bg-strong: rgba(26, 31, 46, 0.78);
+  /* === AG-Grid: superficies sólidas (sin glassmorphism) === */
+  --ag-glass-bg: #2a2e34;
+  --ag-glass-bg-strong: #31363e;
   --ag-pinned-bg: var(--surface);
   --ag-pinned-bg-strong: var(--surface-raised);
-  --ag-pinned-border: rgba(148, 163, 184, 0.08);
-  --ag-glass-border: rgba(167, 136, 240, 0.22);
-  --ag-glass-header-bg: rgba(26, 31, 46, 0.80);
-  --ag-glass-header-fg: #c4b5fd;
-  --ag-glass-row-hover: rgba(167, 136, 240, 0.10);
-  --ag-glass-shadow: 0 10px 36px -14px rgba(0, 0, 0, 0.6),
-    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  --ag-pinned-border: rgba(180, 186, 194, 0.08);
+  --ag-glass-border: rgba(201, 100, 222, 0.22);
+  --ag-glass-header-bg: #2e333a;
+  --ag-glass-header-fg: #d98aeb;
+  --ag-glass-row-hover: rgba(201, 100, 222, 0.10);
+  --ag-glass-shadow: var(--shadow-sm);
 
-  --ag-skel-base: rgba(51, 65, 85, 0.5);
-  --ag-skel-shine: rgba(148, 163, 184, 0.25);
+  --ag-skel-base: #333941;
+  --ag-skel-shine: #424a54;
 
-  --ag-stock-low-bg: rgba(245, 158, 11, 0.12);
-  --ag-stock-low-edge: rgba(245, 158, 11, 0.45);
-  --ag-stock-low-fg: #fcd34d;
-  --ag-stock-zero-bg: rgba(239, 68, 68, 0.14);
-  --ag-stock-zero-edge: rgba(239, 68, 68, 0.50);
-  --ag-stock-zero-fg: #fca5a5;
+  --ag-stock-low-bg: rgba(255, 197, 51, 0.13);
+  --ag-stock-low-edge: rgba(255, 197, 51, 0.45);
+  --ag-stock-low-fg: #ffd56b;
+  --ag-stock-zero-bg: rgba(255, 117, 117, 0.14);
+  --ag-stock-zero-edge: rgba(255, 117, 117, 0.50);
+  --ag-stock-zero-fg: #ff9d9d;
 
   --ag-stock-low-row-bg: rgba(245, 158, 11, 0.06);
   --ag-stock-zero-row-bg: rgba(239, 68, 68, 0.05);
@@ -673,21 +702,31 @@
   --ag-status-badge-fg: var(--text-muted);
   --ag-veil-bg: rgba(15, 18, 28, 0.96);
 
-  /* === Bulma 1.x color bridge — dark mode === */
-  --bulma-primary-h: 258;
-  --bulma-primary-s: 78%;
-  --bulma-primary-l: 74%;
-  --bulma-primary-invert-l: 100%;
-  --bulma-primary-on-scheme-l: 80%;
-  --bulma-link-h: 258;
-  --bulma-link-s: 78%;
-  --bulma-link-l: 74%;
-  --bulma-link-invert-l: 100%;
-  --bulma-link-on-scheme-l: 80%;
-  --bulma-success-l: 54%;
-  --bulma-warning-l: 55%;
-  --bulma-danger-l: 68%;
-  --bulma-info-l: 65%;
+  /* === Bulma 1.x color bridge — dark mode (aclarado, mismo croma) === */
+  --bulma-primary-h: 290;
+  --bulma-primary-s: 65%;
+  --bulma-primary-l: 63%;
+  --bulma-primary-invert-l: 14%;
+  --bulma-primary-on-scheme-l: 74%;
+  --bulma-link-h: 290;
+  --bulma-link-s: 65%;
+  --bulma-link-l: 63%;
+  --bulma-link-invert-l: 14%;
+  --bulma-link-on-scheme-l: 74%;
+  --bulma-success-s: 57%;
+  --bulma-success-l: 52%;
+  --bulma-warning-s: 100%;
+  --bulma-warning-l: 60%;
+  --bulma-danger-h: 0;
+  --bulma-danger-s: 100%;
+  --bulma-danger-l: 73%;
+  --bulma-info-h: 210;
+  --bulma-info-s: 91%;
+  --bulma-info-l: 68%;
+  /* Esquema base de Bulma en gris medio mate */
+  --bulma-scheme-main-l: 17%;
+  --bulma-scheme-h: 216;
+  --bulma-scheme-s: 8%;
 }
 
 /* ----------------------------------------------------------
@@ -815,9 +854,9 @@
    En modo oscuro, --surface-solid == --bg-subtle (#161b22), haciendo las
    tarjetas invisibles. Este override les da elevación visible. */
 [data-theme="dark"][data-reduced-effects="true"] {
-  --surface: #1e2433;
-  --surface-raised: #232b3e;
-  --surface-overlay: #1a2030;
+  --surface: #2a2e34;
+  --surface-raised: #31363e;
+  --surface-overlay: #2e333a;
 }
 
 /* Deshabilitar backdrop-filter en TODOS los elementos */

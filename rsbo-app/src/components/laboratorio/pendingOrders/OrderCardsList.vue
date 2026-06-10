@@ -111,8 +111,8 @@ const orderTotalCount = lab.orderTotalCount;
 .order-skeleton-card { border: 1px solid var(--border); border-radius: 16px; padding: 0.85rem; background: var(--surface-overlay); }
 .order-cards-grid { display: grid; gap: 0.6rem; }
 .oci { position: relative; text-align: left; width: 100%; border: 1.5px solid var(--border); border-radius: 16px; padding: 0.85rem; background: var(--surface); cursor: pointer; transition: all 220ms ease; overflow: hidden; }
-.oci:hover { border-color: var(--c-primary); background: linear-gradient(135deg, var(--surface-raised), var(--c-primary-alpha)); backdrop-filter: none; }
-.oci--active { border-color: rgba(144, 111, 225, 0.6); background: linear-gradient(135deg, rgba(144, 111, 225, 0.07), rgba(236, 72, 153, 0.04)); box-shadow: 0 0 0 3px rgba(144, 111, 225, 0.12); }
+.oci:hover { border-color: var(--c-primary); background: var(--surface-raised); backdrop-filter: none; }
+.oci--active { border-color: var(--c-primary); background: var(--c-primary-alpha); box-shadow: 0 0 0 3px var(--c-primary-alpha); }
 .oci__row { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
 .oci__row--top { margin-bottom: 0.45rem; }
 .oci__folio { font-size: 0.95rem; font-weight: 1000; color: var(--text-primary); }
@@ -122,8 +122,8 @@ const orderTotalCount = lab.orderTotalCount;
 .oci__sheet { font-size: 0.8rem; font-weight: 800; color: var(--text-muted); }
 .oci__meta-icon { font-size: 0.75rem; color: var(--c-primary); }
 .oci__progress-track { height: 6px; border-radius: 999px; background: var(--border); overflow: hidden; margin-bottom: 0.25rem; }
-.oci__progress-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, rgba(144, 111, 225, 0.85), rgba(236, 72, 153, 0.7)); transition: width 300ms ease; }
-.oci__progress-fill--done { background: linear-gradient(90deg, var(--c-success), #16a34a); }
+.oci__progress-fill { height: 100%; border-radius: 999px; background: var(--c-primary); transition: width 300ms ease; }
+.oci__progress-fill--done { background: var(--c-success); }
 .oci__progress-label { display: flex; justify-content: space-between; font-size: 0.76rem; font-weight: 800; color: var(--text-muted); }
 .oci__pct { font-weight: 1000; color: var(--c-primary); }
 .oci__footer { display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; font-weight: 800; color: var(--text-muted); }

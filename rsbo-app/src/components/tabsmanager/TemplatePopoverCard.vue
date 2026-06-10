@@ -546,6 +546,6 @@ const formatDate = (dateStr) => {
   margin-left: 8px;
   font-weight: 800;
   text-transform: uppercase;
-  border: 1px solid rgba(239, 68, 68, 0.2);
+  border: 1px solid var(--c-danger-alpha);
 }
 </style>

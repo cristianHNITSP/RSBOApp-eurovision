@@ -4,7 +4,7 @@
       <!-- Orders analytics -->
       <div class="gcard mb-5">
         <div class="gc-head">
-          <div class="gc-ico" style="background:rgba(59,130,246,.16);color:#3b82f6"><i class="fas fa-flask-vial"></i>
+          <div class="gc-ico" style="background:var(--c-info-alpha);color:var(--c-info)"><i class="fas fa-flask-vial"></i>
           </div>
           <div>
             <div class="gc-title">Analíticas de pedidos</div>
@@ -14,24 +14,24 @@
         <div class="gc-body">
           <div class="an-stat-grid">
             <div class="an-stat-cell">
-              <div class="asc-ico" style="background:rgba(245,158,11,.12);color:#f59e0b"><i class="fas fa-clock"></i>
+              <div class="asc-ico" style="background:var(--c-warning-alpha);color:var(--c-warning)"><i class="fas fa-clock"></i>
               </div>
-              <div class="asc-val" style="color:#f59e0b" v-if="!isLoading">{{ s?.ordersPending ?? 0 }}</div><b-skeleton
+              <div class="asc-val" style="color:var(--c-warning)" v-if="!isLoading">{{ s?.ordersPending ?? 0 }}</div><b-skeleton
                 v-else :width="60" :height="28" animated />
               <div class="asc-lbl">Pendientes</div>
               <div class="asc-cap">Abiertos / parciales</div>
             </div>
             <div class="an-stat-cell">
-              <div class="asc-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i
+              <div class="asc-ico" style="background:var(--c-success-alpha);color:var(--c-success)"><i
                   class="fas fa-circle-check"></i></div>
-              <div class="asc-val" style="color:#10b981" v-if="!isLoading">{{ s?.ordersClosed30d ?? 0 }}</div>
+              <div class="asc-val" style="color:var(--c-success)" v-if="!isLoading">{{ s?.ordersClosed30d ?? 0 }}</div>
               <b-skeleton v-else :width="60" :height="28" animated />
               <div class="asc-lbl">Cerrados (30d)</div>
               <div class="asc-cap">Este mes</div>
             </div>
             <div class="an-stat-cell">
-              <div class="asc-ico" style="background:rgba(239,68,68,.12);color:#ef4444"><i class="fas fa-ban"></i></div>
-              <div class="asc-val" style="color:#ef4444" v-if="!isLoading">{{ s?.ordersCancelledAll ?? 0 }}</div>
+              <div class="asc-ico" style="background:var(--c-danger-alpha);color:var(--c-danger)"><i class="fas fa-ban"></i></div>
+              <div class="asc-val" style="color:var(--c-danger)" v-if="!isLoading">{{ s?.ordersCancelledAll ?? 0 }}</div>
               <b-skeleton v-else :width="60" :height="28" animated />
               <div class="asc-lbl">Cancelados</div>
               <div class="asc-cap">Histórico total</div>
@@ -45,17 +45,17 @@
               <div class="asc-cap">Nuevos pedidos</div>
             </div>
             <div class="an-stat-cell">
-              <div class="asc-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i
+              <div class="asc-ico" style="background:var(--c-success-alpha);color:var(--c-success)"><i
                   class="fas fa-flag-checkered"></i></div>
-              <div class="asc-val" style="color:#10b981" v-if="!isLoading">{{ s?.ordersClosedToday ?? 0 }}</div>
+              <div class="asc-val" style="color:var(--c-success)" v-if="!isLoading">{{ s?.ordersClosedToday ?? 0 }}</div>
               <b-skeleton v-else :width="60" :height="28" animated />
               <div class="asc-lbl">Cerrados hoy</div>
               <div class="asc-cap">Del día actual</div>
             </div>
             <div class="an-stat-cell">
-              <div class="asc-ico" style="background:rgba(59,130,246,.12);color:#3b82f6"><i
+              <div class="asc-ico" style="background:var(--c-info-alpha);color:var(--c-info)"><i
                   class="fas fa-layer-group"></i></div>
-              <div class="asc-val" style="color:#3b82f6" v-if="!isLoading">{{ fmtn(s?.ordersClosedAll) }}</div>
+              <div class="asc-val" style="color:var(--c-info)" v-if="!isLoading">{{ fmtn(s?.ordersClosedAll) }}</div>
               <b-skeleton v-else :width="60" :height="28" animated />
               <div class="asc-lbl">Total histórico</div>
               <div class="asc-cap">Cerrados acumulados</div>
@@ -65,18 +65,18 @@
             <div class="an-divider my-3"><span>Métricas de laboratorio</span></div>
             <div class="an-stat-grid">
               <div class="an-stat-cell">
-                <div class="asc-ico" style="background:rgba(6,182,212,.12);color:#06b6d4"><i class="fas fa-rotate"></i>
+                <div class="asc-ico" style="background:var(--c-info-alpha);color:var(--c-info)"><i class="fas fa-rotate"></i>
                 </div>
-                <div class="asc-val" :style="{ color: (s?.corrections30d ?? 0) > 10 ? '#f59e0b' : '#06b6d4' }"
+                <div class="asc-val" :style="{ color: (s?.corrections30d ?? 0) > 10 ? 'var(--c-warning)' : 'var(--c-info)' }"
                   v-if="!isLoading">{{ s?.corrections30d ?? 0 }}</div><b-skeleton v-else :width="60" :height="28"
                   animated />
                 <div class="asc-lbl">Correcciones (30d)</div>
                 <div class="asc-cap">Solicitudes</div>
               </div>
               <div class="an-stat-cell">
-                <div class="asc-ico" style="background:rgba(6,182,212,.12);color:#06b6d4"><i class="fas fa-barcode"></i>
+                <div class="asc-ico" style="background:var(--c-info-alpha);color:var(--c-info)"><i class="fas fa-barcode"></i>
                 </div>
-                <div class="asc-val" style="color:#06b6d4" v-if="!isLoading">{{ s?.scansToday ?? 0 }}</div><b-skeleton
+                <div class="asc-val" style="color:var(--c-info)" v-if="!isLoading">{{ s?.scansToday ?? 0 }}</div><b-skeleton
                   v-else :width="60" :height="28" animated />
                 <div class="asc-lbl">Escaneos hoy</div>
                 <div class="asc-cap">Salidas escáner</div>
@@ -90,9 +90,9 @@
                 <div class="asc-cap">Cambios a pedidos</div>
               </div>
               <div class="an-stat-cell">
-                <div class="asc-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i class="fas fa-check"></i>
+                <div class="asc-ico" style="background:var(--c-success-alpha);color:var(--c-success)"><i class="fas fa-check"></i>
                 </div>
-                <div class="asc-val" style="color:#10b981" v-if="!isLoading">{{ s?.ordersClosedToday ?? 0 }}</div>
+                <div class="asc-val" style="color:var(--c-success)" v-if="!isLoading">{{ s?.ordersClosedToday ?? 0 }}</div>
                 <b-skeleton v-else :width="60" :height="28" animated />
                 <div class="asc-lbl">Cerrados hoy</div>
                 <div class="asc-cap">Del día actual</div>
@@ -104,9 +104,9 @@
 
       <!-- My activity — ventas -->
       <div v-if="isVentas" class="gcard mb-5">
-        <div class="gcard-bar" style="background:linear-gradient(90deg,#10b981,#65a30d)"></div>
+        <div class="gcard-bar" style="background:var(--c-success)"></div>
         <div class="gc-head">
-          <div class="gc-ico" style="background:rgba(16,185,129,.16);color:#10b981"><i class="fas fa-chart-line"></i>
+          <div class="gc-ico" style="background:var(--c-success-alpha);color:var(--c-success)"><i class="fas fa-chart-line"></i>
           </div>
           <div>
             <div class="gc-title">Mi actividad</div>
@@ -124,28 +124,28 @@
               <div class="asc-cap">Nuevos pedidos</div>
             </div>
             <div class="an-stat-cell">
-              <div class="asc-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i
+              <div class="asc-ico" style="background:var(--c-success-alpha);color:var(--c-success)"><i
                   class="fas fa-check-circle"></i>
               </div>
-              <div class="asc-val" style="color:#10b981" v-if="!isLoading">{{ s?.ordersClosedToday ?? 0 }}</div>
+              <div class="asc-val" style="color:var(--c-success)" v-if="!isLoading">{{ s?.ordersClosedToday ?? 0 }}</div>
               <b-skeleton v-else :width="60" :height="28" animated />
               <div class="asc-lbl">Cerrados hoy</div>
               <div class="asc-cap">Completados</div>
             </div>
             <div class="an-stat-cell">
-              <div class="asc-ico" style="background:rgba(245,158,11,.12);color:#f59e0b"><i
+              <div class="asc-ico" style="background:var(--c-warning-alpha);color:var(--c-warning)"><i
                   class="fas fa-clipboard-list"></i>
               </div>
-              <div class="asc-val" style="color:#f59e0b" v-if="!isLoading">{{ s?.ordersPending ?? 0 }}</div><b-skeleton
+              <div class="asc-val" style="color:var(--c-warning)" v-if="!isLoading">{{ s?.ordersPending ?? 0 }}</div><b-skeleton
                 v-else :width="60" :height="28" animated />
               <div class="asc-lbl">En curso</div>
               <div class="asc-cap">Pendientes activos</div>
             </div>
             <div class="an-stat-cell">
-              <div class="asc-ico" style="background:rgba(59,130,246,.12);color:#3b82f6"><i
+              <div class="asc-ico" style="background:var(--c-info-alpha);color:var(--c-info)"><i
                   class="fas fa-layer-group"></i>
               </div>
-              <div class="asc-val" style="color:#3b82f6" v-if="!isLoading">{{ fmtn(s?.ordersClosedAll) }}</div>
+              <div class="asc-val" style="color:var(--c-info)" v-if="!isLoading">{{ fmtn(s?.ordersClosedAll) }}</div>
               <b-skeleton v-else :width="60" :height="28" animated />
               <div class="asc-lbl">Total histórico</div>
               <div class="asc-cap">Cerrados acumulados</div>
@@ -158,7 +158,7 @@
     <!-- Sidebar pedidos -->
     <div class="an-col-side">
       <div v-if="canSeeReports" class="gcard mb-4">
-        <div class="gcard-bar" style="background:linear-gradient(90deg,var(--c-primary),#2563eb)"></div>
+        <div class="gcard-bar" style="background:var(--c-primary)"></div>
         <div class="gc-head">
           <div class="gc-ico" style="background:var(--c-primary-alpha);color:var(--c-primary)"><i
               class="fas fa-gauge-high"></i></div>
@@ -194,9 +194,9 @@
       </div>
 
       <div v-if="isRoot" class="gcard mb-4">
-        <div class="gcard-bar" style="background:linear-gradient(90deg,#dc2626,#ea580c)"></div>
+        <div class="gcard-bar" style="background:var(--c-danger)"></div>
         <div class="gc-head">
-          <div class="gc-ico" style="background:rgba(220,38,38,.16);color:#dc2626"><i class="fas fa-server"></i></div>
+          <div class="gc-ico" style="background:var(--c-danger-alpha);color:var(--c-danger)"><i class="fas fa-server"></i></div>
           <div>
             <div class="gc-title">Métricas del sistema</div>
             <div class="gc-sub">Indicadores globales de operación</div>
@@ -221,9 +221,9 @@
       </div>
 
       <div v-if="canExportReports" class="gcard mb-4">
-        <div class="gcard-bar" style="background:linear-gradient(90deg,#6366f1,#0891b2)"></div>
+        <div class="gcard-bar" style="background:var(--c-info)"></div>
         <div class="gc-head">
-          <div class="gc-ico" style="background:rgba(99,102,241,.16);color:#6366f1"><i class="fas fa-file-export"></i>
+          <div class="gc-ico" style="background:var(--c-info-alpha);color:var(--c-info)"><i class="fas fa-file-export"></i>
           </div>
           <div>
             <div class="gc-title">Exportar reportes</div>

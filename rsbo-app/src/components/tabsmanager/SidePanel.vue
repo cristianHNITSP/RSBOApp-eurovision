@@ -228,10 +228,10 @@ onUnmounted(() => {
   border-radius: 10px;
   font-size: 0.78rem; font-weight: 600;
   border: none; cursor: pointer;
-  box-shadow: 0 6px 14px rgba(144,111,225,0.30);
+  box-shadow: 0 6px 14px var(--c-primary-alpha);
   transition: transform 160ms ease, box-shadow 160ms ease;
 }
-.ss-new-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 20px rgba(144,111,225,0.36); }
+.ss-new-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 20px var(--c-primary-alpha); }
 .ss-new-btn:active { transform: translateY(0); }
 
 /* Search */
@@ -392,7 +392,7 @@ onUnmounted(() => {
 }
 .ssi:hover .ssi-close,
 .ssi.is-active .ssi-close { opacity: 1; }
-.ssi-close:hover { background: rgba(239,68,68,0.12); color: #ef4444; }
+.ssi-close:hover { background: var(--c-danger-alpha); color: var(--c-danger); }
 
 /* Drag state */
 .ssi.sortable-ghost { opacity: 0.45; transform: scale(0.98); }

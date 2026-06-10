@@ -1,76 +1,85 @@
 <template>
-  <section class="db-hero" v-motion-fade-visible-once>
-
-    <div class="hero-body">
+  <section class="db-hero mx-5 mt-5 lq-enter">
+    <div class="columns is-multiline is-vcentered is-variable is-4 p-5 mb-0">
       <!-- Columna izquierda: avatar + datos -->
-      <div class="hero-left">
-        <div class="avatar-shell" :style="{ '--rc': roleRingColor }">
-          <div class="avatar-inner">
-            <b-skeleton v-if="!avatarLoaded" :width="96" :height="96" animated style="border-radius:50%" />
-            <img v-else :src="avatarUrl" alt="avatar" class="avatar-img" />
+      <div class="column">
+        <article class="media mb-0">
+          <figure class="media-left mr-4">
+            <div class="avatar-shell" :style="{ '--rc': roleRingColor }">
+              <div class="avatar-inner">
+                <b-skeleton v-if="!avatarLoaded" :width="96" :height="96" animated style="border-radius:50%" />
+                <img v-else :src="avatarUrl" alt="avatar" class="avatar-img" />
+              </div>
+              <div class="avatar-status-dot"></div>
+            </div>
+          </figure>
+
+          <div class="media-content">
+            <div class="tags mb-1">
+              <span class="tag is-rounded is-uppercase has-text-weight-bold role-chip" :style="rolePillStyle">
+                <i :class="roleIconClass" class="mr-1"></i>
+                {{ roleLabel }}
+              </span>
+              <span class="tag is-rounded env-chip">{{ environmentLabel }}</span>
+            </div>
+
+            <p class="is-size-6 has-text-weight-semibold hero-soft mb-0">
+              Bienvenido a <span class="has-text-weight-bold brand-solid">Eurovisión</span>
+            </p>
+            <h2 class="title is-4 mb-1 mt-0" v-if="!loading">
+              {{ greeting }}, <strong>{{ firstName }}</strong>
+            </h2>
+            <b-skeleton v-else :width="220" :height="28" animated class="mt-1" />
+
+            <p class="is-size-7 hero-soft mb-1" v-if="!loading">{{ userBio }}</p>
+            <b-skeleton v-else :width="300" :height="16" animated class="mt-1 mb-1" />
+
+            <div class="tags mb-0" v-if="!loading">
+              <span class="is-size-7 hero-soft mr-3">
+                <b-icon icon="clock" size="is-small" class="hm-icon" />
+                Último acceso: <b>{{ lastLoginLabel }}</b>
+              </span>
+              <span class="is-size-7 hero-soft" v-if="user?.username">
+                <b-icon icon="at" size="is-small" class="hm-icon" /> {{ user.username }}
+              </span>
+            </div>
           </div>
-          <div class="avatar-status-dot"></div>
-        </div>
-
-        <div class="hero-info">
-          <div class="badge-row">
-            <span class="role-chip" :style="rolePillStyle">
-              <i :class="roleIconClass"></i>
-              {{ roleLabel }}
-            </span>
-            <span class="env-chip">{{ environmentLabel }}</span>
-          </div>
-
-          <h1 class="hero-welcome-line">
-            Bienvenido a <span class="brand-gradient">Eurovisión</span>
-          </h1>
-          <h2 class="hero-name" v-if="!loading">
-            {{ greeting }}, <strong>{{ firstName }}</strong>
-          </h2>
-          <b-skeleton v-else :width="220" :height="28" animated class="mt-1" />
-
-          <p class="hero-bio" v-if="!loading">{{ userBio }}</p>
-          <b-skeleton v-else :width="300" :height="16" animated class="mt-1 mb-1" />
-
-          <div class="hero-meta" v-if="!loading">
-            <span class="hm-item">
-              <i class="fas fa-clock"></i>
-              Último acceso: <b>{{ lastLoginLabel }}</b>
-            </span>
-            <span class="hm-item" v-if="user?.username">
-              <i class="fas fa-at"></i> {{ user.username }}
-            </span>
-          </div>
-        </div>
+        </article>
       </div>
 
       <!-- Columna derecha: perfil + stats rápidas -->
-      <div class="hero-right" v-if="!loading">
-        <button class="profile-cta" @click="$router.push('/l/mi.perfil.panel')">
-          <img :src="avatarUrl" class="pcta-avatar" alt="" />
-          <div class="pcta-info">
-            <span class="pcta-name">{{ firstName }}</span>
-            <span class="pcta-label"> Administrar perfil</span>
-          </div>
-          <i class="fas fa-arrow-right pcta-arrow"></i>
+      <div class="column is-narrow is-12-mobile" v-if="!loading">
+        <button class="button is-fullwidth profile-cta mb-3" @click="$router.push('/l/mi.perfil.panel')">
+          <img :src="avatarUrl" class="pcta-avatar mr-2" alt="" />
+          <span class="has-text-left">
+            <span class="is-block is-size-7 has-text-weight-semibold">{{ firstName }}</span>
+            <span class="is-block is-size-7 hero-soft">Administrar perfil</span>
+          </span>
+          <b-icon icon="arrow-right" size="is-small" class="ml-3 pcta-arrow" />
         </button>
 
-        <div class="hero-quick-stats" v-if="!loading">
-          <div class="hqs-item" v-if="canSeeInventory">
-            <div class="hqs-val">{{ stats?.activeSheets ?? '—' }}</div>
-            <div class="hqs-label">Hojas</div>
+        <nav class="level is-mobile hero-quick-stats px-4 py-2 mb-0">
+          <div class="level-item has-text-centered" v-if="canSeeInventory">
+            <div>
+              <p class="title is-5 mb-0">{{ stats?.activeSheets ?? '—' }}</p>
+              <p class="is-size-7 is-uppercase hero-soft">Hojas</p>
+            </div>
           </div>
-          <div class="hqs-sep" v-if="canSeeInventory"></div>
-          <div class="hqs-item" v-if="canSeeOrders">
-            <div class="hqs-val">{{ stats?.ordersPending ?? '—' }}</div>
-            <div class="hqs-label">Pendientes</div>
+          <div class="level-item has-text-centered" v-if="canSeeOrders">
+            <div>
+              <p class="title is-5 mb-0">{{ stats?.ordersPending ?? '—' }}</p>
+              <p class="is-size-7 is-uppercase hero-soft">Pendientes</p>
+            </div>
           </div>
-          <div class="hqs-sep" v-if="canSeeOrders && canSeeDevolutions"></div>
-          <div class="hqs-item" v-if="canSeeDevolutions">
-            <div class="hqs-val">{{ (stats?.devolucionesPendientes ?? 0) + (stats?.devolucionesEnRevision ?? 0) }}</div>
-            <div class="hqs-label">Devoluc.</div>
+          <div class="level-item has-text-centered" v-if="canSeeDevolutions">
+            <div>
+              <p class="title is-5 mb-0">
+                {{ (stats?.devolucionesPendientes ?? 0) + (stats?.devolucionesEnRevision ?? 0) }}
+              </p>
+              <p class="is-size-7 is-uppercase hero-soft">Devoluc.</p>
+            </div>
           </div>
-        </div>
+        </nav>
       </div>
     </div>
   </section>
@@ -86,7 +95,7 @@ const props = defineProps({
   stats: { type: Object, default: null },
   roleLabel: { type: String, default: '' },
   roleIconClass: { type: String, default: '' },
-  roleRingColor: { type: String, default: '#906fe1' },
+  roleRingColor: { type: String, default: '#a332bd' },
   roleBannerStyle: { type: Object, default: () => ({}) },
   rolePillStyle: { type: Object, default: () => ({}) },
   environmentLabel: { type: String, default: '' },
@@ -104,9 +113,9 @@ function loadAvatar(url) {
   const img = new Image();
   img.src = url;
   img.onload = () => { avatarLoaded.value = true; };
-  img.onerror = () => { 
-    avatarUrl.value = AVATAR_DEFAULTS.DASHBOARD; 
-    avatarLoaded.value = true; 
+  img.onerror = () => {
+    avatarUrl.value = AVATAR_DEFAULTS.DASHBOARD;
+    avatarLoaded.value = true;
   };
 }
 
@@ -130,42 +139,23 @@ const userBio = computed(() => props.user?.bio || ROLE_BIO[props.user?.roleName]
 </script>
 
 <style scoped>
-/* ── Hero card ── */
+/* Identidad de color mate vía tokens — layout 100% Bulma */
 .db-hero {
-  position: relative;
-  z-index: 1;
-  margin: 1.25rem 1.25rem 0;
-  border-radius: var(--radius-xl);
-  overflow: hidden;
-  background:
-    radial-gradient(circle at 0 0, rgba(79, 70, 229, 0.12), transparent 55%),
-    radial-gradient(circle at 100% 0, rgba(236, 72, 153, 0.10), transparent 55%),
-    radial-gradient(circle at 60% 100%, rgba(249, 115, 22, 0.10), transparent 55%),
-    var(--surface-solid);
+  background: var(--surface-solid);
   border: 1px solid var(--border);
-  box-shadow: var(--shadow);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
 }
 
-
-
-.hero-body {
-  display: flex;
-  align-items: flex-start;
-  gap: 1.5rem;
-  padding: 1.5rem 1.75rem;
-  flex-wrap: wrap;
-}
-
-/* Avatar */
+/* Avatar con anillo de rol sólido */
 .avatar-shell {
   position: relative;
   width: 100px;
   height: 100px;
-  flex-shrink: 0;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--rc, var(--c-primary)), rgba(255, 255, 255, 0.2));
+  background: var(--rc, var(--c-primary));
   padding: 3px;
-  box-shadow: 0 0 22px color-mix(in srgb, var(--rc, var(--c-primary)) 45%, transparent);
 }
 
 .avatar-inner {
@@ -173,7 +163,7 @@ const userBio = computed(() => props.user?.bio || ROLE_BIO[props.user?.roleName]
   height: 100%;
   border-radius: 50%;
   overflow: hidden;
-  border: 2px solid var(--border);
+  border: 2px solid var(--surface-solid);
 }
 
 .avatar-img {
@@ -191,132 +181,43 @@ const userBio = computed(() => props.user?.bio || ROLE_BIO[props.user?.roleName]
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: #10b981;
+  background: var(--c-success);
   border: 2.5px solid var(--surface-solid);
-  box-shadow: 0 0 8px rgba(16, 185, 129, .6);
-}
-
-/* Info */
-.hero-left {
-  display: flex;
-  align-items: flex-start;
-  gap: 1.1rem;
-  flex: 1;
-  min-width: 0;
-}
-
-.hero-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.badge-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  margin-bottom: 0.4rem;
 }
 
 .role-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
   letter-spacing: 0.07em;
-  padding: 0.22rem 0.6rem;
-  border-radius: 999px;
 }
 
 .env-chip {
-  font-size: 0.67rem;
   color: var(--text-muted);
   background: var(--bg-subtle);
-  border: 1px solid var(--glass-border);
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
+  border: 1px solid var(--border);
 }
 
-.hero-welcome-line {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  margin: 0 0 0.15rem;
-  letter-spacing: 0.01em;
-}
-
-.brand-gradient {
-  background: linear-gradient(90deg, #7c3aed, #2563eb);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  font-weight: 800;
-}
-
-.hero-name {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 0.3rem;
-  line-height: 1.2;
-}
-
-.hero-bio {
-  font-size: 0.78rem;
-  color: var(--text-muted);
-  margin: 0 0 0.4rem;
-  max-width: 460px;
-  line-height: 1.55;
-}
-
-.hero-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.65rem;
-}
-
-.hm-item {
-  font-size: 0.73rem;
-  color: var(--text-muted);
-}
-
-.hm-item i {
-  margin-right: 0.25rem;
+.brand-solid {
   color: var(--c-primary);
 }
 
-.hm-item b {
-  color: var(--text-primary);
+.hero-soft {
+  color: var(--text-muted);
 }
 
-/* Hero right */
-.hero-right {
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-  flex-shrink: 0;
+.hm-icon {
+  color: var(--c-primary);
+  vertical-align: middle;
 }
 
 .profile-cta {
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  padding: 0.65rem 0.9rem;
-  border-radius: 0.9rem;
+  height: auto;
   background: var(--surface-overlay);
   border: 1px solid var(--border);
-  cursor: pointer;
-  color: var(--text-primary);
-  transition: background 0.16s, transform 0.12s, box-shadow 0.16s;
-  white-space: nowrap;
+  border-radius: var(--radius-lg);
+  justify-content: flex-start;
 }
 
 .profile-cta:hover {
   background: var(--bg-muted);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
 }
 
 .pcta-avatar {
@@ -327,78 +228,13 @@ const userBio = computed(() => props.user?.bio || ROLE_BIO[props.user?.roleName]
   border: 1.5px solid var(--border);
 }
 
-.pcta-name {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.pcta-label {
-  font-size: 0.67rem;
-  color: var(--text-muted);
-}
-
 .pcta-arrow {
   color: var(--c-primary);
-  font-size: 0.75rem;
-  margin-left: 0.4rem;
 }
 
-/* Hero quick stats */
 .hero-quick-stats {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
   background: var(--surface-overlay);
   border: 1px solid var(--border);
-  border-radius: 0.75rem;
-  padding: 0.55rem 0.9rem;
-}
-
-.hqs-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.hqs-val {
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  line-height: 1;
-}
-
-.hqs-label {
-  font-size: 0.62rem;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-top: 2px;
-}
-
-.hqs-sep {
-  width: 1px;
-  height: 30px;
-  background: var(--border);
-}
-
-/* Responsive */
-@media (max-width:768px) {
-  .db-hero {
-    margin: 0.75rem 0.75rem 0;
-  }
-
-  .hero-body {
-    padding: 1rem 1.1rem;
-    gap: 1rem;
-  }
-
-  .hero-right {
-    width: 100%;
-  }
-
-  .hero-quick-stats {
-    justify-content: space-around;
-  }
+  border-radius: var(--radius-md);
 }
 </style>

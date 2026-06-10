@@ -2,8 +2,4 @@
   position: relative;
 }
 
-.prefs-grid {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: 0.9rem;
-}
+/* Grid migrado a Bulma columns */

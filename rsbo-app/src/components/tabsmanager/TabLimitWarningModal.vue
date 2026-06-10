@@ -149,8 +149,8 @@ const handleCloseMostRecent = () => {
 }
 
 .replace-btn--primary {
-  background: rgba(121, 87, 213, 0.3);
-  border-color: rgba(121, 87, 213, 0.5);
+  background: var(--c-primary-alpha);
+  border-color: var(--c-primary);
 }
 
 .active-tabs-list {

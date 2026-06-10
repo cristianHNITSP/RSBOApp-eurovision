@@ -133,20 +133,20 @@ const labelFor = (type) => ({
 
 /* Variantes de color — mismo patrón de gradiente que dirty-float */
 .lab-notif--is-success {
-  border: 1px solid rgba(34, 197, 94, 0.35);
-  background: linear-gradient(90deg, var(--c-success-alpha), rgba(124, 58, 237, 0.08));
+  border: 1px solid var(--c-success-alpha);
+  background: var(--c-success-alpha);
 }
 .lab-notif--is-danger {
-  border: 1px solid rgba(239, 68, 68, 0.35);
-  background: linear-gradient(90deg, var(--c-danger-alpha), rgba(124, 58, 237, 0.08));
+  border: 1px solid var(--c-danger-alpha);
+  background: var(--c-danger-alpha);
 }
 .lab-notif--is-warning {
-  border: 1px solid rgba(245, 158, 11, 0.35);
-  background: linear-gradient(90deg, var(--c-warning-alpha), rgba(124, 58, 237, 0.10));
+  border: 1px solid var(--c-warning-alpha);
+  background: var(--c-warning-alpha);
 }
 .lab-notif--is-info {
-  border: 1px solid rgba(59, 130, 246, 0.30);
-  background: linear-gradient(90deg, var(--c-info-alpha), rgba(124, 58, 237, 0.08));
+  border: 1px solid var(--c-info-alpha);
+  background: var(--c-info-alpha);
 }
 
 /* ===== Contenido (mismo layout que dirty-float__content) ===== */
@@ -170,22 +170,22 @@ const labelFor = (type) => ({
 }
 .lab-notif--is-success .lab-notif__icon {
   background: var(--c-success-alpha);
-  border: 1px solid rgba(34, 197, 94, 0.28);
+  border: 1px solid var(--c-success-alpha);
   color: var(--c-success);
 }
 .lab-notif--is-danger .lab-notif__icon {
   background: var(--c-danger-alpha);
-  border: 1px solid rgba(239, 68, 68, 0.28);
+  border: 1px solid var(--c-danger-alpha);
   color: var(--c-danger);
 }
 .lab-notif--is-warning .lab-notif__icon {
   background: var(--c-warning-alpha);
-  border: 1px solid rgba(245, 158, 11, 0.25);
+  border: 1px solid var(--c-warning-alpha);
   color: var(--c-warning);
 }
 .lab-notif--is-info .lab-notif__icon {
   background: var(--c-info-alpha);
-  border: 1px solid rgba(59, 130, 246, 0.24);
+  border: 1px solid var(--c-info-alpha);
   color: var(--c-info);
 }
 

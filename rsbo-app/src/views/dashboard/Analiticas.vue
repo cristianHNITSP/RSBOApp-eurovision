@@ -78,7 +78,7 @@
             <div class="an-tab-single-col">
               <div class="gcard mb-5">
                 <div class="gc-head">
-                  <div class="gc-ico" style="background:rgba(245,158,11,.16);color:#f59e0b"><i class="fas fa-dollar-sign"></i></div>
+                  <div class="gc-ico" style="background:var(--c-warning-alpha);color:var(--c-warning)"><i class="fas fa-dollar-sign"></i></div>
                   <div>
                     <div class="gc-title">Ventas Totales</div>
                     <div class="gc-sub">Métricas de ingresos (órdenes cerradas)</div>
@@ -87,15 +87,15 @@
                 <div class="gc-body">
                   <div class="an-stat-grid">
                     <div class="an-stat-cell">
-                      <div class="asc-ico" style="background:rgba(245,158,11,.12);color:#f59e0b"><i class="fas fa-sack-dollar"></i></div>
-                      <div class="asc-val" style="color:#f59e0b" v-if="!isLoading">${{ (s?.ventasMontoMes || 0).toLocaleString() }}</div>
+                      <div class="asc-ico" style="background:var(--c-warning-alpha);color:var(--c-warning)"><i class="fas fa-sack-dollar"></i></div>
+                      <div class="asc-val" style="color:var(--c-warning)" v-if="!isLoading">${{ (s?.ventasMontoMes || 0).toLocaleString() }}</div>
                       <b-skeleton v-else :width="50" :height="28" animated />
                       <div class="asc-lbl">Ventas (Mes)</div>
                       <div class="asc-cap">${{ (s?.ventasMontoSemana || 0).toLocaleString() }} esta semana</div>
                     </div>
                     <div class="an-stat-cell">
-                      <div class="asc-ico" style="background:rgba(16,185,129,.12);color:#10b981"><i class="fas fa-money-bill-trend-up"></i></div>
-                      <div class="asc-val" style="color:#10b981" v-if="!isLoading">${{ (s?.ventasMontoHoy || 0).toLocaleString() }}</div>
+                      <div class="asc-ico" style="background:var(--c-success-alpha);color:var(--c-success)"><i class="fas fa-money-bill-trend-up"></i></div>
+                      <div class="asc-val" style="color:var(--c-success)" v-if="!isLoading">${{ (s?.ventasMontoHoy || 0).toLocaleString() }}</div>
                       <b-skeleton v-else :width="50" :height="28" animated />
                       <div class="asc-lbl">Ventas Hoy</div>
                       <div class="asc-cap">Ingresos del día</div>
@@ -267,13 +267,13 @@ onUnmounted(() => {
   clearTimeout(_wsRefreshTimer)
 })
 
-// ── Role meta ──
+// ── Role meta (acento sólido mate, paleta del logo) ──
 const roleMeta = {
-  root: { title: 'Analíticas del sistema', grad: 'linear-gradient(90deg, #dc2626, #ea580c)' },
-  eurovision: { title: 'Analíticas del sistema', grad: 'linear-gradient(90deg, #906fe1, #2563eb)' },
-  supervisor: { title: 'Analíticas de operaciones', grad: 'linear-gradient(90deg, #0891b2, #0d9488)' },
-  ventas: { title: 'Analíticas de ventas', grad: 'linear-gradient(90deg, #16a34a, #65a30d)' },
-  laboratorio: { title: 'Analíticas de laboratorio', grad: 'linear-gradient(90deg, #0284c7, #906fe1)' },
+  root: { title: 'Analíticas del sistema', grad: '#db3b4b' },
+  eurovision: { title: 'Analíticas del sistema', grad: '#a332bd' },
+  supervisor: { title: 'Analíticas de operaciones', grad: '#0f97a8' },
+  ventas: { title: 'Analíticas de ventas', grad: '#148a4e' },
+  laboratorio: { title: 'Analíticas de laboratorio', grad: '#176fdb' },
 }
 const currentMeta = computed(() => roleMeta[role.value] || roleMeta.eurovision)
 const headerTitle = computed(() => currentMeta.value.title)
@@ -333,10 +333,10 @@ const serviceLevelClass = computed(() => {
 })
 const slColor = computed(() => {
   const sl = s.value?.serviceLevel || 0
-  if (sl >= 97) return '#10b981'
-  if (sl >= 90) return '#06b6d4'
-  if (sl >= 80) return '#f59e0b'
-  return '#ef4444'
+  if (sl >= 97) return 'var(--c-success)'
+  if (sl >= 90) return 'var(--c-info)'
+  if (sl >= 80) return 'var(--c-warning)'
+  return 'var(--c-danger)'
 })
 
 // ── Coverage ──

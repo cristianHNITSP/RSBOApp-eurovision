@@ -2,9 +2,9 @@
   <div class="an-tab-single-col">
     <!-- Armazones -->
     <div class="gcard mb-5">
-      <div class="gcard-bar" style="background:linear-gradient(90deg,#906fe1,#a855f7)"></div>
+      <div class="gcard-bar" style="background:var(--c-primary)"></div>
       <div class="gc-head">
-        <div class="gc-ico" style="background:rgba(144,111,225,.16);color:#906fe1"><i class="fas fa-glasses"></i></div>
+        <div class="gc-ico" style="background:var(--c-primary-alpha);color:var(--c-primary)"><i class="fas fa-glasses"></i></div>
         <div>
           <div class="gc-title">Armazones</div>
           <div class="gc-sub">
@@ -23,18 +23,18 @@
             <div class="asc-lbl">Modelos distintos</div>
           </div>
           <div class="an-stat-cell">
-            <div class="asc-ico" style="color:#10b981"><i class="fas fa-boxes-stacked"></i></div>
-            <div class="asc-val" style="color:#10b981">{{ fmtn(os.armazones.stock) }}</div>
+            <div class="asc-ico" style="color:var(--c-success)"><i class="fas fa-boxes-stacked"></i></div>
+            <div class="asc-val" style="color:var(--c-success)">{{ fmtn(os.armazones.stock) }}</div>
             <div class="asc-lbl">Piezas en almacén</div>
           </div>
           <div class="an-stat-cell">
-            <div class="asc-ico" style="color:#ef4444"><i class="fas fa-box-open"></i></div>
-            <div class="asc-val" style="color:#ef4444">{{ fmtn(os.armazones.agotados) }}</div>
+            <div class="asc-ico" style="color:var(--c-danger)"><i class="fas fa-box-open"></i></div>
+            <div class="asc-val" style="color:var(--c-danger)">{{ fmtn(os.armazones.agotados) }}</div>
             <div class="asc-lbl">Modelos agotados</div>
           </div>
           <div class="an-stat-cell">
-            <div class="asc-ico" style="color:#3b82f6"><i class="fas fa-coins"></i></div>
-            <div class="asc-val" style="color:#3b82f6">${{ fmtn(os.armazones.valor) }}</div>
+            <div class="asc-ico" style="color:var(--c-info)"><i class="fas fa-coins"></i></div>
+            <div class="asc-val" style="color:var(--c-info)">${{ fmtn(os.armazones.valor) }}</div>
             <div class="asc-lbl">Valor estimado</div>
           </div>
         </div>
@@ -46,9 +46,9 @@
 
     <!-- Soluciones -->
     <div class="gcard mb-5">
-      <div class="gcard-bar" style="background:linear-gradient(90deg,#06b6d4,#3b82f6)"></div>
+      <div class="gcard-bar" style="background:var(--c-info)"></div>
       <div class="gc-head">
-        <div class="gc-ico" style="background:rgba(6,182,212,.16);color:#06b6d4"><i class="fas fa-droplet"></i></div>
+        <div class="gc-ico" style="background:var(--c-info-alpha);color:var(--c-info)"><i class="fas fa-droplet"></i></div>
         <div>
           <div class="gc-title">Soluciones y Gotas</div>
           <div class="gc-sub">
@@ -67,18 +67,18 @@
             <div class="asc-lbl">Tipos distintos</div>
           </div>
           <div class="an-stat-cell">
-            <div class="asc-ico" style="color:#10b981"><i class="fas fa-boxes-stacked"></i></div>
-            <div class="asc-val" style="color:#10b981">{{ fmtn(os.soluciones.stock) }}</div>
+            <div class="asc-ico" style="color:var(--c-success)"><i class="fas fa-boxes-stacked"></i></div>
+            <div class="asc-val" style="color:var(--c-success)">{{ fmtn(os.soluciones.stock) }}</div>
             <div class="asc-lbl">Botellas en almacén</div>
           </div>
           <div class="an-stat-cell">
-            <div class="asc-ico" style="color:#ef4444"><i class="fas fa-box-open"></i></div>
-            <div class="asc-val" style="color:#ef4444">{{ fmtn(os.soluciones.agotados) }}</div>
+            <div class="asc-ico" style="color:var(--c-danger)"><i class="fas fa-box-open"></i></div>
+            <div class="asc-val" style="color:var(--c-danger)">{{ fmtn(os.soluciones.agotados) }}</div>
             <div class="asc-lbl">Agotadas</div>
           </div>
           <div class="an-stat-cell">
-            <div class="asc-ico" style="color:#f59e0b"><i class="fas fa-hourglass-half"></i></div>
-            <div class="asc-val" style="color:#f59e0b">{{ fmtn(os.soluciones.porVencer) }}</div>
+            <div class="asc-ico" style="color:var(--c-warning)"><i class="fas fa-hourglass-half"></i></div>
+            <div class="asc-val" style="color:var(--c-warning)">{{ fmtn(os.soluciones.porVencer) }}</div>
             <div class="asc-lbl">Lotes por vencer (6m)</div>
           </div>
         </div>
@@ -92,9 +92,9 @@
     <div class="columns is-multiline">
       <div class="column is-6">
         <div class="gcard h-100">
-          <div class="gcard-bar" style="background:linear-gradient(90deg,#10b981,#059669)"></div>
+          <div class="gcard-bar" style="background:var(--c-success)"></div>
           <div class="gc-head">
-            <div class="gc-ico" style="background:rgba(16,185,129,.16);color:#10b981"><i class="fas fa-screwdriver-wrench"></i></div>
+            <div class="gc-ico" style="background:var(--c-success-alpha);color:var(--c-success)"><i class="fas fa-screwdriver-wrench"></i></div>
             <div>
               <div class="gc-title">Accesorios</div>
               <div class="gc-sub">Paños, cadenas, tornillos</div>
@@ -107,7 +107,7 @@
                 <div class="asc-lbl">Artículos</div>
               </div>
               <div class="an-stat-cell">
-                <div class="asc-val" style="color:#10b981">{{ fmtn(os.accesorios.stock) }}</div>
+                <div class="asc-val" style="color:var(--c-success)">{{ fmtn(os.accesorios.stock) }}</div>
                 <div class="asc-lbl">Piezas</div>
               </div>
             </div>
@@ -117,9 +117,9 @@
       </div>
       <div class="column is-6">
         <div class="gcard h-100">
-          <div class="gcard-bar" style="background:linear-gradient(90deg,#f59e0b,#d97706)"></div>
+          <div class="gcard-bar" style="background:var(--c-warning)"></div>
           <div class="gc-head">
-            <div class="gc-ico" style="background:rgba(245,158,11,.16);color:#f59e0b"><i class="fas fa-box"></i></div>
+            <div class="gc-ico" style="background:var(--c-warning-alpha);color:var(--c-warning)"><i class="fas fa-box"></i></div>
             <div>
               <div class="gc-title">Estuches</div>
               <div class="gc-sub">Cajas protectoras para lentes</div>
@@ -132,7 +132,7 @@
                 <div class="asc-lbl">Modelos</div>
               </div>
               <div class="an-stat-cell">
-                <div class="asc-val" style="color:#f59e0b">{{ fmtn(os.estuches.stock) }}</div>
+                <div class="asc-val" style="color:var(--c-warning)">{{ fmtn(os.estuches.stock) }}</div>
                 <div class="asc-lbl">Piezas</div>
               </div>
             </div>
@@ -144,7 +144,7 @@
 
     <!-- Equipos -->
     <div class="gcard mt-3">
-      <div class="gcard-bar" style="background:linear-gradient(90deg,#64748b,#475569)"></div>
+      <div class="gcard-bar" style="background:var(--border-strong)"></div>
       <div class="gc-head">
         <div class="gc-ico" style="background:rgba(100,116,139,.16);color:#64748b"><i class="fas fa-desktop"></i></div>
         <div>
@@ -160,18 +160,18 @@
             <div class="asc-lbl">Equipos Totales</div>
           </div>
           <div class="an-stat-cell">
-            <div class="asc-ico" style="color:#10b981"><i class="fas fa-check-circle"></i></div>
-            <div class="asc-val" style="color:#10b981">{{ fmtn(os.equipos.operativos) }}</div>
+            <div class="asc-ico" style="color:var(--c-success)"><i class="fas fa-check-circle"></i></div>
+            <div class="asc-val" style="color:var(--c-success)">{{ fmtn(os.equipos.operativos) }}</div>
             <div class="asc-lbl">Operativos</div>
           </div>
           <div class="an-stat-cell">
-            <div class="asc-ico" style="color:#f59e0b"><i class="fas fa-wrench"></i></div>
-            <div class="asc-val" style="color:#f59e0b">{{ fmtn(os.equipos.mantenimiento) }}</div>
+            <div class="asc-ico" style="color:var(--c-warning)"><i class="fas fa-wrench"></i></div>
+            <div class="asc-val" style="color:var(--c-warning)">{{ fmtn(os.equipos.mantenimiento) }}</div>
             <div class="asc-lbl">En mantenimiento</div>
           </div>
           <div class="an-stat-cell">
-            <div class="asc-ico" style="color:#ef4444"><i class="fas fa-ban"></i></div>
-            <div class="asc-val" style="color:#ef4444">{{ fmtn(os.equipos.fueraServicio) }}</div>
+            <div class="asc-ico" style="color:var(--c-danger)"><i class="fas fa-ban"></i></div>
+            <div class="asc-val" style="color:var(--c-danger)">{{ fmtn(os.equipos.fueraServicio) }}</div>
             <div class="asc-lbl">Fuera de servicio</div>
           </div>
         </div>

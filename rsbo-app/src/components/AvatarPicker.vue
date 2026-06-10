@@ -157,7 +157,7 @@ function confirmSelection() {
   height: var(--av-size);
   border-radius: 9999px;
   padding: var(--av-pad);
-  background: linear-gradient(135deg, #7957d5, #9a6dff, #f97316, #ec4899);
+  background: linear-gradient(135deg, var(--c-primary), var(--c-primary), var(--c-sidebar-warm), var(--c-sidebar-pink));
   position: relative;
   overflow: hidden;
   transition: transform 180ms ease;
@@ -255,11 +255,11 @@ function confirmSelection() {
 }
 
 .avatar-option:hover .av-img--loaded {
-  outline-color: rgba(99, 102, 241, 0.35);
+  outline-color: var(--c-info-alpha);
 }
 
 .avatar-option.is-selected .av-img--loaded {
-  outline-color: var(--c-primary-dark, #7957d5);
+  outline-color: var(--c-primary-dark, var(--c-primary));
 }
 
 /* ── Badge selección ── */
@@ -270,7 +270,7 @@ function confirmSelection() {
   width: 26px;
   height: 26px;
   border-radius: 9999px;
-  background: var(--c-primary, #7957d5);
+  background: var(--c-primary, var(--c-primary));
   color: #fff;
   display: grid;
   place-items: center;
@@ -295,7 +295,7 @@ function confirmSelection() {
   height: 44px;
   border-radius: 9999px;
   padding: 2px;
-  background: linear-gradient(135deg, #7957d5, #f97316, #ec4899);
+  background: linear-gradient(135deg, var(--c-primary), var(--c-sidebar-warm), var(--c-sidebar-pink));
   flex-shrink: 0;
   display: block;
 }

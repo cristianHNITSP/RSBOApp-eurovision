@@ -4,6 +4,7 @@ import { computed, ref, onMounted } from "vue";
 import { useRoute } from "vue-router";
 import TabsManager from "@/components/TabsManager.vue";
 import SectionLoadingOverlay from "@/components/SectionLoadingOverlay.vue";
+import PageSectionHeader from "@/components/ui/PageSectionHeader.vue";
 import { labToast } from "@/composables/shared/useLabToast.js";
 
 import { listSheets, getSheet } from "@/services/inventory";
@@ -129,30 +130,13 @@ function reordenarSheets({ oldIndex, newIndex }) {
 <template>
   <section class="section section-matriz-dioptrias">
 
-    <header class="page-section-header">
-      <div>
-        <div class="psh-top-row">
-          <div>
-            <span class="inventario-pill">
-              <b-icon icon="glasses" size="is-small" class="mr-1" />
-              {{ INVENTORY_LABELS.SUBTITLE }}
-            </span>
-            <h2>{{ INVENTORY_LABELS.TITLE }}</h2>
-            <p class="psh-desc">{{ INVENTORY_LABELS.DESCRIPTION }}</p>
-          </div>
-        </div>
-
-        <div class="psh-quick mt-3">
-          <div v-for="card in INVENTORY_LABELS.QUICK_CARDS" :key="card.title" class="psh-quick__card">
-            <div class="psh-quick__icon"><i :class="card.icon"></i></div>
-            <div>
-              <p class="psh-quick__title">{{ card.title }}</p>
-              <p class="psh-quick__text">{{ card.text }}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </header>
+    <PageSectionHeader
+      :pill="INVENTORY_LABELS.SUBTITLE"
+      icon="glasses"
+      :title="INVENTORY_LABELS.TITLE"
+      :description="INVENTORY_LABELS.DESCRIPTION"
+      :quick-items="INVENTORY_LABELS.QUICK_CARDS"
+    />
 
     <div class="section-boot-wrap" :class="{ 'is-booting': booting }">
       <Transition name="boot">
@@ -193,20 +177,6 @@ function reordenarSheets({ oldIndex, newIndex }) {
   border-radius: 8px;
   padding: 1.5rem;
   background-color: var(--surface-solid);
-}
-
-.inventario-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--c-primary);
-  background: var(--c-primary-alpha);
-  padding: 0.2rem 0.45rem;
-  border-radius: 999px;
-  margin-bottom: 0.35rem;
 }
 
 .planilla-wrapper {

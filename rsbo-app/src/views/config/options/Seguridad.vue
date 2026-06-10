@@ -14,7 +14,7 @@
       </div>
     </header>
 
-    <div class="sec-grid">
+    <div class="columns is-multiline is-variable is-3 lq-stagger">
 
       <!-- ── Sesiones activas ──────────────────────────────────────────────── -->
       <SecCard :wide="true">

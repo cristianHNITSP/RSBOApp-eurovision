@@ -23,10 +23,7 @@
 
 /* Metadata Card — misma receta que el sidebar: primary sutil + pink sutil */
 .navtools-card--meta {
-    background:
-        radial-gradient(circle at 0% 0%, var(--static-color-rgba-121-87-213-0-08), transparent 55%),
-        radial-gradient(circle at 100% 100%, var(--static-color-rgba-236-72-153-0-06), transparent 55%),
-        var(--surface-raised);
+    background: var(--surface-raised);
 }
 
 /* Dark: meta card sin gradiente — superficie plana igual que las demás */
@@ -98,7 +95,7 @@
 
 .last-history--undo {
     color: var(--c-warning, #b45309);
-    background: var(--c-warning-alpha, var(--static-color-rgba-121-87-213-0-08));
+    background: var(--c-warning-alpha, var(--c-primary-alpha));
 }
 
 .last-history--redo {
@@ -213,7 +210,7 @@
 }
 
 .rbtn--primary {
-    box-shadow: 0 4px 12px var(--c-primary-alpha), 0 0 0 1px var(--static-color-rgba-79-70-229-0-15);
+    box-shadow: 0 4px 12px var(--c-primary-alpha), 0 0 0 1px var(--c-primary-alpha);
 }
 
 /* ─── 5. Formula Bar (FX) ────────────────────────────────────────── */
@@ -224,9 +221,7 @@
     padding: 0.45rem 0.75rem;
     border-radius: 999px;
     border: 1px solid var(--static-color-rgba-148-163-184-0-15);
-    background:
-        radial-gradient(circle at 0% 0%, var(--static-color-rgba-121-87-213-0-05), transparent 55%),
-        var(--surface-solid);
+    background: var(--surface-solid);
     margin: 0.5rem;
 }
 
@@ -236,7 +231,7 @@
     font-weight: 1000;
     background: var(--bg-muted, var(--static-color-rgba-148-163-184-0-1));
     color: var(--c-primary);
-    border: 1px solid var(--static-color-rgba-79-70-229-0-15);
+    border: 1px solid var(--c-primary-alpha);
     font-style: italic;
     font-family: serif;
 }

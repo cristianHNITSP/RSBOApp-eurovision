@@ -162,7 +162,7 @@ const vClickOutside = {
 
 .trash-menu-trigger:hover {
   background: var(--c-danger-alpha);
-  border-color: rgba(239, 68, 68, 0.3);
+  border-color: var(--c-danger-alpha);
   color: var(--c-danger);
   transform: translateY(-1px);
 }

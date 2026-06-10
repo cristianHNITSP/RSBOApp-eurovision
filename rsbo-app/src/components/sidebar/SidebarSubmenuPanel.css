@@ -1,8 +1,5 @@
 .submenu-panel {
-    background:
-        radial-gradient(circle at 0 0, var(--static-color-rgba-121-87-213-0-10), transparent 55%),
-        radial-gradient(circle at 100% 100%, var(--static-color-rgba-236-72-153-0-08), transparent 60%),
-        var(--surface-raised);
+    background: var(--surface-raised);
 
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
@@ -20,7 +17,7 @@
     padding: 0.8rem 0.9rem;
     border-bottom: 1px solid var(--border);
 
-    background: linear-gradient(120deg, var(--static-color-rgba-121-87-213-0-14), var(--static-color-rgba-236-72-153-0-10));
+    background: var(--c-primary-alpha);
 }
 
 .submenu-header-main {
@@ -98,9 +95,7 @@
     }
 
     &.is-active {
-        background:
-            radial-gradient(circle at 20% 0%, var(--static-color-rgba-121-87-213-0-16), transparent 55%),
-            linear-gradient(90deg, var(--c-primary-alpha), var(--static-color-rgba-236-72-153-0-10));
+        background: var(--c-primary-alpha);
         border-color: var(--c-primary-alpha);
         color: var(--c-primary);
 
@@ -139,8 +134,8 @@
     font-size: 0.65rem !important;
     height: 18px !important;
     min-width: 20px;
-    background: var(--static-color-d97706) !important;
-    border-color: var(--static-color-d97706) !important;
+    background: var(--c-warning) !important;
+    border-color: var(--c-warning) !important;
     color: var(--static-color-fff) !important;
 }
 

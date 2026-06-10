@@ -169,28 +169,31 @@ async function checkSession(force = false) {
   return result;
 }
 
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to) => {
   const requiresAuth = to.matched.some((record) => record.meta.requiresAuth);
 
   // Caso especial: si intenta ir a "/" con sesión válida, NO se permite,
-  // se manda a /l/home — excepto root, que va al panel admin
+  // se manda a /l/home — excepto root, que va al panel admin.
+  // NO se bloquea el primer paint esperando al backend: la Landing renderiza
+  // de inmediato y, si la sesión resulta válida, se redirige al llegar la
+  // respuesta (evita la pantalla congelada tras logout / carga fría).
   if (to.name === "Landing") {
-    try {
-      const { data } = await checkSession();
-      if (data?.user?.roleName === "root") {
-        window.location.href = "/admin/sso";
-        return;
-      }
-      initLabSocket();
-      return next({ name: "home" });
-    } catch {
-      return next();
-    }
+    checkSession()
+      .then(({ data }) => {
+        if (data?.user?.roleName === "root") {
+          window.location.href = "/admin/sso";
+          return;
+        }
+        initLabSocket();
+        router.replace({ name: "home" });
+      })
+      .catch(() => { /* sin sesión: quedarse en Landing */ });
+    return true;
   }
 
   // Rutas públicas → pasan directo
   if (!requiresAuth) {
-    return next();
+    return true;
   }
 
   // Rutas protegidas
@@ -200,7 +203,7 @@ router.beforeEach(async (to, from, next) => {
     // root no puede acceder a la app principal — solo al panel admin
     if (data?.user?.roleName === "root") {
       window.location.href = "/admin/sso";
-      return;
+      return false;
     }
 
     // Validación granular por rol según meta.allowedRoles
@@ -210,12 +213,12 @@ router.beforeEach(async (to, from, next) => {
       const allowed = matched.meta.allowedRoles.map((r) => String(r).toLowerCase());
       if (!allowed.includes(role)) {
         console.warn(`[Router] Rol "${role}" no autorizado para ${to.fullPath}`);
-        return next({ name: "home" });
+        return { name: "home" };
       }
     }
 
     initLabSocket();
-    return next();
+    return true;
   } catch (err) {
     const status = err?.response?.status;
     const code = err?.response?.data?.error;
@@ -224,15 +227,15 @@ router.beforeEach(async (to, from, next) => {
     // No cerrar sesión — dejar pasar con el caché o reintento implícito.
     if (status === 429 || status >= 500 || !status) {
       console.warn("[Router] check-session falló con", status ?? "sin respuesta", "— permitiendo navegación");
-      return next(); // continuar sin redirigir
+      return true; // continuar sin redirigir
     }
 
     console.warn("Sesión inválida o no autorizada", { status, code });
 
-    return next({
+    return {
       name: "Landing",
       query: { authReason: mapErrorToAuthReason(code) },
-    });
+    };
   }
 });
 

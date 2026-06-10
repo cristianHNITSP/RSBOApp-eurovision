@@ -292,7 +292,7 @@ async function handleSubmit() {
 }
 
 .bo-modal-head__icon.accent-green {
-  background: var(--c-success, #10b981);
+  background: var(--c-success, var(--c-success));
 }
 
 .bo-modal-head__sub {

@@ -6,6 +6,16 @@
     <link rel="icon" type="image/svg+xml" href="/eurovision.svg" />
     <title>RSBO - Laboratorio Eurovision</title>
 
+    <!-- Fuentes: preconnect + link directo (en paralelo desde el byte cero).
+         Antes vivían como @import dentro del CSS bundleado, lo que encadenaba
+         las descargas y bloqueaba el primer paint. -->
+    <link rel="preconnect" href="https://api.fontshare.com" crossorigin />
+    <link rel="preconnect" href="https://cdn.fontshare.com" crossorigin />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@1&f[]=switzer@1&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Space+Grotesk:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" />
+
     <link rel="stylesheet" href="/init.css" />
     <script src="/init.js"></script>
   </head>

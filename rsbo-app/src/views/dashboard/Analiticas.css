@@ -24,13 +24,10 @@
   margin: 1.25rem;
   border-radius: var(--radius-xl);
   overflow: hidden;
-  background:
-    radial-gradient(circle at 0 0, var(--static-color-rgba-79-70-229-0-12), transparent 55%),
-    radial-gradient(circle at 100% 0, var(--static-color-rgba-236-72-153-0-10), transparent 55%),
-    radial-gradient(circle at 60% 100%, var(--static-color-rgba-249-115-22-0-10), transparent 55%),
-    var(--surface-solid);
+  /* Mate: superficie sólida sin degradados decorativos */
+  background: var(--surface-solid);
   border: 1px solid var(--border);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-sm);
 }
 
 
@@ -79,11 +76,9 @@
   line-height: 1.2;
 }
 
+/* Mate: marca en color sólido (sin gradiente de texto) */
 .an-brand-grad {
-  background: linear-gradient(90deg, var(--c-primary), var(--static-color-2563eb), var(--static-color-ec4899));
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--c-primary);
 }
 
 .an-hero-sub {
@@ -113,7 +108,7 @@
 }
 
 .an-badge-pink i {
-  color: var(--static-color-ec4899);
+  color: var(--c-sidebar-pink);
 }
 
 /* ── KPI Strip ── */
@@ -568,23 +563,23 @@
 }
 
 .sl-excellent {
-  border-color: var(--static-color-10b981);
-  box-shadow: 0 0 16px var(--static-color-rgba-16-185-129--3);
+  border-color: var(--c-success);
+  box-shadow: 0 0 16px var(--c-success-alpha);
 }
 
 .sl-good {
-  border-color: var(--static-color-06b6d4);
-  box-shadow: 0 0 16px var(--static-color-rgba-6-182-212--3);
+  border-color: var(--c-info);
+  box-shadow: 0 0 16px var(--c-info-alpha);
 }
 
 .sl-ok {
-  border-color: var(--static-color-f59e0b);
-  box-shadow: 0 0 16px var(--static-color-rgba-245-158-11--3);
+  border-color: var(--c-warning);
+  box-shadow: 0 0 16px var(--c-warning-alpha);
 }
 
 .sl-poor {
-  border-color: var(--static-color-ef4444);
-  box-shadow: 0 0 16px var(--static-color-rgba-239-68-68--3);
+  border-color: var(--c-danger);
+  box-shadow: 0 0 16px var(--c-danger-alpha);
 }
 
 .sl-pct {
@@ -638,23 +633,23 @@
 }
 
 .sl-chip-excellent {
-  background: var(--static-color-rgba-16-185-129--1);
-  color: var(--static-color-10b981);
+  background: var(--c-success-alpha);
+  color: var(--c-success);
 }
 
 .sl-chip-good {
-  background: var(--static-color-rgba-6-182-212--1);
-  color: var(--static-color-06b6d4);
+  background: var(--c-info-alpha);
+  color: var(--c-info);
 }
 
 .sl-chip-ok {
-  background: var(--static-color-rgba-245-158-11--1);
-  color: var(--static-color-f59e0b);
+  background: var(--c-warning-alpha);
+  color: var(--c-warning);
 }
 
 .sl-chip-poor {
-  background: var(--static-color-rgba-239-68-68--1);
-  color: var(--static-color-ef4444);
+  background: var(--c-danger-alpha);
+  color: var(--c-danger);
 }
 
 /* Stat grid (6 cells) */
@@ -834,7 +829,7 @@
 
 .an-export-tile i {
   font-size: 1.1rem;
-  color: var(--static-color-6366f1);
+  color: var(--c-primary);
 }
 
 .an-export-tile span {

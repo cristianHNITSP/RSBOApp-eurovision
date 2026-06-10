@@ -54,11 +54,11 @@ const statusClass = computed(() => statusInfo.value.class);
 }
 
 /* Variants */
-.is-solicitado { color: #3b82f6; background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.2); }
-.is-pedido { color: #f59e0b; background: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.2); }
-.is-recibido { color: #06b6d4; background: rgba(6, 182, 212, 0.1); border-color: rgba(6, 182, 212, 0.2); }
-.is-listo { color: #8b5cf6; background: rgba(139, 92, 246, 0.1); border-color: rgba(139, 92, 246, 0.2); }
-.is-entregado { color: #10b981; background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.2); }
+.is-solicitado { color: var(--c-info); background: var(--c-info-alpha); border-color: var(--c-info-alpha); }
+.is-pedido { color: var(--c-warning); background: var(--c-warning-alpha); border-color: var(--c-warning-alpha); }
+.is-recibido { color: var(--c-info); background: var(--c-info-alpha); border-color: var(--c-info-alpha); }
+.is-listo { color: var(--c-primary); background: var(--c-primary-alpha); border-color: var(--c-primary-alpha); }
+.is-entregado { color: var(--c-success); background: var(--c-success-alpha); border-color: var(--c-success-alpha); }
 .is-cancelado { color: #6b7280; background: rgba(107, 114, 128, 0.1); border-color: rgba(107, 114, 128, 0.2); }
 
 [data-theme="dark"] .status-badge {

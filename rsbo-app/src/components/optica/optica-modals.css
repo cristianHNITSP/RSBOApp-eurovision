@@ -27,7 +27,7 @@
 }
 
 .glass-modal-head {
-  background: linear-gradient(135deg, var(--static-color-rgba-144-111-225-0-14), var(--static-color-rgba-236-72-153-0-08)) !important;
+  background: var(--c-primary-alpha) !important;
   border-bottom: 1px solid var(--border-light) !important;
   padding: 1rem 1.5rem !important;
 }

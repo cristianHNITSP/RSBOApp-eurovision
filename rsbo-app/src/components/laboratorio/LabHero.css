@@ -9,11 +9,7 @@
   flex-wrap: wrap;
   padding: 1rem 1.25rem;
   border-radius: 14px;
-  background:
-    radial-gradient(circle at 0 0,   var(--static-color-rgba-79-70-229-0-12),  transparent 55%),
-    radial-gradient(circle at 100% 0, var(--static-color-rgba-236-72-153-0-10), transparent 55%),
-    radial-gradient(circle at 60% 100%, var(--static-color-rgba-249-115-22-0-10), transparent 55%),
-    var(--surface-solid);
+  background: var(--surface-solid);
   border: 1px solid var(--border);
 }
 
@@ -44,8 +40,8 @@
   width: 12px;
   height: 12px;
   border-radius: 999px;
-  background: linear-gradient(135deg, var(--p), var(--static-color-ec4899));
-  box-shadow: 0 0 0 4px var(--static-color-rgba-144-111-225-0-12);
+  background: var(--p);
+  box-shadow: 0 0 0 4px var(--c-primary-alpha);
 }
 
 .lab-chips {
@@ -86,7 +82,7 @@
 
 .chip--loading {
   background: var(--c-primary-alpha);
-  border-color: var(--static-color-rgba-144-111-225-0-3);
+  border-color: var(--c-primary-alpha);
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;

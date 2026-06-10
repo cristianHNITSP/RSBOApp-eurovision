@@ -11,7 +11,7 @@
       <div class="modal-card" style="max-width: 480px; width: 100%;">
         <header class="modal-card-head" style="background: rgba(254, 243, 199, 0.9);">
           <p class="modal-card-title" style="color: rgba(120, 53, 15, 0.9);">
-            <i class="fas fa-exclamation-triangle mr-2" style="color: #f59e0b;"></i>
+            <i class="fas fa-exclamation-triangle mr-2" style="color: var(--c-warning);"></i>
             Solicitar corrección
           </p>
           <button class="delete" aria-label="close" @click="lab.correctionOpen.value = false"></button>
@@ -113,7 +113,7 @@ const messageType = computed(() => {
   gap: 0.35rem;
   padding: 0.6rem 0.75rem;
   background: var(--c-info-alpha);
-  border: 1px solid rgba(59, 130, 246, 0.2);
+  border: 1px solid var(--c-info-alpha);
   border-radius: 12px;
   font-size: 0.82rem;
   font-weight: 800;

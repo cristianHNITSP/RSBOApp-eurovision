@@ -239,7 +239,7 @@ function formatCurrency(val) {
 
 .folio-badge-group { display: flex; flex-direction: column; gap: 0.25rem; }
 .folio-tag { font-size: 0.65rem; font-weight: 800; font-family: ui-monospace, monospace; padding: 0.15rem 0.5rem; border-radius: 6px; }
-.folio-tag--venta { background: #eff6ff; color: #3b82f6; }
+.folio-tag--venta { background: #eff6ff; color: var(--c-info); }
 .folio-tag--lab { background: #fdf2f8; color: #db2777; }
 
 .header-main { display: flex; align-items: center; gap: 1.25rem; }
@@ -264,7 +264,7 @@ function formatCurrency(val) {
 .ticket-table-mini th { border-bottom: 1px solid var(--border-light); padding: 0.4rem 0; color: var(--text-muted); text-align: left; }
 .ticket-table-mini td { padding: 0.5rem 0; }
 
-.total-hero-card { background: linear-gradient(135deg, var(--c-primary), #7957d5); padding: 1rem; border-radius: 16px; color: white; }
+.total-hero-card { background: var(--c-primary); padding: 1rem; border-radius: 16px; color: white; }
 .total-hero-card__label { font-size: 0.6rem; font-weight: 800; opacity: 0.8; }
 .total-hero-card__val { font-size: 1.5rem; font-weight: 900; }
 

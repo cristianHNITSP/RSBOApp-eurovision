@@ -8,28 +8,6 @@
   animation: panel-fade-in 220ms ease-out;
 }
 
-.optica-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--c-primary);
-  background: var(--c-primary-alpha);
-  padding: 0.2rem 0.6rem;
-  border-radius: var(--radius-pill);
-  margin-bottom: 0.4rem;
-}
-
-.optica-page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
 /* ── GLASS WRAPPER ── */
 .glass-wrapper {
   border: 1px solid var(--border);

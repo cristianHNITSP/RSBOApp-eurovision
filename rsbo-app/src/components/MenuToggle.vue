@@ -50,7 +50,7 @@ defineEmits(['click']);
 
 /* Hover: mismo tinte e elevación que .menu-item:hover .menu-item-icon */
 .menu-toggle-btn.button:hover {
-  background: var(--static-color-rgba-144-111-225-0-14);
+  background: var(--c-primary-alpha);
   color: var(--c-primary);
   transform: translateY(-1px);
 }

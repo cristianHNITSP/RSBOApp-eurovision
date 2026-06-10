@@ -377,11 +377,11 @@ watch(() => props.isOpen, (newVal) => {
 .bo-balance-card__value {
   font-size: 1.5rem;
   font-weight: 900;
-  color: var(--c-danger, #ef4444);
+  color: var(--c-danger, var(--c-danger));
 }
 
 .bo-balance-card.is-paid .bo-balance-card__value {
-  color: var(--c-success, #10b981);
+  color: var(--c-success, var(--c-success));
 }
 
 /* GLASS BOX */

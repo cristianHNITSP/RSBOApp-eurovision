@@ -39,8 +39,6 @@
       </div>
     </div>
 
-    <div class="um-glow um-glow--a" aria-hidden="true"></div>
-    <div class="um-glow um-glow--b" aria-hidden="true"></div>
   </section>
 </template>
 

@@ -33,7 +33,7 @@ defineProps({
   min-height: 80vh;
   padding: 2rem;
   background: radial-gradient(circle at top right, rgba(14, 165, 233, 0.05), transparent),
-              radial-gradient(circle at bottom left, rgba(99, 102, 241, 0.05), transparent);
+              radial-gradient(circle at bottom left, var(--c-info-alpha), transparent);
 }
 
 .maintenance-card {
@@ -51,7 +51,7 @@ defineProps({
 .maintenance-icon {
   width: 80px;
   height: 80px;
-  background: linear-gradient(135deg, #0ea5e9, #6366f1);
+  background: linear-gradient(135deg, #0ea5e9, var(--c-info));
   color: white;
   border-radius: 20px;
   display: flex;

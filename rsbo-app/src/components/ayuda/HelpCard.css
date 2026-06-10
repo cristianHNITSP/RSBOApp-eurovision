@@ -11,10 +11,8 @@
 }
 
 .help-card--support {
-  border: 1px solid var(--static-color-rgba-79-70-229-0-18);
-  background:
-    radial-gradient(circle at 0 0, var(--static-color-rgba-79-70-229-0-08), transparent 60%),
-    var(--surface-solid);
+  border: 1px solid var(--c-primary-alpha);
+  background: var(--surface-solid);
 }
 
 .help-card-header {
@@ -93,7 +91,7 @@
 .help-contact {
   margin-top: 0.85rem;
   border-radius: 14px;
-  border: 1px solid var(--static-color-rgba-79-70-229-0-18);
+  border: 1px solid var(--c-primary-alpha);
   background: var(--c-primary-alpha);
   padding: 0.75rem 0.85rem;
 }
@@ -106,7 +104,7 @@
   font-weight: 900;
   color: var(--text-primary);
   background: var(--surface-overlay);
-  border: 1px solid var(--static-color-rgba-79-70-229-0-18);
+  border: 1px solid var(--c-primary-alpha);
   padding: 0.18rem 0.55rem;
   border-radius: 999px;
 }

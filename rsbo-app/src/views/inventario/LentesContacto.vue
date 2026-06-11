@@ -18,6 +18,7 @@ import { useSheetPagination } from "@/composables/api/useSheetPagination.js";
 import { useWorkspaceTabs } from "@/composables/tabsmanager/useWorkspaceTabs";
 import { useSectionBoot } from "@/composables/tabsmanager/useSectionBoot";
 import { useSheetDeepLink } from "@/composables/inventory/useSheetDeepLink.js";
+import { useSheetEviction } from "@/composables/inventory/useSheetEviction.js";
 
 const props = defineProps({
   user: { type: Object, required: false, default: null }
@@ -89,6 +90,10 @@ const dynamicSheets = computed(() => [
    composable; el arranque en frío lo dispara onMounted tras el boot.
 ───────────────────────────────────────────────────────────────────────── */
 const deepLink = useSheetDeepLink({ pager, ws, activeInternalTab, getSheetMeta: getContactLensSheet });
+
+// Evicción en vivo: si otro usuario borra una planilla CL, se limpia de esta sesión
+// (WS SHEET_DELETED) o, como respaldo, ante un 410 al guardar.
+useSheetEviction({ pager, ws, activeSheet, isCL: true });
 
 /* ─────────────────────────────────────────────────────────────────────────
    Carga inicial (Etapa 1: loading global + restaurar sesión sin salto)

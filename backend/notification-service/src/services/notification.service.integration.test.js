@@ -122,6 +122,38 @@ maybe("upsertStockAlert — ciclo de vida (CERO contadores)", () => {
   });
 });
 
+maybe("recuperación de stock — limpia/actualiza y re-alerta", () => {
+  const TWO = [
+    { level: "CRITICO", existencias: 0, coords: { base: 0.25 } },
+    { level: "CRITICO", existencias: 0, coords: { base: 0.50 } },
+  ];
+  const ONE = [{ level: "CRITICO", existencias: 0, coords: { base: 0.50 } }];
+
+  test("recuperación PARCIAL: una dioptría se llena → refresh y se cae del detalle", async () => {
+    await svc.upsertStockAlert(makeEv({ cells: TWO, critCount: 2, hash: "two" }), { resurface: true });
+    let doc = await Notification.findOne({ groupKey: groupKey("sheetA") });
+    expect(doc.metadata.cells).toHaveLength(2);
+
+    // Se rellena una celda → el productor re-emite con UNA celda (hash distinto).
+    const { action } = await svc.upsertStockAlert(makeEv({ cells: ONE, critCount: 1, hash: "one" }), { resurface: false });
+    expect(action).toBe("refresh");                 // 1A: el consumidor avisa en refresh
+    doc = await Notification.findOne({ groupKey: groupKey("sheetA") });
+    expect(doc.metadata.cells).toHaveLength(1);     // la dioptría recuperada ya no figura
+  });
+
+  test("recuperación TOTAL → re-caída a 0: clear borra y el siguiente assess RE-CREA (notifica)", async () => {
+    await svc.upsertStockAlert(makeEv({ cells: ONE, hash: "x1" }), { resurface: true });
+    // recuperación total
+    await svc.clearStockAlert("sheetA");
+    expect(await Notification.countDocuments({ groupKey: groupKey("sheetA") })).toBe(0);
+    // vuelve a 0 → no existe notificación → create (reaparece y notifica)
+    const { action, changed } = await svc.upsertStockAlert(makeEv({ cells: ONE, hash: "x2" }), { resurface: false });
+    expect(action).toBe("create");
+    expect(changed).toBe(true);
+    expect(await Notification.countDocuments({ groupKey: groupKey("sheetA") })).toBe(1);
+  });
+});
+
 maybe("listForUser — proyección de payload (B1) y total condicional (B2)", () => {
   const ROLE = "eurovision";
   const makeNotif = (over = {}) =>

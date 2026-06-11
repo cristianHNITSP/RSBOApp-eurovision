@@ -726,6 +726,9 @@ router.patch(
       await invalidateSheetItems(req.params.sheetId);
       await invalidateStats();
 
+      // Evicción en vivo: quien la tenga abierta debe limpiarla de su sesión.
+      broadcast("SHEET_DELETED", { sheetId: String(sheet._id), name: sheet.nombre, isCL: true });
+
       return res.json({
         ok: true,
         message: "Hoja enviada a papelera",
@@ -769,6 +772,7 @@ router.delete(
       await invalidateSheetMeta(sheetId);
       await invalidateSheetItems(sheetId);
       await invalidateStats();
+      broadcast("SHEET_DELETED", { sheetId, name: sheet.nombre, isCL: true });
       res.json({ ok: true, message: "Hoja eliminada (soft-delete)" });
     } catch (err) {
       console.error("DELETE /contactlenses/sheets/:sheetId error:", err);
@@ -836,6 +840,7 @@ router.delete(
         await M.deleteMany({ sheet: sheet._id });
       }
 
+      const sheetName = sheet.nombre;
       await sheet.deleteOne();
 
       const sheetId = sheet._id.toString();
@@ -843,6 +848,7 @@ router.delete(
       await invalidateSheetMeta(sheetId);
       await invalidateSheetItems(sheetId);
       await invalidateStats();
+      broadcast("SHEET_DELETED", { sheetId, name: sheetName, isCL: true });
 
       res.json({ ok: true, message: "Hoja eliminada permanentemente" });
     } catch (err) {

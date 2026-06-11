@@ -42,7 +42,11 @@ async function handle(event) {
     const { changed, action, notification } = await svc.upsertStockAlert(event, { resurface });
     // Al regenerar el ciclo (3 días), libera el lock para que el nuevo arranque limpio.
     if (action === "regenerate") await releaseSpamSlot(event.sheetId);
-    if (changed) ws.broadcast("NOTIFICATION_NEW", {
+    // `refresh` actualiza las celdas en silencio (sin revivir): igual avisamos para que
+    // un panel ABIERTO refetchee y la dioptría recuperada desaparezca al instante.
+    // El badge no sube (refresh no mueve updatedAt → countNew lo ignora). Solo ocurre
+    // cuando el contenido cambió (decideStockAction nunca da 'refresh' sin cambio).
+    if (changed || action === "refresh") ws.broadcast("NOTIFICATION_NEW", {
       source: `stock_alert:${event.sheetId}`,
       targetRoles: notification?.targetRoles || [],
       isGlobal: !!notification?.isGlobal,

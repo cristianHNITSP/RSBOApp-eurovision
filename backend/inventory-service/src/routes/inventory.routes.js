@@ -931,6 +931,9 @@ router.patch(
       await invalidateSheetMeta(sheet._id);
       await invalidateStats();
 
+      // Evicción en vivo: quien la tenga abierta debe limpiarla de su sesión.
+      broadcast("SHEET_DELETED", { sheetId: String(sheet._id), name: sheet.nombre, isCL: false });
+
       return res.json({
         ok: true,
         message: "Hoja enviada a papelera",
@@ -978,6 +981,7 @@ router.delete(
       await invalidateSheetMeta(sheetId);
       await invalidateSheetItems(sheetId);
       await invalidateStats();
+      broadcast("SHEET_DELETED", { sheetId, name: sheet.nombre, isCL: false });
       res.json({ ok: true, message: "Hoja eliminada (soft-delete)" });
     } catch (err) {
       console.error("DELETE /sheets/:sheetId error:", err);
@@ -1050,6 +1054,7 @@ router.delete(
         await M.deleteMany({ sheet: sheet._id });
       }
 
+      const sheetName = sheet.nombre;
       await sheet.deleteOne();
 
       const sheetId = sheet._id.toString();
@@ -1057,6 +1062,7 @@ router.delete(
       await invalidateSheetMeta(sheetId);
       await invalidateSheetItems(sheetId);
       await invalidateStats();
+      broadcast("SHEET_DELETED", { sheetId, name: sheetName, isCL: false });
 
       res.json({ ok: true, message: "Hoja eliminada permanentemente" });
     } catch (err) {

@@ -20,6 +20,20 @@ describe("classifyStock — tiers por distancia al neutro", () => {
   });
 });
 
+describe("recuperación de stock (rellenado → deja de alertar)", () => {
+  test("una celda rellenada ya no es CRÍTICO/BAJO (sale de la alerta)", () => {
+    // Cerca del neutro: tras rellenar a 20 → BUENO (no entra en allAlertCells).
+    expect(svc.classifyStock(0, 0.5)).toBe("CRITICO");   // antes (vacía)
+    expect(svc.classifyStock(20, 0.5)).toBe("BUENO");    // después (rellenada)
+    // Lejos del neutro (tier estricto): bueno > 2.
+    expect(svc.classifyStock(0, 10)).toBe("CRITICO");
+    expect(svc.classifyStock(5, 10)).toBe("BUENO");
+  });
+  test("re-caída a 0 vuelve a ser CRÍTICO (la alerta debe reaparecer)", () => {
+    expect(svc.classifyStock(0, 0.5)).toBe("CRITICO");
+  });
+});
+
 describe("computeDistance — por tipo de matriz", () => {
   test("BASE = |base|", () => {
     expect(svc.computeDistance("BASE", "2d00")).toBeCloseTo(2);

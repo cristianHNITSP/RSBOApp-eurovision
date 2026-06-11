@@ -153,6 +153,19 @@ api.interceptors.response.use(
 
     const status = err?.response?.status;
     const url    = err?.config?.url || "";
+    const method = (err?.config?.method || "get").toUpperCase();
+
+    // Respaldo 410: una mutación contra una planilla ya eliminada (carrera, antes
+    // de que llegue el WS). Despacha un SHEET_DELETED sintético para que la vista
+    // viva la evicte por el MISMO camino (useSheetEviction._onWs). Defense-in-depth.
+    if (status === 410 && ["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+      const m = url.match(/\/(inventory|contactlenses)\/sheets\/([a-f0-9]{24})/i);
+      if (m) {
+        window.dispatchEvent(new CustomEvent("lab:ws", {
+          detail: { type: "SHEET_DELETED", payload: { sheetId: m[2], name: "", isCL: m[1].toLowerCase() === "contactlenses" } },
+        }));
+      }
+    }
 
     // Redirigir al landing si la sesión expiró, excepto en rutas de auth
     if (

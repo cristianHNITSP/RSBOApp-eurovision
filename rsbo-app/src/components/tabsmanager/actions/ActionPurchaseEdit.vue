@@ -5,7 +5,7 @@
       <!-- Icono -->
       <div class="media-left">
         <div class="action-icon-circle icon-bg-info">
-          <b-icon icon="receipt" type="is-info" size="is-medium"></b-icon>
+          <b-icon icon="receipt" :type="status === 'error' ? 'is-warning' : 'is-info'" size="is-medium"></b-icon>
         </div>
       </div>
 
@@ -36,12 +36,12 @@
           <b-button 
             type="is-info" 
             size="is-small" 
-            icon-left="sync" 
+            :icon-left="status === 'error' ? 'rotate-right' : 'sync'" 
             :loading="loading" 
             :disabled="!canSave || loading"
             @click="$emit('save')"
           >
-            Actualizar datos
+            {{ status === 'error' ? 'Reintentar' : 'Actualizar datos' }}
           </b-button>
 
           <StatusPill :status="status" :message="message" />

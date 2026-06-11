@@ -5,13 +5,13 @@
   max-width: 820px;
 }
 
-/* SUMMARY BANNER */
+/* SUMMARY BANNER (mate: superficie sólida, sin gradiente) */
 .sheet-summary-banner {
-  background: linear-gradient(135deg, var(--surface-raised) 0%, var(--surface-overlay) 100%);
-  border: 1px solid var(--border);
-  border-radius: 16px;
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-solid);
+  border-radius: var(--radius-lg);
   padding: 1.25rem;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-xs);
 }
 
 .summary-top {
@@ -87,4 +87,19 @@
   .rsbo-actions-body {
     padding: 1rem;
   }
+}
+/* ── Diseño alineado a ScanModal (sistema liquid/mate) ──
+   Card 18px con cabecera elevada; ancho propio del modal (820px). */
+.rsbo-sheet-actions-modal .glass-modal-card--wide {
+  max-width: min(820px, calc(100vw - 2rem)) !important;
+  border-radius: 18px !important;
+}
+
+.rsbo-sheet-actions-modal .glass-modal-head {
+  background: var(--surface-raised) !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+
+.rsbo-sheet-actions-modal .glass-modal-foot {
+  justify-content: flex-end !important;
 }

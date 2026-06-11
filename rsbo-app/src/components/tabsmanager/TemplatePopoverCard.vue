@@ -410,7 +410,6 @@ const formatDate = (dateStr) => {
 
 .template-row:hover i {
   color: var(--text-muted);
-  transform: translateX(2px);
 }
 
 .row-actions {

@@ -42,6 +42,33 @@
   --surface-brand-deep: #76208b;
   --text-on-brand: #f7f2f9;
 
+  /* === Texto sobre acentos sólidos (botones/badges de color) ===
+     Light: acentos profundos → texto claro (excepto ámbar, que pide oscuro). */
+  --text-on-success: #f7f7f4;
+  --text-on-warning: #2b3138;
+  --text-on-danger: #f7f7f4;
+  --text-on-info: #f7f7f4;
+
+  /* === Tintes SÓLIDOS (mate) — tags, chips, botones suaves ===
+     color-mix sobre superficie sólida: mismo look que un alpha, pero 100%
+     opaco → no se ensucia sobre banners/superficies de color.
+     Se re-resuelven solos en dark (referencian tokens por tema). */
+  --tint-primary: color-mix(in srgb, var(--c-primary) 15%, var(--surface-solid));
+  --tint-success: color-mix(in srgb, var(--c-success) 15%, var(--surface-solid));
+  --tint-warning: color-mix(in srgb, var(--c-warning) 18%, var(--surface-solid));
+  --tint-danger: color-mix(in srgb, var(--c-danger) 15%, var(--surface-solid));
+  --tint-info: color-mix(in srgb, var(--c-info) 15%, var(--surface-solid));
+  --tint-cyan: color-mix(in srgb, var(--c-cyan) 15%, var(--surface-solid));
+
+  /* Texto sobre tinte: acento reforzado con el texto del tema →
+     se oscurece en light y se aclara en dark automáticamente. */
+  --tint-primary-fg: color-mix(in srgb, var(--c-primary) 72%, var(--text-primary));
+  --tint-success-fg: color-mix(in srgb, var(--c-success) 72%, var(--text-primary));
+  --tint-warning-fg: color-mix(in srgb, var(--c-warning) 64%, var(--text-primary));
+  --tint-danger-fg: color-mix(in srgb, var(--c-danger) 72%, var(--text-primary));
+  --tint-info-fg: color-mix(in srgb, var(--c-info) 72%, var(--text-primary));
+  --tint-cyan-fg: color-mix(in srgb, var(--c-cyan) 72%, var(--text-primary));
+
   /* === Fondos ===
      Gris cálido suave: sin blanco puro (glare) ni negro puro. */
   --bg-base: #efefec;
@@ -594,6 +621,13 @@
   --surface-brand: #6d1f80;
   --surface-brand-deep: #581968;
   --text-on-brand: #f6effa;
+
+  /* === Texto sobre acentos sólidos — dark: acentos claros → texto oscuro
+     (blanco sobre #3fcb85/#ff7575/#ffc533 NO pasa AA). === */
+  --text-on-success: #23262b;
+  --text-on-warning: #23262b;
+  --text-on-danger: #23262b;
+  --text-on-info: #23262b;
 
   /* === Fondos ===
      Gris medio mate — nunca negro puro (evita starbursts con queratocono). */

@@ -19,23 +19,30 @@
         </div>
 
         <div class="mt-2">
-          <b-field grouped>
+          <b-field
+            grouped
+            :type="!internalValue.trim() || /[<>]/.test(internalValue) ? 'is-danger' : ''"
+            :message="!internalValue.trim() ? 'El nombre no puede quedar vacío.'
+              : /[<>]/.test(internalValue) ? 'Los caracteres < y > no están permitidos.' : ''"
+          >
             <b-input 
               v-model="internalValue" 
               placeholder="Nuevo nombre…" 
               expanded 
               :disabled="loading" 
+              maxlength="120"
+              :has-counter="false"
               icon-right="keyboard"
             />
             <p class="control">
               <b-button 
-                type="is-primary" 
-                icon-left="save"
+                :type="status === 'error' ? 'is-warning' : 'is-primary'" 
+                :icon-left="status === 'error' ? 'rotate-right' : 'save'"
                 :loading="loading" 
                 :disabled="!canSave || loading" 
                 @click="$emit('save')"
               >
-                Guardar
+                {{ status === 'error' ? 'Reintentar' : 'Guardar' }}
               </b-button>
             </p>
           </b-field>

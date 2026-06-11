@@ -40,8 +40,33 @@ export function usePurchaseAction({ selectedSheet, updateSheet, _updateLocalShee
     suppressEditAutoExpiry.value = false;
   };
 
+  // Validez de los campos: precio vacío o número ≥ 0; textos acotados;
+  // si hay ambas fechas, la caducidad no puede ser anterior a la compra.
+  const MAX_PRICE = 9999999.99;
+  const _validOptionalPrice = (v) => {
+    const raw = String(v ?? "").trim();
+    if (raw === "") return true;
+    const n = Number(raw);
+    return Number.isFinite(n) && n >= 0 && n <= MAX_PRICE;
+  };
+  const _hasAngles = (s) => /[<>]/.test(String(s || ""));
+
+  const purchaseFieldsValid = computed(() => {
+    if (!_validOptionalPrice(editPrecioVenta.value)) return false;
+    if (!_validOptionalPrice(editPrecioCompra.value)) return false;
+    const numF = String(editNumFactura.value || "").trim();
+    const lote = String(editLoteProducto.value || "").trim();
+    if (numF.length > 60 || _hasAngles(numF)) return false;
+    if (lote.length > 60 || _hasAngles(lote)) return false;
+    const compra = dateForEdit(editFechaCompra.value);
+    const cad = dateForEdit(editFechaCaducidad.value);
+    if (compra && cad && new Date(cad) < new Date(compra)) return false;
+    return true;
+  });
+
   const canSavePurchase = computed(() => {
     if (!selectedSheet.value || savingPurchase.value) return false;
+    if (!purchaseFieldsValid.value) return false;
     const s = selectedSheet.value;
     const curNum = String(s.numFactura || "");
     const curLote = String(s.loteProducto || "");
@@ -50,11 +75,11 @@ export function usePurchaseAction({ selectedSheet, updateSheet, _updateLocalShee
     const curPV = (s.precioVenta ?? "").toString();
     const curPC = (s.precioCompra ?? "").toString();
 
-    return editNumFactura.value !== curNum || 
-           editLoteProducto.value !== curLote || 
-           editFechaCompra.value !== curCompra || 
-           editFechaCaducidad.value !== curCad || 
-           editPrecioVenta.value !== curPV || 
+    return editNumFactura.value !== curNum ||
+           editLoteProducto.value !== curLote ||
+           editFechaCompra.value !== curCompra ||
+           editFechaCaducidad.value !== curCad ||
+           editPrecioVenta.value !== curPV ||
            editPrecioCompra.value !== curPC;
   });
 

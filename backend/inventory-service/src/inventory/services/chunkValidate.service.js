@@ -3,6 +3,9 @@ const PHYSICAL_LIMITS = require("../constants/physicalLimits");
 const { to2, isDef, isMultipleOfStep } = require("../utils/numbers");
 const { normalizeCylConvention } = require("../utils/keys");
 
+// Espejo del frontend (AG-Grid valueSetter): entero entre 0 y 999,999
+const MAX_STOCK = 999999;
+
 const validateChunkRows = (tipo, rows, ranges = {}) => {
   const errors = [];
 
@@ -12,8 +15,14 @@ const validateChunkRows = (tipo, rows, ranges = {}) => {
     const ex = row.existencias;
     if (ex !== undefined && ex !== null) {
       const exNum = Number(ex);
-      if (!Number.isFinite(exNum) || exNum < 0) {
-        errors.push({ path: `${path}.existencias`, msg: "existencias debe ser numérico >= 0" });
+      if (!Number.isFinite(exNum)) {
+        errors.push({ path: `${path}.existencias`, msg: "Las existencias deben ser un número. Revisa que no haya letras o símbolos." });
+      } else if (!Number.isInteger(exNum)) {
+        errors.push({ path: `${path}.existencias`, msg: "Las existencias deben ser un número entero, sin decimales." });
+      } else if (exNum < 0) {
+        errors.push({ path: `${path}.existencias`, msg: "Las existencias no pueden ser negativas. El mínimo es 0." });
+      } else if (exNum > MAX_STOCK) {
+        errors.push({ path: `${path}.existencias`, msg: `Las existencias no pueden superar ${MAX_STOCK.toLocaleString("es-MX")} piezas por celda.` });
       }
     }
 

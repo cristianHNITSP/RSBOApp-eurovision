@@ -159,8 +159,8 @@ function select(tab) {
     inset 0 1px 0 rgba(255, 255, 255, 0.14);
   pointer-events: none;
   transition:
-    left 230ms cubic-bezier(0.34, 1.56, 0.64, 1),
-    width 230ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    left 230ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    width 230ms cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -268,7 +268,7 @@ function select(tab) {
 .slide-ltr-leave-active,
 .slide-rtl-enter-active,
 .slide-rtl-leave-active {
-  transition: transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1),
+  transition: transform 280ms cubic-bezier(0.22, 0.61, 0.36, 1),
     opacity 250ms ease;
 }
 

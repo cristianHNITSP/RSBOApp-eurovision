@@ -23,7 +23,11 @@ export function useMetaNotes({ selectedSheet, updateSheet, _updateLocalSheet, ac
     if (!s) return false;
     const oldObs = s.meta?.observaciones || "";
     const oldNotes = s.meta?.notas || "";
-    return metaForm.value.observaciones !== oldObs || metaForm.value.notas !== oldNotes;
+    const obs = String(metaForm.value.observaciones || "");
+    const notes = String(metaForm.value.notas || "");
+    if (obs.length > 2000 || notes.length > 2000) return false;
+    if (/[<>]/.test(obs) || /[<>]/.test(notes)) return false;
+    return obs !== oldObs || notes !== oldNotes;
   });
 
   const confirmSaveMeta = async () => {

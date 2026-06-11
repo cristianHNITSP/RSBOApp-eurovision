@@ -31,7 +31,6 @@
 }
 
 .kpi-glass:hover {
-  transform: translateY(-2px);
   box-shadow: var(--shadow-sm);
   background: var(--surface-raised);
   border-color: var(--border-strong);
@@ -668,7 +667,6 @@
 
 .atile:hover {
   background: var(--g-hover);
-  transform: translateY(-2px);
   box-shadow: 0 4px 16px var(--static-color-rgba-0-0-0-0-12);
 }
 
@@ -750,7 +748,6 @@
 
 .rtile:hover {
   background: var(--g-hover);
-  transform: translateX(2px);
 }
 
 .rtile>i:first-child {

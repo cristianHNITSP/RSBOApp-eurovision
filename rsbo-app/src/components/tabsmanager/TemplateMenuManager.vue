@@ -166,7 +166,6 @@ const vClickOutside = {
 .template-menu-trigger:hover {
   background: var(--surface-raised);
   border-color: var(--c-primary-alpha);
-  transform: translateY(-1px);
 }
 
 .template-menu-trigger.is-active {

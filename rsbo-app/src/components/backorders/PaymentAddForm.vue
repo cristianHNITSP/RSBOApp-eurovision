@@ -219,7 +219,6 @@ async function handleSubmit() {
 }
 
 .pg-btn-primary:hover {
-  transform: translateY(-1px);
   box-shadow: var(--shadow-primary);
 }
 

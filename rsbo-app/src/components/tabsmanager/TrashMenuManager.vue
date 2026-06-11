@@ -164,7 +164,6 @@ const vClickOutside = {
   background: var(--c-danger-alpha);
   border-color: var(--c-danger-alpha);
   color: var(--c-danger);
-  transform: translateY(-1px);
 }
 
 .trash-menu-trigger.is-active {

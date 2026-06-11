@@ -37,7 +37,6 @@
 }
 
 .help-index__chip:hover {
-  transform: translateY(-1px);
   background: var(--c-primary-alpha);
   box-shadow: var(--shadow-md);
 }

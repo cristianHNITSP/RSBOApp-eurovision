@@ -34,7 +34,7 @@ defineEmits(['click']);
 
   position: relative;
   overflow: hidden;
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+  transition: transform 0.3s cubic-bezier(0.22, 0.61, 0.36, 1),
     background-color 0.2s ease, box-shadow 0.3s ease;
 }
 
@@ -52,7 +52,6 @@ defineEmits(['click']);
 .menu-toggle-btn.button:hover {
   background: var(--c-primary-alpha);
   color: var(--c-primary);
-  transform: translateY(-1px);
 }
 
 .menu-toggle-btn.button:hover::after {

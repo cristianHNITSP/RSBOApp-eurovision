@@ -24,10 +24,10 @@
              escaneando / error) se intercambian dentro sin alterar jamás
              las dimensiones del modal (cero parpadeo de layout). -->
         <div class="scan-stage">
-          <!-- Validando cámara (corre tras la animación de entrada — guía §4) -->
+          <!-- Validando cámara / esperando permiso (corre tras la animación — guía §4) -->
           <div v-if="phase === 'checking'" class="has-text-centered">
             <b-icon icon="spinner" pack="fas" custom-class="fa-spin" size="is-large" type="is-primary" />
-            <p class="mt-3 has-text-grey">Buscando cámara…</p>
+            <p class="mt-3 has-text-grey">{{ checkingMsg }}</p>
           </div>
 
           <!-- Inicio / reintento (gesto de usuario: requisito de iOS/Safari) -->
@@ -117,6 +117,7 @@ const permissionHint = computed(() => {
 const video = ref(null);
 const manualCode = ref("");
 const phase = ref("checking"); // 'checking' | 'idle' | 'scanning' | 'error'
+const checkingMsg = ref("Buscando cámara…");
 const cameraMsg = ref("");
 const canRetry = ref(false);
 let qrScanner = null;
@@ -132,7 +133,22 @@ function cameraSupported() {
   return !!(window.isSecureContext && navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
 }
 
+/* Estado del permiso de cámara vía Permissions API (no soportada en todos
+   los navegadores → null si no se puede consultar). */
+async function queryCameraPermission() {
+  try {
+    return await navigator.permissions.query({ name: "camera" });
+  } catch {
+    return null;
+  }
+}
+
 async function startCamera() {
+  // El loader se mantiene durante TODA la inicialización: buscar cámara,
+  // prompt de permisos y arranque. El video solo se muestra cuando ya corre.
+  phase.value = "checking";
+  checkingMsg.value = "Buscando cámara…";
+
   if (!cameraSupported()) {
     return fail(
       window.isSecureContext
@@ -146,7 +162,17 @@ async function startCamera() {
     if (!(await QrScanner.hasCamera())) {
       return fail("No se detectó ninguna cámara. Ingresa el código manualmente.", false);
     }
-    phase.value = "scanning";
+
+    // Si el navegador va a mostrar el prompt de permiso, avisar en el loader
+    // (queda esperando la decisión del usuario, sin cambiar el modal).
+    const perm = await queryCameraPermission();
+    if (perm?.state === "denied") {
+      return fail("Permiso de cámara denegado. Actívalo en los ajustes del navegador o ingresa el código manualmente.", true);
+    }
+    if (perm?.state === "prompt") {
+      checkingMsg.value = "Esperando tu permiso de cámara…";
+    }
+
     await nextTick();
     qrScanner = new QrScanner(video.value, (res) => onDetected(res?.data ?? res), {
       preferredCamera: "environment",
@@ -154,7 +180,9 @@ async function startCamera() {
       highlightCodeOutline: true,
       maxScansPerSecond: 5,
     });
+    // start() queda pendiente mientras el prompt está abierto — el loader espera.
     await qrScanner.start();
+    phase.value = "scanning"; // la cámara YA está corriendo
   } catch (e) {
     const denied = e?.name === "NotAllowedError" || e?.name === "SecurityError";
     fail(

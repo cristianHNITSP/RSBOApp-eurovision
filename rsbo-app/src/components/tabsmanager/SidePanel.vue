@@ -329,7 +329,6 @@ onUnmounted(() => {
 .ssi:hover:not(.is-active) {
   background: var(--c-primary-alpha);
   border-color: var(--c-primary);
-  transform: translateX(2px);
 }
 .ssi.is-result { opacity: 0.92; }
 .ssi.is-result:hover { opacity: 1; }

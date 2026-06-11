@@ -221,12 +221,6 @@ strong {
   border-color: var(--border-strong);
 }
 
-[data-theme="dark"] .button.is-primary {
-  background-color: var(--c-primary) !important;
-  border-color: var(--c-primary) !important;
-  color: var(--text-on-primary) !important;
-}
-
 [data-theme="dark"] .button.is-white {
   background-color: var(--bg-muted);
   color: var(--text-primary);
@@ -237,41 +231,14 @@ strong {
   color: var(--text-secondary);
 }
 
-[data-theme="dark"] .button {
+/* Botones default (sin color) en dark: superficie neutra del tema.
+   Los botones DE COLOR ya no se re-aplican aquí: el sistema unificado
+   de la sección BOTONES usa tokens theme-aware (--text-on-*) y excluye
+   explícitamente este override para no heredar texto blanco hardcodeado. */
+[data-theme="dark"] .button:not(.is-primary):not(.is-success):not(.is-warning):not(.is-danger):not(.is-info) {
   background-color: var(--bg-muted) !important;
   color: var(--text-primary) !important;
   border-color: var(--border-solid) !important;
-}
-
-/* Re-apply colored buttons after the generic override above */
-[data-theme="dark"] .button.is-primary {
-  background: var(--c-primary) !important;
-  border-color: transparent !important;
-  color: var(--text-on-primary) !important;
-}
-
-[data-theme="dark"] .button.is-success {
-  background-color: var(--c-success) !important;
-  border-color: var(--c-success) !important;
-  color: var(--static-color-fff) !important;
-}
-
-[data-theme="dark"] .button.is-danger {
-  background-color: var(--c-danger) !important;
-  border-color: var(--c-danger) !important;
-  color: var(--static-color-fff) !important;
-}
-
-[data-theme="dark"] .button.is-warning {
-  background-color: var(--c-warning) !important;
-  border-color: var(--c-warning) !important;
-  color: var(--static-color-fff) !important;
-}
-
-[data-theme="dark"] .button.is-info {
-  background-color: var(--c-info) !important;
-  border-color: var(--c-info) !important;
-  color: var(--static-color-fff) !important;
 }
 
 /* ----------------------------------------------------------
@@ -702,23 +669,104 @@ html[data-theme="dark"] {
   border-color: var(--c-primary) !important;
 }
 
-/* --- Buttons --- */
+/* ============================================================
+   BOTONES — sistema unificado por tokens (light + dark)
+   Sólidos: acento pleno + texto verificado por tema (--text-on-*).
+   Suaves (.is-COLOR.is-light): tinte SÓLIDO (sin alpha) + texto acento.
+   ============================================================ */
 .button {
   border-radius: var(--radius-md) !important;
   font-weight: 700 !important;
   transition: all var(--transition-fast) !important;
 }
 
+.button:focus-visible {
+  box-shadow: 0 0 0 3px var(--c-primary-alpha) !important;
+}
+
 .button.is-primary {
   background: var(--c-primary) !important;
   border-color: transparent !important;
+  color: var(--text-on-primary) !important;
   box-shadow: 0 4px 12px var(--c-primary-alpha);
 }
 
-.button.is-primary:hover:not([disabled]) {
+.button.is-success {
+  background: var(--c-success) !important;
+  border-color: transparent !important;
+  color: var(--text-on-success) !important;
+}
+
+.button.is-warning {
+  background: var(--c-warning) !important;
+  border-color: transparent !important;
+  color: var(--text-on-warning) !important;
+}
+
+.button.is-danger {
+  background: var(--c-danger) !important;
+  border-color: transparent !important;
+  color: var(--text-on-danger) !important;
+}
+
+.button.is-info {
+  background: var(--c-info) !important;
+  border-color: transparent !important;
+  color: var(--text-on-info) !important;
+}
+
+.button.is-primary:hover:not([disabled]),
+.button.is-success:hover:not([disabled]),
+.button.is-warning:hover:not([disabled]),
+.button.is-danger:hover:not([disabled]),
+.button.is-info:hover:not([disabled]) {
   filter: brightness(1.08);
 }
 
+.button.is-primary:active:not([disabled]),
+.button.is-success:active:not([disabled]),
+.button.is-warning:active:not([disabled]),
+.button.is-danger:active:not([disabled]),
+.button.is-info:active:not([disabled]) {
+  filter: brightness(0.94);
+}
+
+/* Variante suave: type="is-COLOR is-light" (tinte sólido mate) */
+.button.is-primary.is-light {
+  background: var(--tint-primary) !important;
+  color: var(--tint-primary-fg) !important;
+  box-shadow: none;
+}
+
+.button.is-success.is-light {
+  background: var(--tint-success) !important;
+  color: var(--tint-success-fg) !important;
+}
+
+.button.is-warning.is-light {
+  background: var(--tint-warning) !important;
+  color: var(--tint-warning-fg) !important;
+}
+
+.button.is-danger.is-light {
+  background: var(--tint-danger) !important;
+  color: var(--tint-danger-fg) !important;
+}
+
+.button.is-info.is-light {
+  background: var(--tint-info) !important;
+  color: var(--tint-info-fg) !important;
+}
+
+.button.is-primary.is-light:hover:not([disabled]),
+.button.is-success.is-light:hover:not([disabled]),
+.button.is-warning.is-light:hover:not([disabled]),
+.button.is-danger.is-light:hover:not([disabled]),
+.button.is-info.is-light:hover:not([disabled]) {
+  filter: brightness(0.97);
+}
+
+/* Neutros */
 .button.is-light {
   background: var(--surface) !important;
   border-color: var(--border-solid) !important;
@@ -735,7 +783,10 @@ html[data-theme="dark"] {
   color: var(--text-primary) !important;
 }
 
-/* --- Tags / Pills --- */
+/* ============================================================
+   TAGS / PILLS — tintes SÓLIDOS (sin alpha: no se ensucian sobre
+   banners de color) + texto de acento reforzado por tema.
+   ============================================================ */
 .tag {
   border-radius: var(--radius-pill) !important;
   font-weight: 700 !important;
@@ -747,28 +798,28 @@ html[data-theme="dark"] {
 }
 
 .tag.is-primary {
-  background: var(--c-primary-alpha) !important;
-  color: var(--c-primary) !important;
+  background: var(--tint-primary) !important;
+  color: var(--tint-primary-fg) !important;
 }
 
 .tag.is-success {
-  background: var(--c-success-alpha) !important;
-  color: var(--c-success) !important;
+  background: var(--tint-success) !important;
+  color: var(--tint-success-fg) !important;
 }
 
 .tag.is-warning {
-  background: var(--c-warning-alpha) !important;
-  color: var(--c-warning) !important;
+  background: var(--tint-warning) !important;
+  color: var(--tint-warning-fg) !important;
 }
 
 .tag.is-danger {
-  background: var(--c-danger-alpha) !important;
-  color: var(--c-danger) !important;
+  background: var(--tint-danger) !important;
+  color: var(--tint-danger-fg) !important;
 }
 
 .tag.is-info {
-  background: var(--c-info-alpha) !important;
-  color: var(--c-info) !important;
+  background: var(--tint-info) !important;
+  color: var(--tint-info-fg) !important;
 }
 
 /* --- b-tabs is-toggle (used in Laboratorio) --- */
@@ -822,6 +873,39 @@ html[data-theme="dark"] {
 
 .modal-card-body {
   padding: 1.25rem 1.5rem !important;
+}
+
+/* --- Scroll vertical unificado en TODOS los modales ---
+   Mismo patrón que .main-content: thumb pill neutro, track invisible.
+   El gris pizarra translúcido funciona en claro y oscuro por igual. */
+.modal-card-body,
+.modal .modal-content {
+  overflow-x: hidden;
+  overflow-y: auto;
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: var(--static-color-rgba-148-163-184-0-35) transparent;
+}
+
+.modal-card-body::-webkit-scrollbar,
+.modal .modal-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.modal-card-body::-webkit-scrollbar-thumb,
+.modal .modal-content::-webkit-scrollbar-thumb {
+  background: var(--static-color-rgba-148-163-184-0-35);
+  border-radius: 999px;
+}
+
+.modal-card-body::-webkit-scrollbar-thumb:hover,
+.modal .modal-content::-webkit-scrollbar-thumb:hover {
+  background: var(--static-color-rgba-148-163-184-0-55);
+}
+
+.modal-card-body::-webkit-scrollbar-track,
+.modal .modal-content::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .modal-card-foot {
@@ -1904,7 +1988,7 @@ button.dropdown-item:hover {
   color: white !important;
   border: none !important;
   box-shadow: 0 4px 15px var(--c-primary-alpha);
-  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+  transition: all 0.2s cubic-bezier(0.22, 0.61, 0.36, 1) !important;
 }
 
 .premium-btn:hover:not([disabled]) {

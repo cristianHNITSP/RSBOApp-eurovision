@@ -48,6 +48,5 @@
 .show-read-link:hover {
   background: var(--c-primary);
   color: var(--static-color-fff);
-  transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(var(--c-primary-rgb, 59, 130, 246), 0.3);
 }

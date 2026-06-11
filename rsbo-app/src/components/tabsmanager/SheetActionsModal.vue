@@ -2,7 +2,7 @@
 <template>
   <teleport to="body">
     <b-modal v-model="localIsOpen" has-modal-card trap-focus :destroy-on-hide="true" :can-cancel="['escape']"
-      scroll="keep" aria-role="dialog" aria-modal class="rsbo-sheet-actions-modal">
+      scroll="keep" :width="820" animation="lq-pop" aria-role="dialog" aria-modal class="rsbo-sheet-actions-modal">
       <div class="modal-card glass-modal-card glass-modal-card--wide">
         <header class="modal-card-head glass-modal-head">
           <b-icon icon="cog" type="is-primary" size="is-small" class="mr-2" />
@@ -85,8 +85,8 @@
           </div>
         </section>
 
-        <footer class="modal-card-foot glass-modal-foot">
-          <b-button label="Cerrar" @click="$emit('close')" />
+        <footer class="modal-card-foot glass-modal-foot is-justify-content-flex-end">
+          <b-button label="Cerrar" icon-left="xmark" @click="$emit('close')" />
         </footer>
       </div>
     </b-modal>

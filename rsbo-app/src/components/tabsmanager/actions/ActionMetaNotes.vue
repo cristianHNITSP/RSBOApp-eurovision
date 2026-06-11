@@ -5,7 +5,7 @@
       <!-- Icono -->
       <div class="media-left">
         <div class="action-icon-circle icon-bg-info">
-          <b-icon icon="comment-alt" pack="far" type="is-info" size="is-medium"></b-icon>
+          <b-icon icon="comment-alt" pack="far" :type="status === 'error' ? 'is-warning' : 'is-info'" size="is-medium"></b-icon>
         </div>
       </div>
 
@@ -19,25 +19,31 @@
         </div>
 
         <div class="action-form-grid">
-          <b-field label="Observaciones" custom-class="is-small">
+          <b-field label="Observaciones" custom-class="is-small"
+            :type="/[<>]/.test(observaciones || '') ? 'is-danger' : ''"
+            :message="/[<>]/.test(observaciones || '') ? 'Los caracteres < y > no están permitidos.' : ''">
             <b-input
               type="textarea"
               :modelValue="observaciones"
               @update:modelValue="$emit('update:observaciones', $event)"
               placeholder="Detalles sobre el inventario…"
               rows="2"
+              maxlength="2000"
               :disabled="loading"
               size="is-small"
             />
           </b-field>
 
-          <b-field label="Notas internas" custom-class="is-small">
+          <b-field label="Notas internas" custom-class="is-small"
+            :type="/[<>]/.test(notas || '') ? 'is-danger' : ''"
+            :message="/[<>]/.test(notas || '') ? 'Los caracteres < y > no están permitidos.' : ''">
             <b-input
               type="textarea"
               :modelValue="notas"
               @update:modelValue="$emit('update:notas', $event)"
               placeholder="Solo visible en este panel…"
               rows="2"
+              maxlength="2000"
               :disabled="loading"
               size="is-small"
             />
@@ -48,12 +54,12 @@
           <b-button 
             type="is-info" 
             size="is-small" 
-            icon-left="save"
+            :icon-left="status === 'error' ? 'rotate-right' : 'save'"
             :loading="loading" 
             :disabled="!canSave || loading" 
             @click="$emit('save')"
           >
-            Guardar notas
+            {{ status === 'error' ? 'Reintentar' : 'Guardar notas' }}
           </b-button>
           <StatusPill :status="status" :message="message" />
         </div>

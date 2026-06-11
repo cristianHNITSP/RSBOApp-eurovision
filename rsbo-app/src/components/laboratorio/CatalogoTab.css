@@ -59,7 +59,6 @@
 }
 
 .qr-card:hover {
-  transform: translateY(-1px);
   box-shadow: var(--shadow-lg);
 }
 

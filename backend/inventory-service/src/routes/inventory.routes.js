@@ -94,6 +94,36 @@ router.use(protect());
 router.use(csrfProtection);
 
 // Helpers router-level
+
+// Reglas espejo del frontend (SheetActionsModal): mismos límites en ambos lados.
+// noAngles: rechaza < y > explícitamente (422) en lugar de strip silencioso.
+const noAngles = (v) => {
+  if (/[<>]/.test(String(v ?? ""))) throw new Error("Los caracteres < y > no están permitidos");
+  return true;
+};
+
+// Precio opcional: vacío/null o número entre 0 y 9,999,999.99 (igual que el front)
+const MAX_PRICE = 9999999.99;
+const validOptionalPrice = (v) => {
+  if (v === null || String(v).trim() === "") return true;
+  const n = Number(v);
+  if (!Number.isFinite(n) || n < 0 || n > MAX_PRICE) {
+    throw new Error("Precio inválido: número entre 0 y 9,999,999.99");
+  }
+  return true;
+};
+
+// Existencias: entero entre 0 y 999,999 — mensajes claros para usuarios
+// no técnicos (espejo del valueSetter del AG-Grid en el frontend).
+const MAX_STOCK = 999999;
+const validateStockValue = (n) => {
+  if (!Number.isFinite(n)) return "Las existencias deben ser un número. Revisa que no haya letras o símbolos.";
+  if (!Number.isInteger(n)) return "Las existencias deben ser un número entero, sin decimales.";
+  if (n < 0) return "Las existencias no pueden ser negativas. El mínimo es 0.";
+  if (n > MAX_STOCK) return `Las existencias no pueden superar ${MAX_STOCK.toLocaleString("es-MX")} piezas por celda.`;
+  return null;
+};
+
 const handleValidation = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -550,38 +580,51 @@ router.patch(
   param("sheetId").isMongoId(),
 
   oneOf([
-    body("nombre").optional().isString().trim().notEmpty(),
-    body("name").optional().isString().trim().notEmpty()
+    body("nombre").optional().isString().trim().notEmpty().isLength({ max: 120 }).custom(noAngles),
+    body("name").optional().isString().trim().notEmpty().isLength({ max: 120 }).custom(noAngles)
   ]),
 
-  body("tratamientos").optional().isArray(),
-  body("tratamiento").optional({ nullable: true, checkFalsy: true }).isString().trim(),
-  body("variante").optional({ nullable: true, checkFalsy: true }).isString().trim(),
+  body("tratamientos").optional().isArray({ max: 30 }),
+  body("tratamientos.*").optional().isString().trim().isLength({ max: 80 }).custom(noAngles),
+  body("tratamiento").optional({ nullable: true, checkFalsy: true }).isString().trim().isLength({ max: 80 }).custom(noAngles),
+  body("variante").optional({ nullable: true, checkFalsy: true }).isString().trim().isLength({ max: 80 }).custom(noAngles),
 
   // ✅ compra/fechas
-  body("numFactura").optional({ nullable: true }).isString().trim(),
-  body("loteProducto").optional({ nullable: true }).isString().trim(),
+  body("numFactura").optional({ nullable: true }).isString().trim().isLength({ max: 60 }).custom(noAngles),
+  body("loteProducto").optional({ nullable: true }).isString().trim().isLength({ max: 60 }).custom(noAngles),
   body("fechaCompra").optional({ nullable: true, checkFalsy: true }).isISO8601(),
-  body("fechaCaducidad").optional({ nullable: true, checkFalsy: true }).isISO8601(),
+  body("fechaCaducidad")
+    .optional({ nullable: true, checkFalsy: true })
+    .isISO8601()
+    // Coherencia: si vienen ambas fechas, la caducidad no puede ser anterior a la compra
+    .custom((v, { req }) => {
+      const compra = req.body?.fechaCompra;
+      if (!v || !compra) return true;
+      const dCad = new Date(v);
+      const dCompra = new Date(compra);
+      if (Number.isNaN(dCad.getTime()) || Number.isNaN(dCompra.getTime())) return true; // isISO8601 ya cubre formato
+      if (dCad < dCompra) throw new Error("fechaCaducidad no puede ser anterior a fechaCompra");
+      return true;
+    }),
   body("precioVenta")
     .optional({ nullable: true })
-    .custom((v) => v === null || String(v).trim() === "" || (Number.isFinite(Number(v)) && Number(v) >= 0)),
+    .custom(validOptionalPrice),
 
   body("precioCompra")
     .optional({ nullable: true })
-    .custom((v) => v === null || String(v).trim() === "" || (Number.isFinite(Number(v)) && Number(v) >= 0)),
+    .custom(validOptionalPrice),
 
   body("proveedor").optional({ nullable: true }).isObject(),
-  body("proveedor.name").optional({ nullable: true, checkFalsy: true }).isString().trim(),
-  body("proveedor.id").optional({ nullable: true, checkFalsy: true }).isString().trim(),
+  body("proveedor.name").optional({ nullable: true, checkFalsy: true }).isString().trim().isLength({ max: 80 }).custom(noAngles),
+  body("proveedor.id").optional({ nullable: true, checkFalsy: true }).isString().trim().isLength({ max: 64 }),
 
   body("marca").optional({ nullable: true }).isObject(),
-  body("marca.name").optional({ nullable: true, checkFalsy: true }).isString().trim(),
-  body("marca.id").optional({ nullable: true, checkFalsy: true }).isString().trim(),
+  body("marca.name").optional({ nullable: true, checkFalsy: true }).isString().trim().isLength({ max: 80 }).custom(noAngles),
+  body("marca.id").optional({ nullable: true, checkFalsy: true }).isString().trim().isLength({ max: 64 }),
 
   body("meta").optional().isObject(),
-  body("meta.observaciones").optional().isString(),
-  body("meta.notas").optional().isString(),
+  body("meta.observaciones").optional().isString().isLength({ max: 2000 }).custom(noAngles),
+  body("meta.notas").optional().isString().isLength({ max: 2000 }).custom(noAngles),
   body("meta.ranges").optional().isObject(),
 
   body("sku").optional({ nullable: true }).isString().trim().isLength({ min: 6, max: 60 }),
@@ -690,8 +733,17 @@ router.patch(
 
 
 
-      if (isDef(req.body.proveedor)) sheet.proveedor = normalizeParty(req.body.proveedor);
-      if (isDef(req.body.marca)) sheet.marca = normalizeParty(req.body.marca);
+      // Saneamiento: mismo strip de etiquetas que nombre/notas también
+      // para los nombres de proveedor y marca (entrada libre del usuario)
+      const stripTags = (s) => String(s || "").replace(/<[^>]*>?/gm, "");
+      if (isDef(req.body.proveedor)) {
+        const p = normalizeParty(req.body.proveedor);
+        sheet.proveedor = { ...p, name: stripTags(p.name) };
+      }
+      if (isDef(req.body.marca)) {
+        const m = normalizeParty(req.body.marca);
+        sheet.marca = { ...m, name: stripTags(m.name) };
+      }
 
       if (req.body.meta && typeof req.body.meta === "object") {
         sheet.meta = sheet.meta && typeof sheet.meta === "object" ? sheet.meta : {};
@@ -1298,8 +1350,8 @@ router.put(
   body("cyl").exists(),
   body("existencias").optional(),
   body("delta").optional(),
-  body("sku").optional(),
-  body("qr").optional(),
+  body("sku").optional({ nullable: true }).isString().isLength({ max: 80 }),
+  body("qr").optional({ nullable: true }).isString().isLength({ max: 120 }),
   body("actor").optional().isObject(),
   handleValidation,
   async (req, res) => {
@@ -1398,8 +1450,8 @@ router.put(
   body("base").exists(),
   body("existencias").optional(),
   body("delta").optional(),
-  body("sku").optional(),
-  body("qr").optional(),
+  body("sku").optional({ nullable: true }).isString().isLength({ max: 80 }),
+  body("qr").optional({ nullable: true }).isString().isLength({ max: 120 }),
   body("actor").optional().isObject(),
   handleValidation,
   async (req, res) => {
@@ -1431,8 +1483,8 @@ router.put(
       else if (isDef(req.body.delta)) after = before + Number(req.body.delta);
       else return res.status(400).json({ ok: false, message: "Envía existencias o delta" });
 
-      if (!Number.isFinite(after) || after < 0)
-        return res.status(400).json({ ok: false, message: "Existencias inválidas (<0)" });
+      const stockError = validateStockValue(after);
+      if (stockError) return res.status(400).json({ ok: false, message: stockError });
 
       let finalSku = isDef(req.body.sku) ? String(req.body.sku) : prev.sku || makeSku(sheet._id, "BASE", { base });
       let finalQr = isDef(req.body.qr) ? (req.body.qr === null ? null : String(req.body.qr)) : prev.qr;
@@ -1472,8 +1524,8 @@ router.put(
   body("eye").isIn(["OD", "OI"]),
   body("existencias").optional(),
   body("delta").optional(),
-  body("sku").optional(),
-  body("qr").optional(),
+  body("sku").optional({ nullable: true }).isString().isLength({ max: 80 }),
+  body("qr").optional({ nullable: true }).isString().isLength({ max: 120 }),
   body("base").optional(),
   body("base_izq").optional(),
   body("base_der").optional(),
@@ -1525,8 +1577,8 @@ router.put(
       else if (isDef(req.body.delta)) after = before + Number(req.body.delta);
       else return res.status(400).json({ ok: false, message: "Envía existencias o delta" });
 
-      if (!Number.isFinite(after) || after < 0)
-        return res.status(400).json({ ok: false, message: "Existencias inválidas (<0)" });
+      const stockError = validateStockValue(after);
+      if (stockError) return res.status(400).json({ ok: false, message: stockError });
 
       let finalSku = isDef(req.body.sku) ? String(req.body.sku) : prevEye.sku || makeSku(sheet._id, "SPH_ADD", { sph, add, eye, base_izq, base_der });
       let finalQr = isDef(req.body.qr) ? (req.body.qr === null ? null : String(req.body.qr)) : prevEye.qr;
@@ -1580,8 +1632,8 @@ router.put(
   body("eye").isIn(["OD", "OI"]),
   body("existencias").optional(),
   body("delta").optional(),
-  body("sku").optional(),
-  body("qr").optional(),
+  body("sku").optional({ nullable: true }).isString().isLength({ max: 80 }),
+  body("qr").optional({ nullable: true }).isString().isLength({ max: 120 }),
   body("actor").optional().isObject(),
   handleValidation,
   async (req, res) => {
@@ -1620,8 +1672,8 @@ router.put(
       else if (isDef(req.body.delta)) after = before + Number(req.body.delta);
       else return res.status(400).json({ ok: false, message: "Envía existencias o delta" });
 
-      if (!Number.isFinite(after) || after < 0)
-        return res.status(400).json({ ok: false, message: "Existencias inválidas (<0)" });
+      const stockError = validateStockValue(after);
+      if (stockError) return res.status(400).json({ ok: false, message: stockError });
 
       let finalSku = isDef(req.body.sku) ? String(req.body.sku) : prevEye.sku || makeSku(sheet._id, "BASE_ADD", { base_izq, base_der, add, eye });
       let finalQr = isDef(req.body.qr) ? (req.body.qr === null ? null : String(req.body.qr)) : prevEye.qr;
@@ -1685,7 +1737,12 @@ router.post(
 
       const validationErrors = validateChunkRows(sheet.tipo_matriz, rows, sheet.ranges);
       if (validationErrors.length) {
-        return res.status(400).json({ ok: false, message: "Datos inválidos en rows", errors: validationErrors });
+        const firstError = validationErrors[0]?.msg || "Revisa los valores marcados.";
+        return res.status(400).json({
+          ok: false,
+          message: `No se pudo guardar: ${firstError}`,
+          errors: validationErrors
+        });
       }
 
       let result;

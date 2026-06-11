@@ -1,47 +1,95 @@
 /* rsbo-app/src/components/tabsmanager/actions/ActionCard.css */
 
-/* 
+/*
    ============================================================
-   Action Card System — Basado en Design Tokens y Bulma
-   ============================================================ 
+   Action Card System — Design tokens + Bulma
+   Hover sutil: la superficie sube de tono y el borde toma un
+   matiz del acento. Sin translate, rotaciones ni indicadores.
+   Theme-aware: todo via tokens (light + dark automáticos).
+   ============================================================
 */
 
-/* Contenedor base (usamos .box de Bulma como base en el HTML) */
+/* Variante por variables: cada color define su set y el resto
+   del sistema lo consume — una sola fuente de verdad. */
 .action-box {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg, 14px);
-  box-shadow: var(--shadow-sm);
-  transition: all var(--transition-base, 180ms ease);
-  overflow: hidden;
+  --ac: var(--c-primary);
+  --ac-on: var(--text-on-primary);
+  --ac-tint: var(--tint-primary);
+  --ac-fg: var(--tint-primary-fg);
+}
+
+.action-box.danger {
+  --ac: var(--c-danger);
+  --ac-on: var(--text-on-danger);
+  --ac-tint: var(--tint-danger);
+  --ac-fg: var(--tint-danger-fg);
+}
+
+.action-box.info {
+  --ac: var(--c-info);
+  --ac-on: var(--text-on-info);
+  --ac-tint: var(--tint-info);
+  --ac-fg: var(--tint-info-fg);
+}
+
+.action-box.warning {
+  --ac: var(--c-warning);
+  --ac-on: var(--text-on-warning);
+  --ac-tint: var(--tint-warning);
+  --ac-fg: var(--tint-warning-fg);
+}
+
+/* Contenedor base (mate: superficie sólida) */
+.action-box {
   position: relative;
+  background: var(--surface-solid);
+  border: 1px solid var(--border-solid);
+  border-radius: var(--radius-lg, 14px);
+  box-shadow: var(--shadow-xs);
+  overflow: hidden;
+  transition:
+    border-color var(--transition-base, 180ms ease),
+    background-color var(--transition-base, 180ms ease),
+    box-shadow var(--transition-base, 180ms ease);
 }
 
-.action-box:hover {
-  border-color: var(--c-primary-alpha);
+/* Hover sutil: solo superficie + matiz de acento en el borde */
+.action-box:hover,
+.action-box:focus-within {
   background: var(--surface-raised);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  border-color: color-mix(in srgb, var(--ac) 35%, var(--border-solid));
+  box-shadow: var(--shadow-sm);
 }
 
-/* Variantes de color */
-.action-box.primary { border-color: var(--c-primary-alpha); }
-.action-box.danger { border-color: var(--c-danger-alpha); }
-.action-box.info { border-color: var(--c-info-alpha); }
-.action-box.warning { border-color: var(--c-warning-alpha); }
-
-/* Glows (animados) */
+/* Glows de estado (guardado OK, etc.): pulso de anillo mate */
 @keyframes glow-pulse {
-  0% { box-shadow: 0 0 5px var(--glow-color); }
-  50% { box-shadow: 0 0 20px var(--glow-color); }
-  100% { box-shadow: 0 0 5px var(--glow-color); }
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 var(--glow-color);
+  }
+
+  50% {
+    box-shadow: 0 0 0 4px var(--glow-color);
+  }
 }
 
-.action-glow-primary { --glow-color: var(--c-primary-alpha); animation: glow-pulse 2s infinite; }
-.action-glow-info { --glow-color: var(--c-info-alpha); animation: glow-pulse 2s infinite; }
-.action-glow-success { --glow-color: var(--c-success-alpha); animation: glow-pulse 2s infinite; }
+.action-glow-primary {
+  --glow-color: var(--c-primary-alpha);
+  animation: glow-pulse 2s infinite;
+}
 
-/* Icono circular */
+.action-glow-info {
+  --glow-color: var(--c-info-alpha);
+  animation: glow-pulse 2s infinite;
+}
+
+.action-glow-success {
+  --glow-color: var(--c-success-alpha);
+  animation: glow-pulse 2s infinite;
+}
+
+/* Icono circular: tinte sólido estable (sin cambios al hover — sutileza) */
 .action-icon-circle {
   width: 48px;
   height: 48px;
@@ -50,22 +98,27 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: transform var(--transition-base);
+  background: var(--ac-tint);
+  color: var(--ac-fg);
 }
 
-.action-box:hover .action-icon-circle {
-  transform: scale(1.1) rotate(5deg);
+/* El b-icon hereda el color del círculo en todos los estados */
+.action-icon-circle .icon {
+  color: inherit !important;
 }
 
-/* Colores de iconos */
-.icon-bg-primary { background: var(--c-primary-alpha); color: var(--c-primary); }
-.icon-bg-danger { background: var(--c-danger-alpha); color: var(--c-danger); }
-.icon-bg-info { background: var(--c-info-alpha); color: var(--c-info); }
-.icon-bg-warning { background: var(--c-warning-alpha); color: var(--c-warning); }
+/* Compat: clases icon-bg-* existentes en el markup (mapean al var set) */
+.icon-bg-primary,
+.icon-bg-danger,
+.icon-bg-info,
+.icon-bg-warning {
+  background: var(--ac-tint);
+  color: var(--ac-fg);
+}
 
 /* Tipografía */
 .action-title {
-  font-family: 'Switzer', sans-serif;
+  font-family: var(--font-heading, 'Switzer', sans-serif);
   font-weight: 700;
   color: var(--text-primary);
   line-height: 1.2;
@@ -110,4 +163,16 @@
 .action-fade-enter-from {
   opacity: 0;
   transform: translateY(10px);
+}
+
+/* Reduced motion: sin pulsos */
+@media (prefers-reduced-motion: reduce) {
+
+  .action-icon-circle,
+  .action-glow-primary,
+  .action-glow-info,
+  .action-glow-success {
+    transition: none !important;
+    animation: none !important;
+  }
 }

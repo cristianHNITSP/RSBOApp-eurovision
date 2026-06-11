@@ -5,10 +5,12 @@
       has-modal-card
       trap-focus
       :destroy-on-hide="true"
+      :width="420"
+      animation="lq-pop"
       aria-role="dialog"
       aria-modal
     >
-      <div class="modal-card" style="max-width: 420px; width: 100%;">
+      <div class="modal-card" style="width: 100%;">
         <header class="modal-card-head">
           <p class="modal-card-title">
             <i class="fas fa-qrcode mr-2" style="color: var(--c-primary)"></i>

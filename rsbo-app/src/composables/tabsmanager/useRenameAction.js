@@ -18,11 +18,14 @@ export function useRenameAction({ selectedSheet, updateSheet, _updateLocalSheet,
     renameGlow.value = false;
   };
 
+  // Espejo de la validación del servidor: sin etiquetas/caracteres < >
+  const hasAngles = (s) => /[<>]/.test(String(s || ""));
+
   const canRename = computed(() => {
     if (!selectedSheet.value || renaming.value) return false;
     const current = String(selectedSheet.value?.name || "").trim();
     const next = String(renameName.value || "").trim();
-    return next.length > 0 && next !== current;
+    return next.length > 0 && next.length <= 120 && !hasAngles(next) && next !== current;
   });
 
   const confirmRename = async () => {

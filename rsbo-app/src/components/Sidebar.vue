@@ -195,7 +195,7 @@ export default {
       submenuEl.style.pointerEvents = "none";
       void submenuEl.offsetWidth;
 
-      submenuEl.style.transition = "opacity 0.4s cubic-bezier(0.32, 0.72, 0, 1), transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1)";
+      submenuEl.style.transition = "opacity 0.4s cubic-bezier(0.32, 0.72, 0, 1), transform 0.45s cubic-bezier(0.22, 0.61, 0.36, 1)";
       submenuEl.style.opacity = 1;
       submenuEl.style.transform = "translateX(0) scale(1)";
       submenuEl.style.pointerEvents = "auto";

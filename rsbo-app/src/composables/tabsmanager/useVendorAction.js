@@ -26,7 +26,11 @@ export function useVendorAction({ selectedSheet, updateSheet, _updateLocalSheet,
     const currentMarca = String(selectedSheet.value?.marca?.name || "").trim();
     const nextProv = String(editProveedorName.value || "").trim();
     const nextMarca = String(editMarcaName.value || "").trim();
-    return nextProv !== currentProv || nextMarca !== currentMarca;
+    // Obligatorios, acotados y sin caracteres < > (espejo del servidor)
+    const hasAngles = (s) => /[<>]/.test(s);
+    const filled = nextProv.length > 0 && nextProv.length <= 80 && !hasAngles(nextProv) &&
+      nextMarca.length > 0 && nextMarca.length <= 80 && !hasAngles(nextMarca);
+    return filled && (nextProv !== currentProv || nextMarca !== currentMarca);
   });
 
   const confirmSaveVendor = async () => {

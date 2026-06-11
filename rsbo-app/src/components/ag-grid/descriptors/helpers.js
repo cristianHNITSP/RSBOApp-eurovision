@@ -6,17 +6,44 @@
  * así que NO hay estado "cargando" por celda → sin skeletons. El estado de carga
  * lo cubre el overlay nativo de AG Grid durante el único fetch.
  */
-import { isNumeric } from "@/composables/ag-grid/useAgGridBase";
 import { classifyStock } from "@/composables/ag-grid/stockTiers";
+import { labToast } from "@/composables/shared/useLabToast";
+
+/* Reglas de existencias — ESPEJO del servidor (inventory.routes / chunkValidate):
+   entero entre 0 y 999,999. Sin signos, letras ni decimales. */
+export const MAX_STOCK = 999999;
+const INT_RX = /^\d+$/;
 
 /**
- * valueSetter genérico: coerciona a número y escribe en la fila (óptimista).
- * El guardado se dispara UNA sola vez en el evento cellValueChanged del componente
- * (no aquí), para evitar doble guardado.
+ * valueSetter genérico: valida y escribe en la fila (óptimista).
+ * Entrada inválida → se RECHAZA (la celda conserva su valor) y se avisa con
+ * un mensaje claro, en lugar de convertir silenciosamente a 0.
+ * El guardado se dispara UNA sola vez en cellValueChanged del componente.
  */
 export const makeValueSetter = () => (p) => {
   const raw = String(p.newValue ?? "").trim();
-  const newVal = isNumeric(raw) ? Number(raw) : 0;
+
+  // Celda vaciada → 0 (gesto habitual para "sin stock")
+  let newVal;
+  if (raw === "") {
+    newVal = 0;
+  } else if (!INT_RX.test(raw)) {
+    labToast.warning(
+      "Valor no guardado: escribe solo números enteros (sin signos, letras, puntos ni espacios). Ejemplo: 12",
+      4000
+    );
+    return false; // la celda conserva el valor anterior
+  } else {
+    newVal = Number(raw);
+    if (newVal > MAX_STOCK) {
+      labToast.warning(
+        `Valor no guardado: el máximo permitido por celda es ${MAX_STOCK.toLocaleString("es-MX")} piezas.`,
+        4000
+      );
+      return false;
+    }
+  }
+
   if (Number(p.oldValue ?? 0) === newVal) return false; // sin cambio → no dispara cellValueChanged
   p.data[p.colDef.field] = newVal;
   return true;

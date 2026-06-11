@@ -100,7 +100,6 @@
 }
 
 .tab-item:hover {
-  transform: translateY(-1px);
   box-shadow: var(--shadow-sm);
 }
 
@@ -324,7 +323,6 @@
 
 .tab-menu-manager-wrapper :deep(.template-menu-trigger:hover),
 .tab-menu-manager-wrapper :deep(.trash-menu-trigger:hover) {
-  transform: translateY(-1px);
 }
 
 .tab-pin-btn {

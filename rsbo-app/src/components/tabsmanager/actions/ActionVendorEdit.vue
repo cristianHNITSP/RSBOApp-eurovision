@@ -5,7 +5,7 @@
       <!-- Icono -->
       <div class="media-left">
         <div class="action-icon-circle icon-bg-info">
-          <b-icon icon="truck" type="is-info" size="is-medium"></b-icon>
+          <b-icon icon="truck" :type="status === 'error' ? 'is-warning' : 'is-info'" size="is-medium"></b-icon>
         </div>
       </div>
 
@@ -19,25 +19,39 @@
         </div>
 
         <div class="action-form-grid">
-          <b-field label="Proveedor" custom-class="is-small">
+          <b-field
+            label="Proveedor"
+            custom-class="is-small"
+            :type="!String(proveedorName || '').trim() || /[<>]/.test(proveedorName || '') ? 'is-danger' : ''"
+            :message="!String(proveedorName || '').trim() ? 'El proveedor es obligatorio.'
+              : /[<>]/.test(proveedorName || '') ? 'Los caracteres < y > no están permitidos.' : ''"
+          >
             <b-autocomplete
               :modelValue="proveedorName"
               @update:modelValue="$emit('update:proveedorName', $event)"
               :data="filteredProveedores"
               placeholder="Buscar proveedor…"
               open-on-focus
+              maxlength="80"
               :disabled="loading"
               size="is-small"
             />
           </b-field>
 
-          <b-field label="Marca" custom-class="is-small">
+          <b-field
+            label="Marca"
+            custom-class="is-small"
+            :type="!String(marcaName || '').trim() || /[<>]/.test(marcaName || '') ? 'is-danger' : ''"
+            :message="!String(marcaName || '').trim() ? 'La marca es obligatoria.'
+              : /[<>]/.test(marcaName || '') ? 'Los caracteres < y > no están permitidos.' : ''"
+          >
             <b-autocomplete
               :modelValue="marcaName"
               @update:modelValue="$emit('update:marcaName', $event)"
               :data="filteredMarcas"
               placeholder="Buscar marca…"
               open-on-focus
+              maxlength="80"
               :disabled="loading"
               size="is-small"
             />
@@ -48,12 +62,12 @@
           <b-button 
             type="is-info" 
             size="is-small" 
-            icon-left="save"
+            :icon-left="status === 'error' ? 'rotate-right' : 'save'"
             :loading="loading" 
             :disabled="!canSave || loading" 
             @click="$emit('save')"
           >
-            Actualizar proveedor
+            {{ status === 'error' ? 'Reintentar' : 'Actualizar proveedor' }}
           </b-button>
           <StatusPill :status="status" :message="message" />
         </div>
